@@ -1,0 +1,25 @@
+--- Global tuning constants for board size, colors, and layout.
+
+local M = {}
+
+M.BOARD_SIZE = 9
+
+M.STONE_NONE = 0
+M.STONE_BLACK = 1
+M.STONE_WHITE = 2
+
+M.HUMAN_COLOR = M.STONE_BLACK
+M.AI_COLOR = M.STONE_WHITE
+
+M.MARGIN = 48
+M.GRID_LINE_WIDTH = 2
+M.STONE_RADIUS_FACTOR = 0.45
+
+M.COLOR_BOARD = { 0.82, 0.71, 0.48 }
+M.COLOR_GRID = { 0.15, 0.12, 0.08 }
+M.COLOR_BLACK_STONE = { 0.08, 0.08, 0.1 }
+M.COLOR_WHITE_STONE = { 0.95, 0.95, 0.93 }
+M.COLOR_UI = { 0.2, 0.18, 0.15 }
+M.COLOR_HIGHLIGHT = { 0.2, 0.6, 0.9, 0.35 }
+
+return M
