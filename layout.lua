@@ -4,25 +4,28 @@ local config = require("config")
 
 local M = {}
 
---- Computes pixel origin, cell spacing, and reserved chrome height for UI text.
+--- Computes pixel origin, cell spacing, and reserved top/bottom chrome for score and status text.
 --- @param window_w number
 --- @param window_h number
 --- @return table layout
 function M.from_window(window_w, window_h)
 	local n = config.BOARD_SIZE
-	local chrome = 72
+	local top_chrome = 44
+	local bottom_chrome = 72
 	local margin = config.MARGIN
-	local side = math.min(window_w - 2 * margin, window_h - chrome - 2 * margin)
+	local inner_h = window_h - top_chrome - bottom_chrome
+	local side = math.min(window_w - 2 * margin, inner_h - 2 * margin)
 	local span = n - 1
 	local cell = side / span
 	local ox = (window_w - span * cell) / 2
-	local oy = margin + (window_h - chrome - span * cell - 2 * margin) / 2
+	local oy = top_chrome + margin + (inner_h - 2 * margin - span * cell) / 2
 	return {
 		cell = cell,
 		ox = ox,
 		oy = oy,
 		n = n,
-		chrome_y = window_h - chrome + 8,
+		score_y = 10,
+		chrome_y = window_h - bottom_chrome + 8,
 	}
 end
 

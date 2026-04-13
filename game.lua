@@ -1,4 +1,4 @@
---- Match flow: turns, passes, scoring summary, and AI scheduling.
+--- Match flow: turns, passes, scoring, bot games, and two-player same-device games.
 
 local ai = require("ai")
 local board = require("board")
@@ -7,9 +7,30 @@ local rules = require("rules")
 
 local M = {}
 
---- Builds a fresh game with human as Black and a random-move White opponent.
+--- Whether the active player is controlled by this device (both colors in PvP, only Black vs bot).
+--- @param g table
+--- @return boolean
+function M.is_human_turn(g)
+	if g.over then
+		return false
+	end
+	if not g.versus_bot then
+		return true
+	end
+	return g.to_play == config.STONE_BLACK
+end
+
+--- Builds a fresh game for local two-player or Black vs random White.
+--- @param match_kind string "pvp" or "pvc"
 --- @return table
-function M.new()
+function M.new(match_kind)
+	local versus_bot = match_kind == "pvc"
+	local status
+	if versus_bot then
+		status = "Your turn (Black). White is a random bot."
+	else
+		status = "Black to play — shared mouse, two players."
+	end
 	return {
 		board = board.new(),
 		to_play = config.STONE_BLACK,
@@ -17,39 +38,53 @@ function M.new()
 		prisoners = { [config.STONE_BLACK] = 0, [config.STONE_WHITE] = 0 },
 		consecutive_passes = 0,
 		over = false,
-		status = "Your turn (Black). Click an empty intersection.",
+		status = status,
 		ai_delay = 0,
+		versus_bot = versus_bot,
+		match_kind = match_kind,
 	}
 end
 
---- Applies a human stone play when it is Black's turn and the move is legal.
+--- Applies a stone play for the current human-controlled side when the move is legal.
 --- @param g table
 --- @param row integer
 --- @param col integer
 --- @return boolean
-function M.human_play(g, row, col)
-	if g.over or g.to_play ~= config.HUMAN_COLOR then
+function M.player_move(g, row, col)
+	if not M.is_human_turn(g) then
 		return false
 	end
-	local ok, new_board, new_ko, caps = rules.try_play(g.board, row, col, config.HUMAN_COLOR, g.ko_ban)
+	local color = g.to_play
+	local ok, new_board, new_ko, caps = rules.try_play(g.board, row, col, color, g.ko_ban)
 	if not ok then
 		g.status = "Illegal move."
 		return false
 	end
 	g.board = new_board
 	g.ko_ban = new_ko
-	g.prisoners[config.HUMAN_COLOR] = g.prisoners[config.HUMAN_COLOR] + caps
+	g.prisoners[color] = g.prisoners[color] + caps
 	g.consecutive_passes = 0
-	g.to_play = config.AI_COLOR
-	g.status = "White is thinking…"
-	g.ai_delay = 0.35
+	local next_c = board.opponent_stone(color)
+	g.to_play = next_c
+	if g.versus_bot and next_c == config.AI_COLOR then
+		g.status = "White is thinking…"
+		g.ai_delay = 0.35
+	elseif g.versus_bot then
+		g.status = "Your turn (Black)."
+	else
+		if next_c == config.STONE_BLACK then
+			g.status = "Black to play."
+		else
+			g.status = "White to play."
+		end
+	end
 	return true
 end
 
---- Records a pass when it is the human's turn; may end the game or hand over to the AI.
+--- Records a pass for the current human-controlled side.
 --- @param g table
-function M.human_pass(g)
-	if g.over or g.to_play ~= config.HUMAN_COLOR then
+function M.player_pass(g)
+	if not M.is_human_turn(g) then
 		return
 	end
 	g.consecutive_passes = g.consecutive_passes + 1
@@ -57,16 +92,27 @@ function M.human_pass(g)
 		M.finish(g)
 		return
 	end
-	g.to_play = config.AI_COLOR
-	g.status = "You passed. White to play."
-	g.ai_delay = 0.35
+	local was = g.to_play
+	g.to_play = board.opponent_stone(was)
+	if g.versus_bot and g.to_play == config.AI_COLOR then
+		g.status = "You passed. White to play."
+		g.ai_delay = 0.35
+	elseif g.versus_bot then
+		g.status = "White passed. Your turn (Black)."
+	else
+		if g.to_play == config.STONE_BLACK then
+			g.status = "White passed. Black to play."
+		else
+			g.status = "Black passed. White to play."
+		end
+	end
 end
 
---- Runs the random AI when it is White's turn; respects optional think delay.
+--- Runs the random AI when it is White's turn in bot mode.
 --- @param g table
 --- @param dt number
 function M.tick_ai(g, dt)
-	if g.over or g.to_play ~= config.AI_COLOR then
+	if g.over or not g.versus_bot or g.to_play ~= config.AI_COLOR then
 		return
 	end
 	if g.ai_delay > 0 then
@@ -80,7 +126,7 @@ function M.tick_ai(g, dt)
 			M.finish(g)
 			return
 		end
-		g.to_play = config.HUMAN_COLOR
+		g.to_play = config.STONE_BLACK
 		g.status = "White passed. Your turn (Black)."
 		return
 	end
@@ -93,7 +139,7 @@ function M.tick_ai(g, dt)
 	g.ko_ban = new_ko
 	g.prisoners[config.AI_COLOR] = g.prisoners[config.AI_COLOR] + caps
 	g.consecutive_passes = 0
-	g.to_play = config.HUMAN_COLOR
+	g.to_play = config.STONE_BLACK
 	g.status = "Your turn (Black)."
 end
 
@@ -136,7 +182,7 @@ function M.finish(g)
 		winner = "Draw"
 	end
 	g.status = string.format(
-		"Game over. Area + prisoners — Black: %d, White: %d (%s). R to restart.",
+		"Game over. Area + prisoners — Black: %d, White: %d (%s). R same mode  M menu.",
 		score_b,
 		score_w,
 		winner

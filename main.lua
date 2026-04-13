@@ -1,80 +1,129 @@
---- Entry point: wires LÖVE callbacks to game logic, input, and drawing.
+--- Entry point: menu, LÖVE callbacks, and routing input to game or home.
 
-local config = require("config")
 local game = require("game")
+local home = require("home")
 local layout_mod = require("layout")
 local render = require("render")
 
-local state
+local screen
+local match
 local layout
 local hover_row
 local hover_col
 
---- Seeds RNG, font, and initial match state.
+--- Seeds RNG, fonts, and opens the home screen.
 function love.load()
 	love.graphics.setFont(love.graphics.newFont(18))
 	local w, h = love.graphics.getDimensions()
 	layout = layout_mod.from_window(w, h)
-	state = game.new()
+	screen = "menu"
+	match = nil
+	hover_row, hover_col = nil, nil
 	love.math.setRandomSeed(love.timer.getTime() * 1000000 + os.time())
 end
 
---- Resizes layout when the window changes.
+--- Resizes board layout when the window changes during play.
 --- @param w number
 --- @param h number
 function love.resize(w, h)
-	layout = layout_mod.from_window(w, h)
+	if screen == "play" then
+		layout = layout_mod.from_window(w, h)
+	end
 end
 
---- Advances the random opponent after a short delay.
+--- Advances the bot when in a player-vs-bot match.
 --- @param dt number
 function love.update(dt)
-	game.tick_ai(state, dt)
-end
-
---- Paints the board and status; shows hover only on human turns.
-function love.draw()
-	local hr, hc = hover_row, hover_col
-	if state.over or state.to_play ~= config.HUMAN_COLOR then
-		hr, hc = nil, nil
+	if screen == "play" and match then
+		game.tick_ai(match, dt)
 	end
-	render.draw(state, layout, hr, hc)
 end
 
---- Maps a mouse click to a human move when it is Black's turn.
+--- Draws either the home screen or the active match.
+function love.draw()
+	local w, h = love.graphics.getDimensions()
+	if screen == "menu" then
+		home.draw(w, h)
+		return
+	end
+	local hr, hc = hover_row, hover_col
+	local show_hover = game.is_human_turn(match)
+	render.draw(match, layout, hr, hc, show_hover)
+end
+
+--- Routes clicks to menu buttons or board placement.
 --- @param x number
 --- @param y number
 --- @param button integer
 function love.mousepressed(x, y, button)
-	if button ~= 1 or state.over then
+	if button ~= 1 then
+		return
+	end
+	local w, h = love.graphics.getDimensions()
+	if screen == "menu" then
+		local pick = home.hit_test(x, y, w, h)
+		if pick == "pvp" then
+			match = game.new("pvp")
+			screen = "play"
+			layout = layout_mod.from_window(w, h)
+		elseif pick == "pvc" then
+			match = game.new("pvc")
+			screen = "play"
+			layout = layout_mod.from_window(w, h)
+		end
+		return
+	end
+	if match.over then
 		return
 	end
 	local r, c = layout_mod.pixel_to_grid(layout, x, y)
 	if not r then
 		return
 	end
-	game.human_play(state, r, c)
+	game.player_move(match, r, c)
 end
 
---- Tracks hovered intersection for the placement preview.
+--- Tracks hover for the placement preview on the board only.
 --- @param x number
 --- @param y number
 function love.mousemoved(x, y)
+	if screen ~= "play" then
+		hover_row, hover_col = nil, nil
+		return
+	end
 	hover_row, hover_col = layout_mod.pixel_to_grid(layout, x, y)
 end
 
---- Pass (P), restart (R); Escape quits.
+--- Escape toggles menu vs quit; P pass; R restart same mode; M opens menu from play.
 --- @param key love.KeyConstant
 function love.keypressed(key)
+	local w, h = love.graphics.getDimensions()
 	if key == "escape" then
-		love.event.quit()
+		if screen == "menu" then
+			love.event.quit()
+		else
+			screen = "menu"
+			match = nil
+			hover_row, hover_col = nil, nil
+		end
 		return
 	end
-	if key == "r" then
-		state = game.new()
+	if screen == "menu" then
 		return
 	end
-	if key == "p" then
-		game.human_pass(state)
+	if key == "m" then
+		screen = "menu"
+		match = nil
+		hover_row, hover_col = nil, nil
+		return
+	end
+	if key == "r" and match then
+		local kind = match.match_kind
+		match = game.new(kind)
+		layout = layout_mod.from_window(w, h)
+		return
+	end
+	if key == "p" and match then
+		game.player_pass(match)
 	end
 end

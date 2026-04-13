@@ -188,4 +188,26 @@ function M.all_legal_moves(b, player, ko_ban)
 	return out
 end
 
+--- Counts distinct empty intersections orthogonally adjacent to at least one stone of the given color.
+--- @param b table
+--- @param stone_color integer
+--- @return integer
+function M.unique_liberty_score(b, stone_color)
+	local n = config.BOARD_SIZE
+	local count = 0
+	for r = 1, n do
+		for c = 1, n do
+			if b[r][c] == config.STONE_NONE then
+				for nr, nc in M.each_neighbor(r, c) do
+					if b[nr][nc] == stone_color then
+						count = count + 1
+						break
+					end
+				end
+			end
+		end
+	end
+	return count
+end
+
 return M
