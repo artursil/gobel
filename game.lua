@@ -1,9 +1,10 @@
---- Match flow: turns, passes, scoring, bot games, and two-player same-device games.
+--- Match flow: turns, passes, scoring, bot games, two-player games, and stone pipelines.
 
 local ai = require("ai")
 local board = require("board")
 local config = require("config")
 local rules = require("rules")
+local stone_queue = require("stone_queue")
 
 local M = {}
 
@@ -31,7 +32,7 @@ function M.new(match_kind)
 	else
 		status = "Black to play — shared mouse, two players."
 	end
-	return {
+	local g = {
 		board = board.new(),
 		to_play = config.STONE_BLACK,
 		ko_ban = nil,
@@ -43,6 +44,8 @@ function M.new(match_kind)
 		versus_bot = versus_bot,
 		match_kind = match_kind,
 	}
+	stone_queue.attach(g)
+	return g
 end
 
 --- Applies a stone play for the current human-controlled side when the move is legal.
@@ -55,7 +58,8 @@ function M.player_move(g, row, col)
 		return false
 	end
 	local color = g.to_play
-	local ok, new_board, new_ko, caps = rules.try_play(g.board, row, col, color, g.ko_ban)
+	local kind = stone_queue.peek_next_kind(g, color)
+	local ok, new_board, new_ko, caps = rules.try_play(g.board, row, col, color, g.ko_ban, kind)
 	if not ok then
 		g.status = "Illegal move."
 		return false
@@ -63,6 +67,7 @@ function M.player_move(g, row, col)
 	g.board = new_board
 	g.ko_ban = new_ko
 	g.prisoners[color] = g.prisoners[color] + caps
+	stone_queue.consume(g, color)
 	g.consecutive_passes = 0
 	local next_c = board.opponent_stone(color)
 	g.to_play = next_c
@@ -119,7 +124,7 @@ function M.tick_ai(g, dt)
 		g.ai_delay = g.ai_delay - dt
 		return
 	end
-	local r, c = ai.random_move(g.board, g.ko_ban)
+	local r, c = ai.random_move(g)
 	if not r then
 		g.consecutive_passes = g.consecutive_passes + 1
 		if g.consecutive_passes >= 2 then
@@ -130,7 +135,8 @@ function M.tick_ai(g, dt)
 		g.status = "White passed. Your turn (Black)."
 		return
 	end
-	local ok, new_board, new_ko, caps = rules.try_play(g.board, r, c, config.AI_COLOR, g.ko_ban)
+	local kind = stone_queue.peek_next_kind(g, config.AI_COLOR)
+	local ok, new_board, new_ko, caps = rules.try_play(g.board, r, c, config.AI_COLOR, g.ko_ban, kind)
 	if not ok then
 		g.status = "Internal error: AI illegal move."
 		return
@@ -138,12 +144,13 @@ function M.tick_ai(g, dt)
 	g.board = new_board
 	g.ko_ban = new_ko
 	g.prisoners[config.AI_COLOR] = g.prisoners[config.AI_COLOR] + caps
+	stone_queue.consume(g, config.AI_COLOR)
 	g.consecutive_passes = 0
 	g.to_play = config.STONE_BLACK
 	g.status = "Your turn (Black)."
 end
 
---- Counts stones of each color still on the board.
+--- Counts stones of each chain color still on the board.
 --- @param b table
 --- @return integer black_count
 --- @return integer white_count
@@ -153,10 +160,12 @@ local function count_stones(b)
 	for r = 1, n do
 		for c = 1, n do
 			local v = b[r][c]
-			if v == config.STONE_BLACK then
-				nb = nb + 1
-			elseif v == config.STONE_WHITE then
-				nw = nw + 1
+			if not board.is_empty(v) then
+				if v.color == config.STONE_BLACK then
+					nb = nb + 1
+				elseif v.color == config.STONE_WHITE then
+					nw = nw + 1
+				end
 			end
 		end
 	end

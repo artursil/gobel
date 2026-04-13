@@ -1,7 +1,8 @@
---- Go rule checks: liberties, capture, suicide, and simple ko.
+--- Go rule checks: liberties, capture, suicide, simple ko, and liberty scoring by stone kind.
 
 local board = require("board")
 local config = require("config")
+local stone_kinds = require("stone_kinds")
 
 local M = {}
 
@@ -25,16 +26,17 @@ function M.each_neighbor(row, col)
 	end
 end
 
---- Collects all stones in the contiguous group containing (row, col).
+--- Collects all stones in the contiguous group of the same chain color containing (row, col).
 --- @param b table
 --- @param row integer
 --- @param col integer
 --- @return table list of {row, col}
 function M.collect_group(b, row, col)
-	local color = b[row][col]
-	if color == config.STONE_NONE then
+	local seed = b[row][col]
+	if board.is_empty(seed) then
 		return {}
 	end
+	local base_c = seed.color
 	local n = config.BOARD_SIZE
 	local visited = {}
 	local queue = { { row, col } }
@@ -48,7 +50,7 @@ function M.collect_group(b, row, col)
 			visited[key] = true
 			out[#out + 1] = { r, c }
 			for nr, nc in M.each_neighbor(r, c) do
-				if b[nr][nc] == color then
+				if board.chain_color(b[nr][nc]) == base_c then
 					queue[#queue + 1] = { nr, nc }
 				end
 			end
@@ -68,7 +70,7 @@ function M.liberty_count(b, group)
 	for i = 1, #group do
 		local r, c = group[i][1], group[i][2]
 		for nr, nc in M.each_neighbor(r, c) do
-			if b[nr][nc] == config.STONE_NONE then
+			if board.is_empty(b[nr][nc]) then
 				local key = nr * (n + 1) + nc
 				if not seen[key] then
 					seen[key] = true
@@ -109,7 +111,7 @@ function M.remove_opponent_captures(b, row, col, player)
 	local seen_group = {}
 	local removals = {}
 	for nr, nc in M.each_neighbor(row, col) do
-		if b[nr][nc] == opp then
+		if board.chain_color(b[nr][nc]) == opp then
 			local grp = M.collect_group(b, nr, nc)
 			local gk = group_key(grp, n)
 			if not seen_group[gk] then
@@ -134,29 +136,30 @@ function M.remove_opponent_captures(b, row, col, player)
 	return total, ko_coord
 end
 
---- Returns whether playing at (row, col) is legal, the new board, next ko ban, and prisoners taken.
+--- Returns whether playing the given stone kind at (row, col) is legal, plus captures and ko state.
 --- @param b table current board
 --- @param row integer
 --- @param col integer
---- @param player integer
+--- @param player integer chain color
 --- @param ko_ban table|nil forbidden intersection for this move {row, col}
+--- @param stone_kind integer kind id from stone_kinds
 --- @return boolean ok
 --- @return table|nil new_board
 --- @return table|nil new_ko next player's ko ban or nil
 --- @return integer captures number of opponent stones removed
-function M.try_play(b, row, col, player, ko_ban)
+function M.try_play(b, row, col, player, ko_ban, stone_kind)
 	local n = config.BOARD_SIZE
 	if row < 1 or row > n or col < 1 or col > n then
 		return false, nil, nil, 0
 	end
-	if b[row][col] ~= config.STONE_NONE then
+	if not board.is_empty(b[row][col]) then
 		return false, nil, nil, 0
 	end
 	if ko_ban and ko_ban[1] == row and ko_ban[2] == col then
 		return false, nil, nil, 0
 	end
 	local trial = board.clone(b)
-	trial[row][col] = player
+	trial[row][col] = board.make_stone(player, stone_kind)
 	local captures, ko_coord = M.remove_opponent_captures(trial, row, col, player)
 	local my_group = M.collect_group(trial, row, col)
 	if M.liberty_count(trial, my_group) == 0 then
@@ -169,17 +172,18 @@ function M.try_play(b, row, col, player, ko_ban)
 	return true, trial, new_ko, captures
 end
 
---- Lists every empty intersection where a play is currently legal.
+--- Lists every empty intersection where the next stone kind can be played legally.
 --- @param b table
 --- @param player integer
 --- @param ko_ban table|nil
+--- @param stone_kind integer
 --- @return table array of { row, col }
-function M.all_legal_moves(b, player, ko_ban)
+function M.all_legal_moves(b, player, ko_ban, stone_kind)
 	local n = config.BOARD_SIZE
 	local out = {}
 	for r = 1, n do
 		for c = 1, n do
-			local ok = select(1, M.try_play(b, r, c, player, ko_ban))
+			local ok = select(1, M.try_play(b, r, c, player, ko_ban, stone_kind))
 			if ok then
 				out[#out + 1] = { r, c }
 			end
@@ -188,26 +192,31 @@ function M.all_legal_moves(b, player, ko_ban)
 	return out
 end
 
---- Counts distinct empty intersections orthogonally adjacent to at least one stone of the given color.
+--- Weighted liberty score: each empty point adds the max multiplier among adjacent stones of that color.
 --- @param b table
 --- @param stone_color integer
---- @return integer
+--- @return number
 function M.unique_liberty_score(b, stone_color)
 	local n = config.BOARD_SIZE
-	local count = 0
+	local total = 0
 	for r = 1, n do
 		for c = 1, n do
-			if b[r][c] == config.STONE_NONE then
+			if board.is_empty(b[r][c]) then
+				local w = 0
 				for nr, nc in M.each_neighbor(r, c) do
-					if b[nr][nc] == stone_color then
-						count = count + 1
-						break
+					local cell = b[nr][nc]
+					if not board.is_empty(cell) and cell.color == stone_color then
+						local mult = stone_kinds.liberty_score_multiplier(cell.kind)
+						if mult > w then
+							w = mult
+						end
 					end
 				end
+				total = total + w
 			end
 		end
 	end
-	return count
+	return total
 end
 
 return M

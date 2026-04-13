@@ -1,17 +1,18 @@
---- Random opponent: chooses uniformly among all legal moves.
+--- Random opponent: chooses uniformly among all legal moves for the next queued stone kind.
 
 local config = require("config")
 local rules = require("rules")
+local stone_queue = require("stone_queue")
 
 local M = {}
 
---- Picks a random legal move for the AI color, or nil if there are none.
---- @param game_board table
---- @param ko_ban table|nil
+--- Picks a random legal move for the AI color using its incoming stone kind, or nil if none.
+--- @param g table game state with board, ko_ban, incoming
 --- @return integer|nil row
 --- @return integer|nil col
-function M.random_move(game_board, ko_ban)
-	local moves = rules.all_legal_moves(game_board, config.AI_COLOR, ko_ban)
+function M.random_move(g)
+	local kind = stone_queue.peek_next_kind(g, config.AI_COLOR)
+	local moves = rules.all_legal_moves(g.board, config.AI_COLOR, g.ko_ban, kind)
 	if #moves == 0 then
 		return nil, nil
 	end

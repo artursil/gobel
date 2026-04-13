@@ -4,16 +4,19 @@ local config = require("config")
 
 local M = {}
 
---- Computes pixel origin, cell spacing, and reserved top/bottom chrome for score and status text.
+--- Computes pixel origin, cell spacing, and reserved chrome for score, incoming stones, and status.
 --- @param window_w number
 --- @param window_h number
 --- @return table layout
 function M.from_window(window_w, window_h)
 	local n = config.BOARD_SIZE
 	local top_chrome = 44
-	local bottom_chrome = 72
+	local status_h = 72
+	local queue_h = 52
+	local bottom_gap = 8
+	local bottom_reserve = status_h + queue_h + bottom_gap
 	local margin = config.MARGIN
-	local inner_h = window_h - top_chrome - bottom_chrome
+	local inner_h = window_h - top_chrome - bottom_reserve
 	local side = math.min(window_w - 2 * margin, inner_h - 2 * margin)
 	local span = n - 1
 	local cell = side / span
@@ -25,7 +28,9 @@ function M.from_window(window_w, window_h)
 		oy = oy,
 		n = n,
 		score_y = 10,
-		chrome_y = window_h - bottom_chrome + 8,
+		queue_y = window_h - bottom_reserve + 4,
+		queue_row_step = 24,
+		chrome_y = window_h - status_h + 8,
 	}
 end
 

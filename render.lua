@@ -1,8 +1,11 @@
---- Renders the board grid, stones, last status line, and optional hover marker.
+--- Renders the board grid, stones (by kind), incoming queues, and UI.
 
+local cells = require("board")
 local config = require("config")
 local layout_mod = require("layout")
 local rules = require("rules")
+local stone_kinds = require("stone_kinds")
+local stone_queue = require("stone_queue")
 
 local M = {}
 
@@ -21,6 +24,7 @@ function M.draw(game, layout, hover_row, hover_col, show_hover)
 	if hover_row and hover_col and show_hover then
 		M._draw_hover(layout, hover_row, hover_col)
 	end
+	M._draw_incoming(game, layout)
 	local pb = game.prisoners[config.STONE_BLACK]
 	local pw = game.prisoners[config.STONE_WHITE]
 	local footer = string.format(
@@ -31,7 +35,7 @@ function M.draw(game, layout, hover_row, hover_col, show_hover)
 	M._draw_status(game.status .. "\n" .. footer, layout)
 end
 
---- Draws live liberty-based scores centered under the top margin.
+--- Draws weighted liberty scores at the top.
 --- @param layout table
 --- @param board table
 function M._draw_score_line(layout, board)
@@ -40,7 +44,11 @@ function M._draw_score_line(layout, board)
 	local sw = rules.unique_liberty_score(board, config.STONE_WHITE)
 	local w = lg.getWidth()
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	local line = string.format("Score (unique liberties) — Black: %d    White: %d", sb, sw)
+	local line = string.format(
+		"Score (liberties × kind) — Black: %d    White: %d",
+		math.floor(sb + 0.5),
+		math.floor(sw + 0.5)
+	)
 	lg.printf(line, 0, layout.score_y, w, "center")
 end
 
@@ -62,6 +70,63 @@ function M._draw_grid(layout)
 	lg.setColor(1, 1, 1, 1)
 end
 
+--- Draws an X mark centered at (px, py) with given radius stroke.
+--- @param px number
+--- @param py number
+--- @param radius number
+--- @param light_on_dark boolean
+function M._draw_x_mark(px, py, radius, light_on_dark)
+	local lg = love.graphics
+	local k = radius * 0.55
+	if light_on_dark then
+		lg.setColor(0.92, 0.92, 0.94, 1)
+	else
+		lg.setColor(0.12, 0.12, 0.14, 1)
+	end
+	lg.setLineWidth(math.max(2, radius * 0.2))
+	lg.line(px - k, py - k, px + k, py + k)
+	lg.line(px - k, py + k, px + k, py - k)
+	lg.setLineWidth(1)
+	lg.setColor(1, 1, 1, 1)
+end
+
+--- Draws one stone disk and optional kind decoration at board scale.
+--- @param px number
+--- @param py number
+--- @param rad number
+--- @param cell table
+function M._draw_stone_at(px, py, rad, cell)
+	local lg = love.graphics
+	if cell.color == config.STONE_BLACK then
+		lg.setColor(config.COLOR_BLACK_STONE[1], config.COLOR_BLACK_STONE[2], config.COLOR_BLACK_STONE[3])
+	else
+		lg.setColor(config.COLOR_WHITE_STONE[1], config.COLOR_WHITE_STONE[2], config.COLOR_WHITE_STONE[3])
+	end
+	lg.circle("fill", px, py, rad)
+	if cell.kind == stone_kinds.X then
+		M._draw_x_mark(px, py, rad, cell.color == config.STONE_BLACK)
+	end
+end
+
+--- Draws a preview stone for the incoming pipeline.
+--- @param cx number center x
+--- @param cy number center y
+--- @param rad number
+--- @param chain_color integer
+--- @param kind integer
+function M._draw_pipeline_stone(cx, cy, rad, chain_color, kind)
+	local lg = love.graphics
+	if chain_color == config.STONE_BLACK then
+		lg.setColor(config.COLOR_BLACK_STONE[1], config.COLOR_BLACK_STONE[2], config.COLOR_BLACK_STONE[3])
+	else
+		lg.setColor(config.COLOR_WHITE_STONE[1], config.COLOR_WHITE_STONE[2], config.COLOR_WHITE_STONE[3])
+	end
+	lg.circle("fill", cx, cy, rad)
+	if kind == stone_kinds.X then
+		M._draw_x_mark(cx, cy, rad, chain_color == config.STONE_BLACK)
+	end
+end
+
 --- Draws placed stones for every non-empty intersection.
 --- @param board table
 --- @param layout table
@@ -71,19 +136,40 @@ function M._draw_stones(board, layout)
 	local n = layout.n
 	for r = 1, n do
 		for c = 1, n do
-			local v = board[r][c]
-			if v ~= config.STONE_NONE then
+			local cell = board[r][c]
+			if not cells.is_empty(cell) then
 				local px, py = layout_mod.grid_to_pixel(layout, r, c)
-				if v == config.STONE_BLACK then
-					lg.setColor(config.COLOR_BLACK_STONE[1], config.COLOR_BLACK_STONE[2], config.COLOR_BLACK_STONE[3])
-				else
-					lg.setColor(config.COLOR_WHITE_STONE[1], config.COLOR_WHITE_STONE[2], config.COLOR_WHITE_STONE[3])
-				end
-				lg.circle("fill", px, py, rad)
+				M._draw_stone_at(px, py, rad, cell)
 			end
 		end
 	end
 	lg.setColor(1, 1, 1, 1)
+end
+
+--- Draws the next five stone kinds for each player above the status bar.
+--- @param game table
+--- @param layout table
+function M._draw_incoming(game, layout)
+	local lg = love.graphics
+	local yb = layout.queue_y
+	local yw = layout.queue_y + layout.queue_row_step
+	local stone_r = 12
+	local gap = 10
+	local label_w = 108
+	local b_kinds = stone_queue.peek_five(game, config.STONE_BLACK)
+	local w_kinds = stone_queue.peek_five(game, config.STONE_WHITE)
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
+	lg.print("Black →", 16, yb + 2)
+	lg.print("White →", 16, yw + 2)
+	local x0 = 16 + label_w
+	for i = 1, 5 do
+		local cx = x0 + (i - 1) * (2 * stone_r + gap) + stone_r
+		M._draw_pipeline_stone(cx, yb + stone_r + 2, stone_r, config.STONE_BLACK, b_kinds[i])
+	end
+	for i = 1, 5 do
+		local cx = x0 + (i - 1) * (2 * stone_r + gap) + stone_r
+		M._draw_pipeline_stone(cx, yw + stone_r + 2, stone_r, config.STONE_WHITE, w_kinds[i])
+	end
 end
 
 --- Draws a translucent marker under the hovered empty intersection.
