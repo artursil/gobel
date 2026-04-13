@@ -1,4 +1,4 @@
---- Registry of stone kinds and pluggable per-kind data (scoring, future rules).
+--- Registry of stone kinds: visuals, incoming RNG, and scoring hooks (mult bonus, future rules).
 
 local M = {}
 
@@ -7,22 +7,22 @@ M.X = 2
 
 local defs = {
 	[M.NORMAL] = {
-		liberty_score_multiplier = 1,
+		overall_mult_bonus = 0,
 	},
 	[M.X] = {
-		liberty_score_multiplier = 5,
+		overall_mult_bonus = 3,
 	},
 }
 
---- Weight applied to each unique liberty contributed via stones of this kind.
+--- Bonus added to the player's overall score multiplier per stone of this kind on the board.
 --- @param kind integer
---- @return number
-function M.liberty_score_multiplier(kind)
+--- @return integer
+function M.overall_mult_bonus_for_kind(kind)
 	local d = defs[kind]
 	if not d then
-		return 1
+		return 0
 	end
-	return d.liberty_score_multiplier
+	return d.overall_mult_bonus
 end
 
 --- Chooses the next stone kind for the incoming pipeline (extend with weights or pools later).

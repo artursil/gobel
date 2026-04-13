@@ -3,11 +3,28 @@
 local cells = require("board")
 local config = require("config")
 local layout_mod = require("layout")
-local rules = require("rules")
+local scoring = require("scoring")
 local stone_kinds = require("stone_kinds")
 local stone_queue = require("stone_queue")
 
 local M = {}
+
+local font_total
+local font_caption
+
+local function font_for_total()
+	if not font_total then
+		font_total = love.graphics.newFont(24)
+	end
+	return font_total
+end
+
+local function font_for_caption()
+	if not font_caption then
+		font_caption = love.graphics.newFont(12)
+	end
+	return font_caption
+end
 
 --- Draws the full frame for the current game and layout.
 --- @param game table
@@ -18,7 +35,7 @@ local M = {}
 function M.draw(game, layout, hover_row, hover_col, show_hover)
 	local lg = love.graphics
 	lg.clear(config.COLOR_BOARD[1], config.COLOR_BOARD[2], config.COLOR_BOARD[3])
-	M._draw_score_line(layout, game.board)
+	M._draw_score_boxes(layout, game.board)
 	M._draw_grid(layout)
 	M._draw_stones(game.board, layout)
 	if hover_row and hover_col and show_hover then
@@ -35,21 +52,55 @@ function M.draw(game, layout, hover_row, hover_col, show_hover)
 	M._draw_status(game.status .. "\n" .. footer, layout)
 end
 
---- Draws weighted liberty scores at the top.
+--- Draws two panels: title, points × mult, then total score per player.
 --- @param layout table
 --- @param board table
-function M._draw_score_line(layout, board)
+function M._draw_score_boxes(layout, board)
 	local lg = love.graphics
-	local sb = rules.unique_liberty_score(board, config.STONE_BLACK)
-	local sw = rules.unique_liberty_score(board, config.STONE_WHITE)
 	local w = lg.getWidth()
+	local pad = 12
+	local gap = 14
+	local box_w = (w - 2 * pad - gap) / 2
+	local xb = pad
+	local xw = pad + box_w + gap
+	local y = layout.score_panel_y
+	local h = layout.score_panel_h
+	local c = config.COLOR_SCORE_PANEL
+	lg.setColor(c[1], c[2], c[3], c[4])
+	lg.rectangle("fill", xb, y, box_w, h, 8, 8)
+	lg.rectangle("fill", xw, y, box_w, h, 8, 8)
+	lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3])
+	lg.setLineWidth(2)
+	lg.rectangle("line", xb, y, box_w, h, 8, 8)
+	lg.rectangle("line", xw, y, box_w, h, 8, 8)
+	lg.setLineWidth(1)
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	local line = string.format(
-		"Score (liberties × kind) — Black: %d    White: %d",
-		math.floor(sb + 0.5),
-		math.floor(sw + 0.5)
-	)
-	lg.printf(line, 0, layout.score_y, w, "center")
+	local base = lg.getFont()
+	local cap = font_for_caption()
+	local tot = font_for_total()
+	local pb = scoring.liberty_points(board, config.STONE_BLACK)
+	local mb = scoring.overall_mult(board, config.STONE_BLACK)
+	local tb = scoring.total_score(board, config.STONE_BLACK)
+	local pw = scoring.liberty_points(board, config.STONE_WHITE)
+	local mw = scoring.overall_mult(board, config.STONE_WHITE)
+	local tw = scoring.total_score(board, config.STONE_WHITE)
+	local y1 = y + 8
+	lg.printf("Black", xb, y1, box_w, "center")
+	lg.printf("White", xw, y1, box_w, "center")
+	y1 = y1 + base:getHeight() + 2
+	lg.setFont(cap)
+	lg.printf("points × mult", xb, y1, box_w, "center")
+	lg.printf("points × mult", xw, y1, box_w, "center")
+	y1 = y1 + cap:getHeight() + 2
+	lg.setFont(base)
+	lg.printf(string.format("%d × %d", pb, mb), xb, y1, box_w, "center")
+	lg.printf(string.format("%d × %d", pw, mw), xw, y1, box_w, "center")
+	y1 = y1 + base:getHeight() + 4
+	lg.setFont(tot)
+	lg.printf(tostring(tb), xb, y1, box_w, "center")
+	lg.printf(tostring(tw), xw, y1, box_w, "center")
+	lg.setFont(base)
+	lg.setColor(1, 1, 1, 1)
 end
 
 --- Draws grid lines between intersections.

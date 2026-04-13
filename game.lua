@@ -4,6 +4,7 @@ local ai = require("ai")
 local board = require("board")
 local config = require("config")
 local rules = require("rules")
+local scoring = require("scoring")
 local stone_queue = require("stone_queue")
 
 local M = {}
@@ -150,38 +151,14 @@ function M.tick_ai(g, dt)
 	g.status = "Your turn (Black)."
 end
 
---- Counts stones of each chain color still on the board.
---- @param b table
---- @return integer black_count
---- @return integer white_count
-local function count_stones(b)
-	local nb, nw = 0, 0
-	local n = config.BOARD_SIZE
-	for r = 1, n do
-		for c = 1, n do
-			local v = b[r][c]
-			if not board.is_empty(v) then
-				if v.color == config.STONE_BLACK then
-					nb = nb + 1
-				elseif v.color == config.STONE_WHITE then
-					nw = nw + 1
-				end
-			end
-		end
-	end
-	return nb, nw
-end
-
---- Marks the game finished and sets a short area-style score line (stones + prisoners).
+--- Marks the game finished and sets the winner from live scoring totals.
 --- @param g table
 function M.finish(g)
 	g.over = true
 	g.to_play = config.STONE_NONE
-	local nb, nw = count_stones(g.board)
-	local pb = g.prisoners[config.STONE_BLACK]
-	local pw = g.prisoners[config.STONE_WHITE]
-	local score_b = nb + pw
-	local score_w = nw + pb
+	local b = g.board
+	local score_b = scoring.total_score(b, config.STONE_BLACK)
+	local score_w = scoring.total_score(b, config.STONE_WHITE)
 	local winner
 	if score_b > score_w then
 		winner = "Black"
@@ -191,7 +168,7 @@ function M.finish(g)
 		winner = "Draw"
 	end
 	g.status = string.format(
-		"Game over. Area + prisoners — Black: %d, White: %d (%s). R same mode  M menu.",
+		"Game over — Black: %d  White: %d (%s). R same mode  M menu.",
 		score_b,
 		score_w,
 		winner

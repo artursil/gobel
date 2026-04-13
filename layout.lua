@@ -10,7 +10,10 @@ local M = {}
 --- @return table layout
 function M.from_window(window_w, window_h)
 	local n = config.BOARD_SIZE
-	local top_chrome = 44
+	local score_panel_y = 8
+	local score_panel_h = 92
+	local gap_below_score = 10
+	local top_chrome = score_panel_y + score_panel_h + gap_below_score
 	local status_h = 72
 	local queue_h = 52
 	local bottom_gap = 8
@@ -27,7 +30,8 @@ function M.from_window(window_w, window_h)
 		ox = ox,
 		oy = oy,
 		n = n,
-		score_y = 10,
+		score_panel_y = score_panel_y,
+		score_panel_h = score_panel_h,
 		queue_y = window_h - bottom_reserve + 4,
 		queue_row_step = 24,
 		chrome_y = window_h - status_h + 8,

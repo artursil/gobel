@@ -2,7 +2,6 @@
 
 local board = require("board")
 local config = require("config")
-local stone_kinds = require("stone_kinds")
 
 local M = {}
 
@@ -192,31 +191,27 @@ function M.all_legal_moves(b, player, ko_ban, stone_kind)
 	return out
 end
 
---- Weighted liberty score: each empty point adds the max multiplier among adjacent stones of that color.
+--- Counts distinct empty intersections orthogonally adjacent to at least one stone of the color (unweighted).
 --- @param b table
 --- @param stone_color integer
---- @return number
-function M.unique_liberty_score(b, stone_color)
+--- @return integer
+function M.unique_liberty_points(b, stone_color)
 	local n = config.BOARD_SIZE
-	local total = 0
+	local count = 0
 	for r = 1, n do
 		for c = 1, n do
 			if board.is_empty(b[r][c]) then
-				local w = 0
 				for nr, nc in M.each_neighbor(r, c) do
 					local cell = b[nr][nc]
 					if not board.is_empty(cell) and cell.color == stone_color then
-						local mult = stone_kinds.liberty_score_multiplier(cell.kind)
-						if mult > w then
-							w = mult
-						end
+						count = count + 1
+						break
 					end
 				end
-				total = total + w
 			end
 		end
 	end
-	return total
+	return count
 end
 
 return M
