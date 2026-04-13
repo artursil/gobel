@@ -1,7 +1,6 @@
---- Live score: liberty points × overall multiplier; X stones add to mult (not to per-liberty weight).
+--- Live score: liberty points × overall multiplier; diagonal cross patterns (with ≥1 X-kind stone) add to mult.
 
-local cells = require("board")
-local config = require("config")
+local patterns = require("patterns")
 local rules = require("rules")
 local stone_kinds = require("stone_kinds")
 
@@ -17,30 +16,21 @@ function M.liberty_points(b, color)
 	return rules.unique_liberty_points(b, color)
 end
 
---- Sums multiplier bonuses from on-board stones of this color (e.g. +3 per X).
+--- Bonus per complete diagonal cross of five same-color stones that includes at least one X-kind stone.
 --- @param b table
 --- @param color integer
 --- @return integer
-function M.mult_bonus_from_stones(b, color)
-	local n = config.BOARD_SIZE
-	local sum = 0
-	for r = 1, n do
-		for c = 1, n do
-			local cell = b[r][c]
-			if not cells.is_empty(cell) and cell.color == color then
-				sum = sum + stone_kinds.overall_mult_bonus_for_kind(cell.kind)
-			end
-		end
-	end
-	return sum
+function M.mult_bonus_from_patterns(b, color)
+	local n = patterns.count_diagonal_x_patterns(b, color)
+	return n * stone_kinds.MULT_BONUS_PER_DIAGONAL_X_PATTERN
 end
 
---- Overall multiplier: base plus bonuses from all stones of that color on the board.
+--- Overall multiplier: base plus bonuses from each qualifying diagonal-X pattern.
 --- @param b table
 --- @param color integer
 --- @return integer
 function M.overall_mult(b, color)
-	return BASE_MULT + M.mult_bonus_from_stones(b, color)
+	return BASE_MULT + M.mult_bonus_from_patterns(b, color)
 end
 
 --- Total score used in the UI and for comparisons.
