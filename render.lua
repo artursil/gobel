@@ -303,7 +303,7 @@ function M.popup_hit_test(layout, popup_state, x, y)
 	return { kind = "consume" }
 end
 
-function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state)
+function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, stone_drag)
 	local lg = love.graphics
 	lg.clear(config.COLOR_BOARD[1], config.COLOR_BOARD[2], config.COLOR_BOARD[3])
 	draw_message(game, layout.message_panel)
@@ -316,6 +316,19 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state)
 	draw_hand(game, layout)
 	draw_board(game, layout, hover_row, hover_col, show_hover)
 	draw_popup(layout, popup_state)
+	if stone_drag and stone_drag.active and stone_drag.moved and stone_drag.stone_id then
+		local stone = content.get_stone(stone_drag.stone_id)
+		if stone then
+			draw_stone_graphic(
+				stone.graphic.draw_key,
+				stone_drag.current_x - 28,
+				stone_drag.current_y - 28,
+				56,
+				56,
+				stone_color_for_side("black")
+			)
+		end
+	end
 	lg.setColor(1, 1, 1, 1)
 end
 
