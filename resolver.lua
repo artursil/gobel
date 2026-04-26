@@ -64,6 +64,42 @@ local function apply_effect(player_state, effect)
 	end
 end
 
+local function contains_stone_id(ids, stone_id)
+	for i = 1, #ids do
+		if ids[i] == stone_id then
+			return true
+		end
+	end
+	return false
+end
+
+local function remove_first_stone_id(ids, stone_id)
+	for i = 1, #ids do
+		if ids[i] == stone_id then
+			table.remove(ids, i)
+			return true
+		end
+	end
+	return false
+end
+
+local function refill_playable_stones(actor_state)
+	while #actor_state.stones.playable_stones < actor_state.stones.hand_target_size do
+		local drawn = pouch.draw(actor_state.stones.pouch)
+		if not drawn then
+			return
+		end
+		actor_state.stones.playable_stones[#actor_state.stones.playable_stones + 1] = drawn
+	end
+end
+
+local function refresh_selected_stone(actor_state)
+	if contains_stone_id(actor_state.stones.playable_stones, actor_state.stones.selected_stone) then
+		return
+	end
+	actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
+end
+
 local function process_effect_event(state, event)
 	local player_state = match_state.player_for_color(state, event.actor)
 	messages.push(state.messages, effect_message(event.source_name, event.effect))
@@ -81,23 +117,10 @@ local function run_event_queue(state, event_queue)
 			state.ko_ban = event.ko_ban
 			local actor_state = match_state.player_for_color(state, event.actor)
 			actor_state.prisoners = actor_state.prisoners + event.captures
-			pouch.remove_one(actor_state.stones.pouch, event.stone_id)
-			for j = 1, #actor_state.stones.playable_stones do
-				if actor_state.stones.playable_stones[j] == event.stone_id then
-					table.remove(actor_state.stones.playable_stones, j)
-					break
-				end
+			if remove_first_stone_id(actor_state.stones.playable_stones, event.stone_id) then
+				refill_playable_stones(actor_state)
 			end
-			local has_selected = false
-			for j = 1, #actor_state.stones.playable_stones do
-				if actor_state.stones.playable_stones[j] == actor_state.stones.selected_stone then
-					has_selected = true
-					break
-				end
-			end
-			if not has_selected then
-				actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
-			end
+			refresh_selected_stone(actor_state)
 			state.consecutive_passes = 0
 			recalc_all_scores(state)
 		elseif event.kind == "PASS" then
@@ -230,14 +253,7 @@ local function compile_place_stone_events(state, action)
 	if not stone_id then
 		return nil, "No stone selected"
 	end
-	local selectable = false
-	for i = 1, #actor_state.stones.playable_stones do
-		if actor_state.stones.playable_stones[i] == stone_id then
-			selectable = true
-			break
-		end
-	end
-	if not selectable then
+	if not contains_stone_id(actor_state.stones.playable_stones, stone_id) then
 		return nil, "Selected stone is not available"
 	end
 	local stone_def = content.get_stone(stone_id)
@@ -257,7 +273,19 @@ local function compile_place_stone_events(state, action)
 	if not ok then
 		return nil, "Illegal move"
 	end
-	local stone_effects = stone_def.behavior and stone_def.behavior(state, action.actor) or {}
+	if type(stone_def.behavior) ~= "function" then
+		return nil, "Stone behavior is invalid"
+	end
+	local stone_effects = stone_def.behavior(state, action.actor)
+	if type(stone_effects) ~= "table" or #stone_effects == 0 then
+		return nil, "Stone behavior produced no effects"
+	end
+	for i = 1, #stone_effects do
+		local effect = stone_effects[i]
+		if type(effect) ~= "table" or (effect.type ~= "ADD_POINTS" and effect.type ~= "ADD_MULT") or type(effect.value) ~= "number" then
+			return nil, "Stone behavior produced invalid effect"
+		end
+	end
 	local events = {
 		{
 			kind = "BOARD_APPLY",
@@ -290,16 +318,14 @@ local function compile_select_stone_events(state, action)
 	if not stone_id then
 		return nil, "Missing stone selection"
 	end
-	for i = 1, #actor_state.stones.playable_stones do
-		if actor_state.stones.playable_stones[i] == stone_id then
-			return {
-				{
-					kind = "SELECT_STONE_COMMIT",
-					actor = action.actor,
-					stone_id = stone_id,
-				},
-			}, nil
-		end
+	if contains_stone_id(actor_state.stones.playable_stones, stone_id) then
+		return {
+			{
+				kind = "SELECT_STONE_COMMIT",
+				actor = action.actor,
+				stone_id = stone_id,
+			},
+		}, nil
 	end
 	return nil, "Stone is not selectable"
 end

@@ -1,20 +1,5 @@
 local M = {}
-
-local function add_points_behavior(value)
-	return function()
-		return {
-			{ type = "ADD_POINTS", value = value },
-		}
-	end
-end
-
-local function add_mult_behavior(value)
-	return function()
-		return {
-			{ type = "ADD_MULT", value = value },
-		}
-	end
-end
+local stone_behaviors = require("stone_behaviors")
 
 M.stones = {
 	stone_basic = {
@@ -23,7 +8,7 @@ M.stones = {
 		description = "Steady placement stone that adds 1 point on placement.",
 		depiction = "Solid circle core",
 		graphic = { draw_key = "solid" },
-		behavior = add_points_behavior(1),
+		behavior = stone_behaviors.add_points(1),
 	},
 	stone_power = {
 		id = "stone_power",
@@ -31,7 +16,7 @@ M.stones = {
 		description = "Heavy placement stone that adds 2 points on placement.",
 		depiction = "Diamond center mark",
 		graphic = { draw_key = "diamond" },
-		behavior = add_points_behavior(2),
+		behavior = stone_behaviors.add_points(2),
 	},
 	stone_focus = {
 		id = "stone_focus",
@@ -39,7 +24,7 @@ M.stones = {
 		description = "Precision stone that adds 1 multiplier on placement.",
 		depiction = "Ring with dot center",
 		graphic = { draw_key = "ring" },
-		behavior = add_mult_behavior(1),
+		behavior = stone_behaviors.add_mult(1),
 	},
 }
 

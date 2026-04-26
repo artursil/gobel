@@ -14,14 +14,96 @@ local hover_col
 local popup_state
 local stone_drag
 
+local function is_popup_open()
+	return popup_state.mode ~= "none"
+end
+
 local function reset_popup()
 	popup_state = { mode = "none", stone_id = nil, stones = {}, focus_index = nil, anchor_rect = nil, selected_slot = nil }
 end
 
 local function close_selector_popup()
-	popup_state.mode = "none"
+	reset_popup()
+end
+
+local function open_selector_popup(active, slot_index)
+	local stone_id = active.stones.playable_stones[slot_index]
+	if not stone_id then
+		return false
+	end
+	game.select_stone(match, stone_id)
+	local rects = layout_mod.stone_chip_rects(layout, #active.stones.playable_stones)
+	popup_state.mode = "selector-details"
+	popup_state.stone_id = stone_id
+	popup_state.anchor_rect = rects[slot_index]
+	popup_state.selected_slot = slot_index
+	return true
+end
+
+local function open_pouch_popup(active)
+	local ids = active.stones.pouch.ids
+	popup_state.mode = "pouch-browser"
+	popup_state.stones = {}
+	for i = 1, #ids do
+		popup_state.stones[i] = ids[i]
+	end
+	popup_state.focus_index = (#popup_state.stones > 0) and 1 or nil
 	popup_state.stone_id = nil
 	popup_state.anchor_rect = nil
+	popup_state.selected_slot = nil
+end
+
+local function handle_open_popup_click(x, y, active, stone_count)
+	if is_popup_open() then
+		return false
+	end
+	if x >= layout.pouch_panel.x and x <= layout.pouch_panel.x + layout.pouch_panel.w and y >= layout.pouch_panel.y and y <= layout.pouch_panel.y + layout.pouch_panel.h then
+		open_pouch_popup(active)
+		return true
+	end
+	local stone_index = layout_mod.stone_index_at(layout, x, y, stone_count)
+	if not stone_index then
+		return false
+	end
+	local stone_id = active.stones.playable_stones[stone_index]
+	if stone_id then
+		stone_drag.active = true
+		stone_drag.stone_id = stone_id
+		stone_drag.source_index = stone_index
+		stone_drag.start_x = x
+		stone_drag.start_y = y
+		stone_drag.current_x = x
+		stone_drag.current_y = y
+		stone_drag.moved = false
+	end
+	return true
+end
+
+local function handle_active_popup_click(x, y, active, stone_count)
+	if popup_state.mode == "selector-details" then
+		local stone_index = layout_mod.stone_index_at(layout, x, y, stone_count)
+		if not stone_index then
+			close_selector_popup()
+			return true
+		end
+		if popup_state.selected_slot ~= stone_index then
+			open_selector_popup(active, stone_index)
+		end
+		return true
+	end
+	if not is_popup_open() then
+		return false
+	end
+	local popup_hit = render.popup_hit_test(layout, popup_state, x, y)
+	if popup_hit.kind == "close" then
+		reset_popup()
+		return true
+	end
+	if popup_hit.kind == "pouch_stone" then
+		popup_state.focus_index = popup_hit.index
+		return true
+	end
+	return true
 end
 
 local function reset_stone_drag()
@@ -90,14 +172,8 @@ function love.mousepressed(x, y, button)
 	local w, h = love.graphics.getDimensions()
 	if screen == "menu" then
 		local pick = home.hit_test(x, y, w, h)
-		if pick == "pvp" then
-			match = game.new("pvp")
-			screen = "play"
-			layout = layout_mod.from_window(w, h)
-			reset_popup()
-			reset_stone_drag()
-		elseif pick == "pvc" then
-			match = game.new("pvc")
+		if pick == "pvp" or pick == "pvc" then
+			match = game.new(pick)
 			screen = "play"
 			layout = layout_mod.from_window(w, h)
 			reset_popup()
@@ -113,63 +189,10 @@ function love.mousepressed(x, y, button)
 	end
 	local active = match_state.player_for_color(match, match.to_play)
 	local stone_count = #active.stones.playable_stones
-	if popup_state.mode == "selector-details" then
-		local stone_index = layout_mod.stone_index_at(layout, x, y, stone_count)
-		if not stone_index then
-			close_selector_popup()
-		else
-			local stone_id = active.stones.playable_stones[stone_index]
-			if not stone_id then
-				close_selector_popup()
-				return
-			end
-			if popup_state.selected_slot ~= stone_index then
-				game.select_stone(match, stone_id)
-				popup_state.mode = "selector-details"
-				popup_state.stone_id = stone_id
-				local rects = layout_mod.stone_chip_rects(layout, stone_count)
-				popup_state.anchor_rect = rects[stone_index]
-				popup_state.selected_slot = stone_index
-			end
-			return
-		end
-	end
-	if popup_state.mode ~= "none" then
-		local popup_hit = render.popup_hit_test(layout, popup_state, x, y)
-		if popup_hit.kind == "close" then
-			reset_popup()
-			return
-		end
-		if popup_hit.kind == "pouch_stone" then
-			popup_state.focus_index = popup_hit.index
-			return
-		end
+	if handle_active_popup_click(x, y, active, stone_count) then
 		return
 	end
-	if x >= layout.pouch_panel.x and x <= layout.pouch_panel.x + layout.pouch_panel.w and y >= layout.pouch_panel.y and y <= layout.pouch_panel.y + layout.pouch_panel.h then
-		popup_state.mode = "pouch-browser"
-		popup_state.stones = {}
-		local ids = active.stones.pouch.ids
-		for i = 1, #ids do
-			popup_state.stones[i] = ids[i]
-		end
-		popup_state.focus_index = (#popup_state.stones > 0) and 1 or nil
-		return
-	end
-	local stone_count = #active.stones.playable_stones
-	local stone_index = layout_mod.stone_index_at(layout, x, y, stone_count)
-	if stone_index then
-		local stone_id = active.stones.playable_stones[stone_index]
-		if stone_id then
-			stone_drag.active = true
-			stone_drag.stone_id = stone_id
-			stone_drag.source_index = stone_index
-			stone_drag.start_x = x
-			stone_drag.start_y = y
-			stone_drag.current_x = x
-			stone_drag.current_y = y
-			stone_drag.moved = false
-		end
+	if handle_open_popup_click(x, y, active, stone_count) then
 		return
 	end
 	local hand_count = #active.cards.hand.ids
@@ -228,12 +251,7 @@ function love.mousereleased(x, y, button)
 		return
 	end
 	if source_index and source_index <= stone_count and stone_id then
-		game.select_stone(match, stone_id)
-		popup_state.mode = "selector-details"
-		popup_state.stone_id = stone_id
-		local rects = layout_mod.stone_chip_rects(layout, stone_count)
-		popup_state.anchor_rect = rects[source_index]
-		popup_state.selected_slot = source_index
+		open_selector_popup(active, source_index)
 	end
 	reset_stone_drag()
 end
@@ -242,7 +260,7 @@ end
 --- @param key love.KeyConstant
 function love.keypressed(key)
 	local w, h = love.graphics.getDimensions()
-	if popup_state.mode ~= "none" and key == "escape" then
+	if is_popup_open() and key == "escape" then
 		reset_popup()
 		return
 	end

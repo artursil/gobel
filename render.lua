@@ -44,6 +44,25 @@ local function draw_stone_graphic(draw_key, x, y, w, h, color)
 	end
 end
 
+local function draw_stone_chip(stone_id, rect, stone_color, highlighted)
+	local lg = love.graphics
+	local stone = content.get_stone(stone_id)
+	if not stone then
+		return
+	end
+	draw_stone_graphic(stone.graphic.draw_key, rect.x, rect.y, rect.w, rect.h, stone_color)
+	if not highlighted then
+		return
+	end
+	local cx = rect.x + rect.w * 0.5
+	local cy = rect.y + rect.h * 0.5
+	local rr = math.min(rect.w, rect.h) * 0.43
+	lg.setColor(0.96, 0.96, 0.98, 0.95)
+	lg.setLineWidth(3)
+	lg.circle("line", cx, cy, rr)
+	lg.setLineWidth(1)
+end
+
 local function draw_score_box(game, box, side, title)
 	local lg = love.graphics
 	local player = match_state.player_for_color(game, side)
@@ -137,20 +156,7 @@ local function draw_selector(game, layout, popup_state)
 	for i = 1, #rects do
 		local rect = rects[i]
 		local stone_id = player.stones.playable_stones[i]
-		local stone = content.get_stone(stone_id)
-		local selected = selected_slot == i
-		if stone then
-			draw_stone_graphic(stone.graphic.draw_key, rect.x, rect.y, rect.w, rect.h, stone_color_for_side("black"))
-			if selected then
-				local cx = rect.x + rect.w * 0.5
-				local cy = rect.y + rect.h * 0.5
-				local rr = math.min(rect.w, rect.h) * 0.43
-				lg.setColor(0.96, 0.96, 0.98, 0.95)
-				lg.setLineWidth(3)
-				lg.circle("line", cx, cy, rr)
-				lg.setLineWidth(1)
-			end
-		end
+		draw_stone_chip(stone_id, rect, stone_color_for_side("black"), selected_slot == i)
 	end
 end
 
@@ -203,12 +209,7 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover)
 			if not cells.is_empty(cell) then
 				local px, py = layout_mod.grid_to_pixel(layout, r, c)
 				local color = cell.color == config.STONE_BLACK and config.COLOR_BLACK_STONE or config.COLOR_WHITE_STONE
-				lg.setColor(color[1], color[2], color[3], 1)
-				lg.circle("fill", px, py, rad)
-				local stone = content.get_stone(cell.kind)
-				if stone then
-					draw_stone_graphic(stone.graphic.draw_key, px - rad, py - rad, rad * 2, rad * 2, color)
-				end
+				draw_stone_chip(cell.kind, { x = px - rad, y = py - rad, w = rad * 2, h = rad * 2 }, color, false)
 			end
 		end
 	end
@@ -256,19 +257,7 @@ local function draw_popup(layout, popup_state)
 		for i = 1, #rects do
 			local rect = rects[i]
 			local stone_id = popup_state.stones[i]
-			local stone = content.get_stone(stone_id)
-			if stone then
-				draw_stone_graphic(stone.graphic.draw_key, rect.x, rect.y, rect.w, rect.h, stone_color_for_side("black"))
-				if popup_state.focus_index == i then
-					local cx = rect.x + rect.w * 0.5
-					local cy = rect.y + rect.h * 0.5
-					local rr = math.min(rect.w, rect.h) * 0.43
-					lg.setColor(0.96, 0.96, 0.98, 0.95)
-					lg.setLineWidth(3)
-					lg.circle("line", cx, cy, rr)
-					lg.setLineWidth(1)
-				end
-			end
+			draw_stone_chip(stone_id, rect, stone_color_for_side("black"), popup_state.focus_index == i)
 		end
 		if popup_state.focus_index then
 			local stone = content.get_stone(popup_state.stones[popup_state.focus_index])
@@ -317,17 +306,12 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, sto
 	draw_board(game, layout, hover_row, hover_col, show_hover)
 	draw_popup(layout, popup_state)
 	if stone_drag and stone_drag.active and stone_drag.moved and stone_drag.stone_id then
-		local stone = content.get_stone(stone_drag.stone_id)
-		if stone then
-			draw_stone_graphic(
-				stone.graphic.draw_key,
-				stone_drag.current_x - 28,
-				stone_drag.current_y - 28,
-				56,
-				56,
-				stone_color_for_side("black")
-			)
-		end
+		draw_stone_chip(
+			stone_drag.stone_id,
+			{ x = stone_drag.current_x - 28, y = stone_drag.current_y - 28, w = 56, h = 56 },
+			stone_color_for_side("black"),
+			false
+		)
 	end
 	lg.setColor(1, 1, 1, 1)
 end

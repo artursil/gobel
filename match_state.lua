@@ -10,6 +10,8 @@ local M = {}
 local ENERGY_MAX_DEFAULT = 3
 local MONEY_DEFAULT = 0
 local HAND_TARGET_SIZE = 5
+local STONE_POUCH_TARGET_SIZE = 20
+local STONE_HAND_TARGET_SIZE = 6
 
 local MODULUS = 2147483647
 local MULTIPLIER = 48271
@@ -25,10 +27,35 @@ local function make_side_rng(rng_state)
 	end
 end
 
+local function build_pouch_seed_ids(source_ids, target_size, rng_next_int)
+	local out = {}
+	if #source_ids == 0 then
+		return out
+	end
+	for _ = 1, target_size do
+		local pick = rng_next_int(#source_ids)
+		out[#out + 1] = source_ids[pick]
+	end
+	return out
+end
+
+local function draw_stones_to_hand(pouch_state, hand_size)
+	local hand = {}
+	while #hand < hand_size do
+		local stone_id = pouch.draw(pouch_state)
+		if not stone_id then
+			break
+		end
+		hand[#hand + 1] = stone_id
+	end
+	return hand
+end
+
 local function build_player(side, starter, rng_next_int)
 	local starter_poses = starter.poses
-	local starter_pouch = pouch.shuffle_init(starter.pouch, rng_next_int)
-	local playable_stones = array_utils.clone(starter_pouch.ids)
+	local pouch_seed_ids = build_pouch_seed_ids(starter.pouch, STONE_POUCH_TARGET_SIZE, rng_next_int)
+	local starter_pouch = pouch.shuffle_init(pouch_seed_ids, rng_next_int)
+	local playable_stones = draw_stones_to_hand(starter_pouch, STONE_HAND_TARGET_SIZE)
 	return {
 		side = side,
 		score = {
@@ -47,6 +74,7 @@ local function build_player(side, starter, rng_next_int)
 			pouch = starter_pouch,
 			playable_stones = playable_stones,
 			selected_stone = playable_stones[1],
+			hand_target_size = STONE_HAND_TARGET_SIZE,
 		},
 		cards = deck.new(starter.deck, HAND_TARGET_SIZE, rng_next_int),
 		poses = {
