@@ -7,19 +7,66 @@ local config = require("config")
 local content = require("content")
 local game = require("game")
 local layout_mod = require("layout")
-local main_module = helper.reset_module("main")
+helper.reset_module("main")
 local match_state = require("match_state")
 local render = require("render")
 local rules = require("rules")
 
+local function get_popup_state()
+	local handler = helper.get_upvalue(love.mousepressed, "handle_active_popup_click")
+	return helper.get_upvalue(handler, "popup_state")
+end
+
 local function setup_play_state()
 	love.load()
 	local width, height = love.graphics.getDimensions()
-	love.mousepressed(width * 0.5, height * 0.5 - 30, 1)
-	local layout = helper.get_upvalue(love.mousepressed, "layout")
-	local match = helper.get_upvalue(love.mousepressed, "match")
-	local popup_state = helper.get_upvalue(love.mousepressed, "popup_state")
-	return layout, match, popup_state
+	local layout = layout_mod.from_window(width, height)
+	local match = game.new("pvp")
+	helper.set_upvalue(love.mousepressed, "screen", "play")
+	helper.set_upvalue(love.mousepressed, "layout", layout)
+	helper.set_upvalue(love.mousepressed, "match", match)
+	local popup = {
+		mode = "none",
+		stone_id = nil,
+		stones = {},
+		focus_index = nil,
+		anchor_rect = nil,
+		selected_slot = nil,
+	}
+	local active_handler = helper.get_upvalue(love.mousepressed, "handle_active_popup_click")
+	local open_handler = helper.get_upvalue(love.mousepressed, "handle_open_popup_click")
+	helper.set_upvalue(active_handler, "popup_state", popup)
+	helper.set_upvalue(active_handler, "layout", layout)
+	helper.set_upvalue(open_handler, "layout", layout)
+	helper.set_upvalue(love.mousepressed, "stone_drag", {
+		active = false,
+		stone_id = nil,
+		source_index = nil,
+		start_x = 0,
+		start_y = 0,
+		current_x = 0,
+		current_y = 0,
+		moved = false,
+	})
+	helper.set_upvalue(love.mousepressed, "card_ui", {
+		selected_index = nil,
+		drag_active = false,
+		drag_index = nil,
+		start_x = 0,
+		start_y = 0,
+		current_x = 0,
+		current_y = 0,
+		moved = false,
+	})
+	helper.set_upvalue(love.mousereleased, "screen", "play")
+	helper.set_upvalue(love.mousereleased, "layout", layout)
+	helper.set_upvalue(love.mousereleased, "match", match)
+	helper.set_upvalue(love.mousereleased, "popup_state", helper.get_upvalue(love.mousepressed, "popup_state"))
+	helper.set_upvalue(love.mousereleased, "stone_drag", helper.get_upvalue(love.mousepressed, "stone_drag"))
+	helper.set_upvalue(love.mousereleased, "card_ui", helper.get_upvalue(love.mousepressed, "card_ui"))
+	helper.set_upvalue(love.keypressed, "screen", "play")
+	helper.set_upvalue(love.keypressed, "match", match)
+	return layout, match, popup
 end
 
 local function chip_center(layout, index, total)
@@ -35,12 +82,12 @@ describe("T-051 stone popup and interaction integration", function()
 
 		love.mousepressed(x, y, 1)
 		love.mousereleased(x, y, 1)
-		local popup_state = helper.get_upvalue(love.mousepressed, "popup_state")
+		local popup_state = get_popup_state()
 		assert.are.equal("selector-details", popup_state.mode)
 		assert.is_true(type(popup_state.stone_id) == "string")
 
 		love.keypressed("escape")
-		popup_state = helper.get_upvalue(love.mousepressed, "popup_state")
+		popup_state = get_popup_state()
 		assert.are.equal("none", popup_state.mode)
 	end)
 
@@ -51,7 +98,7 @@ describe("T-051 stone popup and interaction integration", function()
 		local py = layout.pouch_panel.y + 8
 		love.mousepressed(px, py, 1)
 
-		local popup_state = helper.get_upvalue(love.mousepressed, "popup_state")
+		local popup_state = get_popup_state()
 		assert.are.equal("pouch-browser", popup_state.mode)
 		assert.are.equal(#active.stones.pouch.ids, #popup_state.stones)
 
@@ -59,7 +106,7 @@ describe("T-051 stone popup and interaction integration", function()
 			local rects = layout_mod.pouch_popup_grid_rects(layout, #popup_state.stones)
 			local r = rects[2]
 			love.mousepressed(r.x + 2, r.y + 2, 1)
-			popup_state = helper.get_upvalue(love.mousepressed, "popup_state")
+			popup_state = get_popup_state()
 			assert.are.equal(2, popup_state.focus_index)
 			local stone = content.get_stone(popup_state.stones[popup_state.focus_index])
 			assert.is_true(type(stone.name) == "string" and #stone.name > 0)
@@ -68,7 +115,50 @@ describe("T-051 stone popup and interaction integration", function()
 
 		local close = layout_mod.popup_close_rect(layout)
 		love.mousepressed(close.x + 2, close.y + 2, 1)
-		popup_state = helper.get_upvalue(love.mousepressed, "popup_state")
+		popup_state = get_popup_state()
+		assert.are.equal("none", popup_state.mode)
+	end)
+
+	it("deck popup opens from deck panel and supports deck/played focus selection", function()
+		local layout, match = setup_play_state()
+		local active = match_state.player_for_color(match, match.to_play)
+		love.mousepressed(layout.deck_panel.x + 8, layout.deck_panel.y + 8, 1)
+
+		local popup_state = get_popup_state()
+		assert.are.equal("deck-browser", popup_state.mode)
+		assert.are.equal(#active.cards.deck.ids, #popup_state.cards)
+		assert.are.equal(#active.cards.discard.ids, #popup_state.played_cards)
+
+		if #popup_state.cards > 0 then
+			local deck_rects = layout_mod.pouch_popup_grid_rects(layout, #popup_state.cards)
+			local first = deck_rects[1]
+			love.mousepressed(first.x + 2, first.y + 2, 1)
+			popup_state = get_popup_state()
+			assert.are.equal("deck", popup_state.focus_group)
+			assert.are.equal(1, popup_state.focus_index)
+		end
+
+		table.insert(active.cards.discard.ids, "card_point_tap")
+		active.cards.deck.ids = {}
+		local close_before_refresh = layout_mod.popup_close_rect(layout)
+		love.mousepressed(close_before_refresh.x + 2, close_before_refresh.y + 2, 1)
+		love.mousepressed(layout.deck_panel.x + 8, layout.deck_panel.y + 8, 1)
+		popup_state = get_popup_state()
+		local box = layout.popup
+		local cols = 5
+		local gap = 8
+		local pad = 16
+		local chip = math.floor((box.w - pad * 2 - gap * (cols - 1)) / cols)
+		chip = math.max(56, math.min(78, chip))
+		local played_y = box.y + 52 + 160
+		love.mousepressed(box.x + pad + 2, played_y + 2, 1)
+		popup_state = get_popup_state()
+		assert.are.equal("played", popup_state.focus_group)
+		assert.are.equal(1, popup_state.focus_index)
+
+		local close = layout_mod.popup_close_rect(layout)
+		love.mousepressed(close.x + 2, close.y + 2, 1)
+		popup_state = get_popup_state()
 		assert.are.equal("none", popup_state.mode)
 	end)
 

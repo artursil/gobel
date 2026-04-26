@@ -107,6 +107,10 @@ function M.install_love_test_stubs()
 	love.graphics.printf = love.graphics.printf or function() end
 	love.graphics.print = love.graphics.print or function() end
 	love.graphics.setLineWidth = love.graphics.setLineWidth or function() end
+	love.graphics.push = love.graphics.push or function() end
+	love.graphics.pop = love.graphics.pop or function() end
+	love.graphics.translate = love.graphics.translate or function() end
+	love.graphics.rotate = love.graphics.rotate or function() end
 end
 
 function M.reset_module(name)

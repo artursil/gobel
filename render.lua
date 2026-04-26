@@ -126,7 +126,13 @@ local function draw_side_columns(game, layout)
 	lg.printf("Opponent Energy", layout.opponent_resources_panel.x, layout.opponent_resources_panel.y + 8, layout.opponent_resources_panel.w, "center")
 	lg.printf(string.format("%d/%d", opp.resources.energy_current, opp.resources.energy_max), layout.opponent_resources_panel.x + 10, layout.opponent_resources_panel.y + 34, layout.opponent_resources_panel.w - 20, "center")
 	lg.printf("Player Deck", layout.deck_panel.x, layout.deck_panel.y + 8, layout.deck_panel.w, "center")
-	lg.printf(string.format("Deck: %d  Discard: %d", #player.cards.deck.ids, #player.cards.discard.ids), layout.deck_panel.x + 10, layout.deck_panel.y + 34, layout.deck_panel.w - 20, "left")
+	lg.printf(
+		string.format("Deck: %d  Played: %d", #player.cards.deck.ids, #player.cards.discard.ids),
+		layout.deck_panel.x + 10,
+		layout.deck_panel.y + 34,
+		layout.deck_panel.w - 20,
+		"left"
+	)
 end
 
 local function stone_color_for_side(side)
@@ -137,9 +143,7 @@ local function stone_color_for_side(side)
 end
 
 local function draw_selector(game, layout, popup_state)
-	local lg = love.graphics
 	local player = match_state.player_for_color(game, "black")
-	draw_panel(layout.stone_selector_panel)
 	local rects = layout_mod.stone_chip_rects(layout, #player.stones.playable_stones)
 	local selected_slot = popup_state and popup_state.selected_slot or nil
 	if selected_slot and (selected_slot < 1 or selected_slot > #player.stones.playable_stones) then
@@ -164,27 +168,87 @@ local function draw_hand(game, layout)
 	local lg = love.graphics
 	local player = match_state.player_for_color(game, "black")
 	local hand = player.cards.hand.ids
-	draw_panel(layout.hand_panel)
-	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	lg.printf("Hand", layout.hand_panel.x, layout.hand_panel.y + 6, layout.hand_panel.w, "center")
-	local rects = layout_mod.hand_card_rects(layout, #hand)
-	for i = 1, #rects do
-		local rect = rects[i]
-		local card = content.get_card(hand[i])
-		local can_afford = card and player.resources.energy_current >= card.energy_cost
+	local selected = (M._card_ui and M._card_ui.selected_index) or nil
+	local dragging_index = nil
+	if M._card_ui and M._card_ui.drag_active and M._card_ui.moved then
+		dragging_index = M._card_ui.drag_index
+	end
+	local slots = layout_mod.hand_fan_slots(layout, #hand)
+	local function draw_card(slot, card_id, full_front)
+		local card = content.get_card(card_id)
+		if not card then
+			return
+		end
+		local can_afford = player.resources.energy_current >= card.energy_cost
+		lg.push()
+		local cx = slot.x + slot.w * 0.5
+		local cy = slot.y + slot.h * 0.5
+		lg.translate(cx, cy)
+		lg.rotate(slot.angle)
 		if can_afford then
-			lg.setColor(0.35, 0.58, 0.34, 0.75)
+			lg.setColor(0.36, 0.54, 0.74, 0.92)
 		else
-			lg.setColor(0.44, 0.3, 0.26, 0.75)
+			lg.setColor(0.44, 0.3, 0.26, 0.88)
 		end
-		lg.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 6, 6)
-		lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3])
-		lg.rectangle("line", rect.x, rect.y, rect.w, rect.h, 6, 6)
-		lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-		if card then
-			lg.printf(card.display_name, rect.x + 6, rect.y + 8, rect.w - 12, "center")
-			lg.printf(string.format("Cost %d", card.energy_cost), rect.x + 6, rect.y + 34, rect.w - 12, "center")
+		lg.rectangle("fill", -slot.w * 0.5, -slot.h * 0.5, slot.w, slot.h, 8, 8)
+		lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
+		lg.rectangle("line", -slot.w * 0.5, -slot.h * 0.5, slot.w, slot.h, 8, 8)
+		lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+		lg.printf(tostring(card.energy_cost), -slot.w * 0.5 + 8, -slot.h * 0.5 + 8, 18, "center")
+		lg.printf(card.name or card.display_name, -slot.w * 0.5 + 32, -slot.h * 0.5 + 12, slot.w - 42, "left")
+		if full_front then
+			local desc = card.description or ""
+			lg.printf(desc, -slot.w * 0.5 + 10, -slot.h * 0.5 + 40, slot.w - 20, "left")
 		end
+		lg.pop()
+	end
+	for i = 1, #slots do
+		if i ~= selected and i ~= dragging_index then
+			draw_card(slots[i], hand[i], false)
+		end
+	end
+	if selected and slots[selected] and hand[selected] and selected ~= dragging_index then
+		local slot = slots[selected]
+		local focus = {
+			x = slot.x,
+			y = layout.hand_panel.y + 8,
+			w = slot.w,
+			h = math.min(slot.h, layout.hand_panel.h - 16),
+			angle = 0,
+		}
+		draw_card(focus, hand[selected], true)
+		local use_button = layout_mod.card_use_button_rect(layout)
+		lg.setColor(0.26, 0.56, 0.32, 0.92)
+		lg.rectangle("fill", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
+		lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
+		lg.rectangle("line", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
+		lg.setColor(0.96, 0.96, 0.96, 1)
+		lg.printf("Use", use_button.x, use_button.y + 10, use_button.w, "center")
+	end
+	if dragging_index and hand[dragging_index] then
+		local drag = M._card_ui
+		local slot = slots[dragging_index] or {
+			x = layout.hand_panel.x + 16,
+			y = layout.hand_panel.y + 16,
+			w = 120,
+			h = 170,
+			angle = 0,
+		}
+		local floating = {
+			x = drag.current_x - math.floor(slot.w * 0.5),
+			y = drag.current_y - math.floor(slot.h * 0.5),
+			w = slot.w,
+			h = slot.h,
+			angle = 0,
+		}
+		draw_card(floating, hand[dragging_index], true)
+		local use_button = layout_mod.card_use_button_rect(layout)
+		lg.setColor(0.26, 0.56, 0.32, 0.92)
+		lg.rectangle("fill", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
+		lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
+		lg.rectangle("line", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
+		lg.setColor(0.96, 0.96, 0.96, 1)
+		lg.printf("Use", use_button.x, use_button.y + 10, use_button.w, "center")
 	end
 end
 
@@ -267,6 +331,71 @@ local function draw_popup(layout, popup_state)
 				lg.printf(stone.description, box.x + 20, box.y + box.h - 58, box.w - 40, "left")
 			end
 		end
+	elseif popup_state.mode == "deck-browser" then
+		local box = layout.popup
+		lg.setColor(0, 0, 0, 0.45)
+		lg.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+		draw_panel(box)
+		local close = layout_mod.popup_close_rect(layout)
+		lg.setColor(0.4, 0.2, 0.2, 0.85)
+		lg.rectangle("fill", close.x, close.y, close.w, close.h, 4, 4)
+		lg.setColor(0.95, 0.95, 0.95, 1)
+		lg.printf("Close", close.x, close.y + 6, close.w, "center")
+		lg.printf("Deck Browser", box.x + 20, box.y + 18, box.w - 140, "left")
+		local deck_cards = popup_state.cards or {}
+		local played_cards = popup_state.played_cards or {}
+		local function draw_card_tile(card_id, rect, highlighted)
+			local card = content.get_card(card_id)
+			if not card then
+				return
+			end
+			if highlighted then
+				lg.setColor(0.26, 0.54, 0.78, 0.86)
+			else
+				lg.setColor(0.32, 0.47, 0.66, 0.78)
+			end
+			lg.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 6, 6)
+			lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
+			lg.rectangle("line", rect.x, rect.y, rect.w, rect.h, 6, 6)
+			lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+			lg.printf(tostring(card.energy_cost), rect.x + 6, rect.y + 6, 16, "center")
+			lg.printf(card.name or card.display_name, rect.x + 26, rect.y + 10, rect.w - 32, "left")
+		end
+		local y_top = box.y + 52
+		lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+		lg.printf("Deck", box.x + 20, y_top - 20, box.w - 40, "left")
+		local deck_rects = layout_mod.pouch_popup_grid_rects(layout, #deck_cards)
+		for i = 1, #deck_rects do
+			local rect = deck_rects[i]
+			draw_card_tile(deck_cards[i], rect, popup_state.focus_group == "deck" and popup_state.focus_index == i)
+		end
+		local played_offset_y = y_top + 160
+		lg.printf("Played", box.x + 20, played_offset_y - 20, box.w - 40, "left")
+		local cols = 5
+		local gap = 8
+		local pad = 16
+		local chip = math.floor((box.w - pad * 2 - gap * (cols - 1)) / cols)
+		chip = math.max(56, math.min(78, chip))
+		for i = 1, #played_cards do
+			local col = (i - 1) % cols
+			local row = math.floor((i - 1) / cols)
+			local rect = {
+				x = box.x + pad + col * (chip + gap),
+				y = played_offset_y + row * (chip + gap),
+				w = chip,
+				h = chip,
+			}
+			draw_card_tile(played_cards[i], rect, popup_state.focus_group == "played" and popup_state.focus_index == i)
+		end
+		if popup_state.focus_group and popup_state.focus_index then
+			local source = popup_state.focus_group == "played" and played_cards or deck_cards
+			local card = content.get_card(source[popup_state.focus_index])
+			if card then
+				lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+				lg.printf(card.name or card.display_name, box.x + 20, box.y + box.h - 86, box.w - 40, "left")
+				lg.printf(card.description or "", box.x + 20, box.y + box.h - 58, box.w - 40, "left")
+			end
+		end
 	end
 end
 
@@ -286,6 +415,36 @@ function M.popup_hit_test(layout, popup_state, x, y)
 		for i = 1, #rects do
 			if inside(rects[i], x, y) then
 				return { kind = "pouch_stone", index = i }
+			end
+		end
+	end
+	if popup_state.mode == "deck-browser" then
+		local box = layout.popup
+		local deck_cards = popup_state.cards or {}
+		local deck_rects = layout_mod.pouch_popup_grid_rects(layout, #deck_cards)
+		for i = 1, #deck_rects do
+			if inside(deck_rects[i], x, y) then
+				return { kind = "deck_card", group = "deck", index = i }
+			end
+		end
+		local played_cards = popup_state.played_cards or {}
+		local cols = 5
+		local gap = 8
+		local pad = 16
+		local chip = math.floor((box.w - pad * 2 - gap * (cols - 1)) / cols)
+		chip = math.max(56, math.min(78, chip))
+		local played_offset_y = box.y + 52 + 160
+		for i = 1, #played_cards do
+			local col = (i - 1) % cols
+			local row = math.floor((i - 1) / cols)
+			local rect = {
+				x = box.x + pad + col * (chip + gap),
+				y = played_offset_y + row * (chip + gap),
+				w = chip,
+				h = chip,
+			}
+			if inside(rect, x, y) then
+				return { kind = "deck_card", group = "played", index = i }
 			end
 		end
 	end
@@ -314,6 +473,10 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, sto
 		)
 	end
 	lg.setColor(1, 1, 1, 1)
+end
+
+function M.set_card_ui_state(card_ui_state)
+	M._card_ui = card_ui_state
 end
 
 return M

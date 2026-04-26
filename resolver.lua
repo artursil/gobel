@@ -133,7 +133,6 @@ end
 
 local function on_turn_start(state, actor)
 	local actor_state = match_state.player_for_color(state, actor)
-	energy.refresh(actor_state.resources)
 	if not actor_state.stones.selected_stone then
 		actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
 	end
@@ -239,7 +238,7 @@ local function compile_play_card_events(state, action)
 		events[#events + 1] = {
 			kind = "APPLY_EFFECT",
 			actor = action.actor,
-			source_name = card_def.display_name,
+			source_name = card_def.name or card_def.display_name,
 			effect = card_def.effects[i],
 			source_id = card_id,
 		}

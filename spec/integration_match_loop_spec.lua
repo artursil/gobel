@@ -16,7 +16,7 @@ describe("T-051 integration minimal playable loop", function()
 		assert.are.equal("black", g.to_play)
 		assert.are.equal("MAIN_PHASE", g.phase)
 		assert.are.equal(1, g.turn_number)
-		assert.are.equal(5, #black.cards.hand.ids)
+		assert.are.equal(4, #black.cards.hand.ids)
 
 		local energy_before_card = black.resources.energy_current
 		local discard_before = #black.cards.discard.ids

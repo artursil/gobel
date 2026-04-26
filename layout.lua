@@ -144,14 +144,60 @@ function M.hand_card_rects(layout, card_count)
 end
 
 function M.hand_index_at(layout, px, py, card_count)
-	local rects = M.hand_card_rects(layout, card_count)
-	for i = 1, #rects do
-		local r = rects[i]
-		if px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h then
+	local slots = M.hand_fan_slots(layout, card_count)
+	for i = #slots, 1, -1 do
+		local slot = slots[i]
+		local cx = slot.x + slot.w * 0.5
+		local cy = slot.y + slot.h * 0.5
+		local dx = px - cx
+		local dy = py - cy
+		local c = math.cos(-slot.angle)
+		local s = math.sin(-slot.angle)
+		local lx = dx * c - dy * s + slot.w * 0.5
+		local ly = dx * s + dy * c + slot.h * 0.5
+		if lx >= 0 and lx <= slot.w and ly >= 0 and ly <= slot.h then
 			return i
 		end
 	end
 	return nil
+end
+
+function M.hand_fan_slots(layout, card_count)
+	local panel = layout.hand_panel
+	local slots = math.max(card_count, 1)
+	local card_w = math.min(138, math.max(96, math.floor(panel.w * 0.28)))
+	local card_h = math.min(188, math.max(142, math.floor(panel.h * 1.3)))
+	local overlap = math.floor(card_w * 0.42)
+	local step = card_w - overlap
+	local total_w = card_w + (slots - 1) * step
+	local x0 = panel.x + math.floor((panel.w - total_w) * 0.5)
+	local y = panel.y + panel.h - math.floor(card_h * 0.64)
+	local max_angle = 0.28
+	local mid = (slots + 1) * 0.5
+	local out = {}
+	for i = 1, card_count do
+		local offset = (slots == 1) and 0 or ((i - mid) / (slots - 1))
+		out[i] = {
+			x = x0 + (i - 1) * step,
+			y = y,
+			w = card_w,
+			h = card_h,
+			angle = offset * max_angle,
+		}
+	end
+	return out
+end
+
+function M.card_use_button_rect(layout)
+	local panel = layout.hand_panel
+	local w = 92
+	local h = 38
+	return {
+		x = panel.x + panel.w - w - 10,
+		y = panel.y + 8,
+		w = w,
+		h = h,
+	}
 end
 
 function M.stone_chip_rects(layout, stone_count)
