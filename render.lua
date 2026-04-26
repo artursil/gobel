@@ -1,128 +1,193 @@
---- Renders the board grid, stones (by kind), incoming queues, and UI.
-
 local cells = require("board")
 local config = require("config")
+local content = require("content")
 local layout_mod = require("layout")
 local match_state = require("match_state")
 local messages = require("messages")
+local poses = require("poses")
 local pouch = require("pouch")
-local scoring = require("scoring")
-local stone_kinds = require("stone_kinds")
 
 local M = {}
 
-local font_total
-local font_caption
-
-local function font_for_total()
-	if not font_total then
-		font_total = love.graphics.newFont(24)
-	end
-	return font_total
+local function inside(rect, x, y)
+	return x >= rect.x and x <= rect.x + rect.w and y >= rect.y and y <= rect.y + rect.h
 end
 
-local function font_for_caption()
-	if not font_caption then
-		font_caption = love.graphics.newFont(12)
-	end
-	return font_caption
-end
-
---- Draws the full frame for the current game and layout.
---- @param game table
---- @param layout table
---- @param hover_row integer|nil
---- @param hover_col integer|nil
---- @param show_hover boolean
-function M.draw(game, layout, hover_row, hover_col, show_hover)
+local function draw_panel(box)
 	local lg = love.graphics
-	lg.clear(config.COLOR_BOARD[1], config.COLOR_BOARD[2], config.COLOR_BOARD[3])
-	M._draw_score_boxes(layout, game.board, game)
-	M._draw_grid(layout)
-	M._draw_stones(game.board, layout)
-	if hover_row and hover_col and show_hover then
-		M._draw_hover(layout, hover_row, hover_col)
-	end
-	M._draw_incoming(game, layout)
-	local black_state = match_state.player_for_color(game, config.STONE_BLACK)
-	local white_state = match_state.player_for_color(game, config.STONE_WHITE)
-	local pb = black_state.prisoners
-	local pw = white_state.prisoners
-	local footer = string.format(
-		"Prisoners — Black: %d  White: %d  —  P pass  R same mode  M menu  Esc menu",
-		pb,
-		pw
-	)
-	local message_head = messages.peek(game.messages) or game.status
-	local recent = game.messages.recent
-	local tail = recent[#recent]
-	if tail and tail ~= message_head then
-		message_head = message_head .. "\nRecent: " .. tail
-	end
-	M._draw_status(message_head .. "\n" .. footer, layout)
-end
-
---- Draws two panels: title, points × mult, then total score per player.
---- @param layout table
---- @param board table
---- @param game table
-function M._draw_score_boxes(layout, board, game)
-	local lg = love.graphics
-	local w = lg.getWidth()
-	local pad = 12
-	local gap = 14
-	local box_w = (w - 2 * pad - gap) / 2
-	local xb = pad
-	local xw = pad + box_w + gap
-	local y = layout.score_panel_y
-	local h = layout.score_panel_h
 	local c = config.COLOR_SCORE_PANEL
 	lg.setColor(c[1], c[2], c[3], c[4])
-	lg.rectangle("fill", xb, y, box_w, h, 8, 8)
-	lg.rectangle("fill", xw, y, box_w, h, 8, 8)
+	lg.rectangle("fill", box.x, box.y, box.w, box.h, 8, 8)
 	lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3])
-	lg.setLineWidth(2)
-	lg.rectangle("line", xb, y, box_w, h, 8, 8)
-	lg.rectangle("line", xw, y, box_w, h, 8, 8)
-	lg.setLineWidth(1)
-	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	local base = lg.getFont()
-	local cap = font_for_caption()
-	local tot = font_for_total()
-	local black_state = match_state.player_for_color(game, config.STONE_BLACK)
-	local white_state = match_state.player_for_color(game, config.STONE_WHITE)
-	local pb = scoring.liberty_points(board, config.STONE_BLACK) + black_state.score.points_bonus
-	local mb = scoring.overall_mult(board, config.STONE_BLACK) + black_state.score.mult_bonus
-	local tb = pb * mb
-	local pw = scoring.liberty_points(board, config.STONE_WHITE) + white_state.score.points_bonus
-	local mw = scoring.overall_mult(board, config.STONE_WHITE) + white_state.score.mult_bonus
-	local tw = pw * mw
-	local y1 = y + 8
-	lg.printf("Black", xb, y1, box_w, "center")
-	lg.printf("White", xw, y1, box_w, "center")
-	y1 = y1 + base:getHeight() + 2
-	lg.setFont(cap)
-	lg.printf("points × mult", xb, y1, box_w, "center")
-	lg.printf("points × mult", xw, y1, box_w, "center")
-	y1 = y1 + cap:getHeight() + 2
-	lg.setFont(base)
-	lg.printf(string.format("%d × %d", pb, mb), xb, y1, box_w, "center")
-	lg.printf(string.format("%d × %d", pw, mw), xw, y1, box_w, "center")
-	y1 = y1 + base:getHeight() + 4
-	lg.setFont(tot)
-	lg.printf(tostring(tb), xb, y1, box_w, "center")
-	lg.printf(tostring(tw), xw, y1, box_w, "center")
-	lg.setFont(base)
-	lg.setColor(1, 1, 1, 1)
+	lg.rectangle("line", box.x, box.y, box.w, box.h, 8, 8)
 end
 
---- Draws grid lines between intersections.
---- @param layout table
-function M._draw_grid(layout)
+local function draw_stone_graphic(draw_key, x, y, w, h, color)
 	local lg = love.graphics
+	local cx = x + w * 0.5
+	local cy = y + h * 0.5
+	local r = math.min(w, h) * 0.32
+	lg.setColor(color[1], color[2], color[3], 1)
+	lg.circle("fill", cx, cy, r)
+	local mark_color = { 0.12, 0.12, 0.12, 1 }
+	if color[1] + color[2] + color[3] < 0.7 then
+		mark_color = { 0.95, 0.95, 0.95, 1 }
+	end
+	lg.setColor(mark_color[1], mark_color[2], mark_color[3], mark_color[4])
+	if draw_key == "diamond" then
+		lg.polygon("line", cx, cy - r, cx + r, cy, cx, cy + r, cx - r, cy)
+	elseif draw_key == "ring" then
+		lg.circle("line", cx, cy, r * 0.72)
+		lg.circle("fill", cx, cy, r * 0.14)
+	else
+		lg.circle("fill", cx, cy, r * 0.22)
+	end
+end
+
+local function draw_score_box(game, box, side, title)
+	local lg = love.graphics
+	local player = match_state.player_for_color(game, side)
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
+	lg.printf(title, box.x, box.y + 8, box.w, "center")
+	lg.printf(string.format("%d x %d", player.score.points or 0, player.score.mult or 0), box.x, box.y + 34, box.w, "center")
+	lg.printf(tostring(player.score.total or 0), box.x, box.y + 60, box.w, "center")
+end
+
+local function draw_poses(box, pose_ids)
+	local lg = love.graphics
+	local cols = 2
+	local gap = 6
+	local pad = 8
+	local cell_w = math.floor((box.w - pad * 2 - gap) / cols)
+	local row_h = 20
+	for i = 1, #pose_ids do
+		local col = (i - 1) % cols
+		local row = math.floor((i - 1) / cols)
+		local x = box.x + pad + col * (cell_w + gap)
+		local y = box.y + 28 + row * (row_h + gap)
+		local pose = content.get_pose(pose_ids[i])
+		lg.setColor(0.3, 0.26, 0.2, 0.65)
+		lg.rectangle("fill", x, y, cell_w, row_h, 4, 4)
+		lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
+		lg.printf((pose and pose.display_name) or pose_ids[i], x + 3, y + 3, cell_w - 6, "center")
+	end
+end
+
+local function draw_message(game, box)
+	draw_panel(box)
+	local lg = love.graphics
+	local queue_head = messages.peek(game.messages)
+	local text = game.status or queue_head or ""
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
+	lg.printf(text, box.x + 10, box.y + 10, box.w - 20, "left")
+end
+
+local function draw_side_columns(game, layout)
+	local lg = love.graphics
+	local player = match_state.player_for_color(game, "black")
+	local opp = match_state.player_for_color(game, "white")
+	draw_panel(layout.left_panel)
+	draw_panel(layout.right_panel)
+	draw_panel(layout.player_poses_panel)
+	draw_panel(layout.player_resources_panel)
+	draw_panel(layout.opponent_poses_panel)
+	draw_panel(layout.opponent_resources_panel)
+	draw_panel(layout.pouch_panel)
+	draw_panel(layout.deck_panel)
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
+	lg.printf("Player Poses", layout.player_poses_panel.x, layout.player_poses_panel.y + 8, layout.player_poses_panel.w, "center")
+	draw_poses(layout.player_poses_panel, poses.active_pose_ids(player))
+	lg.printf("Player Resources", layout.player_resources_panel.x, layout.player_resources_panel.y + 8, layout.player_resources_panel.w, "center")
+	lg.printf(string.format("Energy: %d/%d", player.resources.energy_current, player.resources.energy_max), layout.player_resources_panel.x + 10, layout.player_resources_panel.y + 34, layout.player_resources_panel.w - 20, "left")
+	lg.printf(string.format("Money: %d", player.resources.money), layout.player_resources_panel.x + 10, layout.player_resources_panel.y + 58, layout.player_resources_panel.w - 20, "left")
+	lg.printf("Player Pouch", layout.pouch_panel.x, layout.pouch_panel.y + 8, layout.pouch_panel.w, "center")
+	lg.printf(string.format("Stones: %d", pouch.remaining_count(player.stones.pouch)), layout.pouch_panel.x + 10, layout.pouch_panel.y + 34, layout.pouch_panel.w - 20, "left")
+	lg.printf("Opponent Poses", layout.opponent_poses_panel.x, layout.opponent_poses_panel.y + 8, layout.opponent_poses_panel.w, "center")
+	draw_poses(layout.opponent_poses_panel, poses.active_pose_ids(opp))
+	lg.printf("Opponent Energy", layout.opponent_resources_panel.x, layout.opponent_resources_panel.y + 8, layout.opponent_resources_panel.w, "center")
+	lg.printf(string.format("%d/%d", opp.resources.energy_current, opp.resources.energy_max), layout.opponent_resources_panel.x + 10, layout.opponent_resources_panel.y + 34, layout.opponent_resources_panel.w - 20, "center")
+	lg.printf("Player Deck", layout.deck_panel.x, layout.deck_panel.y + 8, layout.deck_panel.w, "center")
+	lg.printf(string.format("Deck: %d  Discard: %d", #player.cards.deck.ids, #player.cards.discard.ids), layout.deck_panel.x + 10, layout.deck_panel.y + 34, layout.deck_panel.w - 20, "left")
+end
+
+local function stone_color_for_side(side)
+	if side == "black" then
+		return config.COLOR_BLACK_STONE
+	end
+	return config.COLOR_WHITE_STONE
+end
+
+local function draw_selector(game, layout, popup_state)
+	local lg = love.graphics
+	local player = match_state.player_for_color(game, "black")
+	draw_panel(layout.stone_selector_panel)
+	local rects = layout_mod.stone_chip_rects(layout, #player.stones.playable_stones)
+	local selected_slot = popup_state and popup_state.selected_slot or nil
+	if selected_slot and (selected_slot < 1 or selected_slot > #player.stones.playable_stones) then
+		selected_slot = nil
+	end
+	if not selected_slot then
+		for i = 1, #player.stones.playable_stones do
+			if player.stones.playable_stones[i] == player.stones.selected_stone then
+				selected_slot = i
+				break
+			end
+		end
+	end
+	for i = 1, #rects do
+		local rect = rects[i]
+		local stone_id = player.stones.playable_stones[i]
+		local stone = content.get_stone(stone_id)
+		local selected = selected_slot == i
+		if stone then
+			draw_stone_graphic(stone.graphic.draw_key, rect.x, rect.y, rect.w, rect.h, stone_color_for_side("black"))
+			if selected then
+				local cx = rect.x + rect.w * 0.5
+				local cy = rect.y + rect.h * 0.5
+				local rr = math.min(rect.w, rect.h) * 0.43
+				lg.setColor(0.96, 0.96, 0.98, 0.95)
+				lg.setLineWidth(3)
+				lg.circle("line", cx, cy, rr)
+				lg.setLineWidth(1)
+			end
+		end
+	end
+end
+
+local function draw_hand(game, layout)
+	local lg = love.graphics
+	local player = match_state.player_for_color(game, "black")
+	local hand = player.cards.hand.ids
+	draw_panel(layout.hand_panel)
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
+	lg.printf("Hand", layout.hand_panel.x, layout.hand_panel.y + 6, layout.hand_panel.w, "center")
+	local rects = layout_mod.hand_card_rects(layout, #hand)
+	for i = 1, #rects do
+		local rect = rects[i]
+		local card = content.get_card(hand[i])
+		local can_afford = card and player.resources.energy_current >= card.energy_cost
+		if can_afford then
+			lg.setColor(0.35, 0.58, 0.34, 0.75)
+		else
+			lg.setColor(0.44, 0.3, 0.26, 0.75)
+		end
+		lg.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 6, 6)
+		lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3])
+		lg.rectangle("line", rect.x, rect.y, rect.w, rect.h, 6, 6)
+		lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
+		if card then
+			lg.printf(card.display_name, rect.x + 6, rect.y + 8, rect.w - 12, "center")
+			lg.printf(string.format("Cost %d", card.energy_cost), rect.x + 6, rect.y + 34, rect.w - 12, "center")
+		end
+	end
+end
+
+local function draw_board(game, layout, hover_row, hover_col, show_hover)
+	local lg = love.graphics
+	draw_panel(layout.board)
 	lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3])
 	lg.setLineWidth(config.GRID_LINE_WIDTH)
-	local n = layout.n
+	local n = layout.board_metrics.n
 	for i = 1, n do
 		local x1, y1 = layout_mod.grid_to_pixel(layout, i, 1)
 		local x2, y2 = layout_mod.grid_to_pixel(layout, i, n)
@@ -131,152 +196,127 @@ function M._draw_grid(layout)
 		local xb, yb = layout_mod.grid_to_pixel(layout, n, i)
 		lg.line(xa, ya, xb, yb)
 	end
-	lg.setColor(1, 1, 1, 1)
-end
-
---- Draws an X mark centered at (px, py) with given radius stroke.
---- @param px number
---- @param py number
---- @param radius number
---- @param light_on_dark boolean
-function M._draw_x_mark(px, py, radius, light_on_dark)
-	local lg = love.graphics
-	local k = radius * 0.55
-	if light_on_dark then
-		lg.setColor(0.92, 0.92, 0.94, 1)
-	else
-		lg.setColor(0.12, 0.12, 0.14, 1)
-	end
-	lg.setLineWidth(math.max(2, radius * 0.2))
-	lg.line(px - k, py - k, px + k, py + k)
-	lg.line(px - k, py + k, px + k, py - k)
-	lg.setLineWidth(1)
-	lg.setColor(1, 1, 1, 1)
-end
-
---- Draws one stone disk and optional kind decoration at board scale.
---- @param px number
---- @param py number
---- @param rad number
---- @param cell table
-function M._draw_stone_at(px, py, rad, cell)
-	local lg = love.graphics
-	if cell.color == config.STONE_BLACK then
-		lg.setColor(config.COLOR_BLACK_STONE[1], config.COLOR_BLACK_STONE[2], config.COLOR_BLACK_STONE[3])
-	else
-		lg.setColor(config.COLOR_WHITE_STONE[1], config.COLOR_WHITE_STONE[2], config.COLOR_WHITE_STONE[3])
-	end
-	lg.circle("fill", px, py, rad)
-	if cell.kind == stone_kinds.X then
-		M._draw_x_mark(px, py, rad, cell.color == config.STONE_BLACK)
-	end
-end
-
---- Draws a preview stone for the incoming pipeline.
---- @param cx number center x
---- @param cy number center y
---- @param rad number
---- @param chain_color integer
---- @param kind integer
-function M._draw_pipeline_stone(cx, cy, rad, chain_color, kind)
-	local lg = love.graphics
-	if chain_color == config.STONE_BLACK then
-		lg.setColor(config.COLOR_BLACK_STONE[1], config.COLOR_BLACK_STONE[2], config.COLOR_BLACK_STONE[3])
-	else
-		lg.setColor(config.COLOR_WHITE_STONE[1], config.COLOR_WHITE_STONE[2], config.COLOR_WHITE_STONE[3])
-	end
-	lg.circle("fill", cx, cy, rad)
-	if kind == stone_kinds.X then
-		M._draw_x_mark(cx, cy, rad, chain_color == config.STONE_BLACK)
-	end
-end
-
---- Draws placed stones for every non-empty intersection.
---- @param board table
---- @param layout table
-function M._draw_stones(board, layout)
-	local lg = love.graphics
-	local rad = layout.cell * config.STONE_RADIUS_FACTOR
-	local n = layout.n
+	local rad = layout.board_metrics.cell * config.STONE_RADIUS_FACTOR
 	for r = 1, n do
 		for c = 1, n do
-			local cell = board[r][c]
+			local cell = game.board[r][c]
 			if not cells.is_empty(cell) then
 				local px, py = layout_mod.grid_to_pixel(layout, r, c)
-				M._draw_stone_at(px, py, rad, cell)
+				local color = cell.color == config.STONE_BLACK and config.COLOR_BLACK_STONE or config.COLOR_WHITE_STONE
+				lg.setColor(color[1], color[2], color[3], 1)
+				lg.circle("fill", px, py, rad)
+				local stone = content.get_stone(cell.kind)
+				if stone then
+					draw_stone_graphic(stone.graphic.draw_key, px - rad, py - rad, rad * 2, rad * 2, color)
+				end
 			end
 		end
 	end
+	if hover_row and hover_col and show_hover then
+		local px, py = layout_mod.grid_to_pixel(layout, hover_row, hover_col)
+		lg.setColor(config.COLOR_HIGHLIGHT[1], config.COLOR_HIGHLIGHT[2], config.COLOR_HIGHLIGHT[3], config.COLOR_HIGHLIGHT[4])
+		lg.circle("fill", px, py, layout.board_metrics.cell * 0.2)
+	end
+end
+
+local function draw_popup(layout, popup_state)
+	if not popup_state or popup_state.mode == "none" then
+		return
+	end
+	local lg = love.graphics
+	if popup_state.mode == "selector-details" and popup_state.stone_id then
+		local stone = content.get_stone(popup_state.stone_id)
+		if stone then
+			local anchor = popup_state.anchor_rect
+			if anchor then
+				local tooltip = {
+					x = anchor.x + anchor.w + 8,
+					y = anchor.y - 6,
+					w = 240,
+					h = 86,
+				}
+				draw_panel(tooltip)
+				lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+				lg.printf(stone.name, tooltip.x + 10, tooltip.y + 10, tooltip.w - 20, "left")
+				lg.printf(stone.description, tooltip.x + 10, tooltip.y + 34, tooltip.w - 20, "left")
+			end
+		end
+	elseif popup_state.mode == "pouch-browser" then
+		local box = layout.popup
+		lg.setColor(0, 0, 0, 0.45)
+		lg.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+		draw_panel(box)
+		local close = layout_mod.popup_close_rect(layout)
+		lg.setColor(0.4, 0.2, 0.2, 0.85)
+		lg.rectangle("fill", close.x, close.y, close.w, close.h, 4, 4)
+		lg.setColor(0.95, 0.95, 0.95, 1)
+		lg.printf("Close", close.x, close.y + 6, close.w, "center")
+		lg.printf("Pouch Browser", box.x + 20, box.y + 18, box.w - 140, "left")
+		local rects = layout_mod.pouch_popup_grid_rects(layout, #popup_state.stones)
+		for i = 1, #rects do
+			local rect = rects[i]
+			local stone_id = popup_state.stones[i]
+			local stone = content.get_stone(stone_id)
+			if stone then
+				draw_stone_graphic(stone.graphic.draw_key, rect.x, rect.y, rect.w, rect.h, stone_color_for_side("black"))
+				if popup_state.focus_index == i then
+					local cx = rect.x + rect.w * 0.5
+					local cy = rect.y + rect.h * 0.5
+					local rr = math.min(rect.w, rect.h) * 0.43
+					lg.setColor(0.96, 0.96, 0.98, 0.95)
+					lg.setLineWidth(3)
+					lg.circle("line", cx, cy, rr)
+					lg.setLineWidth(1)
+				end
+			end
+		end
+		if popup_state.focus_index then
+			local stone = content.get_stone(popup_state.stones[popup_state.focus_index])
+			if stone then
+				lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+				lg.printf(stone.name, box.x + 20, box.y + box.h - 86, box.w - 40, "left")
+				lg.printf(stone.description, box.x + 20, box.y + box.h - 58, box.w - 40, "left")
+			end
+		end
+	end
+end
+
+function M.popup_hit_test(layout, popup_state, x, y)
+	if not popup_state or popup_state.mode == "none" then
+		return { kind = "none" }
+	end
+	if popup_state.mode == "selector-details" then
+		return { kind = "none" }
+	end
+	local close = layout_mod.popup_close_rect(layout)
+	if inside(close, x, y) then
+		return { kind = "close" }
+	end
+	if popup_state.mode == "pouch-browser" then
+		local rects = layout_mod.pouch_popup_grid_rects(layout, #popup_state.stones)
+		for i = 1, #rects do
+			if inside(rects[i], x, y) then
+				return { kind = "pouch_stone", index = i }
+			end
+		end
+	end
+	return { kind = "consume" }
+end
+
+function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state)
+	local lg = love.graphics
+	lg.clear(config.COLOR_BOARD[1], config.COLOR_BOARD[2], config.COLOR_BOARD[3])
+	draw_message(game, layout.message_panel)
+	draw_panel(layout.score_player)
+	draw_panel(layout.score_opponent)
+	draw_score_box(game, layout.score_player, "black", "Player Score")
+	draw_score_box(game, layout.score_opponent, "white", "Opponent Score")
+	draw_side_columns(game, layout)
+	draw_selector(game, layout, popup_state)
+	draw_hand(game, layout)
+	draw_board(game, layout, hover_row, hover_col, show_hover)
+	draw_popup(layout, popup_state)
 	lg.setColor(1, 1, 1, 1)
-end
-
---- Draws the next five stone kinds for each player above the status bar.
---- @param game table
---- @param layout table
-function M._draw_incoming(game, layout)
-	local lg = love.graphics
-	local yb = layout.queue_y
-	local yw = layout.queue_y + layout.queue_row_step
-	local stone_r = 12
-	local gap = 10
-	local label_w = 108
-	local black_state = match_state.player_for_color(game, config.STONE_BLACK)
-	local white_state = match_state.player_for_color(game, config.STONE_WHITE)
-	local b_kinds = {}
-	if black_state.stones.active_stone then
-		b_kinds[#b_kinds + 1] = black_state.stones.active_stone
-	end
-	local b_tail = pouch.peek_many(black_state.stones.pouch, 4)
-	for i = 1, #b_tail do
-		b_kinds[#b_kinds + 1] = b_tail[i]
-	end
-	local w_kinds = {}
-	if white_state.stones.active_stone then
-		w_kinds[#w_kinds + 1] = white_state.stones.active_stone
-	end
-	local w_tail = pouch.peek_many(white_state.stones.pouch, 4)
-	for i = 1, #w_tail do
-		w_kinds[#w_kinds + 1] = w_tail[i]
-	end
-	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	lg.print("Black →", 16, yb + 2)
-	lg.print("White →", 16, yw + 2)
-	local x0 = 16 + label_w
-	for i = 1, 5 do
-		local cx = x0 + (i - 1) * (2 * stone_r + gap) + stone_r
-		M._draw_pipeline_stone(cx, yb + stone_r + 2, stone_r, config.STONE_BLACK, b_kinds[i])
-	end
-	for i = 1, 5 do
-		local cx = x0 + (i - 1) * (2 * stone_r + gap) + stone_r
-		M._draw_pipeline_stone(cx, yw + stone_r + 2, stone_r, config.STONE_WHITE, w_kinds[i])
-	end
-end
-
---- Draws a translucent marker under the hovered empty intersection.
---- @param layout table
---- @param row integer
---- @param col integer
-function M._draw_hover(layout, row, col)
-	local lg = love.graphics
-	local px, py = layout_mod.grid_to_pixel(layout, row, col)
-	lg.setColor(
-		config.COLOR_HIGHLIGHT[1],
-		config.COLOR_HIGHLIGHT[2],
-		config.COLOR_HIGHLIGHT[3],
-		config.COLOR_HIGHLIGHT[4]
-	)
-	lg.circle("fill", px, py, layout.cell * 0.2)
-	lg.setColor(1, 1, 1, 1)
-end
-
---- Draws the status and prisoner counts at the bottom of the window.
---- @param status string
---- @param layout table
-function M._draw_status(status, layout)
-	local lg = love.graphics
-	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	local w = lg.getWidth()
-	lg.printf(status, 12, layout.chrome_y, w - 24, "left")
 end
 
 return M

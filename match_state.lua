@@ -27,9 +27,14 @@ end
 
 local function build_player(side, starter, rng_next_int)
 	local starter_poses = starter.poses
+	local starter_pouch = pouch.shuffle_init(starter.pouch, rng_next_int)
+	local playable_stones = array_utils.clone(starter_pouch.ids)
 	return {
 		side = side,
 		score = {
+			points = 0,
+			mult = 0,
+			total = 0,
 			points_bonus = 0,
 			mult_bonus = 0,
 		},
@@ -39,8 +44,9 @@ local function build_player(side, starter, rng_next_int)
 			money = MONEY_DEFAULT,
 		},
 		stones = {
-			pouch = pouch.shuffle_init(starter.pouch, rng_next_int),
-			active_stone = nil,
+			pouch = starter_pouch,
+			playable_stones = playable_stones,
+			selected_stone = playable_stones[1],
 		},
 		cards = deck.new(starter.deck, HAND_TARGET_SIZE, rng_next_int),
 		poses = {

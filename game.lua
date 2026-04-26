@@ -170,4 +170,16 @@ function M.play_card(g, hand_index)
 	return set_status_from_result(g, result, "Card resolved.")
 end
 
+function M.select_stone(g, stone_id)
+	if not M.is_human_turn(g) then
+		return false
+	end
+	local result = resolver.submit_action(g, {
+		actor = g.to_play,
+		type = "SELECT_STONE",
+		payload = { stone_id = stone_id },
+	})
+	return set_status_from_result(g, result, "Stone selected.")
+end
+
 return M

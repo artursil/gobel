@@ -12,7 +12,7 @@ local M = {}
 --- @return integer|nil col
 function M.random_move(g)
 	local ai_state = match_state.player_for_color(g, config.AI_COLOR)
-	local kind = ai_state.stones.active_stone
+	local kind = ai_state.stones.selected_stone
 	if not kind then
 		return nil, nil
 	end

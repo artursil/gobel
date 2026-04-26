@@ -133,7 +133,8 @@ Canonical enum strings:
   },
   stones = {
     pouch = { ids = { <stone_id>, ... } },
-    active_stone = <stone_id> | nil
+    playable_stones = { <stone_id>, ... },
+    selected_stone = <stone_id> | nil
   },
   cards = {
     deck = { ids = { <card_id>, ... } },
@@ -286,22 +287,22 @@ Required read fields for target UI:
 - top boxes:
   - player/opponent points, mult, total
 - side panels:
-  - poses, energy, money (player only)
+  - left column stack: player score, poses, energy, money, pouch
+  - right column stack: opponent score, poses, energy
 - bottom zones:
-  - pouch remaining, deck remaining, hand cards, active stone
+  - bottom-right player deck summary
+  - hand cards
+  - stone selector row
 - message board:
   - current queue head and recent messages
 
 `layout.lua` must expose named regions:
-- `score_player`
-- `score_opponent`
+- `left_column`
+- `right_column`
 - `board`
-- `left_panel`
-- `right_panel`
-- `pouch_panel`
 - `deck_panel`
 - `hand_panel`
-- `active_stone_panel`
+- `stone_selector_panel`
 - `message_panel`
 
 ## Initialization Contract

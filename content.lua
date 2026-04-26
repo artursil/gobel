@@ -1,20 +1,45 @@
 local M = {}
 
+local function add_points_behavior(value)
+	return function()
+		return {
+			{ type = "ADD_POINTS", value = value },
+		}
+	end
+end
+
+local function add_mult_behavior(value)
+	return function()
+		return {
+			{ type = "ADD_MULT", value = value },
+		}
+	end
+end
+
 M.stones = {
 	stone_basic = {
 		id = "stone_basic",
-		display_name = "Basic Stone",
-		placement_effect = { type = "ADD_POINTS", value = 1 },
+		name = "Basic Stone",
+		description = "Steady placement stone that adds 1 point on placement.",
+		depiction = "Solid circle core",
+		graphic = { draw_key = "solid" },
+		behavior = add_points_behavior(1),
 	},
 	stone_power = {
 		id = "stone_power",
-		display_name = "Power Stone",
-		placement_effect = { type = "ADD_POINTS", value = 2 },
+		name = "Power Stone",
+		description = "Heavy placement stone that adds 2 points on placement.",
+		depiction = "Diamond center mark",
+		graphic = { draw_key = "diamond" },
+		behavior = add_points_behavior(2),
 	},
 	stone_focus = {
 		id = "stone_focus",
-		display_name = "Focus Stone",
-		placement_effect = { type = "ADD_MULT", value = 1 },
+		name = "Focus Stone",
+		description = "Precision stone that adds 1 multiplier on placement.",
+		depiction = "Ring with dot center",
+		graphic = { draw_key = "ring" },
+		behavior = add_mult_behavior(1),
 	},
 }
 

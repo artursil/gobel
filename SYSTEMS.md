@@ -54,7 +54,8 @@ Contains:
   - `money`
 - `stones`:
   - `pouch` (remaining draw pool)
-  - `active_stone` (stone ready to place this turn)
+  - `playable_stones` (stone options currently available to pick from)
+  - `selected_stone` (stone selected for next placement)
 - `cards`:
   - `deck`
   - `hand`
@@ -105,7 +106,8 @@ Transition: `TURN_START -> DRAW_PHASE`
 #### 2) DRAW_PHASE
 
 For active player:
-- if `active_stone` is empty, draw one stone from pouch to `active_stone`
+- refresh `playable_stones` from current pouch availability
+- if `selected_stone` is empty and playable options exist, auto-select first option
 - draw cards until hand size reaches `HAND_TARGET_SIZE`
 
 MVP constants:
@@ -144,7 +146,7 @@ Transition: `MAIN_PHASE -> PLACE_PHASE`
 #### 4) PLACE_PHASE
 
 Active player must choose one:
-- `PLACE_STONE` using `active_stone`
+- `PLACE_STONE` using `selected_stone`
 - `PASS_TURN`
 
 `PLACE_STONE` legality:
@@ -153,7 +155,9 @@ Active player must choose one:
 
 On successful `PLACE_STONE`:
 - apply board update, captures, ko ban
-- clear `active_stone`
+- consume one stone of the selected kind from pouch
+- refresh `playable_stones`
+- keep selected kind if still available, otherwise select first available option
 - reset `consecutive_passes = 0`
 
 On `PASS_TURN`:
@@ -244,10 +248,10 @@ MVP points/mult source:
 ## Stone System Rules
 
 - stone draw source is pouch
-- exactly one `active_stone` per player turn
-- a turn can end with pass while keeping or consuming `active_stone` based on implementation decision:
-  - MVP decision: pass does not consume `active_stone`
-- if pouch is empty and no active stone exists:
+- UI shows a stone selection row with currently playable stone options
+- player must have one selected stone kind to place
+- pass does not consume stones
+- if pouch is empty and no playable stone options exist:
   - player may still pass
   - placement unavailable
 
@@ -302,11 +306,16 @@ The renderer must be able to read, per side:
 - pouch count
 - deck/discard/hand counts
 - hand card list
-- active stone
+- playable stones list
+- selected stone
 
 Message board reads:
 - head item in `message_queue`
 - optional backlog for recent events
+
+UI visibility rule:
+- player deck summary is shown at bottom-right
+- opponent deck details are hidden in MVP UI
 
 ## Determinism Requirements
 

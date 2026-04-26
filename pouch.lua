@@ -20,6 +20,16 @@ function M.draw(pouch_state)
 	return stone_id
 end
 
+function M.remove_one(pouch_state, stone_id)
+	for i = #pouch_state.ids, 1, -1 do
+		if pouch_state.ids[i] == stone_id then
+			table.remove(pouch_state.ids, i)
+			return true
+		end
+	end
+	return false
+end
+
 function M.peek_next(pouch_state)
 	if #pouch_state.ids == 0 then
 		return nil

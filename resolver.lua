@@ -81,7 +81,23 @@ local function run_event_queue(state, event_queue)
 			state.ko_ban = event.ko_ban
 			local actor_state = match_state.player_for_color(state, event.actor)
 			actor_state.prisoners = actor_state.prisoners + event.captures
-			actor_state.stones.active_stone = nil
+			pouch.remove_one(actor_state.stones.pouch, event.stone_id)
+			for j = 1, #actor_state.stones.playable_stones do
+				if actor_state.stones.playable_stones[j] == event.stone_id then
+					table.remove(actor_state.stones.playable_stones, j)
+					break
+				end
+			end
+			local has_selected = false
+			for j = 1, #actor_state.stones.playable_stones do
+				if actor_state.stones.playable_stones[j] == actor_state.stones.selected_stone then
+					has_selected = true
+					break
+				end
+			end
+			if not has_selected then
+				actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
+			end
 			state.consecutive_passes = 0
 			recalc_all_scores(state)
 		elseif event.kind == "PASS" then
@@ -95,8 +111,8 @@ end
 local function on_turn_start(state, actor)
 	local actor_state = match_state.player_for_color(state, actor)
 	energy.refresh(actor_state.resources)
-	if not actor_state.stones.active_stone then
-		actor_state.stones.active_stone = pouch.draw(actor_state.stones.pouch)
+	if not actor_state.stones.selected_stone then
+		actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
 	end
 	deck.draw_to_hand_target(actor_state.cards, function(max_value)
 		return match_state.rng_next_int(state, max_value)
@@ -160,6 +176,10 @@ local function validate_actor_phase(state, action)
 		if state.phase ~= "MAIN_PHASE" then
 			return false, "PLAY_CARD allowed only in MAIN_PHASE"
 		end
+	elseif action.type == "SELECT_STONE" then
+		if state.phase ~= "MAIN_PHASE" and state.phase ~= "PLACE_PHASE" then
+			return false, "SELECT_STONE allowed only in MAIN_PHASE or PLACE_PHASE"
+		end
 	elseif action.type == "PLACE_STONE" or action.type == "PASS_TURN" then
 		if state.phase ~= "PLACE_PHASE" then
 			return false, action.type .. " allowed only in PLACE_PHASE"
@@ -206,13 +226,23 @@ end
 
 local function compile_place_stone_events(state, action)
 	local actor_state = match_state.player_for_color(state, action.actor)
-	local stone_id = actor_state.stones.active_stone
+	local stone_id = actor_state.stones.selected_stone
 	if not stone_id then
-		return nil, "No active stone to place"
+		return nil, "No stone selected"
+	end
+	local selectable = false
+	for i = 1, #actor_state.stones.playable_stones do
+		if actor_state.stones.playable_stones[i] == stone_id then
+			selectable = true
+			break
+		end
+	end
+	if not selectable then
+		return nil, "Selected stone is not available"
 	end
 	local stone_def = content.get_stone(stone_id)
 	if not stone_def then
-		return nil, "Unknown active stone"
+		return nil, "Unknown selected stone"
 	end
 	local row = action.payload and action.payload.row or -1
 	local col = action.payload and action.payload.col or -1
@@ -227,26 +257,51 @@ local function compile_place_stone_events(state, action)
 	if not ok then
 		return nil, "Illegal move"
 	end
-	return {
+	local stone_effects = stone_def.behavior and stone_def.behavior(state, action.actor) or {}
+	local events = {
 		{
 			kind = "BOARD_APPLY",
 			actor = action.actor,
 			board = new_board,
 			ko_ban = new_ko,
 			captures = captures,
+			stone_id = stone_id,
 		},
-		{
+	}
+	for i = 1, #stone_effects do
+		events[#events + 1] = {
 			kind = "APPLY_EFFECT",
 			actor = action.actor,
-			source_name = stone_def.display_name .. " placement",
-			effect = stone_def.placement_effect,
+			source_name = stone_def.name .. " placement",
+			effect = stone_effects[i],
 			source_id = stone_id,
-		},
-	}, nil
+		}
+	end
+	return events, nil
 end
 
 local function compile_pass_events()
 	return { { kind = "PASS" } }, nil
+end
+
+local function compile_select_stone_events(state, action)
+	local actor_state = match_state.player_for_color(state, action.actor)
+	local stone_id = action.payload and action.payload.stone_id or nil
+	if not stone_id then
+		return nil, "Missing stone selection"
+	end
+	for i = 1, #actor_state.stones.playable_stones do
+		if actor_state.stones.playable_stones[i] == stone_id then
+			return {
+				{
+					kind = "SELECT_STONE_COMMIT",
+					actor = action.actor,
+					stone_id = stone_id,
+				},
+			}, nil
+		end
+	end
+	return nil, "Stone is not selectable"
 end
 
 local function append_reactive_pose_events(state, actor, events)
@@ -273,6 +328,14 @@ local function apply_non_effect_event(state, event)
 			return false, "Invalid hand index"
 		end
 		recalc_all_scores(state)
+		return true, nil
+	end
+	if event.kind == "SELECT_STONE_COMMIT" then
+		local actor_state = match_state.player_for_color(state, event.actor)
+		actor_state.stones.selected_stone = event.stone_id
+		local stone = content.get_stone(event.stone_id)
+		messages.push(state.messages, "Selected stone: " .. (stone and stone.name or event.stone_id))
+		push_status_from_messages(state)
 		return true, nil
 	end
 	return true, nil
@@ -322,10 +385,11 @@ function M.submit_action(state, action)
 		event_queue, compile_error = compile_play_card_events(state, action)
 	elseif action.type == "PLACE_STONE" then
 		event_queue, compile_error = compile_place_stone_events(state, action)
+	elseif action.type == "SELECT_STONE" then
+		event_queue, compile_error = compile_select_stone_events(state, action)
 	else
 		event_queue, compile_error = compile_pass_events()
 	end
-	append_reactive_pose_events(state, action.actor, event_queue)
 
 	if compile_error then
 		return {
@@ -335,6 +399,7 @@ function M.submit_action(state, action)
 			emitted_events = 0,
 		}
 	end
+	append_reactive_pose_events(state, action.actor, event_queue)
 
 	for i = 1, #event_queue do
 		local event = event_queue[i]
@@ -353,7 +418,7 @@ function M.submit_action(state, action)
 		end
 	end
 
-	if action.type == "PLAY_CARD" then
+	if action.type == "PLAY_CARD" or action.type == "SELECT_STONE" then
 		return {
 			ok = true,
 			error = nil,
