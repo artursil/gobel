@@ -16,22 +16,33 @@ end
 
 local function board_quarter(row, col)
 	local center = (config.BOARD_SIZE + 1) * 0.5
-	if row == center and col == center then
-		return 0
+	local top = row <= center
+	local bottom = row >= center
+	local left = col <= center
+	local right = col >= center
+	local quarters = {}
+	if top and left then
+		quarters[1] = true
 	end
-	if row < center and col < center then
-		return 1
+	if top and right then
+		quarters[2] = true
 	end
-	if row < center and col > center then
-		return 2
+	if bottom and left then
+		quarters[3] = true
 	end
-	if row > center and col < center then
-		return 3
+	if bottom and right then
+		quarters[4] = true
 	end
-	if row > center and col > center then
-		return 4
+	return quarters
+end
+
+local function quarters_overlap(a, b)
+	for q = 1, 4 do
+		if a[q] and b[q] then
+			return true
+		end
 	end
-	return -1
+	return false
 end
 
 local function nearest_corner(row, col)
@@ -43,6 +54,12 @@ end
 
 local function in_stone_corner_region(stone, row, col)
 	return row >= stone.min_row and row <= stone.max_row and col >= stone.min_col and col <= stone.max_col
+end
+
+local function is_outside_candidate(stone, row, col, point_quarter, point_center_dist)
+	local same_quarter = quarters_overlap(stone.quarter, point_quarter)
+	local within_corner_region = in_stone_corner_region(stone, row, col)
+	return same_quarter and stone.center_dist <= point_center_dist and within_corner_region
 end
 
 local function neighbors(row, col, n)
@@ -79,7 +96,7 @@ local function enclosed_claim_map(b, wall_color)
 	end
 	for r = 1, n do
 		for c = 1, n do
-			if not visited[r][c] and board.chain_color(b[r][c]) ~= wall_color then
+			if not visited[r][c] and board.is_empty(b[r][c]) then
 				local queue = { { r, c } }
 				local head = 1
 				visited[r][c] = true
@@ -92,6 +109,7 @@ local function enclosed_claim_map(b, wall_color)
 				local max_row = r
 				local min_col = c
 				local max_col = c
+				local touches_opponent_stone = false
 				while head <= #queue do
 					local cell = queue[head]
 					head = head + 1
@@ -124,7 +142,12 @@ local function enclosed_claim_map(b, wall_color)
 					local ns = neighbors(cr, cc, n)
 					for i = 1, #ns do
 						local nr, nc = ns[i][1], ns[i][2]
-						if not visited[nr][nc] and board.chain_color(b[nr][nc]) ~= wall_color then
+						local neighbor_cell = b[nr][nc]
+						local neighbor_color = board.chain_color(neighbor_cell)
+						if neighbor_color ~= config.STONE_NONE and neighbor_color ~= wall_color then
+							touches_opponent_stone = true
+						end
+						if not visited[nr][nc] and board.is_empty(neighbor_cell) then
 							visited[nr][nc] = true
 							queue[#queue + 1] = { nr, nc }
 						end
@@ -183,7 +206,7 @@ local function enclosed_claim_map(b, wall_color)
 					end
 				end
 
-				if enclosed then
+				if enclosed and not touches_opponent_stone then
 					local size = #cells
 					for i = 1, #cells do
 						local cr, cc = cells[i][1], cells[i][2]
@@ -202,6 +225,13 @@ end
 function M.territory_map(b)
 	local n = config.BOARD_SIZE
 	local stones = {}
+	local nearest_tie = {}
+	for r = 1, n do
+		nearest_tie[r] = {}
+		for c = 1, n do
+			nearest_tie[r][c] = false
+		end
+	end
 	for r = 1, n do
 		for c = 1, n do
 			local cell = b[r][c]
@@ -231,19 +261,37 @@ function M.territory_map(b)
 			else
 				local point_center_dist = center_distance(r, c)
 				local point_quarter = board_quarter(r, c)
+				local global_min = nil
+				local global_black_hits = 0
+				local global_white_hits = 0
+				for i = 1, #stones do
+					local s = stones[i]
+					if is_outside_candidate(s, r, c, point_quarter, point_center_dist) then
+						local d = math.abs(r - s.row) + math.abs(c - s.col)
+						if not global_min or d < global_min then
+							global_min = d
+							global_black_hits = 0
+							global_white_hits = 0
+						end
+						if d == global_min then
+							if s.color == config.STONE_BLACK then
+								global_black_hits = global_black_hits + 1
+							elseif s.color == config.STONE_WHITE then
+								global_white_hits = global_white_hits + 1
+							end
+						end
+					end
+				end
+				if global_min and global_black_hits == global_white_hits and (global_black_hits + global_white_hits) > 0 then
+					out[r][c] = config.STONE_NONE
+					nearest_tie[r][c] = true
+				else
 				local min_dist = nil
 				local black_hits = 0
 				local white_hits = 0
 				for i = 1, #stones do
 					local s = stones[i]
-					local same_quarter = s.quarter == point_quarter
-					local center_stone_exception = s.quarter == 0
-					local within_corner_region = in_stone_corner_region(s, r, c)
-					if
-						(same_quarter or center_stone_exception)
-						and s.center_dist <= point_center_dist
-						and within_corner_region
-					then
+					if is_outside_candidate(s, r, c, point_quarter, point_center_dist) then
 						local d = math.abs(r - s.row) + math.abs(c - s.col)
 						if not min_dist or d < min_dist then
 							min_dist = d
@@ -266,6 +314,7 @@ function M.territory_map(b)
 				else
 					out[r][c] = config.STONE_NONE
 				end
+				end
 			end
 		end
 	end
@@ -276,7 +325,21 @@ function M.territory_map(b)
 			if board.is_empty(b[r][c]) then
 				local b_claim = black_claim[r][c]
 				local w_claim = white_claim[r][c]
-				if b_claim and not w_claim then
+				if nearest_tie[r][c] then
+					if b_claim and not w_claim then
+						out[r][c] = config.STONE_BLACK
+					elseif w_claim and not b_claim then
+						out[r][c] = config.STONE_WHITE
+					elseif b_claim and w_claim then
+						if black_claim_size[r][c] < white_claim_size[r][c] then
+							out[r][c] = config.STONE_BLACK
+						elseif white_claim_size[r][c] < black_claim_size[r][c] then
+							out[r][c] = config.STONE_WHITE
+						end
+					else
+						out[r][c] = config.STONE_NONE
+					end
+				elseif b_claim and not w_claim then
 					out[r][c] = config.STONE_BLACK
 				elseif w_claim and not b_claim then
 					out[r][c] = config.STONE_WHITE
