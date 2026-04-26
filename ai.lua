@@ -2,7 +2,7 @@
 
 local config = require("config")
 local rules = require("rules")
-local stone_queue = require("stone_queue")
+local match_state = require("match_state")
 
 local M = {}
 
@@ -11,7 +11,11 @@ local M = {}
 --- @return integer|nil row
 --- @return integer|nil col
 function M.random_move(g)
-	local kind = stone_queue.peek_next_kind(g, config.AI_COLOR)
+	local ai_state = match_state.player_for_color(g, config.AI_COLOR)
+	local kind = ai_state.stones.active_stone
+	if not kind then
+		return nil, nil
+	end
 	local moves = rules.all_legal_moves(g.board, config.AI_COLOR, g.ko_ban, kind)
 	if #moves == 0 then
 		return nil, nil

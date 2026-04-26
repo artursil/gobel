@@ -1,0 +1,46 @@
+require("spec.test_helper")
+
+local match_state = require("match_state")
+
+describe("T-015 unified match state", function()
+	it("initializes baseline match fields", function()
+		local state = match_state.new_match("pvp", 12345)
+		assert.are.equal("TURN_START", state.phase)
+		assert.are.equal(1, state.turn_number)
+		assert.is_false(state.ended)
+		assert.are.equal("none", state.end_reason)
+		assert.are.equal("none", state.winner)
+		assert.are.equal(0, state.consecutive_passes)
+	end)
+
+	it("initializes to_play as black enum string", function()
+		local state = match_state.new_match("pvp", 1)
+		assert.are.equal("black", state.to_play)
+	end)
+
+	it("initializes players with default resources and targets", function()
+		local state = match_state.new_match("pvp", 7)
+		for _, side in ipairs({ "black", "white" }) do
+			local player = state.players[side]
+			assert.are.equal(3, player.resources.energy_max)
+			assert.are.equal(3, player.resources.energy_current)
+			assert.are.equal(0, player.resources.money)
+			assert.are.equal(5, player.cards.hand_target_size)
+			assert.is_nil(player.stones.active_stone)
+		end
+	end)
+
+	it("enqueues an initial message at match start", function()
+		local state = match_state.new_match("pvp", 99)
+		assert.is_true(#state.messages.queue > 0)
+	end)
+
+	it("produces deterministic deck and pouch ordering with the same seed", function()
+		local a = match_state.new_match("pvp", 22)
+		local b = match_state.new_match("pvp", 22)
+		assert.are.same(a.players.black.cards.deck.ids, b.players.black.cards.deck.ids)
+		assert.are.same(a.players.white.cards.deck.ids, b.players.white.cards.deck.ids)
+		assert.are.same(a.players.black.stones.pouch.ids, b.players.black.stones.pouch.ids)
+		assert.are.same(a.players.white.stones.pouch.ids, b.players.white.stones.pouch.ids)
+	end)
+end)

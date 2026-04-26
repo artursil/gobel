@@ -3,11 +3,38 @@
 local ai = require("ai")
 local board = require("board")
 local config = require("config")
+local content = require("content")
+local deck = require("deck")
+local energy = require("energy")
+local match_state = require("match_state")
+local poses = require("poses")
+local pouch = require("pouch")
 local rules = require("rules")
 local scoring = require("scoring")
-local stone_queue = require("stone_queue")
 
 local M = {}
+
+local function is_black_turn(color)
+	return color == "black"
+end
+
+local function is_white_turn(color)
+	return color == "white"
+end
+
+local function opponent_color(color)
+	if is_black_turn(color) then
+		return "white"
+	end
+	return "black"
+end
+
+local function color_to_stone(color)
+	if is_black_turn(color) then
+		return config.STONE_BLACK
+	end
+	return config.STONE_WHITE
+end
 
 --- Whether the active player is controlled by this device (both colors in PvP, only Black vs bot).
 --- @param g table
@@ -19,34 +46,45 @@ function M.is_human_turn(g)
 	if not g.versus_bot then
 		return true
 	end
-	return g.to_play == config.STONE_BLACK
+	return is_black_turn(g.to_play)
 end
 
 --- Builds a fresh game for local two-player or Black vs random White.
 --- @param match_kind string "pvp" or "pvc"
 --- @return table
 function M.new(match_kind)
-	local versus_bot = match_kind == "pvc"
+	local g = match_state.new_match(match_kind)
 	local status
-	if versus_bot then
+	if g.versus_bot then
 		status = "Your turn (Black). White is a random bot."
 	else
 		status = "Black to play — shared mouse, two players."
 	end
-	local g = {
-		board = board.new(),
-		to_play = config.STONE_BLACK,
-		ko_ban = nil,
-		prisoners = { [config.STONE_BLACK] = 0, [config.STONE_WHITE] = 0 },
-		consecutive_passes = 0,
-		over = false,
-		status = status,
-		ai_delay = 0,
-		versus_bot = versus_bot,
-		match_kind = match_kind,
-	}
-	stone_queue.attach(g)
+	g.status = status
+	M.start_turn(g, g.to_play)
 	return g
+end
+
+function M._apply_effect(player_state, effect)
+	if effect.type == "ADD_POINTS" then
+		player_state.score.points_bonus = player_state.score.points_bonus + effect.value
+	elseif effect.type == "ADD_MULT" then
+		player_state.score.mult_bonus = player_state.score.mult_bonus + effect.value
+	end
+end
+
+function M.start_turn(g, color)
+	local player_state = match_state.player_for_color(g, color)
+	energy.refresh(player_state.resources)
+	if not player_state.stones.active_stone then
+		player_state.stones.active_stone = pouch.draw(player_state.stones.pouch)
+	end
+	deck.draw_to_hand_target(player_state.cards, function(max_value)
+		return match_state.rng_next_int(g, max_value)
+	end)
+	poses.dispatch_trigger(player_state, "TURN_START", function(_, pose_def)
+		M._apply_effect(player_state, pose_def.effect)
+	end)
 end
 
 --- Applies a stone play for the current human-controlled side when the move is legal.
@@ -59,26 +97,38 @@ function M.player_move(g, row, col)
 		return false
 	end
 	local color = g.to_play
-	local kind = stone_queue.peek_next_kind(g, color)
-	local ok, new_board, new_ko, caps = rules.try_play(g.board, row, col, color, g.ko_ban, kind)
+	local player_state = match_state.player_for_color(g, color)
+	local stone_id = player_state.stones.active_stone
+	if not stone_id then
+		g.status = "No active stone. Pass or end turn."
+		return false
+	end
+	local stone_def = content.get_stone(stone_id)
+	if not stone_def then
+		g.status = "Internal error: unknown stone."
+		return false
+	end
+	local ok, new_board, new_ko, caps = rules.try_play(g.board, row, col, color_to_stone(color), g.ko_ban, stone_id)
 	if not ok then
 		g.status = "Illegal move."
 		return false
 	end
 	g.board = new_board
 	g.ko_ban = new_ko
-	g.prisoners[color] = g.prisoners[color] + caps
-	stone_queue.consume(g, color)
+	player_state.prisoners = player_state.prisoners + caps
+	player_state.stones.active_stone = nil
+	M._apply_effect(player_state, stone_def.placement_effect)
 	g.consecutive_passes = 0
-	local next_c = board.opponent_stone(color)
+	local next_c = opponent_color(color)
 	g.to_play = next_c
-	if g.versus_bot and next_c == config.AI_COLOR then
+	M.start_turn(g, next_c)
+	if g.versus_bot and is_white_turn(next_c) then
 		g.status = "White is thinking…"
 		g.ai_delay = 0.35
 	elseif g.versus_bot then
 		g.status = "Your turn (Black)."
 	else
-		if next_c == config.STONE_BLACK then
+		if is_black_turn(next_c) then
 			g.status = "Black to play."
 		else
 			g.status = "White to play."
@@ -99,14 +149,15 @@ function M.player_pass(g)
 		return
 	end
 	local was = g.to_play
-	g.to_play = board.opponent_stone(was)
-	if g.versus_bot and g.to_play == config.AI_COLOR then
+	g.to_play = opponent_color(was)
+	M.start_turn(g, g.to_play)
+	if g.versus_bot and is_white_turn(g.to_play) then
 		g.status = "You passed. White to play."
 		g.ai_delay = 0.35
 	elseif g.versus_bot then
 		g.status = "White passed. Your turn (Black)."
 	else
-		if g.to_play == config.STONE_BLACK then
+		if is_black_turn(g.to_play) then
 			g.status = "White passed. Black to play."
 		else
 			g.status = "Black passed. White to play."
@@ -118,7 +169,7 @@ end
 --- @param g table
 --- @param dt number
 function M.tick_ai(g, dt)
-	if g.over or not g.versus_bot or g.to_play ~= config.AI_COLOR then
+	if g.over or not g.versus_bot or not is_white_turn(g.to_play) then
 		return
 	end
 	if g.ai_delay > 0 then
@@ -132,11 +183,30 @@ function M.tick_ai(g, dt)
 			M.finish(g)
 			return
 		end
-		g.to_play = config.STONE_BLACK
+		g.to_play = "black"
+		M.start_turn(g, "black")
 		g.status = "White passed. Your turn (Black)."
 		return
 	end
-	local kind = stone_queue.peek_next_kind(g, config.AI_COLOR)
+	local ai_state = match_state.player_for_color(g, config.AI_COLOR)
+	local stone_id = ai_state.stones.active_stone
+	if not stone_id then
+		g.status = "White passed. Your turn (Black)."
+		g.consecutive_passes = g.consecutive_passes + 1
+		if g.consecutive_passes >= 2 then
+			M.finish(g)
+			return
+		end
+		g.to_play = "black"
+		M.start_turn(g, "black")
+		return
+	end
+	local stone_def = content.get_stone(stone_id)
+	if not stone_def then
+		g.status = "Internal error: AI stone missing."
+		return
+	end
+	local kind = stone_id
 	local ok, new_board, new_ko, caps = rules.try_play(g.board, r, c, config.AI_COLOR, g.ko_ban, kind)
 	if not ok then
 		g.status = "Internal error: AI illegal move."
@@ -144,10 +214,12 @@ function M.tick_ai(g, dt)
 	end
 	g.board = new_board
 	g.ko_ban = new_ko
-	g.prisoners[config.AI_COLOR] = g.prisoners[config.AI_COLOR] + caps
-	stone_queue.consume(g, config.AI_COLOR)
+	ai_state.prisoners = ai_state.prisoners + caps
+	ai_state.stones.active_stone = nil
+	M._apply_effect(ai_state, stone_def.placement_effect)
 	g.consecutive_passes = 0
-	g.to_play = config.STONE_BLACK
+	g.to_play = "black"
+	M.start_turn(g, "black")
 	g.status = "Your turn (Black)."
 end
 
@@ -155,10 +227,17 @@ end
 --- @param g table
 function M.finish(g)
 	g.over = true
-	g.to_play = config.STONE_NONE
+	g.ended = true
+	g.to_play = "none"
 	local b = g.board
-	local score_b = scoring.total_score(b, config.STONE_BLACK)
-	local score_w = scoring.total_score(b, config.STONE_WHITE)
+	local black_state = g.players.black
+	local white_state = g.players.white
+	local points_b = scoring.liberty_points(b, config.STONE_BLACK) + black_state.score.points_bonus
+	local mult_b = scoring.overall_mult(b, config.STONE_BLACK) + black_state.score.mult_bonus
+	local points_w = scoring.liberty_points(b, config.STONE_WHITE) + white_state.score.points_bonus
+	local mult_w = scoring.overall_mult(b, config.STONE_WHITE) + white_state.score.mult_bonus
+	local score_b = points_b * mult_b
+	local score_w = points_w * mult_w
 	local winner
 	if score_b > score_w then
 		winner = "Black"

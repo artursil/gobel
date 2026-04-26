@@ -3,9 +3,10 @@
 local cells = require("board")
 local config = require("config")
 local layout_mod = require("layout")
+local match_state = require("match_state")
+local pouch = require("pouch")
 local scoring = require("scoring")
 local stone_kinds = require("stone_kinds")
-local stone_queue = require("stone_queue")
 
 local M = {}
 
@@ -35,15 +36,17 @@ end
 function M.draw(game, layout, hover_row, hover_col, show_hover)
 	local lg = love.graphics
 	lg.clear(config.COLOR_BOARD[1], config.COLOR_BOARD[2], config.COLOR_BOARD[3])
-	M._draw_score_boxes(layout, game.board)
+	M._draw_score_boxes(layout, game.board, game)
 	M._draw_grid(layout)
 	M._draw_stones(game.board, layout)
 	if hover_row and hover_col and show_hover then
 		M._draw_hover(layout, hover_row, hover_col)
 	end
 	M._draw_incoming(game, layout)
-	local pb = game.prisoners[config.STONE_BLACK]
-	local pw = game.prisoners[config.STONE_WHITE]
+	local black_state = match_state.player_for_color(game, config.STONE_BLACK)
+	local white_state = match_state.player_for_color(game, config.STONE_WHITE)
+	local pb = black_state.prisoners
+	local pw = white_state.prisoners
 	local footer = string.format(
 		"Prisoners — Black: %d  White: %d  —  P pass  R same mode  M menu  Esc menu",
 		pb,
@@ -55,7 +58,8 @@ end
 --- Draws two panels: title, points × mult, then total score per player.
 --- @param layout table
 --- @param board table
-function M._draw_score_boxes(layout, board)
+--- @param game table
+function M._draw_score_boxes(layout, board, game)
 	local lg = love.graphics
 	local w = lg.getWidth()
 	local pad = 12
@@ -78,12 +82,14 @@ function M._draw_score_boxes(layout, board)
 	local base = lg.getFont()
 	local cap = font_for_caption()
 	local tot = font_for_total()
-	local pb = scoring.liberty_points(board, config.STONE_BLACK)
-	local mb = scoring.overall_mult(board, config.STONE_BLACK)
-	local tb = scoring.total_score(board, config.STONE_BLACK)
-	local pw = scoring.liberty_points(board, config.STONE_WHITE)
-	local mw = scoring.overall_mult(board, config.STONE_WHITE)
-	local tw = scoring.total_score(board, config.STONE_WHITE)
+	local black_state = match_state.player_for_color(game, config.STONE_BLACK)
+	local white_state = match_state.player_for_color(game, config.STONE_WHITE)
+	local pb = scoring.liberty_points(board, config.STONE_BLACK) + black_state.score.points_bonus
+	local mb = scoring.overall_mult(board, config.STONE_BLACK) + black_state.score.mult_bonus
+	local tb = pb * mb
+	local pw = scoring.liberty_points(board, config.STONE_WHITE) + white_state.score.points_bonus
+	local mw = scoring.overall_mult(board, config.STONE_WHITE) + white_state.score.mult_bonus
+	local tw = pw * mw
 	local y1 = y + 8
 	lg.printf("Black", xb, y1, box_w, "center")
 	lg.printf("White", xw, y1, box_w, "center")
@@ -207,8 +213,24 @@ function M._draw_incoming(game, layout)
 	local stone_r = 12
 	local gap = 10
 	local label_w = 108
-	local b_kinds = stone_queue.peek_five(game, config.STONE_BLACK)
-	local w_kinds = stone_queue.peek_five(game, config.STONE_WHITE)
+	local black_state = match_state.player_for_color(game, config.STONE_BLACK)
+	local white_state = match_state.player_for_color(game, config.STONE_WHITE)
+	local b_kinds = {}
+	if black_state.stones.active_stone then
+		b_kinds[#b_kinds + 1] = black_state.stones.active_stone
+	end
+	local b_tail = pouch.peek_many(black_state.stones.pouch, 4)
+	for i = 1, #b_tail do
+		b_kinds[#b_kinds + 1] = b_tail[i]
+	end
+	local w_kinds = {}
+	if white_state.stones.active_stone then
+		w_kinds[#w_kinds + 1] = white_state.stones.active_stone
+	end
+	local w_tail = pouch.peek_many(white_state.stones.pouch, 4)
+	for i = 1, #w_tail do
+		w_kinds[#w_kinds + 1] = w_tail[i]
+	end
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	lg.print("Black →", 16, yb + 2)
 	lg.print("White →", 16, yw + 2)
