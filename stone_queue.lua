@@ -5,7 +5,7 @@ local stone_kinds = require("stone_kinds")
 
 local M = {}
 
-local BUFFER_AHEAD = 32
+local BUFFER_AHEAD = 6
 
 --- Ensures at least n entries exist from the current head.
 --- @param pipe table
