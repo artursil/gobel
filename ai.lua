@@ -20,7 +20,7 @@ function M.random_move(g)
 	if #moves == 0 then
 		return nil, nil
 	end
-	local idx = love.math.random(#moves)
+	local idx = match_state.rng_next_int(g, #moves)
 	local choice = moves[idx]
 	return choice[1], choice[2]
 end

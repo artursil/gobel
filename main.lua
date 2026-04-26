@@ -125,5 +125,9 @@ function love.keypressed(key)
 	end
 	if key == "p" and match then
 		game.player_pass(match)
+		return
+	end
+	if match and key >= "1" and key <= "5" then
+		game.play_card(match, tonumber(key))
 	end
 end

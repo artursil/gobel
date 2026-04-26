@@ -4,6 +4,7 @@ local cells = require("board")
 local config = require("config")
 local layout_mod = require("layout")
 local match_state = require("match_state")
+local messages = require("messages")
 local pouch = require("pouch")
 local scoring = require("scoring")
 local stone_kinds = require("stone_kinds")
@@ -52,7 +53,13 @@ function M.draw(game, layout, hover_row, hover_col, show_hover)
 		pb,
 		pw
 	)
-	M._draw_status(game.status .. "\n" .. footer, layout)
+	local message_head = messages.peek(game.messages) or game.status
+	local recent = game.messages.recent
+	local tail = recent[#recent]
+	if tail and tail ~= message_head then
+		message_head = message_head .. "\nRecent: " .. tail
+	end
+	M._draw_status(message_head .. "\n" .. footer, layout)
 end
 
 --- Draws two panels: title, points × mult, then total score per player.
