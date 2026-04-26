@@ -131,6 +131,28 @@ local function run_event_queue(state, event_queue)
 	push_status_from_messages(state)
 end
 
+local function push_score_delta_events(state, actor, points_before, mult_before)
+	local actor_state = match_state.player_for_color(state, actor)
+	local points_after = actor_state.score.points or 0
+	local mult_after = actor_state.score.mult or 0
+	local points_delta = points_after - points_before
+	local mult_delta = mult_after - mult_before
+	if points_delta ~= 0 then
+		state.messages.score_events[#state.messages.score_events + 1] = {
+			actor = actor,
+			kind = "points",
+			value = points_delta,
+		}
+	end
+	if mult_delta ~= 0 then
+		state.messages.score_events[#state.messages.score_events + 1] = {
+			actor = actor,
+			kind = "mult",
+			value = mult_delta,
+		}
+	end
+end
+
 local function on_turn_start(state, actor)
 	local actor_state = match_state.player_for_color(state, actor)
 	if not actor_state.stones.selected_stone then
@@ -406,6 +428,13 @@ function M.submit_action(state, action)
 	end
 	local event_queue
 	local compile_error
+	local actor_points_before = nil
+	local actor_mult_before = nil
+	if action.type == "PLACE_STONE" then
+		local actor_state = match_state.player_for_color(state, action.actor)
+		actor_points_before = actor_state.score.points or 0
+		actor_mult_before = actor_state.score.mult or 0
+	end
 	if action.type == "PLAY_CARD" then
 		event_queue, compile_error = compile_play_card_events(state, action)
 	elseif action.type == "PLACE_STONE" then
@@ -454,6 +483,9 @@ function M.submit_action(state, action)
 
 	state.phase = "RESOLVE_PHASE"
 	recalc_all_scores(state)
+	if action.type == "PLACE_STONE" then
+		push_score_delta_events(state, action.actor, actor_points_before, actor_mult_before)
+	end
 	state.phase = "TURN_END"
 	if finish_match_if_needed(state) then
 		return {

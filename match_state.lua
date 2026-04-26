@@ -121,6 +121,7 @@ function M.new_match(match_kind, seed)
 		messages = {
 			queue = { "Match start: black to play" },
 			recent = {},
+			score_events = {},
 		},
 		players = {
 			black = black,
@@ -130,6 +131,7 @@ function M.new_match(match_kind, seed)
 		match_kind = match_kind,
 		versus_bot = match_kind == "pvc",
 		ai_delay = 0,
+		animation_speed = 1,
 		status = "",
 	}
 end

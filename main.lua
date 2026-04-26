@@ -196,7 +196,10 @@ end
 --- @param dt number
 function love.update(dt)
 	if screen == "play" and match then
-		game.tick_ai(match, dt)
+		render.update(dt, match)
+		if not render.is_score_animating() then
+			game.tick_ai(match, dt)
+		end
 	end
 end
 

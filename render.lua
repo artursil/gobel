@@ -8,6 +8,19 @@ local poses = require("poses")
 local pouch = require("pouch")
 
 local M = {}
+local SCORE_ANIM_BASE_DURATION = 0.45
+local score_anim_font = nil
+M._score_anim = {
+	queue = {},
+	current = nil,
+	remaining = 0,
+	duration = 0,
+}
+
+local function ease_out_cubic(t)
+	local inv = 1 - t
+	return 1 - inv * inv * inv
+end
 
 local function inside(rect, x, y)
 	return x >= rect.x and x <= rect.x + rect.w and y >= rect.y and y <= rect.y + rect.h
@@ -93,12 +106,47 @@ local function draw_poses(box, pose_ids)
 end
 
 local function draw_message(game, box)
-	draw_panel(box)
 	local lg = love.graphics
-	local queue_head = messages.peek(game.messages)
-	local text = game.status or queue_head or ""
-	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	lg.printf(text, box.x + 10, box.y + 10, box.w - 20, "left")
+	local anim = M._score_anim.current
+	if not anim then
+		return
+	end
+	local timeline = M._score_anim
+	local progress = 1
+	if timeline.duration > 0 then
+		progress = 1 - math.max(0, math.min(1, timeline.remaining / timeline.duration))
+	end
+	local eased = ease_out_cubic(progress)
+	local alpha = 1
+	if progress > 0.68 then
+		alpha = 1 - ((progress - 0.68) / 0.32)
+	end
+	alpha = math.max(0.05, math.min(1, alpha))
+	local scale = 0.88 + 0.18 * eased
+	local prefix = anim.value > 0 and "+" or ""
+	local label = anim.kind == "points" and "PTS" or "MULT"
+	local actor = anim.actor == "black" and "BLACK" or "WHITE"
+	local text = string.format("%s%d %s", prefix, anim.value, label)
+	local font_prev = lg.getFont()
+	if not score_anim_font then
+		score_anim_font = love.graphics.newFont(42)
+	end
+	local big_font = score_anim_font
+	lg.setFont(big_font)
+	if anim.kind == "points" then
+		lg.setColor(0.95, 0.86, 0.2, alpha)
+	else
+		lg.setColor(0.56, 0.85, 0.98, alpha)
+	end
+	local y = box.y + 8 + (1 - eased) * 8
+	lg.push()
+	lg.translate(box.x + box.w * 0.5, y + big_font:getHeight() * 0.5)
+	lg.scale(scale, scale)
+	lg.printf(text, -box.w * 0.5, -big_font:getHeight() * 0.5, box.w, "center")
+	lg.pop()
+	lg.setFont(font_prev)
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], alpha * 0.9)
+	lg.printf(actor, box.x, box.y + box.h - 20, box.w, "center")
 end
 
 local function draw_side_columns(game, layout)
@@ -473,6 +521,34 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, sto
 		)
 	end
 	lg.setColor(1, 1, 1, 1)
+end
+
+function M.update(dt, game)
+	local anim = M._score_anim
+	local events = game.messages.score_events or {}
+	for i = 1, #events do
+		anim.queue[#anim.queue + 1] = events[i]
+	end
+	game.messages.score_events = {}
+	if anim.current then
+		anim.remaining = anim.remaining - dt
+		if anim.remaining > 0 then
+			return
+		end
+		anim.current = nil
+	end
+	if #anim.queue == 0 then
+		return
+	end
+	anim.current = table.remove(anim.queue, 1)
+	local speed = game.animation_speed or 1
+	anim.duration = SCORE_ANIM_BASE_DURATION * speed
+	anim.remaining = anim.duration
+end
+
+function M.is_score_animating()
+	local anim = M._score_anim
+	return anim.current ~= nil or #anim.queue > 0
 end
 
 function M.set_card_ui_state(card_ui_state)
