@@ -303,9 +303,30 @@ end
 local function draw_board(game, layout, hover_row, hover_col, show_hover)
 	local lg = love.graphics
 	draw_panel(layout.board)
+	local territory = game.territory
+	local n = layout.board_metrics.n
+	if territory then
+		local half = layout.board_metrics.cell * 0.5
+		for r = 1, n do
+			for c = 1, n do
+				local cell = game.board[r][c]
+				if cells.is_empty(cell) then
+					local owner = territory[r] and territory[r][c] or config.STONE_NONE
+					if owner == config.STONE_BLACK or owner == config.STONE_WHITE then
+						local px, py = layout_mod.grid_to_pixel(layout, r, c)
+						if owner == config.STONE_BLACK then
+							lg.setColor(0.18, 0.28, 0.46, 0.26)
+						else
+							lg.setColor(0.92, 0.92, 0.94, 0.28)
+						end
+						lg.rectangle("fill", px - half, py - half, half * 2, half * 2)
+					end
+				end
+			end
+		end
+	end
 	lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3])
 	lg.setLineWidth(config.GRID_LINE_WIDTH)
-	local n = layout.board_metrics.n
 	for i = 1, n do
 		local x1, y1 = layout_mod.grid_to_pixel(layout, i, 1)
 		local x2, y2 = layout_mod.grid_to_pixel(layout, i, n)

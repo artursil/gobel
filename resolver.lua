@@ -37,6 +37,7 @@ local function recalc_player_score(state, color)
 end
 
 local function recalc_all_scores(state)
+	state.territory = scoring.territory_map(state.board)
 	recalc_player_score(state, "black")
 	recalc_player_score(state, "white")
 end
