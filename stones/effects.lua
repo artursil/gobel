@@ -24,4 +24,8 @@ function M.resolve(effect)
 	return builder(effect)
 end
 
+function M.resolve_board_stone(_stone_cell, _state)
+	return {}
+end
+
 return M

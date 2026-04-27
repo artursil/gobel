@@ -6,10 +6,9 @@ local energy = require("energy")
 local Effects = require("effect_registry")
 local match_state = require("match_state")
 local messages = require("messages")
-local phase_executor = require("phase_executor")
+local resolve_round = require("resolver.resolve_round")
 local pouch = require("pouch")
 local rules = require("rules")
-local scoring = require("scoring")
 
 local M = {}
 
@@ -34,64 +33,8 @@ local function owner_for_side(side)
 	return "A"
 end
 
-local function rebuild_ordered_poses(state)
-	local ordered = {}
-	local function append_player(side)
-		local player_state = match_state.player_for_color(state, side)
-		for i = 1, #player_state.poses.fixed do
-			local pose_id = player_state.poses.fixed[i]
-			ordered[#ordered + 1] = { type = pose_id, owner = owner_for_side(side) }
-		end
-		for i = 1, #player_state.poses.swappable do
-			local pose_id = player_state.poses.swappable[i]
-			ordered[#ordered + 1] = { type = pose_id, owner = owner_for_side(side) }
-		end
-	end
-	append_player("black")
-	append_player("white")
-	state.poses = ordered
-end
-
-local function recalc_player_score(state, color)
-	local stone_color = color_to_stone(color)
-	local player_state = match_state.player_for_color(state, color)
-	local points = scoring.liberty_points(state.board, stone_color, state.territory_mode) + player_state.score.points_bonus
-	local mult = scoring.overall_mult(state.board, stone_color) + player_state.score.mult_bonus
-	player_state.score.territory = state.turn_number * scoring.territory_points(state.territory, stone_color)
-	player_state.score.points = points
-	player_state.score.mult = mult
-	player_state.score.total = (player_state.score.territory + points) * mult
-end
-
 local function recalc_all_scores(state)
-	phase_executor.ensure_state_extensions(state)
-	rebuild_ordered_poses(state)
-	local function calculate_territory(inner_state)
-		inner_state.territory = scoring.territory_map(inner_state.board, inner_state.territory_mode)
-		local black_controlled = scoring.territory_points(inner_state.territory, config.STONE_BLACK)
-		local white_controlled = scoring.territory_points(inner_state.territory, config.STONE_WHITE)
-		inner_state.scores.territory.A = inner_state.turn_number * black_controlled
-		inner_state.scores.territory.B = inner_state.turn_number * white_controlled
-		local black = match_state.player_for_color(inner_state, "black")
-		local white = match_state.player_for_color(inner_state, "white")
-		inner_state.scores.points.A = black.score.points_bonus
-		inner_state.scores.points.B = white.score.points_bonus
-		inner_state.scores.mult.A = scoring.overall_mult(inner_state.board, config.STONE_BLACK) + black.score.mult_bonus
-		inner_state.scores.mult.B = scoring.overall_mult(inner_state.board, config.STONE_WHITE) + white.score.mult_bonus
-	end
-	local function calculate_final_score(inner_state)
-		local black = match_state.player_for_color(inner_state, "black")
-		local white = match_state.player_for_color(inner_state, "white")
-		black.score.territory = inner_state.scores.territory.A
-		black.score.points = inner_state.scores.points.A
-		black.score.mult = inner_state.scores.mult.A
-		black.score.total = (black.score.territory + black.score.points) * black.score.mult
-		white.score.territory = inner_state.scores.territory.B
-		white.score.points = inner_state.scores.points.B
-		white.score.mult = inner_state.scores.mult.B
-		white.score.total = (white.score.territory + white.score.points) * white.score.mult
-	end
-	phase_executor.run_scoring_phases(state, calculate_territory, calculate_final_score)
+	resolve_round.resolve(state)
 end
 
 local function push_status_from_messages(state)
@@ -99,21 +42,6 @@ local function push_status_from_messages(state)
 	local latest = recent[#recent]
 	if latest then
 		state.status = latest
-	end
-end
-
-local function effect_message(source_name, effect)
-	if effect.type == "ADD_POINTS" then
-		return string.format("%s: +%d points", source_name, effect.value)
-	end
-	return string.format("%s: +%d mult", source_name, effect.value)
-end
-
-local function apply_effect(player_state, effect)
-	if effect.type == "ADD_POINTS" then
-		player_state.score.points_bonus = player_state.score.points_bonus + effect.value
-	else
-		player_state.score.mult_bonus = player_state.score.mult_bonus + effect.value
 	end
 end
 
@@ -153,22 +81,14 @@ local function refresh_selected_stone(actor_state)
 	actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
 end
 
-local function process_effect_event(state, event)
-	local player_state = match_state.player_for_color(state, event.actor)
-	messages.push(state.messages, effect_message(event.source_name, event.effect))
-	apply_effect(player_state, event.effect)
-	recalc_all_scores(state)
-end
-
 local function run_event_queue(state, event_queue)
 	for i = 1, #event_queue do
 		local event = event_queue[i]
-		if event.kind == "APPLY_EFFECT" then
-			process_effect_event(state, event)
-		elseif event.kind == "BOARD_APPLY" then
+		if event.kind == "BOARD_APPLY" then
 			state.board = event.board
 			state.ko_ban = event.ko_ban
 			state.last_played_stone = event.stone_id
+			state.last_opponent_move = { stone_id = event.stone_id, row = event.row, col = event.col, actor = event.actor }
 			local actor_state = match_state.player_for_color(state, event.actor)
 			actor_state.prisoners = actor_state.prisoners + event.captures
 			if remove_first_stone_id(actor_state.stones.playable_stones, event.stone_id) then
@@ -176,6 +96,12 @@ local function run_event_queue(state, event_queue)
 			end
 			refresh_selected_stone(actor_state)
 			state.consecutive_passes = 0
+			state.round_stone_effects = state.round_stone_effects or {}
+			state.round_stone_effects[#state.round_stone_effects + 1] = {
+				owner = owner_for_side(event.actor),
+				stone_type = event.stone_id,
+				effects = event.stone_effects or {},
+			}
 			recalc_all_scores(state)
 		elseif event.kind == "PASS" then
 			state.consecutive_passes = state.consecutive_passes + 1
@@ -346,17 +272,12 @@ local function compile_place_stone_events(state, action)
 	if type(placement_effects) ~= "table" or #placement_effects == 0 then
 		return nil, "Stone definition has no placement effects"
 	end
-	local stone_effects = {}
 	for i = 1, #placement_effects do
 		local resolved = Effects.stones.resolve(placement_effects[i])
 		if not resolved then
 			return nil, "Stone effect name is invalid"
 		end
-		stone_effects[#stone_effects + 1] = resolved
-	end
-	for i = 1, #stone_effects do
-		local effect = stone_effects[i]
-		if type(effect) ~= "table" or (effect.type ~= "ADD_POINTS" and effect.type ~= "ADD_MULT") or type(effect.value) ~= "number" then
+		if type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then
 			return nil, "Stone effect produced invalid payload"
 		end
 	end
@@ -368,17 +289,11 @@ local function compile_place_stone_events(state, action)
 			ko_ban = new_ko,
 			captures = captures,
 			stone_id = stone_id,
+			row = row,
+			col = col,
+			stone_effects = placement_effects,
 		},
 	}
-	for i = 1, #stone_effects do
-		events[#events + 1] = {
-			kind = "APPLY_EFFECT",
-			actor = action.actor,
-			source_name = stone_def.name .. " placement",
-			effect = stone_effects[i],
-			source_id = stone_id,
-		}
-	end
 	return events, nil
 end
 
@@ -422,6 +337,11 @@ local function apply_non_effect_event(state, event)
 		state.modifiers[#state.modifiers + 1] = {
 			type = event.card_id,
 			owner = owner_for_side(event.actor),
+		}
+		state.last_opponent_modifiers = state.last_opponent_modifiers or {}
+		state.last_opponent_modifiers[#state.last_opponent_modifiers + 1] = {
+			type = event.card_id,
+			actor = event.actor,
 		}
 		recalc_all_scores(state)
 		return true, nil
@@ -506,7 +426,7 @@ function M.submit_action(state, action)
 
 	for i = 1, #event_queue do
 		local event = event_queue[i]
-		if event.kind == "APPLY_EFFECT" or event.kind == "BOARD_APPLY" or event.kind == "PASS" then
+		if event.kind == "BOARD_APPLY" or event.kind == "PASS" then
 			run_event_queue(state, { event })
 		else
 			local ok, error_text = apply_non_effect_event(state, event)

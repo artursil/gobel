@@ -146,6 +146,10 @@ function M.new_match(match_kind, territory_mode, seed)
 		poses = {},
 		modifiers = {},
 		last_played_stone = nil,
+		last_opponent_move = nil,
+		last_opponent_modifiers = {},
+		active_effects = {},
+		round_stone_effects = {},
 		scores = {
 			territory = { A = 0, B = 0 },
 			points = { A = 0, B = 0 },
