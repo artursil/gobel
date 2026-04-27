@@ -1,8 +1,27 @@
-local stone_behaviors = require("stone_behaviors")
-
 local M = {}
 
-M.add_points = stone_behaviors.add_points
-M.add_mult = stone_behaviors.add_mult
+function M.add_points(effect)
+	return {
+		type = "ADD_POINTS",
+		value = effect.value,
+		priority = effect.priority or 10,
+	}
+end
+
+function M.add_mult(effect)
+	return {
+		type = "ADD_MULT",
+		value = effect.value,
+		priority = effect.priority or 10,
+	}
+end
+
+function M.resolve(effect)
+	local builder = M[effect.effect_name]
+	if not builder then
+		return nil
+	end
+	return builder(effect)
+end
 
 return M

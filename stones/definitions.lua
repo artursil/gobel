@@ -7,7 +7,9 @@ local M = {
 		description = "Steady placement stone that adds 1 point on placement.",
 		depiction = "Solid circle core",
 		graphic = { draw_key = "solid" },
-		behavior = effects.add_points(1),
+		placement_effects = {
+			{ effect_name = "add_points", value = 1, priority = 10 },
+		},
 	},
 	stone_power = {
 		id = "stone_power",
@@ -15,7 +17,9 @@ local M = {
 		description = "Heavy placement stone that adds 2 points on placement.",
 		depiction = "Diamond center mark",
 		graphic = { draw_key = "diamond" },
-		behavior = effects.add_points(2),
+		placement_effects = {
+			{ effect_name = "add_points", value = 2, priority = 10 },
+		},
 	},
 	stone_focus = {
 		id = "stone_focus",
@@ -23,7 +27,9 @@ local M = {
 		description = "Precision stone that adds 1 multiplier on placement.",
 		depiction = "Ring with dot center",
 		graphic = { draw_key = "ring" },
-		behavior = effects.add_mult(1),
+		placement_effects = {
+			{ effect_name = "add_mult", value = 1, priority = 10 },
+		},
 	},
 }
 

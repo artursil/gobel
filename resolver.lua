@@ -3,6 +3,7 @@ local config = require("config")
 local content = require("content")
 local deck = require("deck")
 local energy = require("energy")
+local Effects = require("effect_registry")
 local match_state = require("match_state")
 local messages = require("messages")
 local phase_executor = require("phase_executor")
@@ -56,9 +57,10 @@ local function recalc_player_score(state, color)
 	local player_state = match_state.player_for_color(state, color)
 	local points = scoring.liberty_points(state.board, stone_color, state.territory_mode) + player_state.score.points_bonus
 	local mult = scoring.overall_mult(state.board, stone_color) + player_state.score.mult_bonus
+	player_state.score.territory = state.turn_number * scoring.territory_points(state.territory, stone_color)
 	player_state.score.points = points
 	player_state.score.mult = mult
-	player_state.score.total = points * mult
+	player_state.score.total = (player_state.score.territory + points) * mult
 end
 
 local function recalc_all_scores(state)
@@ -66,26 +68,28 @@ local function recalc_all_scores(state)
 	rebuild_ordered_poses(state)
 	local function calculate_territory(inner_state)
 		inner_state.territory = scoring.territory_map(inner_state.board, inner_state.territory_mode)
-		inner_state.scores.territory.A = scoring.territory_points(inner_state.territory, config.STONE_BLACK)
-		inner_state.scores.territory.B = scoring.territory_points(inner_state.territory, config.STONE_WHITE)
+		local black_controlled = scoring.territory_points(inner_state.territory, config.STONE_BLACK)
+		local white_controlled = scoring.territory_points(inner_state.territory, config.STONE_WHITE)
+		inner_state.scores.territory.A = inner_state.turn_number * black_controlled
+		inner_state.scores.territory.B = inner_state.turn_number * white_controlled
 		local black = match_state.player_for_color(inner_state, "black")
 		local white = match_state.player_for_color(inner_state, "white")
-		inner_state.scores.points.A = scoring.liberty_points(inner_state.board, config.STONE_BLACK, inner_state.territory_mode)
-			+ black.score.points_bonus
-		inner_state.scores.points.B = scoring.liberty_points(inner_state.board, config.STONE_WHITE, inner_state.territory_mode)
-			+ white.score.points_bonus
+		inner_state.scores.points.A = black.score.points_bonus
+		inner_state.scores.points.B = white.score.points_bonus
 		inner_state.scores.mult.A = scoring.overall_mult(inner_state.board, config.STONE_BLACK) + black.score.mult_bonus
 		inner_state.scores.mult.B = scoring.overall_mult(inner_state.board, config.STONE_WHITE) + white.score.mult_bonus
 	end
 	local function calculate_final_score(inner_state)
 		local black = match_state.player_for_color(inner_state, "black")
 		local white = match_state.player_for_color(inner_state, "white")
+		black.score.territory = inner_state.scores.territory.A
 		black.score.points = inner_state.scores.points.A
 		black.score.mult = inner_state.scores.mult.A
-		black.score.total = black.score.points * black.score.mult
+		black.score.total = (black.score.territory + black.score.points) * black.score.mult
+		white.score.territory = inner_state.scores.territory.B
 		white.score.points = inner_state.scores.points.B
 		white.score.mult = inner_state.scores.mult.B
-		white.score.total = white.score.points * white.score.mult
+		white.score.total = (white.score.territory + white.score.points) * white.score.mult
 	end
 	phase_executor.run_scoring_phases(state, calculate_territory, calculate_final_score)
 end
@@ -338,17 +342,22 @@ local function compile_place_stone_events(state, action)
 		end
 		return nil, "Illegal move: rule violation"
 	end
-	if type(stone_def.behavior) ~= "function" then
-		return nil, "Stone behavior is invalid"
+	local placement_effects = stone_def.placement_effects or {}
+	if type(placement_effects) ~= "table" or #placement_effects == 0 then
+		return nil, "Stone definition has no placement effects"
 	end
-	local stone_effects = stone_def.behavior(state, action.actor)
-	if type(stone_effects) ~= "table" or #stone_effects == 0 then
-		return nil, "Stone behavior produced no effects"
+	local stone_effects = {}
+	for i = 1, #placement_effects do
+		local resolved = Effects.stones.resolve(placement_effects[i])
+		if not resolved then
+			return nil, "Stone effect name is invalid"
+		end
+		stone_effects[#stone_effects + 1] = resolved
 	end
 	for i = 1, #stone_effects do
 		local effect = stone_effects[i]
 		if type(effect) ~= "table" or (effect.type ~= "ADD_POINTS" and effect.type ~= "ADD_MULT") or type(effect.value) ~= "number" then
-			return nil, "Stone behavior produced invalid effect"
+			return nil, "Stone effect produced invalid payload"
 		end
 	end
 	local events = {

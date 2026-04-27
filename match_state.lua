@@ -79,6 +79,7 @@ local function build_player(side, starter, rng_next_int, basic_mode)
 	return {
 		side = side,
 		score = {
+			territory = 0,
 			points = 0,
 			mult = 0,
 			total = 0,

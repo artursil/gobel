@@ -81,8 +81,10 @@ local function draw_score_box(game, box, side, title)
 	local player = match_state.player_for_color(game, side)
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	lg.printf(title, box.x, box.y + 8, box.w, "center")
-	lg.printf(string.format("%d x %d", player.score.points or 0, player.score.mult or 0), box.x, box.y + 34, box.w, "center")
-	lg.printf(tostring(player.score.total or 0), box.x, box.y + 60, box.w, "center")
+	lg.printf(string.format("Territory: %d", player.score.territory or 0), box.x, box.y + 30, box.w, "center")
+	lg.printf(string.format("Points: %d", player.score.points or 0), box.x, box.y + 48, box.w, "center")
+	lg.printf(string.format("Mult: %d", player.score.mult or 0), box.x, box.y + 66, box.w, "center")
+	lg.printf(string.format("Total: %d", player.score.total or 0), box.x, box.y + 84, box.w, "center")
 end
 
 local function draw_poses(box, pose_ids)

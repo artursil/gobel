@@ -12,43 +12,43 @@ local function owner_for_card(card, state)
 	return "A"
 end
 
-local function phase_for_effect(effect)
-	if effect.type == "ADD_POINTS" then
-		return "points"
-	end
-	return "mult"
+function M.add_points(card, owner, value, priority)
+	return {
+		phase = "points",
+		priority = priority or 10,
+		apply = function(state)
+			print("[Effect Triggered]", card.type, "points")
+			state.scores.points[owner] = state.scores.points[owner] + value
+		end,
+	}
 end
 
-local function build_generator(card_id)
-	return function(card, state)
-		local owner = owner_for_card(card, state)
-		local card_def = definitions[card_id]
-		if not card_def or not card_def.effects then
-			return {}
-		end
-		local out = {}
-		for i = 1, #card_def.effects do
-			local effect = card_def.effects[i]
-			local phase = phase_for_effect(effect)
-			out[#out + 1] = {
-				phase = phase,
-				priority = effect.priority or 10,
-				apply = function(current_state)
-					print("[Effect Triggered]", card.type, phase)
-					if phase == "points" then
-						current_state.scores.points[owner] = current_state.scores.points[owner] + effect.value
-					else
-						current_state.scores.mult[owner] = current_state.scores.mult[owner] + effect.value
-					end
-				end,
-			}
-		end
-		return out
-	end
+function M.add_mult(card, owner, value, priority)
+	return {
+		phase = "mult",
+		priority = priority or 10,
+		apply = function(state)
+			print("[Effect Triggered]", card.type, "mult")
+			state.scores.mult[owner] = state.scores.mult[owner] + value
+		end,
+	}
 end
 
-for card_id, _ in pairs(definitions) do
-	M[card_id] = build_generator(card_id)
+function M.resolve(card, state)
+	local owner = owner_for_card(card, state)
+	local card_def = definitions[card.type]
+	if not card_def or not card_def.effects then
+		return {}
+	end
+	local out = {}
+	for i = 1, #card_def.effects do
+		local effect = card_def.effects[i]
+		local effect_builder = M[effect.effect_name]
+		if effect_builder then
+			out[#out + 1] = effect_builder(card, owner, effect.value, effect.priority)
+		end
+	end
+	return out
 end
 
 return M

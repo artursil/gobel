@@ -19,24 +19,18 @@ function M.collect_effects(state, phase)
 	local effects = {}
 	for i, pose in ipairs(state.poses or {}) do
 		pose.index = i
-		local generator = Effects.poses[pose.type]
-		if generator then
-			local generated = generator(pose, state)
-			for _, e in ipairs(generated) do
-				if e.phase == phase then
-					table.insert(effects, e)
-				end
+		local generated = Effects.poses.resolve(pose, state)
+		for _, e in ipairs(generated) do
+			if e.phase == phase then
+				table.insert(effects, e)
 			end
 		end
 	end
 	for _, card in ipairs(state.modifiers or {}) do
-		local generator = Effects.cards[card.type]
-		if generator then
-			local generated = generator(card, state)
-			for _, e in ipairs(generated) do
-				if e.phase == phase then
-					table.insert(effects, e)
-				end
+		local generated = Effects.cards.resolve(card, state)
+		for _, e in ipairs(generated) do
+			if e.phase == phase then
+				table.insert(effects, e)
 			end
 		end
 	end
