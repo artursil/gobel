@@ -5,7 +5,7 @@ local deck = require("deck")
 local energy = require("energy")
 local match_state = require("match_state")
 local messages = require("messages")
-local poses = require("poses")
+local phase_executor = require("phase_executor")
 local pouch = require("pouch")
 local rules = require("rules")
 local scoring = require("scoring")
@@ -26,6 +26,31 @@ local function opponent_color(color)
 	return "black"
 end
 
+local function owner_for_side(side)
+	if side == "white" then
+		return "B"
+	end
+	return "A"
+end
+
+local function rebuild_ordered_poses(state)
+	local ordered = {}
+	local function append_player(side)
+		local player_state = match_state.player_for_color(state, side)
+		for i = 1, #player_state.poses.fixed do
+			local pose_id = player_state.poses.fixed[i]
+			ordered[#ordered + 1] = { type = pose_id, owner = owner_for_side(side) }
+		end
+		for i = 1, #player_state.poses.swappable do
+			local pose_id = player_state.poses.swappable[i]
+			ordered[#ordered + 1] = { type = pose_id, owner = owner_for_side(side) }
+		end
+	end
+	append_player("black")
+	append_player("white")
+	state.poses = ordered
+end
+
 local function recalc_player_score(state, color)
 	local stone_color = color_to_stone(color)
 	local player_state = match_state.player_for_color(state, color)
@@ -37,9 +62,32 @@ local function recalc_player_score(state, color)
 end
 
 local function recalc_all_scores(state)
-	state.territory = scoring.territory_map(state.board, state.territory_mode)
-	recalc_player_score(state, "black")
-	recalc_player_score(state, "white")
+	phase_executor.ensure_state_extensions(state)
+	rebuild_ordered_poses(state)
+	local function calculate_territory(inner_state)
+		inner_state.territory = scoring.territory_map(inner_state.board, inner_state.territory_mode)
+		inner_state.scores.territory.A = scoring.territory_points(inner_state.territory, config.STONE_BLACK)
+		inner_state.scores.territory.B = scoring.territory_points(inner_state.territory, config.STONE_WHITE)
+		local black = match_state.player_for_color(inner_state, "black")
+		local white = match_state.player_for_color(inner_state, "white")
+		inner_state.scores.points.A = scoring.liberty_points(inner_state.board, config.STONE_BLACK, inner_state.territory_mode)
+			+ black.score.points_bonus
+		inner_state.scores.points.B = scoring.liberty_points(inner_state.board, config.STONE_WHITE, inner_state.territory_mode)
+			+ white.score.points_bonus
+		inner_state.scores.mult.A = scoring.overall_mult(inner_state.board, config.STONE_BLACK) + black.score.mult_bonus
+		inner_state.scores.mult.B = scoring.overall_mult(inner_state.board, config.STONE_WHITE) + white.score.mult_bonus
+	end
+	local function calculate_final_score(inner_state)
+		local black = match_state.player_for_color(inner_state, "black")
+		local white = match_state.player_for_color(inner_state, "white")
+		black.score.points = inner_state.scores.points.A
+		black.score.mult = inner_state.scores.mult.A
+		black.score.total = black.score.points * black.score.mult
+		white.score.points = inner_state.scores.points.B
+		white.score.mult = inner_state.scores.mult.B
+		white.score.total = white.score.points * white.score.mult
+	end
+	phase_executor.run_scoring_phases(state, calculate_territory, calculate_final_score)
 end
 
 local function push_status_from_messages(state)
@@ -116,6 +164,7 @@ local function run_event_queue(state, event_queue)
 		elseif event.kind == "BOARD_APPLY" then
 			state.board = event.board
 			state.ko_ban = event.ko_ban
+			state.last_played_stone = event.stone_id
 			local actor_state = match_state.player_for_color(state, event.actor)
 			actor_state.prisoners = actor_state.prisoners + event.captures
 			if remove_first_stone_id(actor_state.stones.playable_stones, event.stone_id) then
@@ -156,23 +205,13 @@ end
 
 local function on_turn_start(state, actor)
 	local actor_state = match_state.player_for_color(state, actor)
+	state.modifiers = {}
 	if not actor_state.stones.selected_stone then
 		actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
 	end
 	deck.draw_to_hand_target(actor_state.cards, function(max_value)
 		return match_state.rng_next_int(state, max_value)
 	end)
-	local turn_events = {}
-	poses.dispatch_trigger(actor_state, "TURN_START", function(pose_id, pose_def)
-		turn_events[#turn_events + 1] = {
-			kind = "APPLY_EFFECT",
-			actor = actor,
-			source_name = pose_def.display_name,
-			effect = pose_def.effect,
-			source_id = pose_id,
-		}
-	end)
-	run_event_queue(state, turn_events)
 	state.phase = "MAIN_PHASE"
 end
 
@@ -255,17 +294,9 @@ local function compile_play_card_events(state, action)
 			actor = action.actor,
 			hand_index = hand_index,
 			energy_cost = card_def.energy_cost,
+			card_id = card_id,
 		},
 	}
-	for i = 1, #card_def.effects do
-		events[#events + 1] = {
-			kind = "APPLY_EFFECT",
-			actor = action.actor,
-			source_name = card_def.name or card_def.display_name,
-			effect = card_def.effects[i],
-			source_id = card_id,
-		}
-	end
 	return events, nil
 end
 
@@ -365,15 +396,7 @@ local function compile_select_stone_events(state, action)
 end
 
 local function append_reactive_pose_events(state, actor, events)
-	local actor_state = match_state.player_for_color(state, actor)
-	poses.dispatch_trigger(actor_state, "RESOLVE_PHASE", function(_, pose_def)
-		events[#events + 1] = {
-			kind = "APPLY_EFFECT",
-			actor = actor,
-			source_name = pose_def.display_name,
-			effect = pose_def.effect,
-		}
-	end)
+	return state, actor, events
 end
 
 local function apply_non_effect_event(state, event)
@@ -387,6 +410,10 @@ local function apply_non_effect_event(state, event)
 		if not played then
 			return false, "Invalid hand index"
 		end
+		state.modifiers[#state.modifiers + 1] = {
+			type = event.card_id,
+			owner = owner_for_side(event.actor),
+		}
 		recalc_all_scores(state)
 		return true, nil
 	end
