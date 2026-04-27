@@ -29,7 +29,7 @@ end
 local function recalc_player_score(state, color)
 	local stone_color = color_to_stone(color)
 	local player_state = match_state.player_for_color(state, color)
-	local points = scoring.liberty_points(state.board, stone_color) + player_state.score.points_bonus
+	local points = scoring.liberty_points(state.board, stone_color, state.territory_mode) + player_state.score.points_bonus
 	local mult = scoring.overall_mult(state.board, stone_color) + player_state.score.mult_bonus
 	player_state.score.points = points
 	player_state.score.mult = mult
@@ -37,7 +37,7 @@ local function recalc_player_score(state, color)
 end
 
 local function recalc_all_scores(state)
-	state.territory = scoring.territory_map(state.board)
+	state.territory = scoring.territory_map(state.board, state.territory_mode)
 	recalc_player_score(state, "black")
 	recalc_player_score(state, "white")
 end
@@ -284,7 +284,7 @@ local function compile_place_stone_events(state, action)
 	end
 	local row = action.payload and action.payload.row or -1
 	local col = action.payload and action.payload.col or -1
-	local ok, new_board, new_ko, captures = rules.try_play(
+	local ok, new_board, new_ko, captures, illegal_reason = rules.try_play(
 		state.board,
 		row,
 		col,
@@ -293,7 +293,19 @@ local function compile_place_stone_events(state, action)
 		stone_id
 	)
 	if not ok then
-		return nil, "Illegal move"
+		if illegal_reason == "occupied" then
+			return nil, "Illegal move: intersection is occupied"
+		end
+		if illegal_reason == "ko" then
+			return nil, "Illegal move: ko rule forbids this point this turn"
+		end
+		if illegal_reason == "suicide" then
+			return nil, "Illegal move: move has no liberties (suicide)"
+		end
+		if illegal_reason == "out_of_bounds" then
+			return nil, "Illegal move: out of bounds"
+		end
+		return nil, "Illegal move: rule violation"
 	end
 	if type(stone_def.behavior) ~= "function" then
 		return nil, "Stone behavior is invalid"

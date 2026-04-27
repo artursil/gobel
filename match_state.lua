@@ -64,12 +64,18 @@ local function draw_stones_to_hand(pouch_state, hand_size)
 	return hand
 end
 
-local function build_player(side, starter, rng_next_int)
+local function build_player(side, starter, rng_next_int, basic_mode)
 	local starter_poses = starter.poses
-	local pouch_seed_ids = build_pouch_seed_ids(starter.pouch, STONE_POUCH_TARGET_SIZE, rng_next_int)
+	local pouch_source = starter.pouch
+	local deck_source = starter.deck
+	if basic_mode then
+		pouch_source = { "stone_basic" }
+		deck_source = {}
+	end
+	local pouch_seed_ids = build_pouch_seed_ids(pouch_source, STONE_POUCH_TARGET_SIZE, rng_next_int)
 	local starter_pouch = pouch.shuffle_init(pouch_seed_ids, rng_next_int)
 	local playable_stones = draw_stones_to_hand(starter_pouch, STONE_HAND_TARGET_SIZE)
-	local deck_seed_ids = build_deck_seed_ids(starter.deck, CARD_DECK_TARGET_SIZE, rng_next_int)
+	local deck_seed_ids = build_deck_seed_ids(deck_source, CARD_DECK_TARGET_SIZE, rng_next_int)
 	return {
 		side = side,
 		score = {
@@ -99,15 +105,24 @@ local function build_player(side, starter, rng_next_int)
 	}
 end
 
-function M.new_match(match_kind, seed)
+local function is_basic_mode(match_kind)
+	return match_kind == "pvp_basic" or match_kind == "pvc_basic"
+end
+
+local function is_bot_mode(match_kind)
+	return match_kind == "pvc" or match_kind == "pvc_basic"
+end
+
+function M.new_match(match_kind, territory_mode, seed)
 	local rng_seed = seed
 	if not rng_seed then
 		rng_seed = love.math.random(1, MODULUS - 1)
 	end
 	local rng_state = { seed = rng_seed }
 	local rng_next_int = make_side_rng(rng_state)
-	local black = build_player("black", content.starters.black, rng_next_int)
-	local white = build_player("white", content.starters.white, rng_next_int)
+	local basic_mode = is_basic_mode(match_kind)
+	local black = build_player("black", content.starters.black, rng_next_int, basic_mode)
+	local white = build_player("white", content.starters.white, rng_next_int, basic_mode)
 	return {
 		board = board.new(),
 		to_play = "black",
@@ -129,7 +144,9 @@ function M.new_match(match_kind, seed)
 		},
 		rng = rng_state,
 		match_kind = match_kind,
-		versus_bot = match_kind == "pvc",
+		basic_mode = basic_mode,
+		territory_mode = territory_mode or "regional",
+		versus_bot = is_bot_mode(match_kind),
 		ai_delay = 0,
 		animation_speed = 1,
 		status = "",

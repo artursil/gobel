@@ -149,26 +149,26 @@ end
 function M.try_play(b, row, col, player, ko_ban, stone_kind)
 	local n = config.BOARD_SIZE
 	if row < 1 or row > n or col < 1 or col > n then
-		return false, nil, nil, 0
+		return false, nil, nil, 0, "out_of_bounds"
 	end
 	if not board.is_empty(b[row][col]) then
-		return false, nil, nil, 0
+		return false, nil, nil, 0, "occupied"
 	end
 	if ko_ban and ko_ban[1] == row and ko_ban[2] == col then
-		return false, nil, nil, 0
+		return false, nil, nil, 0, "ko"
 	end
 	local trial = board.clone(b)
 	trial[row][col] = board.make_stone(player, stone_kind)
 	local captures, ko_coord = M.remove_opponent_captures(trial, row, col, player)
 	local my_group = M.collect_group(trial, row, col)
 	if M.liberty_count(trial, my_group) == 0 then
-		return false, nil, nil, 0
+		return false, nil, nil, 0, "suicide"
 	end
 	local new_ko = nil
 	if ko_coord then
 		new_ko = { ko_coord[1], ko_coord[2] }
 	end
-	return true, trial, new_ko, captures
+	return true, trial, new_ko, captures, nil
 end
 
 --- Lists every empty intersection where the next stone kind can be played legally.

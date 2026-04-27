@@ -2,6 +2,7 @@
 
 local ai = require("ai")
 local match_state = require("match_state")
+local messages = require("messages")
 local resolver = require("resolver")
 
 local M = {}
@@ -21,9 +22,10 @@ end
 
 --- Builds a fresh game for local two-player or Black vs random White.
 --- @param match_kind string "pvp" or "pvc"
+--- @param territory_mode string|nil
 --- @return table
-function M.new(match_kind)
-	local g = match_state.new_match(match_kind)
+function M.new(match_kind, territory_mode)
+	local g = match_state.new_match(match_kind, territory_mode)
 	local started = resolver.begin_turn(g, g.to_play)
 	if not started.ok then
 		g.status = started.error
@@ -33,6 +35,9 @@ function M.new(match_kind)
 	local latest = recent[#recent]
 	if latest then
 		g.status = latest
+	end
+	if g.basic_mode then
+		g.status = "Basic mode: stones only."
 	end
 	return g
 end
@@ -44,6 +49,9 @@ local function set_status_from_result(g, result, fallback)
 		return true
 	end
 	g.status = result.error
+	if result.error and (string.sub(result.error, 1, 12) == "Illegal move") then
+		messages.push(g.messages, result.error)
+	end
 	return false
 end
 

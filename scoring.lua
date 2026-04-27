@@ -222,7 +222,62 @@ local function enclosed_claim_map(b, wall_color)
 	return claim, claim_size
 end
 
-function M.territory_map(b)
+local function territory_map_distance_only(b)
+	local n = config.BOARD_SIZE
+	local stones = {}
+	for r = 1, n do
+		for c = 1, n do
+			local cell = b[r][c]
+			if not board.is_empty(cell) then
+				stones[#stones + 1] = {
+					row = r,
+					col = c,
+					color = cell.color,
+				}
+			end
+		end
+	end
+	local out = {}
+	for r = 1, n do
+		out[r] = {}
+		for c = 1, n do
+			local cell = b[r][c]
+			if not board.is_empty(cell) then
+				out[r][c] = cell.color
+			else
+				local min_dist = nil
+				local black_hits = 0
+				local white_hits = 0
+				for i = 1, #stones do
+					local s = stones[i]
+					local d = math.abs(r - s.row) + math.abs(c - s.col)
+					if not min_dist or d < min_dist then
+						min_dist = d
+						black_hits = 0
+						white_hits = 0
+					end
+					if d == min_dist then
+						if s.color == config.STONE_BLACK then
+							black_hits = black_hits + 1
+						elseif s.color == config.STONE_WHITE then
+							white_hits = white_hits + 1
+						end
+					end
+				end
+				if min_dist and black_hits > white_hits then
+					out[r][c] = config.STONE_BLACK
+				elseif min_dist and white_hits > black_hits then
+					out[r][c] = config.STONE_WHITE
+				else
+					out[r][c] = config.STONE_NONE
+				end
+			end
+		end
+	end
+	return out
+end
+
+local function territory_map_regional(b)
 	local n = config.BOARD_SIZE
 	local stones = {}
 	local nearest_tie = {}
@@ -356,6 +411,13 @@ function M.territory_map(b)
 	return out
 end
 
+function M.territory_map(b, territory_mode)
+	if territory_mode == "distance_only" then
+		return territory_map_distance_only(b)
+	end
+	return territory_map_regional(b)
+end
+
 function M.territory_points(territory, color)
 	local n = config.BOARD_SIZE
 	local count = 0
@@ -372,9 +434,10 @@ end
 --- Territory-backed points for compatibility with existing call sites.
 --- @param b table
 --- @param color integer
+--- @param territory_mode string|nil
 --- @return integer
-function M.liberty_points(b, color)
-	local territory = M.territory_map(b)
+function M.liberty_points(b, color, territory_mode)
+	local territory = M.territory_map(b, territory_mode)
 	return M.territory_points(territory, color)
 end
 

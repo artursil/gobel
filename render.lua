@@ -107,46 +107,67 @@ end
 
 local function draw_message(game, box)
 	local lg = love.graphics
+	local recent = game.messages and game.messages.recent or {}
+	local latest = recent[#recent]
 	local anim = M._score_anim.current
-	if not anim then
+	if anim then
+		local timeline = M._score_anim
+		local progress = 1
+		if timeline.duration > 0 then
+			progress = 1 - math.max(0, math.min(1, timeline.remaining / timeline.duration))
+		end
+		local eased = ease_out_cubic(progress)
+		local alpha = 1
+		if progress > 0.68 then
+			alpha = 1 - ((progress - 0.68) / 0.32)
+		end
+		alpha = math.max(0.05, math.min(1, alpha))
+		local scale = 0.88 + 0.18 * eased
+		local prefix = anim.value > 0 and "+" or ""
+		local label = anim.kind == "points" and "PTS" or "MULT"
+		local actor = anim.actor == "black" and "BLACK" or "WHITE"
+		local text = string.format("%s%d %s", prefix, anim.value, label)
+		local font_prev = lg.getFont()
+		if not score_anim_font then
+			score_anim_font = love.graphics.newFont(42)
+		end
+		local big_font = score_anim_font
+		lg.setFont(big_font)
+		if anim.kind == "points" then
+			lg.setColor(0.95, 0.86, 0.2, alpha)
+		else
+			lg.setColor(0.56, 0.85, 0.98, alpha)
+		end
+		local y = box.y + 8 + (1 - eased) * 8
+		lg.push()
+		lg.translate(box.x + box.w * 0.5, y + big_font:getHeight() * 0.5)
+		lg.scale(scale, scale)
+		lg.printf(text, -box.w * 0.5, -big_font:getHeight() * 0.5, box.w, "center")
+		lg.pop()
+		lg.setFont(font_prev)
+		lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], alpha * 0.9)
+		lg.printf(actor, box.x, box.y + box.h - 20, box.w, "center")
+	elseif latest and latest ~= "" then
+		local is_illegal = string.sub(latest, 1, 12) == "Illegal move"
+		if is_illegal then
+			lg.setColor(0.95, 0.42, 0.38, 0.98)
+		else
+			lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 0.95)
+		end
+		lg.printf(latest, box.x + 8, box.y + 18, box.w - 16, "center")
+		lg.setColor(1, 1, 1, 1)
+		return
+	else
 		return
 	end
-	local timeline = M._score_anim
-	local progress = 1
-	if timeline.duration > 0 then
-		progress = 1 - math.max(0, math.min(1, timeline.remaining / timeline.duration))
+	if latest and latest ~= "" then
+		local is_illegal = string.sub(latest, 1, 12) == "Illegal move"
+		if is_illegal then
+			lg.setColor(0.95, 0.42, 0.38, 0.98)
+			lg.printf(latest, box.x + 8, box.y + box.h - 40, box.w - 16, "center")
+		end
 	end
-	local eased = ease_out_cubic(progress)
-	local alpha = 1
-	if progress > 0.68 then
-		alpha = 1 - ((progress - 0.68) / 0.32)
-	end
-	alpha = math.max(0.05, math.min(1, alpha))
-	local scale = 0.88 + 0.18 * eased
-	local prefix = anim.value > 0 and "+" or ""
-	local label = anim.kind == "points" and "PTS" or "MULT"
-	local actor = anim.actor == "black" and "BLACK" or "WHITE"
-	local text = string.format("%s%d %s", prefix, anim.value, label)
-	local font_prev = lg.getFont()
-	if not score_anim_font then
-		score_anim_font = love.graphics.newFont(42)
-	end
-	local big_font = score_anim_font
-	lg.setFont(big_font)
-	if anim.kind == "points" then
-		lg.setColor(0.95, 0.86, 0.2, alpha)
-	else
-		lg.setColor(0.56, 0.85, 0.98, alpha)
-	end
-	local y = box.y + 8 + (1 - eased) * 8
-	lg.push()
-	lg.translate(box.x + box.w * 0.5, y + big_font:getHeight() * 0.5)
-	lg.scale(scale, scale)
-	lg.printf(text, -box.w * 0.5, -big_font:getHeight() * 0.5, box.w, "center")
-	lg.pop()
-	lg.setFont(font_prev)
-	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], alpha * 0.9)
-	lg.printf(actor, box.x, box.y + box.h - 20, box.w, "center")
+	lg.setColor(1, 1, 1, 1)
 end
 
 local function draw_side_columns(game, layout)

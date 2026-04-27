@@ -14,6 +14,13 @@ local hover_col
 local popup_state
 local stone_drag
 local card_ui
+local menu_step
+local selected_territory_mode
+
+local function reset_menu_state()
+	menu_step = "territory"
+	selected_territory_mode = "regional"
+end
 
 local function is_popup_open()
 	return popup_state.mode ~= "none"
@@ -176,6 +183,7 @@ function love.load()
 	layout = layout_mod.from_window(w, h)
 	screen = "menu"
 	match = nil
+	reset_menu_state()
 	hover_row, hover_col = nil, nil
 	reset_popup()
 	reset_stone_drag()
@@ -207,7 +215,7 @@ end
 function love.draw()
 	local w, h = love.graphics.getDimensions()
 	if screen == "menu" then
-		home.draw(w, h)
+		home.draw(w, h, menu_step, selected_territory_mode)
 		return
 	end
 	local hr, hc = hover_row, hover_col
@@ -226,9 +234,14 @@ function love.mousepressed(x, y, button)
 	end
 	local w, h = love.graphics.getDimensions()
 	if screen == "menu" then
-		local pick = home.hit_test(x, y, w, h)
-		if pick == "pvp" or pick == "pvc" then
-			match = game.new(pick)
+		local pick = home.hit_test(x, y, w, h, menu_step)
+		if menu_step == "territory" then
+			if pick == "regional" or pick == "distance_only" then
+				selected_territory_mode = pick
+				menu_step = "match"
+			end
+		elseif pick == "pvp" or pick == "pvc" or pick == "pvp_basic" or pick == "pvc_basic" then
+			match = game.new(pick, selected_territory_mode)
 			screen = "play"
 			layout = layout_mod.from_window(w, h)
 			reset_popup()
@@ -372,10 +385,15 @@ function love.keypressed(key)
 	end
 	if key == "escape" then
 		if screen == "menu" then
-			love.event.quit()
+			if menu_step == "match" then
+				menu_step = "territory"
+			else
+				love.event.quit()
+			end
 		else
 			screen = "menu"
 			match = nil
+			reset_menu_state()
 			hover_row, hover_col = nil, nil
 			reset_popup()
 			reset_stone_drag()
@@ -389,6 +407,7 @@ function love.keypressed(key)
 	if key == "m" then
 		screen = "menu"
 		match = nil
+		reset_menu_state()
 		hover_row, hover_col = nil, nil
 		reset_popup()
 		reset_stone_drag()
@@ -397,7 +416,7 @@ function love.keypressed(key)
 	end
 	if key == "r" and match then
 		local kind = match.match_kind
-		match = game.new(kind)
+		match = game.new(kind, match.territory_mode)
 		layout = layout_mod.from_window(w, h)
 		reset_popup()
 		reset_stone_drag()
