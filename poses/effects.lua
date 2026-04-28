@@ -1,7 +1,12 @@
+--- Pose effect builders: point/mult deltas registered for the scoring resolver.
+--- @module poses.effects
+
 local definitions = require("poses.definitions")
 
 local M = {}
 
+--- @param side string
+--- @return string
 local function side_to_owner(side)
 	if side == "white" or side == "B" then
 		return "B"
@@ -9,6 +14,11 @@ local function side_to_owner(side)
 	return "A"
 end
 
+--- @param pose table
+--- @param owner string
+--- @param value number
+--- @param priority integer|nil
+--- @return table
 function M.add_points(pose, owner, value, priority)
 	return {
 		phase = "points",
@@ -20,6 +30,11 @@ function M.add_points(pose, owner, value, priority)
 	}
 end
 
+--- @param pose table
+--- @param owner string
+--- @param value number
+--- @param priority integer|nil
+--- @return table
 function M.add_mult(pose, owner, value, priority)
 	return {
 		phase = "mult",
@@ -31,6 +46,10 @@ function M.add_mult(pose, owner, value, priority)
 	}
 end
 
+--- Returns zero or one effect table from `poses.definitions` for this pose type.
+--- @param pose table
+--- @param _state table
+--- @return table
 function M.resolve(pose, _state)
 	local pose_def = definitions[pose.type]
 	if not pose_def or not pose_def.effect_name then

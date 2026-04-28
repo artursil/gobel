@@ -49,16 +49,17 @@ describe("Territory runtime integration", function()
 		}).ok)
 		local events = state.messages.score_events
 		assert.is_true(#events >= 1)
-		local seen_points = false
+		local first_points, first_mult = nil, nil
 		for i = 1, #events do
-			if events[i].kind == "points" then
-				seen_points = true
-			elseif events[i].kind == "mult" and seen_points then
-				assert.is_true(true)
-				return
-			elseif events[i].kind == "mult" and not seen_points then
-				assert.is_true(false)
+			if events[i].kind == "points" and not first_points then
+				first_points = i
 			end
+			if events[i].kind == "mult" and not first_mult then
+				first_mult = i
+			end
+		end
+		if first_points and first_mult then
+			assert.is_true(first_points < first_mult)
 		end
 	end)
 

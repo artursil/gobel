@@ -1,3 +1,6 @@
+--- One full scoring round: default fields, opponent sync, poses, pre/main phases, territory, player totals, timed tick.
+--- @module resolver.resolve_round
+
 local config = require("config")
 local match_state = require("match_state")
 local phases = require("resolver.phases")
@@ -7,6 +10,8 @@ local scoring = require("scoring")
 
 local M = {}
 
+--- @param state table
+--- @return nil
 local function ensure_state_fields(state)
 	state.last_opponent_move = state.last_opponent_move or nil
 	state.last_opponent_modifiers = state.last_opponent_modifiers or {}
@@ -22,11 +27,15 @@ local function ensure_state_fields(state)
 	}
 end
 
+--- @param state table
+--- @return nil
 local function sync_opponent_state(state)
 	state.last_opponent_move = state.last_opponent_move or nil
 	state.last_opponent_modifiers = state.last_opponent_modifiers or {}
 end
 
+--- @param side string
+--- @return string
 local function side_to_owner(side)
 	if side == "white" then
 		return "B"
@@ -34,6 +43,9 @@ local function side_to_owner(side)
 	return "A"
 end
 
+--- Flattens both players’ fixed+swappable poses into `state.poses` with A/B owner.
+--- @param state table
+--- @return nil
 local function rebuild_ordered_poses(state)
 	local ordered = {}
 	for _, side in ipairs({ "black", "white" }) do
@@ -48,6 +60,9 @@ local function rebuild_ordered_poses(state)
 	state.poses = ordered
 end
 
+--- Resets point/mult baselines from player bonuses and board `overall_mult`.
+--- @param state table
+--- @return nil
 local function reset_base_scores(state)
 	local black = match_state.player_for_color(state, "black")
 	local white = match_state.player_for_color(state, "white")
@@ -57,19 +72,29 @@ local function reset_base_scores(state)
 	state.scores.mult.B = scoring.overall_mult(state.board, config.STONE_WHITE) + (white.score.mult_bonus or 0)
 end
 
+--- Pushes `state.scores` into `match_state` player `score` tables and `total`.
+--- @param state table
+--- @return nil
 local function sync_player_scores(state)
 	local black = match_state.player_for_color(state, "black")
 	local white = match_state.player_for_color(state, "white")
 	black.score.territory = state.scores.territory.A
 	black.score.points = state.scores.points.A
+	black.score.points_bonus = state.scores.points.A
 	black.score.mult = state.scores.mult.A
+	black.score.mult_bonus = state.scores.mult.A - scoring.overall_mult(state.board, config.STONE_BLACK)
 	black.score.total = (black.score.territory + black.score.points) * black.score.mult
 	white.score.territory = state.scores.territory.B
 	white.score.points = state.scores.points.B
+	white.score.points_bonus = state.scores.points.B
 	white.score.mult = state.scores.mult.B
+	white.score.mult_bonus = state.scores.mult.B - scoring.overall_mult(state.board, config.STONE_WHITE)
 	white.score.total = (white.score.territory + white.score.points) * white.score.mult
 end
 
+--- Decrements `active_effects` remaining turns; drops expired entries.
+--- @param state table
+--- @return nil
 local function tick_timed_effects(state)
 	local kept = {}
 	for _, active in ipairs(state.active_effects) do
@@ -81,6 +106,9 @@ local function tick_timed_effects(state)
 	state.active_effects = kept
 end
 
+--- Main entry: runs full PRE/MAIN pipeline including territory begin/finish and clears `round_stone_effects`.
+--- @param state table
+--- @return nil
 function M.resolve(state)
 	ensure_state_fields(state)
 	sync_opponent_state(state)
@@ -91,9 +119,12 @@ function M.resolve(state)
 	end
 	for _, phase in ipairs(phases.MAIN) do
 		if phase == "territory" then
-			territory.calculate_base(state)
+			territory.begin_assignment(state)
 		end
 		effect_manager.apply_phase(state, phase)
+		if phase == "territory" then
+			territory.finish_assignment(state)
+		end
 	end
 	sync_player_scores(state)
 	state.round_stone_effects = {}

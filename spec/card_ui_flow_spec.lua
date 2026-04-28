@@ -12,12 +12,7 @@ local function setup_play_state()
 	local width, height = love.graphics.getDimensions()
 	local layout = layout_mod.from_window(width, height)
 	local match = game.new("pvp")
-	helper.set_upvalue(love.mousepressed, "screen", "play")
-	helper.set_upvalue(love.mousepressed, "layout", layout)
-	helper.set_upvalue(love.mousepressed, "match", match)
-	helper.set_upvalue(love.mousepressed, "popup_state", { mode = "none", stones = {} })
-	helper.set_upvalue(love.mousepressed, "stone_drag", { active = false })
-	helper.set_upvalue(love.mousepressed, "card_ui", {
+	local card_ui = {
 		selected_index = nil,
 		drag_active = false,
 		drag_index = nil,
@@ -26,12 +21,20 @@ local function setup_play_state()
 		current_x = 0,
 		current_y = 0,
 		moved = false,
-	})
+	}
+	helper.set_upvalue(love.mousepressed, "screen", "play")
+	helper.set_upvalue(love.mousepressed, "layout", layout)
+	helper.set_upvalue(love.mousepressed, "match", match)
+	helper.set_upvalue(love.mousepressed, "popup_state", { mode = "none", stones = {} })
+	helper.set_upvalue(love.mousepressed, "stone_drag", { active = false })
+	helper.set_upvalue(helper.get_upvalue(love.mousepressed, "handle_card_press"), "card_ui", card_ui)
+	helper.set_upvalue(love.mousemoved, "card_ui", card_ui)
 	helper.set_upvalue(love.mousereleased, "screen", "play")
 	helper.set_upvalue(love.mousereleased, "layout", layout)
 	helper.set_upvalue(love.mousereleased, "match", match)
 	helper.set_upvalue(love.mousereleased, "stone_drag", { active = false })
-	helper.set_upvalue(love.mousereleased, "card_ui", helper.get_upvalue(love.mousepressed, "card_ui"))
+	helper.set_upvalue(love.mousereleased, "card_ui", card_ui)
+	helper.set_upvalue(love.mousepressed, "handle_card_press", helper.get_upvalue(love.mousepressed, "handle_card_press"))
 	return layout, match
 end
 
@@ -46,7 +49,7 @@ describe("Card UI flow", function()
 		local slot = slots[#slots]
 		love.mousepressed(slot.x + slot.w * 0.5, slot.y + slot.h * 0.5, 1)
 
-		local card_ui = helper.get_upvalue(love.mousepressed, "card_ui")
+		local card_ui = helper.get_upvalue(helper.get_upvalue(love.mousepressed, "handle_card_press"), "card_ui")
 		assert.are.equal(#slots, card_ui.selected_index)
 
 		local use = layout_mod.card_use_button_rect(layout)

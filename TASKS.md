@@ -154,3 +154,39 @@ Deliver a minimal playable single game with:
 8. T-052
 9. T-053
 10. T-040 (deferred)
+
+
+. . . . . . . . .
+. . . . . . . . .
+. . B B . . . . .
+. . B A B B . . .
+. . . B . B . . .
+. . . B B B . . .
+. . . . . . . . .
+. . . . . . . . .
+. . . . . . . . .
+
+
+
+[INTEGRATION_DEBUG] edge_connected_region region ownership
+. . . A . . . B .
+A A A A . . B . .
+. . . . . B . . .
+B B B B B . . . .
+. . . . . . . . .
+. . . . . . . . .
+. . . . . . A . .
+. . . . . . . . .
+. . . . . . . . .
+
+
+
+. . . A . . . B .
+A A A A . . B . .
+. . . . . B . . A
+B B B B B . . A .
+. . . . . . A . .
+. . . . . A . . .
+. . . . . A . . .
+. . . . . A . . .
+. . . . . A . . .

@@ -12,6 +12,8 @@ local rules = require("rules")
 
 local M = {}
 
+--- @param color string
+--- @return integer
 local function color_to_stone(color)
 	if color == "black" then
 		return config.STONE_BLACK
@@ -19,6 +21,8 @@ local function color_to_stone(color)
 	return config.STONE_WHITE
 end
 
+--- @param color string
+--- @return string
 local function opponent_color(color)
 	if color == "black" then
 		return "white"
@@ -26,6 +30,8 @@ local function opponent_color(color)
 	return "black"
 end
 
+--- @param side string
+--- @return string
 local function owner_for_side(side)
 	if side == "white" then
 		return "B"
@@ -33,6 +39,8 @@ local function owner_for_side(side)
 	return "A"
 end
 
+--- @param state table
+--- @return nil
 local function recalc_all_scores(state)
 	resolve_round.resolve(state)
 end
@@ -43,6 +51,62 @@ local function push_status_from_messages(state)
 	if latest then
 		state.status = latest
 	end
+end
+
+local function card_play_message(card_def)
+	if not card_def or not card_def.effects then
+		return "Card played"
+	end
+	local label = card_def.display_name or card_def.name or "Card"
+	local parts = {}
+	for i = 1, #card_def.effects do
+		local e = card_def.effects[i]
+		if e.effect_name == "add_points" then
+			parts[#parts + 1] = string.format("+%d points", e.value)
+		elseif e.effect_name == "add_mult" then
+			parts[#parts + 1] = string.format("+%d mult", e.value)
+		end
+	end
+	return label .. ": " .. table.concat(parts, ", ")
+end
+
+local function stone_placement_message(stone_def, resolved_effects)
+	if not stone_def or not resolved_effects or #resolved_effects == 0 then
+		return (stone_def and stone_def.name or "Stone") .. " placed"
+	end
+	local name = stone_def.name
+	local r = resolved_effects[1]
+	if r.type == "ADD_POINTS" then
+		return string.format("%s placement: +%d points", name, r.value)
+	end
+	if r.type == "ADD_MULT" then
+		return string.format("%s placement: +%d mult", name, r.value)
+	end
+	return name .. " placed"
+end
+
+local function resolved_stone_effects_from_def(stone_def, state, actor)
+	if type(stone_def.behavior) == "function" then
+		return stone_def.behavior(state, actor)
+	end
+	local out = {}
+	for i = 1, #(stone_def.placement_effects or {}) do
+		out[i] = Effects.stones.resolve(stone_def.placement_effects[i])
+	end
+	return out
+end
+
+local function round_effects_from_resolved(resolved_effects)
+	local round = {}
+	for i = 1, #resolved_effects do
+		local r = resolved_effects[i]
+		if r.type == "ADD_POINTS" then
+			round[i] = { effect_name = "add_points", value = r.value, priority = r.priority or 10 }
+		elseif r.type == "ADD_MULT" then
+			round[i] = { effect_name = "add_mult", value = r.value, priority = r.priority or 10 }
+		end
+	end
+	return round
 end
 
 local function contains_stone_id(ids, stone_id)
@@ -81,6 +145,9 @@ local function refresh_selected_stone(actor_state)
 	actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
 end
 
+--- @param state table
+--- @param event_queue table
+--- @return nil
 local function run_event_queue(state, event_queue)
 	for i = 1, #event_queue do
 		local event = event_queue[i]
@@ -103,6 +170,11 @@ local function run_event_queue(state, event_queue)
 				effects = event.stone_effects or {},
 			}
 			recalc_all_scores(state)
+			local def = content.get_stone(event.stone_id)
+			if def and event.resolved_stone_effects then
+				messages.push(state.messages, stone_placement_message(def, event.resolved_stone_effects))
+				push_status_from_messages(state)
+			end
 		elseif event.kind == "PASS" then
 			state.consecutive_passes = state.consecutive_passes + 1
 			recalc_all_scores(state)
@@ -133,8 +205,12 @@ local function push_score_delta_events(state, actor, points_before, mult_before)
 	end
 end
 
+--- @param state table
+--- @param actor string
+--- @return nil
 local function on_turn_start(state, actor)
 	local actor_state = match_state.player_for_color(state, actor)
+	energy.refresh(actor_state.resources)
 	state.modifiers = {}
 	if not actor_state.stones.selected_stone then
 		actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
@@ -268,19 +344,17 @@ local function compile_place_stone_events(state, action)
 		end
 		return nil, "Illegal move: rule violation"
 	end
-	local placement_effects = stone_def.placement_effects or {}
-	if type(placement_effects) ~= "table" or #placement_effects == 0 then
-		return nil, "Stone definition has no placement effects"
+	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor)
+	if type(resolved_effects) ~= "table" or #resolved_effects == 0 then
+		return nil, "Stone behavior produced invalid effect"
 	end
-	for i = 1, #placement_effects do
-		local resolved = Effects.stones.resolve(placement_effects[i])
-		if not resolved then
-			return nil, "Stone effect name is invalid"
-		end
-		if type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then
-			return nil, "Stone effect produced invalid payload"
+	for i = 1, #resolved_effects do
+		local resolved = resolved_effects[i]
+		if not resolved or type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then
+			return nil, "Stone behavior produced invalid effect"
 		end
 	end
+	local placement_round = round_effects_from_resolved(resolved_effects)
 	local events = {
 		{
 			kind = "BOARD_APPLY",
@@ -291,7 +365,8 @@ local function compile_place_stone_events(state, action)
 			stone_id = stone_id,
 			row = row,
 			col = col,
-			stone_effects = placement_effects,
+			stone_effects = placement_round,
+			resolved_stone_effects = resolved_effects,
 		},
 	}
 	return events, nil
@@ -344,6 +419,11 @@ local function apply_non_effect_event(state, event)
 			actor = event.actor,
 		}
 		recalc_all_scores(state)
+		local cdef = content.get_card(event.card_id)
+		if cdef then
+			messages.push(state.messages, card_play_message(cdef))
+			push_status_from_messages(state)
+		end
 		return true, nil
 	end
 	if event.kind == "SELECT_STONE_COMMIT" then

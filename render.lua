@@ -107,6 +107,29 @@ local function draw_poses(box, pose_ids)
 	end
 end
 
+--- @param rect table
+--- @return nil
+local function draw_popup_close_button(rect)
+	local lg = love.graphics
+	lg.setColor(0.4, 0.2, 0.2, 0.85)
+	lg.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 4, 4)
+	lg.setColor(0.95, 0.95, 0.95, 1)
+	lg.printf("Close", rect.x, rect.y + 6, rect.w, "center")
+end
+
+--- @param layout table
+--- @return table
+local function begin_modal_popup(layout)
+	local lg = love.graphics
+	local box = layout.popup
+	lg.setColor(0, 0, 0, 0.45)
+	lg.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+	draw_panel(box)
+	local close = layout_mod.popup_close_rect(layout)
+	draw_popup_close_button(close)
+	return box
+end
+
 local function draw_message(game, box)
 	local lg = love.graphics
 	local recent = game.messages and game.messages.recent or {}
@@ -376,118 +399,142 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover)
 	end
 end
 
+--- @param layout table
+--- @param popup_state table
+--- @return nil
+local function draw_selector_details_popup(layout, popup_state)
+	local stone = content.get_stone(popup_state.stone_id)
+	if not stone then
+		return
+	end
+	local anchor = popup_state.anchor_rect
+	if not anchor then
+		return
+	end
+	local lg = love.graphics
+	local tooltip = {
+		x = anchor.x + anchor.w + 8,
+		y = anchor.y - 6,
+		w = 240,
+		h = 86,
+	}
+	draw_panel(tooltip)
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+	lg.printf(stone.name, tooltip.x + 10, tooltip.y + 10, tooltip.w - 20, "left")
+	lg.printf(stone.description, tooltip.x + 10, tooltip.y + 34, tooltip.w - 20, "left")
+end
+
+--- @param layout table
+--- @param popup_state table
+--- @return nil
+local function draw_pouch_browser_popup(layout, popup_state)
+	local lg = love.graphics
+	local box = begin_modal_popup(layout)
+	lg.printf("Pouch Browser", box.x + 20, box.y + 18, box.w - 140, "left")
+	local rects = layout_mod.pouch_popup_grid_rects(layout, #popup_state.stones)
+	for i = 1, #rects do
+		draw_stone_chip(popup_state.stones[i], rects[i], stone_color_for_side("black"), popup_state.focus_index == i)
+	end
+	if not popup_state.focus_index then
+		return
+	end
+	local stone = content.get_stone(popup_state.stones[popup_state.focus_index])
+	if not stone then
+		return
+	end
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+	lg.printf(stone.name, box.x + 20, box.y + box.h - 86, box.w - 40, "left")
+	lg.printf(stone.description, box.x + 20, box.y + box.h - 58, box.w - 40, "left")
+end
+
+--- @param card_id string
+--- @param rect table
+--- @param highlighted boolean
+--- @return nil
+local function draw_popup_card_tile(card_id, rect, highlighted)
+	local lg = love.graphics
+	local card = content.get_card(card_id)
+	if not card then
+		return
+	end
+	if highlighted then
+		lg.setColor(0.26, 0.54, 0.78, 0.86)
+	else
+		lg.setColor(0.32, 0.47, 0.66, 0.78)
+	end
+	lg.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 6, 6)
+	lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
+	lg.rectangle("line", rect.x, rect.y, rect.w, rect.h, 6, 6)
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+	lg.printf(tostring(card.energy_cost), rect.x + 6, rect.y + 6, 16, "center")
+	lg.printf(card.name or card.display_name, rect.x + 26, rect.y + 10, rect.w - 32, "left")
+end
+
+--- @param box table
+--- @param cards table
+--- @param focus_group string|nil
+--- @param focus_index integer|nil
+--- @return nil
+local function draw_played_cards_grid(box, cards, focus_group, focus_index)
+	local cols = 5
+	local gap = 8
+	local pad = 16
+	local chip = math.floor((box.w - pad * 2 - gap * (cols - 1)) / cols)
+	chip = math.max(56, math.min(78, chip))
+	local played_offset_y = box.y + 52 + 160
+	for i = 1, #cards do
+		local col = (i - 1) % cols
+		local row = math.floor((i - 1) / cols)
+		local rect = {
+			x = box.x + pad + col * (chip + gap),
+			y = played_offset_y + row * (chip + gap),
+			w = chip,
+			h = chip,
+		}
+		draw_popup_card_tile(cards[i], rect, focus_group == "played" and focus_index == i)
+	end
+end
+
+--- @param layout table
+--- @param popup_state table
+--- @return nil
+local function draw_deck_browser_popup(layout, popup_state)
+	local lg = love.graphics
+	local box = begin_modal_popup(layout)
+	lg.printf("Deck Browser", box.x + 20, box.y + 18, box.w - 140, "left")
+	local deck_cards = popup_state.cards or {}
+	local played_cards = popup_state.played_cards or {}
+	local y_top = box.y + 52
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+	lg.printf("Deck", box.x + 20, y_top - 20, box.w - 40, "left")
+	local deck_rects = layout_mod.pouch_popup_grid_rects(layout, #deck_cards)
+	for i = 1, #deck_rects do
+		draw_popup_card_tile(deck_cards[i], deck_rects[i], popup_state.focus_group == "deck" and popup_state.focus_index == i)
+	end
+	lg.printf("Played", box.x + 20, y_top + 140, box.w - 40, "left")
+	draw_played_cards_grid(box, played_cards, popup_state.focus_group, popup_state.focus_index)
+	if not popup_state.focus_group or not popup_state.focus_index then
+		return
+	end
+	local source = popup_state.focus_group == "played" and played_cards or deck_cards
+	local card = content.get_card(source[popup_state.focus_index])
+	if not card then
+		return
+	end
+	lg.printf(card.name or card.display_name, box.x + 20, box.y + box.h - 86, box.w - 40, "left")
+	lg.printf(card.description or "", box.x + 20, box.y + box.h - 58, box.w - 40, "left")
+end
+
 local function draw_popup(layout, popup_state)
 	if not popup_state or popup_state.mode == "none" then
 		return
 	end
-	local lg = love.graphics
 	if popup_state.mode == "selector-details" and popup_state.stone_id then
-		local stone = content.get_stone(popup_state.stone_id)
-		if stone then
-			local anchor = popup_state.anchor_rect
-			if anchor then
-				local tooltip = {
-					x = anchor.x + anchor.w + 8,
-					y = anchor.y - 6,
-					w = 240,
-					h = 86,
-				}
-				draw_panel(tooltip)
-				lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
-				lg.printf(stone.name, tooltip.x + 10, tooltip.y + 10, tooltip.w - 20, "left")
-				lg.printf(stone.description, tooltip.x + 10, tooltip.y + 34, tooltip.w - 20, "left")
-			end
-		end
+		draw_selector_details_popup(layout, popup_state)
 	elseif popup_state.mode == "pouch-browser" then
-		local box = layout.popup
-		lg.setColor(0, 0, 0, 0.45)
-		lg.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-		draw_panel(box)
-		local close = layout_mod.popup_close_rect(layout)
-		lg.setColor(0.4, 0.2, 0.2, 0.85)
-		lg.rectangle("fill", close.x, close.y, close.w, close.h, 4, 4)
-		lg.setColor(0.95, 0.95, 0.95, 1)
-		lg.printf("Close", close.x, close.y + 6, close.w, "center")
-		lg.printf("Pouch Browser", box.x + 20, box.y + 18, box.w - 140, "left")
-		local rects = layout_mod.pouch_popup_grid_rects(layout, #popup_state.stones)
-		for i = 1, #rects do
-			local rect = rects[i]
-			local stone_id = popup_state.stones[i]
-			draw_stone_chip(stone_id, rect, stone_color_for_side("black"), popup_state.focus_index == i)
-		end
-		if popup_state.focus_index then
-			local stone = content.get_stone(popup_state.stones[popup_state.focus_index])
-			if stone then
-				lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
-				lg.printf(stone.name, box.x + 20, box.y + box.h - 86, box.w - 40, "left")
-				lg.printf(stone.description, box.x + 20, box.y + box.h - 58, box.w - 40, "left")
-			end
-		end
+		draw_pouch_browser_popup(layout, popup_state)
 	elseif popup_state.mode == "deck-browser" then
-		local box = layout.popup
-		lg.setColor(0, 0, 0, 0.45)
-		lg.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-		draw_panel(box)
-		local close = layout_mod.popup_close_rect(layout)
-		lg.setColor(0.4, 0.2, 0.2, 0.85)
-		lg.rectangle("fill", close.x, close.y, close.w, close.h, 4, 4)
-		lg.setColor(0.95, 0.95, 0.95, 1)
-		lg.printf("Close", close.x, close.y + 6, close.w, "center")
-		lg.printf("Deck Browser", box.x + 20, box.y + 18, box.w - 140, "left")
-		local deck_cards = popup_state.cards or {}
-		local played_cards = popup_state.played_cards or {}
-		local function draw_card_tile(card_id, rect, highlighted)
-			local card = content.get_card(card_id)
-			if not card then
-				return
-			end
-			if highlighted then
-				lg.setColor(0.26, 0.54, 0.78, 0.86)
-			else
-				lg.setColor(0.32, 0.47, 0.66, 0.78)
-			end
-			lg.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 6, 6)
-			lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
-			lg.rectangle("line", rect.x, rect.y, rect.w, rect.h, 6, 6)
-			lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
-			lg.printf(tostring(card.energy_cost), rect.x + 6, rect.y + 6, 16, "center")
-			lg.printf(card.name or card.display_name, rect.x + 26, rect.y + 10, rect.w - 32, "left")
-		end
-		local y_top = box.y + 52
-		lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
-		lg.printf("Deck", box.x + 20, y_top - 20, box.w - 40, "left")
-		local deck_rects = layout_mod.pouch_popup_grid_rects(layout, #deck_cards)
-		for i = 1, #deck_rects do
-			local rect = deck_rects[i]
-			draw_card_tile(deck_cards[i], rect, popup_state.focus_group == "deck" and popup_state.focus_index == i)
-		end
-		local played_offset_y = y_top + 160
-		lg.printf("Played", box.x + 20, played_offset_y - 20, box.w - 40, "left")
-		local cols = 5
-		local gap = 8
-		local pad = 16
-		local chip = math.floor((box.w - pad * 2 - gap * (cols - 1)) / cols)
-		chip = math.max(56, math.min(78, chip))
-		for i = 1, #played_cards do
-			local col = (i - 1) % cols
-			local row = math.floor((i - 1) / cols)
-			local rect = {
-				x = box.x + pad + col * (chip + gap),
-				y = played_offset_y + row * (chip + gap),
-				w = chip,
-				h = chip,
-			}
-			draw_card_tile(played_cards[i], rect, popup_state.focus_group == "played" and popup_state.focus_index == i)
-		end
-		if popup_state.focus_group and popup_state.focus_index then
-			local source = popup_state.focus_group == "played" and played_cards or deck_cards
-			local card = content.get_card(source[popup_state.focus_index])
-			if card then
-				lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
-				lg.printf(card.name or card.display_name, box.x + 20, box.y + box.h - 86, box.w - 40, "left")
-				lg.printf(card.description or "", box.x + 20, box.y + box.h - 58, box.w - 40, "left")
-			end
-		end
+		draw_deck_browser_popup(layout, popup_state)
 	end
 end
 
