@@ -20,8 +20,8 @@ function Effects.stones.resolve(effect)
 	return stone_effects.resolve(effect)
 end
 
-function Effects.stones.resolve_board_stone(stone_cell, state)
-	return stone_effects.resolve_board_stone(stone_cell, state)
+function Effects.stones.resolve_board_stone(stone_cell, row, col, state)
+	return stone_effects.resolve_board_stone(stone_cell, row, col, state)
 end
 
 return Effects

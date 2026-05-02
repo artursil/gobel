@@ -150,6 +150,17 @@ function M.new_match(match_kind, territory_mode, seed)
 		last_opponent_modifiers = {},
 		active_effects = {},
 		round_stone_effects = {},
+		territory_value = (function()
+			local n = config.BOARD_SIZE
+			local tv = {}
+			for r = 1, n do
+				tv[r] = {}
+				for c = 1, n do
+					tv[r][c] = 1
+				end
+			end
+			return tv
+		end)(),
 		scores = {
 			territory = { A = 0, B = 0 },
 			points = { A = 0, B = 0 },

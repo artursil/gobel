@@ -19,6 +19,32 @@ local function ensure_state_fields(state)
 	state.round_stone_effects = state.round_stone_effects or {}
 	state.poses = state.poses or {}
 	state.modifiers = state.modifiers or {}
+	do
+		local n = config.BOARD_SIZE
+		state.territory_value = {}
+		for r = 1, n do
+			state.territory_value[r] = {}
+			for c = 1, n do
+				state.territory_value[r][c] = 1
+			end
+		end
+	end
+	state.distance_modifiers = state.distance_modifiers or {
+		default_bonus = 0,
+		by_stone = {},
+		get_bonus = function(self, stone_key, tile_r, tile_c)
+			local by_tile = self.by_stone[stone_key]
+			if not by_tile then
+				return self.default_bonus
+			end
+			local tile_key = tile_r * 100 + tile_c
+			local v = by_tile[tile_key]
+			if v == nil then
+				return self.default_bonus
+			end
+			return v
+		end,
+	}
 	state.last_played_stone = state.last_played_stone or nil
 	state.scores = state.scores or {
 		territory = { A = 0, B = 0 },

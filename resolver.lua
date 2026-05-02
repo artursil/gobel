@@ -90,8 +90,13 @@ local function resolved_stone_effects_from_def(stone_def, state, actor)
 		return stone_def.behavior(state, actor)
 	end
 	local out = {}
-	for i = 1, #(stone_def.placement_effects or {}) do
-		out[i] = Effects.stones.resolve(stone_def.placement_effects[i])
+	if stone_def.effects then
+		for i = 1, #stone_def.effects do
+			local effect = stone_def.effects[i]
+			if effect.phase == "points" or effect.phase == "mult" then
+				out[i] = Effects.stones.resolve(effect)
+			end
+		end
 	end
 	return out
 end
@@ -101,9 +106,9 @@ local function round_effects_from_resolved(resolved_effects)
 	for i = 1, #resolved_effects do
 		local r = resolved_effects[i]
 		if r.type == "ADD_POINTS" then
-			round[i] = { effect_name = "add_points", value = r.value, priority = r.priority or 10 }
+			round[i] = { effect_name = "add_points", phase = r.phase or "points", value = r.value, priority = r.priority or 10 }
 		elseif r.type == "ADD_MULT" then
-			round[i] = { effect_name = "add_mult", value = r.value, priority = r.priority or 10 }
+			round[i] = { effect_name = "add_mult", phase = r.phase or "mult", value = r.value, priority = r.priority or 10 }
 		end
 	end
 	return round

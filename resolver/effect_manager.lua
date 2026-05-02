@@ -9,6 +9,9 @@ local M = {}
 --- @param payload table
 --- @return string  `"points"` or `"mult"`
 local function phase_from_payload(payload)
+	if payload.phase then
+		return payload.phase
+	end
 	if payload.type == "ADD_POINTS" then
 		return "points"
 	end
@@ -88,7 +91,7 @@ local function append_board_stone_effects(state, phase, out)
 		for c = 1, n do
 			local cell = state.board[r][c]
 			if not board.is_empty(cell) then
-				local generated = effects_registry.stones.resolve_board_stone(cell, state)
+				local generated = effects_registry.stones.resolve_board_stone(cell, r, c, state)
 				for _, e in ipairs(generated) do
 					if e.phase == phase then
 						table.insert(out, e)

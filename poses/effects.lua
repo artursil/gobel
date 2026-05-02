@@ -19,9 +19,9 @@ end
 --- @param value number
 --- @param priority integer|nil
 --- @return table
-function M.add_points(pose, owner, value, priority)
+function M.add_points(pose, owner, value, priority, phase)
 	return {
-		phase = "points",
+		phase = phase or "points",
 		priority = priority or 20,
 		apply = function(state)
 			print("[Effect Triggered]", pose.type, "points")
@@ -35,9 +35,9 @@ end
 --- @param value number
 --- @param priority integer|nil
 --- @return table
-function M.add_mult(pose, owner, value, priority)
+function M.add_mult(pose, owner, value, priority, phase)
 	return {
-		phase = "mult",
+		phase = phase or "mult",
 		priority = priority or 20,
 		apply = function(state)
 			print("[Effect Triggered]", pose.type, "mult")
@@ -52,20 +52,22 @@ end
 --- @return table
 function M.resolve(pose, _state)
 	local pose_def = definitions[pose.type]
-	if not pose_def or not pose_def.effect_name then
+	if not pose_def or not pose_def.effects then
 		return {}
 	end
 	local owner = pose.owner
 	if owner ~= "A" and owner ~= "B" then
 		owner = side_to_owner(owner)
 	end
-	local effect_builder = M[pose_def.effect_name]
-	if not effect_builder then
-		return {}
+	local out = {}
+	for i = 1, #pose_def.effects do
+		local e = pose_def.effects[i]
+		local effect_builder = M[e.effect_name]
+		if effect_builder then
+			out[#out + 1] = effect_builder(pose, owner, e.value, e.priority, e.phase)
+		end
 	end
-	return {
-		effect_builder(pose, owner, pose_def.effect_value, pose_def.effect_priority),
-	}
+	return out
 end
 
 return M

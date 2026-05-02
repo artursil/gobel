@@ -40,8 +40,8 @@ end
 --- @param value number
 --- @param priority integer|nil
 --- @return table
-function M.add_points(card, owner, value, priority)
-	return build_phase_effect("points", card, owner, value, priority)
+function M.add_points(card, owner, value, priority, phase)
+	return build_phase_effect(phase or "points", card, owner, value, priority)
 end
 
 --- @param card table
@@ -49,8 +49,8 @@ end
 --- @param value number
 --- @param priority integer|nil
 --- @return table
-function M.add_mult(card, owner, value, priority)
-	return build_phase_effect("mult", card, owner, value, priority)
+function M.add_mult(card, owner, value, priority, phase)
+	return build_phase_effect(phase or "mult", card, owner, value, priority)
 end
 
 --- @param card table
@@ -67,7 +67,14 @@ function M.resolve(card, state)
 		local effect = card_def.effects[i]
 		local effect_builder = M[effect.effect_name]
 		if effect_builder then
-			out[#out + 1] = effect_builder(card, owner, effect.value, effect.priority)
+			local phase = effect.phase or nil
+			if phase == "points" then
+				out[#out + 1] = effect_builder(card, owner, effect.value, effect.priority, phase)
+			elseif phase == "mult" then
+				out[#out + 1] = effect_builder(card, owner, effect.value, effect.priority, phase)
+			else
+				out[#out + 1] = effect_builder(card, owner, effect.value, effect.priority)
+			end
 		end
 	end
 	return out
