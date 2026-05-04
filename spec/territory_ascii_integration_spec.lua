@@ -135,53 +135,53 @@ describe("Territory ASCII integration (regular stones)", function()
 		})
 	end)
 
-	-- it("case 03: black ring with single empty center", function()
-	-- 	assert_expected_territory_ascii("case_03", {
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . A A A . . .",
-	-- 		". . . A . A . . .",
-	-- 		". . . A A A . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 	}, {
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . A A A . . .",
-	-- 		". . . A a A . . .",
-	-- 		". . . A A A . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 	})
-	-- end)
+	it("case 03: black ring with single empty center", function()
+		assert_expected_territory_ascii("case_03", {
+			"B . . . . . . . B",
+			". . . . . . . . .",
+			". . . A A A . . .",
+			". . . A . A . . .",
+			". . . A A A . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			"B . . . . . . . B",
+		}, {
+			"B b b a a a b b B",
+			"b b a a a a a b b",
+			"b a a A A A a a b",
+			". a a A a A a a .",
+			"a a a A A A a a a",
+			"b a a a a a a a b",
+			"b b a a a a a b b",
+			"b b b a a a b b b",
+			"B b b b . b b b B",
+		})
+	end)
 
-	-- it("case 04: white edge pressure top-left", function()
-	-- 	assert_expected_territory_ascii("case_04", {
-	-- 		"B B . . . . . . .",
-	-- 		"B . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 	}, {
-	-- 		"B B b . . . . . .",
-	-- 		"B b . . . . . . .",
-	-- 		"b . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 		". . . . . . . . .",
-	-- 	})
-	-- end)
+	it("case 04: white edge pressure top-left", function()
+		assert_expected_territory_ascii("case_04", {
+			"A A . . B . . . .",
+			"A . . B . . . . .",
+			". B B . . . . . .",
+			"B B . . . A . . .",
+			". . . . B B . . .",
+			". . . A . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		}, {
+			"A A b b B b b b b",
+			"A b b B b . . . .",
+			"b B B b . a a a a",
+			"B B b . . A a a a",
+			"b b . . B B b b b",
+			"b . a A . b b b b",
+			"b . a a . b b b b",
+			"b . a a . b b b b",
+			"b . a a . b b b b",
+		})
+	end)
 
 	-- it("case 05: diagonal split", function()
 	-- 	assert_expected_territory_ascii("case_05", {
