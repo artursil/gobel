@@ -103,7 +103,7 @@ local function draw_score_box_detailed(game, box, side, title)
 	local y_offset = box.y + 24
 	local line_height = 12
 	
-	lg.printf(string.format("Turn Bonus: %d", player.score.turn_bonus or 1), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf(string.format("Turn Bonus: %.1f", player.score.turn_bonus or 1), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 	
 	lg.printf(string.format("Territory: %d", player.score.territory or 0), box.x + 6, y_offset, box.w - 12, "left")
@@ -119,7 +119,7 @@ local function draw_score_box_detailed(game, box, side, title)
 	y_offset = y_offset + line_height
 	
 	lg.setColor(0.7, 0.7, 0.7)
-	local formula = string.format("%d × %d × %d × %d × %d = %d",
+	local formula = string.format("%.1f × %d × %d × %d × %d = %d",
 		player.score.turn_bonus or 1,
 		player.score.territory or 0,
 		player.score.points or 0,

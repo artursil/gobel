@@ -15,11 +15,9 @@ local popup_state
 local stone_drag
 local card_ui
 local menu_step
-local selected_territory_mode
 
 local function reset_menu_state()
-	menu_step = "territory"
-	selected_territory_mode = "regional"
+	menu_step = "match"
 end
 
 local function is_popup_open()
@@ -313,7 +311,7 @@ end
 function love.draw()
 	local w, h = love.graphics.getDimensions()
 	if screen == "menu" then
-		home.draw(w, h, menu_step, selected_territory_mode)
+		home.draw(w, h, menu_step)
 		return
 	end
 	local hr, hc = hover_row, hover_col
@@ -333,13 +331,8 @@ function love.mousepressed(x, y, button)
 	local w, h = love.graphics.getDimensions()
 	if screen == "menu" then
 		local pick = home.hit_test(x, y, w, h, menu_step)
-		if menu_step == "territory" then
-			if pick == "regional" or pick == "distance_only" then
-				selected_territory_mode = pick
-				menu_step = "match"
-			end
-		elseif pick == "pvp" or pick == "pvc" or pick == "pvp_basic" or pick == "pvc_basic" then
-			match = game.new(pick, selected_territory_mode)
+		if pick == "pvp" or pick == "pvc" or pick == "pvp_basic" or pick == "pvc_basic" then
+			match = game.new(pick, "regional")
 			screen = "play"
 			layout = layout_mod.from_window(w, h)
 			reset_popup()
