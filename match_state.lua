@@ -79,12 +79,12 @@ local function build_player(side, starter, rng_next_int, basic_mode)
 	return {
 		side = side,
 		score = {
+			turn_bonus = 1,
 			territory = 0,
 			points = 0,
-			mult = 0,
+			plus_mult = 1,
+			x_mult = 1,
 			total = 0,
-			points_bonus = 0,
-			mult_bonus = 0,
 		},
 		resources = {
 			energy_current = ENERGY_MAX_DEFAULT,

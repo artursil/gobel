@@ -101,6 +101,23 @@ end
 
 --- @param x number
 --- @param y number
+--- @return boolean
+local function handle_score_box_click(x, y)
+	if x >= layout.score_player.x and x <= layout.score_player.x + layout.score_player.w and
+	   y >= layout.score_player.y and y <= layout.score_player.y + layout.score_player.h then
+		render.toggle_score_display_mode()
+		return true
+	end
+	if x >= layout.score_opponent.x and x <= layout.score_opponent.x + layout.score_opponent.w and
+	   y >= layout.score_opponent.y and y <= layout.score_opponent.y + layout.score_opponent.h then
+		render.toggle_score_display_mode()
+		return true
+	end
+	return false
+end
+
+--- @param x number
+--- @param y number
 --- @param active table
 --- @param stone_count integer
 --- @return boolean
@@ -339,6 +356,9 @@ function love.mousepressed(x, y, button)
 	end
 	local active = match_state.player_for_color(match, match.to_play)
 	local stone_count = #active.stones.playable_stones
+	if handle_score_box_click(x, y) then
+		return
+	end
 	if handle_active_popup_click(x, y, active, stone_count) then
 		return
 	end

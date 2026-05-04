@@ -16,6 +16,7 @@ M._score_anim = {
 	remaining = 0,
 	duration = 0,
 }
+M._score_display_mode = "simple"
 
 local function ease_out_cubic(t)
 	local inv = 1 - t
@@ -76,15 +77,70 @@ local function draw_stone_chip(stone_id, rect, stone_color, highlighted)
 	lg.setLineWidth(1)
 end
 
-local function draw_score_box(game, box, side, title)
+local function draw_score_box_simple(game, box, side, title)
 	local lg = love.graphics
 	local player = match_state.player_for_color(game, side)
+	local territory_simple = (player.score.turn_bonus or 1) * (player.score.territory or 0)
+	local mult_simple = (player.score.plus_mult or 1) * (player.score.x_mult or 1)
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	lg.printf(title, box.x, box.y + 8, box.w, "center")
-	lg.printf(string.format("Territory: %d", player.score.territory or 0), box.x, box.y + 30, box.w, "center")
+	lg.printf(string.format("Territory: %d", territory_simple), box.x, box.y + 30, box.w, "center")
 	lg.printf(string.format("Points: %d", player.score.points or 0), box.x, box.y + 48, box.w, "center")
-	lg.printf(string.format("Mult: %d", player.score.mult or 0), box.x, box.y + 66, box.w, "center")
+	lg.printf(string.format("Mult: %d", mult_simple), box.x, box.y + 66, box.w, "center")
 	lg.printf(string.format("Total: %d", player.score.total or 0), box.x, box.y + 84, box.w, "center")
+end
+
+local function draw_score_box_detailed(game, box, side, title)
+	local lg = love.graphics
+	local player = match_state.player_for_color(game, side)
+	local small_font = love.graphics.newFont(10)
+	local prev_font = lg.getFont()
+	
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
+	lg.printf(title, box.x, box.y + 8, box.w, "center")
+	
+	lg.setFont(small_font)
+	local y_offset = box.y + 24
+	local line_height = 12
+	
+	lg.printf(string.format("Turn Bonus: %d", player.score.turn_bonus or 1), box.x + 6, y_offset, box.w - 12, "left")
+	y_offset = y_offset + line_height
+	
+	lg.printf(string.format("Territory: %d", player.score.territory or 0), box.x + 6, y_offset, box.w - 12, "left")
+	y_offset = y_offset + line_height
+	
+	lg.printf(string.format("Points: %d", player.score.points or 0), box.x + 6, y_offset, box.w - 12, "left")
+	y_offset = y_offset + line_height
+	
+	lg.printf(string.format("+Mult: %d", player.score.plus_mult or 1), box.x + 6, y_offset, box.w - 12, "left")
+	y_offset = y_offset + line_height
+	
+	lg.printf(string.format("×Mult: %d", player.score.x_mult or 1), box.x + 6, y_offset, box.w - 12, "left")
+	y_offset = y_offset + line_height
+	
+	lg.setColor(0.7, 0.7, 0.7)
+	local formula = string.format("%d × %d × %d × %d × %d = %d",
+		player.score.turn_bonus or 1,
+		player.score.territory or 0,
+		player.score.points or 0,
+		player.score.plus_mult or 1,
+		player.score.x_mult or 1,
+		player.score.total or 0)
+	lg.printf(formula, box.x + 6, y_offset, box.w - 12, "left")
+	y_offset = y_offset + line_height
+	
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
+	lg.printf(string.format("Total: %d", player.score.total or 0), box.x + 6, y_offset, box.w - 12, "left")
+	
+	lg.setFont(prev_font)
+end
+
+local function draw_score_box(game, box, side, title)
+	if M._score_display_mode == "detailed" then
+		draw_score_box_detailed(game, box, side, title)
+	else
+		draw_score_box_simple(game, box, side, title)
+	end
 end
 
 local function draw_poses(box, pose_ids)
@@ -644,6 +700,18 @@ end
 
 function M.set_card_ui_state(card_ui_state)
 	M._card_ui = card_ui_state
+end
+
+function M.toggle_score_display_mode()
+	if M._score_display_mode == "simple" then
+		M._score_display_mode = "detailed"
+	else
+		M._score_display_mode = "simple"
+	end
+end
+
+function M.get_score_display_mode()
+	return M._score_display_mode
 end
 
 return M

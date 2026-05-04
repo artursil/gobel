@@ -71,7 +71,7 @@ local function append_stone_round_effects(state, phase, out)
 							if effect_phase == "points" then
 								current_state.scores.points[owner] = current_state.scores.points[owner] + resolved.value
 							else
-								current_state.scores.mult[owner] = current_state.scores.mult[owner] + resolved.value
+								current_state.scores.plus_mult[owner] = current_state.scores.plus_mult[owner] + resolved.value
 							end
 						end,
 					})

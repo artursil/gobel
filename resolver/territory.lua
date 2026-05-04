@@ -29,75 +29,6 @@ local function color_to_owner(color)
 	return nil
 end
 
---- @param row integer
---- @param col integer
---- @return number
-local function center_distance(row, col)
-	local center = (config.BOARD_SIZE + 1) * 0.5
-	return math.abs(row - center) + math.abs(col - center)
-end
-
---- @param row integer
---- @param col integer
---- @return table Sparse map 1..4 of quarters containing this point
-local function board_quarter(row, col)
-	local center = (config.BOARD_SIZE + 1) * 0.5
-	local top = row <= center
-	local bottom = row >= center
-	local left = col <= center
-	local right = col >= center
-	local quarters = {}
-	if top and left then quarters[1] = true end
-	if top and right then quarters[2] = true end
-	if bottom and left then quarters[3] = true end
-	if bottom and right then quarters[4] = true end
-	return quarters
-end
-
---- @param a table
---- @param b table
---- @return boolean
-local function quarters_overlap(a, b)
-	for q = 1, 4 do
-		if a[q] and b[q] then
-			return true
-		end
-	end
-	return false
-end
-
---- @param row integer
---- @param col integer
---- @return integer, integer
-local function nearest_corner(row, col)
-	local n = config.BOARD_SIZE
-	local corner_row = (row - 1) <= (n - row) and 1 or n
-	local corner_col = (col - 1) <= (n - col) and 1 or n
-	return corner_row, corner_col
-end
-
---- @param stone table
---- @param row integer
---- @param col integer
---- @return boolean
-local function in_stone_corner_region(stone, row, col)
-	return row >= stone.min_row and row <= stone.max_row and col >= stone.min_col and col <= stone.max_col
-end
-
---- @param stone table
---- @param row integer
---- @param col integer
---- @return boolean
-local function stone_is_eligible_for_tile(stone, row, col)
-	if not stone.regional then
-		return true
-	end
-	local point_quarter = board_quarter(row, col)
-	local point_center_dist = center_distance(row, col)
-	local same_quarter = quarters_overlap(stone.quarter, point_quarter)
-	local within_corner_region = in_stone_corner_region(stone, row, col)
-	return same_quarter and stone.center_dist <= point_center_dist and within_corner_region
-end
 
 --- @return table
 local function new_tile()
@@ -282,9 +213,8 @@ function M.finish_assignment(state)
 	local territory_mode = state.territory_mode or "regional"
 	state.territory = finish_resolve_owners(tiles, regions, b, state, territory_mode, true)
 	local black_c, white_c = count_controlled(state.territory)
-	local tn = state.turn_number or 1
-	state.scores.territory.A = tn * black_c
-	state.scores.territory.B = tn * white_c
+	state.scores.territory.A = black_c
+	state.scores.territory.B = white_c
 end
 
 --- Standalone helper: no `state` mutation. Returns a territory color grid.

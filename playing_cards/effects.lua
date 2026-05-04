@@ -30,7 +30,11 @@ local function build_phase_effect(phase, card, owner, value, priority)
 		priority = priority or 10,
 		apply = function(state)
 			print("[Effect Triggered]", card.type, phase)
-			state.scores[phase][owner] = state.scores[phase][owner] + value
+			if phase == "points" then
+				state.scores.points[owner] = state.scores.points[owner] + value
+			elseif phase == "mult" then
+				state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + value
+			end
 		end,
 	}
 end

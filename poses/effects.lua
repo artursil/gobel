@@ -41,7 +41,7 @@ function M.add_mult(pose, owner, value, priority, phase)
 		priority = priority or 20,
 		apply = function(state)
 			print("[Effect Triggered]", pose.type, "mult")
-			state.scores.mult[owner] = state.scores.mult[owner] + value
+			state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + value
 		end,
 	}
 end
