@@ -39,7 +39,7 @@ M.stone_lieutenant = {
 	name = "Lieutenant",
 	description = "Skilled commander whose presence extends your reach by 1 when calculating territory.",
 	depiction = "Chevron mark",
-	graphic = { draw_key = "chevron" },
+	graphic = { draw_key = "diamond" },
 	effects = {
 		{ effect_name = "add_points", phase = "points", value = 1, priority = 10 },
 		{ effect_name = "distance_bonus", phase = "distance", value = 1, priority = 10 },

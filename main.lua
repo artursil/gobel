@@ -15,9 +15,13 @@ local popup_state
 local stone_drag
 local card_ui
 local menu_step
+local dropdown_open
+local selected_game_type
 
 local function reset_menu_state()
-	menu_step = "match"
+	menu_step = "game_type"
+	dropdown_open = false
+	selected_game_type = "standard"
 end
 
 local function is_popup_open()
@@ -311,7 +315,11 @@ end
 function love.draw()
 	local w, h = love.graphics.getDimensions()
 	if screen == "menu" then
-		home.draw(w, h, menu_step)
+		if menu_step == "game_type" then
+			home.draw_game_type_menu(w, h, dropdown_open, selected_game_type)
+		else
+			home.draw_match_menu(w, h, selected_game_type)
+		end
 		return
 	end
 	local hr, hc = hover_row, hover_col
@@ -330,14 +338,31 @@ function love.mousepressed(x, y, button)
 	end
 	local w, h = love.graphics.getDimensions()
 	if screen == "menu" then
-		local pick = home.hit_test(x, y, w, h, menu_step)
-		if pick == "pvp" or pick == "pvc" or pick == "pvp_basic" or pick == "pvc_basic" then
-			match = game.new(pick, "regional")
-			screen = "play"
-			layout = layout_mod.from_window(w, h)
-			reset_popup()
-			reset_stone_drag()
-			reset_card_ui()
+		if menu_step == "game_type" then
+			local pick = home.hit_test_game_type(x, y, w, h, dropdown_open, selected_game_type)
+			if pick == "dropdown_open" then
+				dropdown_open = true
+				return
+			elseif pick == "dropdown_close" then
+				dropdown_open = false
+				return
+			elseif pick and pick:sub(1, 10) == "game_type:" then
+				selected_game_type = pick:sub(11)
+				dropdown_open = false
+				menu_step = "match"
+				return
+			end
+		elseif menu_step == "match" then
+			local pick = home.hit_test_match(x, y, w, h)
+			if pick == "pvp" or pick == "pvc" then
+				match = game.new(pick, selected_game_type, "regional")
+				screen = "play"
+				layout = layout_mod.from_window(w, h)
+				reset_popup()
+				reset_stone_drag()
+				reset_card_ui()
+			end
+			return
 		end
 		return
 	end

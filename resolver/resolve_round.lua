@@ -94,13 +94,12 @@ end
 local function reset_base_scores(state)
 	local tn = state.turn_number or 1
 	local turn_bonus = 1 + (0.1 * tn)
-	state.scores = {
-		turn_bonus = { A = turn_bonus, B = turn_bonus },
-		territory = { A = 0, B = 0 },
-		points = { A = 0, B = 0 },
-		plus_mult = { A = 1, B = 1 },
-		x_mult = { A = 1, B = 1 },
-	}
+	
+	state.scores.turn_bonus = { A = turn_bonus, B = turn_bonus }
+	state.scores.territory = { A = 0, B = 0 }
+	state.scores.plus_mult = state.scores.plus_mult or { A = 1, B = 1 }
+	state.scores.x_mult = state.scores.x_mult or { A = 1, B = 1 }
+	state.scores.points = state.scores.points or { A = 0, B = 0 }
 end
 
 --- Pushes `state.scores` into `match_state` player `score` tables and `total`.

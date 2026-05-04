@@ -4,6 +4,7 @@ local ai = require("ai")
 local match_state = require("match_state")
 local messages = require("messages")
 local resolver = require("resolver")
+local game_type_resolver = require("game_types.resolver")
 
 local M = {}
 
@@ -22,10 +23,13 @@ end
 
 --- Builds a fresh game for local two-player or Black vs random White.
 --- @param match_kind string "pvp" or "pvc"
+--- @param game_type_id string|nil
 --- @param territory_mode string|nil
 --- @return table
-function M.new(match_kind, territory_mode)
+function M.new(match_kind, game_type_id, territory_mode)
+	game_type_id = game_type_id or "standard"
 	local g = match_state.new_match(match_kind, territory_mode)
+	game_type_resolver.apply_game_type(g, game_type_id)
 	local started = resolver.begin_turn(g, g.to_play)
 	if not started.ok then
 		g.status = started.error
@@ -36,9 +40,7 @@ function M.new(match_kind, territory_mode)
 	if latest then
 		g.status = latest
 	end
-	if g.basic_mode then
-		g.status = "Basic mode: stones only."
-	end
+	g.game_type_id = game_type_id
 	return g
 end
 

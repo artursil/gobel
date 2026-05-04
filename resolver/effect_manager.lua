@@ -62,17 +62,11 @@ local function append_stone_round_effects(state, phase, out)
 				local effect_phase = phase_from_payload(resolved)
 				if effect_phase == phase then
 					local owner = stone_event.owner
-					local source_name = stone_event.stone_type or "stone"
 					table.insert(out, {
 						phase = effect_phase,
 						priority = resolved.priority or 10,
 						apply = function(current_state)
-							print("[Effect Triggered]", source_name, effect_phase)
-							if effect_phase == "points" then
-								current_state.scores.points[owner] = current_state.scores.points[owner] + resolved.value
-							else
-								current_state.scores.plus_mult[owner] = current_state.scores.plus_mult[owner] + resolved.value
-							end
+							resolved.apply(current_state, owner)
 						end,
 					})
 				end

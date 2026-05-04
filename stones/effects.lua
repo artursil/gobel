@@ -12,6 +12,9 @@ function M.add_points(effect)
 		phase = effect.phase or "points",
 		value = effect.value,
 		priority = effect.priority or 10,
+		apply = function(state, owner)
+			state.scores.points[owner] = state.scores.points[owner] + effect.value
+		end,
 	}
 end
 
@@ -21,6 +24,9 @@ function M.add_mult(effect)
 		phase = effect.phase or "mult",
 		value = effect.value,
 		priority = effect.priority or 10,
+		apply = function(state, owner)
+			state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + effect.value
+		end,
 	}
 end
 
