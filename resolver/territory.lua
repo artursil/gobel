@@ -163,16 +163,22 @@ local function finish_resolve_owners(tiles, regions, b, state, territory_mode, p
 end
 
 --- @param territory_grid table
+--- @param b table
+--- @param state table
 --- @return integer, integer
-local function count_controlled(territory_grid)
+local function count_controlled(territory_grid, b, state)
 	local n = config.BOARD_SIZE
 	local black, white = 0, 0
+	local territory_value = state.territory_value or {}
 	for r = 1, n do
 		for c = 1, n do
-			if territory_grid[r][c] == config.STONE_BLACK then
-				black = black + 1
-			elseif territory_grid[r][c] == config.STONE_WHITE then
-				white = white + 1
+			if board.is_empty(b[r][c]) then
+				local value = (territory_value[r] and territory_value[r][c]) or 1
+				if territory_grid[r][c] == config.STONE_BLACK then
+					black = black + value
+				elseif territory_grid[r][c] == config.STONE_WHITE then
+					white = white + value
+				end
 			end
 		end
 	end
@@ -212,7 +218,7 @@ function M.finish_assignment(state)
 	end
 	local territory_mode = state.territory_mode or "regional"
 	state.territory = finish_resolve_owners(tiles, regions, b, state, territory_mode, true)
-	local black_c, white_c = count_controlled(state.territory)
+	local black_c, white_c = count_controlled(state.territory, b, state)
 	state.scores.territory.A = black_c
 	state.scores.territory.B = white_c
 end
