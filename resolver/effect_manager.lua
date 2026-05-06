@@ -141,14 +141,19 @@ function M.collect_effects(state, phase)
 end
 
 --- Runs `apply` on every effect in order; registers effects with `duration` into `active_effects`.
+--- Evaluates conditions before applying each effect.
 --- @param state table
 --- @param phase string
 --- @return nil
 function M.apply_phase(state, phase)
+	local conditions = require("objects.conditions")
 	local effects = M.collect_effects(state, phase)
 	for _, effect in ipairs(effects) do
-		effect.apply(state)
-		add_effect_duration(state, effect)
+		local context = { state = state }
+		if conditions.eval_all(effect.conditions, context) then
+			effect.apply(state)
+			add_effect_duration(state, effect)
+		end
 	end
 end
 

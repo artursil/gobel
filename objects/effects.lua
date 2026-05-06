@@ -1,5 +1,6 @@
 --- Unified effect operation registry.
 --- Consolidated from individual stone/card/stance modules for PR 3 unification.
+--- Single dispatcher for all effect types across the game.
 --- @module objects.effects
 
 local config = require("config")
@@ -7,14 +8,15 @@ local config = require("config")
 local M = {}
 
 --- Add points effect builder.
---- @param effect table
---- @return table
+--- @param effect table: {effect_name, phase, value, priority, conditions?}
+--- @return table: {type, phase, value, priority, conditions?, apply}
 function M.add_points(effect)
 	return {
 		type = "ADD_POINTS",
 		phase = effect.phase or "points",
 		value = effect.value,
 		priority = effect.priority or 10,
+		conditions = effect.conditions,
 		apply = function(state, owner)
 			state.scores.points[owner] = state.scores.points[owner] + effect.value
 		end,
@@ -22,14 +24,15 @@ function M.add_points(effect)
 end
 
 --- Add multiplier effect builder.
---- @param effect table
---- @return table
+--- @param effect table: {effect_name, phase, value, priority, conditions?}
+--- @return table: {type, phase, value, priority, conditions?, apply}
 function M.add_mult(effect)
 	return {
 		type = "ADD_MULT",
 		phase = effect.phase or "mult",
 		value = effect.value,
 		priority = effect.priority or 10,
+		conditions = effect.conditions,
 		apply = function(state, owner)
 			state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + effect.value
 		end,
@@ -37,39 +40,31 @@ function M.add_mult(effect)
 end
 
 --- Distance bonus effect builder (no apply; used for state precomputation).
---- @param effect table
---- @return table
+--- @param effect table: {effect_name, phase, value, priority, conditions?}
+--- @return table: {type, phase, value, priority, conditions?, apply?}
 function M.distance_bonus(effect)
 	return {
 		type = "DISTANCE_BONUS",
 		phase = "distance",
 		value = effect.value,
 		priority = effect.priority or 10,
+		conditions = effect.conditions,
 	}
-end
-
---- Generic effect resolver: dispatch by effect_name.
---- @param effect table
---- @return table|nil
-function M.resolve(effect)
-	local builder = M[effect.effect_name]
-	if not builder then
-		return nil
-	end
-	return builder(effect)
 end
 
 --- Double corner nearby territory effect (special board effect).
 --- @param row integer
 --- @param col integer
---- @param _effect_def table
+--- @param effect_def table
 --- @return table
-function M.double_corner_nearby_territory(row, col, _effect_def)
-	local n = config.BOARD_SIZE
+function M.double_corner_nearby_territory(row, col, effect_def)
 	return {
+		type = "DOUBLE_CORNER_NEARBY_TERRITORY",
 		phase = "territory",
-		priority = 10,
+		priority = effect_def.priority or 10,
+		conditions = effect_def.conditions,
 		apply = function(state)
+			local n = config.BOARD_SIZE
 			local is_corner = (row == 1 or row == n) and (col == 1 or col == n)
 			if not is_corner then
 				return
@@ -88,6 +83,21 @@ function M.double_corner_nearby_territory(row, col, _effect_def)
 			end
 		end,
 	}
+end
+
+--- Generic effect resolver: dispatch by effect_name.
+--- Returns resolved effect with type, phase, priority, and apply function.
+--- @param effect table: {effect_name, ...}
+--- @return table|nil: resolved effect, or nil if unknown
+function M.resolve(effect)
+	if not effect or not effect.effect_name then
+		return nil
+	end
+	local builder = M[effect.effect_name]
+	if not builder then
+		return nil
+	end
+	return builder(effect)
 end
 
 --- Stone key generator for distance modifier indexing.
@@ -147,8 +157,10 @@ function M.resolve_board_stone(stone_cell, row, col, state)
 		for _, effect_def in ipairs(stone_def.effects) do
 			if effect_def.effect_name == "distance_bonus" then
 				out[#out + 1] = {
+					type = "DISTANCE_BONUS",
 					phase = "distance",
 					priority = effect_def.priority or 10,
+					conditions = effect_def.conditions,
 					apply = function(current_state)
 						apply_distance_bonus_for_stone(
 							stone_def,

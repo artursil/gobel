@@ -38,9 +38,6 @@ function M.stances.resolve(stance, state)
 	return out
 end
 
---- Compat alias for stances.
-M.poses = M.stances
-
 --- Card effects (unified in objects.effects).
 M.cards = {}
 function M.cards.resolve(card, state)
