@@ -174,7 +174,6 @@ local function run_event_queue(state, event_queue)
 				stone_type = event.stone_id,
 				effects = event.stone_effects or {},
 			}
-			recalc_all_scores(state)
 			local def = content.get_stone(event.stone_id)
 			if def and event.resolved_stone_effects then
 				messages.push(state.messages, stone_placement_message(def, event.resolved_stone_effects))
@@ -182,7 +181,6 @@ local function run_event_queue(state, event_queue)
 			end
 		elseif event.kind == "PASS" then
 			state.consecutive_passes = state.consecutive_passes + 1
-			recalc_all_scores(state)
 		end
 	end
 	push_status_from_messages(state)

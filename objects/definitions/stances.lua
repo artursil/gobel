@@ -63,6 +63,28 @@ local M = {
 			},
 		},
 	},
+	stance_focus_bonus = {
+		id = "stance_focus_bonus",
+		type = "stance",
+		name = "Focus Bonus",
+		display_name = "Focus Bonus",
+		description = "Temporary stance: +5 points per round.",
+		rarity = "rare",
+		probability = 0,
+		cost = 0,
+		effects = {
+			{
+				effect_name = "add_points",
+				phase = "points",
+				value = 5,
+				priority = 20,
+				conditions = {
+					{ condition_name = "temporary_stance_active" },
+					{ condition_name = "stance_owner_is_current_turn" },
+				},
+			},
+		},
+	},
 }
 
 return M

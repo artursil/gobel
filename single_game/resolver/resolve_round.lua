@@ -17,6 +17,7 @@ local function ensure_state_fields(state)
 	state.last_opponent_modifiers = state.last_opponent_modifiers or {}
 	state.active_effects = state.active_effects or {}
 	state.round_stone_effects = state.round_stone_effects or {}
+	state.temporary_stances = state.temporary_stances or {}
 	state.stances = state.stances or {}
 	state.modifiers = state.modifiers or {}
 	do
@@ -84,6 +85,9 @@ local function rebuild_ordered_stances(state)
 		for _, stance_id in ipairs(player.stances.swappable or {}) do
 			ordered[#ordered + 1] = { type = stance_id, owner = side_to_owner(side) }
 		end
+	end
+	for _, temp_stance in ipairs(state.temporary_stances or {}) do
+		ordered[#ordered + 1] = { type = temp_stance.def_id, owner = temp_stance.owner, instance = temp_stance }
 	end
 	state.stances = ordered
 end
@@ -156,6 +160,42 @@ local function tick_timed_effects(state)
 	state.active_effects = kept
 end
 
+--- Decrements temporary stance durations and removes expired ones.
+--- Does not decrement stances created this turn (they expire after being used next turn).
+--- @param state table
+--- @return nil
+local function tick_temporary_stances(state)
+	local ObjectInstance = require("single_game.resolver.ObjectInstance")
+	local kept = {}
+	local active_owner = side_to_owner(state.to_play)
+	for _, stance in ipairs(state.temporary_stances or {}) do
+		if not stance.created_this_turn and stance.owner == active_owner then
+			ObjectInstance.decrement_duration(stance)
+		end
+		stance.created_this_turn = nil
+		if not ObjectInstance.is_expired(stance) then
+			kept[#kept + 1] = stance
+		end
+	end
+	state.temporary_stances = kept
+end
+
+--- Adds active cards from player hands to state.modifiers for effect evaluation.
+--- @param state table
+--- @return nil
+local function populate_active_cards(state)
+	state.modifiers = state.modifiers or {}
+	local black = match_state.player_for_color(state, "black")
+	local white = match_state.player_for_color(state, "white")
+	
+	for _, card_id in ipairs(black.cards.hand.ids or {}) do
+		state.modifiers[#state.modifiers + 1] = { type = card_id, owner = "A" }
+	end
+	for _, card_id in ipairs(white.cards.hand.ids or {}) do
+		state.modifiers[#state.modifiers + 1] = { type = card_id, owner = "B" }
+	end
+end
+
 --- Builds effect context for a given phase.
 --- @param state table
 --- @param phase string
@@ -169,6 +209,7 @@ local function build_effect_context(state, phase)
 		last_played_card = nil,
 		actor = nil,
 		opponent = nil,
+		current_turn_owner = side_to_owner(state.to_play),
 	}
 	
 	if state.round_stone_effects and #state.round_stone_effects > 0 then
@@ -209,7 +250,9 @@ function M.resolve(state)
 	end
 	sync_player_scores(state)
 	state.round_stone_effects = {}
+	state.modifiers = {}
 	tick_timed_effects(state)
+	tick_temporary_stances(state)
 end
 
 return M

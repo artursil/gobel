@@ -155,23 +155,30 @@ local function draw_score_box(game, box, side, title)
 	end
 end
 
-local function draw_stances(box, stance_ids)
+local function draw_stances(box, stance_entries)
 	local lg = love.graphics
 	local cols = 2
 	local gap = 6
 	local pad = 8
 	local cell_w = math.floor((box.w - pad * 2 - gap) / cols)
 	local row_h = 20
-	for i = 1, #stance_ids do
+	for i = 1, #stance_entries do
 		local col = (i - 1) % cols
 		local row = math.floor((i - 1) / cols)
 		local x = box.x + pad + col * (cell_w + gap)
 		local y = box.y + 28 + row * (row_h + gap)
-		local stance = content.get_stance(stance_ids[i])
+		local entry = stance_entries[i]
+		local stance_id = entry.id or entry
+		local duration = entry.duration
+		local stance = content.get_stance(stance_id)
 		lg.setColor(0.3, 0.26, 0.2, 0.65)
 		lg.rectangle("fill", x, y, cell_w, row_h, 4, 4)
 		lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-		lg.printf((stance and stance.display_name) or stance_ids[i], x + 3, y + 3, cell_w - 6, "center")
+		local display_name = (stance and stance.display_name) or stance_id
+		if duration then
+			display_name = display_name .. " (" .. duration .. ")"
+		end
+		lg.printf(display_name, x + 3, y + 3, cell_w - 6, "center")
 	end
 end
 
@@ -277,14 +284,14 @@ local function draw_side_columns(game, layout)
 	draw_panel(layout.deck_panel)
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	lg.printf("Player Stances", layout.player_stances_panel.x, layout.player_stances_panel.y + 8, layout.player_stances_panel.w, "center")
-	draw_stances(layout.player_stances_panel, stances.active_stance_ids(player))
+	draw_stances(layout.player_stances_panel, stances.all_active_stances(player, game, "A"))
 	lg.printf("Player Resources", layout.player_resources_panel.x, layout.player_resources_panel.y + 8, layout.player_resources_panel.w, "center")
 	lg.printf(string.format("Energy: %d/%d", player.resources.energy_current, player.resources.energy_max), layout.player_resources_panel.x + 10, layout.player_resources_panel.y + 34, layout.player_resources_panel.w - 20, "left")
 	lg.printf(string.format("Money: %d", player.resources.money), layout.player_resources_panel.x + 10, layout.player_resources_panel.y + 58, layout.player_resources_panel.w - 20, "left")
 	lg.printf("Player Pouch", layout.pouch_panel.x, layout.pouch_panel.y + 8, layout.pouch_panel.w, "center")
 	lg.printf(string.format("Stones: %d", pouch.remaining_count(player.stones.pouch)), layout.pouch_panel.x + 10, layout.pouch_panel.y + 34, layout.pouch_panel.w - 20, "left")
 	lg.printf("Opponent Stances", layout.opponent_stances_panel.x, layout.opponent_stances_panel.y + 8, layout.opponent_stances_panel.w, "center")
-	draw_stances(layout.opponent_stances_panel, stances.active_stance_ids(opp))
+	draw_stances(layout.opponent_stances_panel, stances.all_active_stances(opp, game, "B"))
 	lg.printf("Opponent Energy", layout.opponent_resources_panel.x, layout.opponent_resources_panel.y + 8, layout.opponent_resources_panel.w, "center")
 	lg.printf(string.format("%d/%d", opp.resources.energy_current, opp.resources.energy_max), layout.opponent_resources_panel.x + 10, layout.opponent_resources_panel.y + 34, layout.opponent_resources_panel.w - 20, "center")
 	lg.printf("Player Deck", layout.deck_panel.x, layout.deck_panel.y + 8, layout.deck_panel.w, "center")

@@ -60,6 +60,43 @@ function M.stone_tag_just_added(condition_def, context)
 	return false
 end
 
+--- Temporary stance expired condition.
+--- Checks if a temporary stance has expired (remaining_rounds <= 0).
+--- @param condition_def table: {condition_name}
+--- @param context table: {instance?}
+--- @return boolean
+function M.temporary_stance_expired(condition_def, context)
+	if not context or not context.instance then
+		return false
+	end
+	local ObjectInstance = require("single_game.resolver.ObjectInstance")
+	return ObjectInstance.is_expired(context.instance)
+end
+
+--- Temporary stance active condition.
+--- Checks if a temporary stance is still active (remaining_rounds > 0).
+--- @param condition_def table: {condition_name}
+--- @param context table: {instance?}
+--- @return boolean
+function M.temporary_stance_active(condition_def, context)
+	if not context or not context.instance then
+		return true
+	end
+	local ObjectInstance = require("single_game.resolver.ObjectInstance")
+	return not ObjectInstance.is_expired(context.instance)
+end
+
+--- Stance owner is current turn owner condition.
+--- @param condition_def table: {condition_name}
+--- @param context table: {stance_owner?, current_turn_owner?}
+--- @return boolean
+function M.stance_owner_is_current_turn(condition_def, context)
+	if not context then
+		return false
+	end
+	return context.stance_owner ~= nil and context.current_turn_owner ~= nil and context.stance_owner == context.current_turn_owner
+end
+
 --- Evaluate a single condition.
 --- Dispatch by condition name; return true if unknown (fail-safe).
 --- @param condition_def table: {condition_name, ...params...}

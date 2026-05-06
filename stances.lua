@@ -27,4 +27,27 @@ function M.active_stance_ids(player_state)
 	return out
 end
 
+--- Get all active stance entries (IDs + instances) including temporary stances.
+--- @param player_state table
+--- @param game_state table: The global game state containing temporary_stances
+--- @param owner string: "A" or "B" to filter temporary stances by owner
+--- @return table list of {id=stance_id, duration=remaining_rounds_or_nil}
+function M.all_active_stances(player_state, game_state, owner)
+	local out = {}
+	
+	for_each_active_stance_id(player_state, function(stance_id)
+		out[#out + 1] = { id = stance_id, duration = nil }
+	end)
+	
+	if game_state and game_state.temporary_stances then
+		for _, temp_stance in ipairs(game_state.temporary_stances) do
+			if temp_stance.owner == owner then
+				out[#out + 1] = { id = temp_stance.def_id, duration = temp_stance.duration.remaining_rounds }
+			end
+		end
+	end
+	
+	return out
+end
+
 return M

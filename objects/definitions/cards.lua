@@ -79,6 +79,21 @@ local M = {
 		tags = { "steel" },
 		effects = {},
 	},
+	card_focus_stance = {
+		id = "card_focus_stance",
+		type = "card",
+		name = "Focus Stance",
+		description = "Creates a temporary +5 points stance for 3 rounds.",
+		display_name = "Focus Stance",
+		rarity = "rare",
+		probability = 0.6,
+		cost = 2,
+		energy_cost = 2,
+		tags = {},
+		effects = {
+			{ effect_name = "create_temporary_stance", phase = "points", value = { stance_id = "stance_focus_bonus", rounds = 3, points = 5 }, priority = 5 },
+		},
+	},
 }
 
 return M

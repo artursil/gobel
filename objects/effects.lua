@@ -102,6 +102,42 @@ function M.count_and_multiply_x_mult(effect)
 	}
 end
 
+--- Create temporary stance effect builder.
+--- Creates a temporary stance instance with a specified duration and effect.
+--- @param effect table: {effect_name, phase, value, priority, conditions?}
+--- @return table: {type, phase, value, priority, conditions?, apply}
+function M.create_temporary_stance(effect)
+	return {
+		type = "CREATE_TEMPORARY_STANCE",
+		phase = effect.phase or "hand",
+		value = effect.value,
+		priority = effect.priority or 10,
+		conditions = effect.conditions,
+		apply = function(state, owner, context)
+			if not effect.value or not effect.value.stance_id or not effect.value.rounds then
+				return
+			end
+			
+			state.temporary_stances = state.temporary_stances or {}
+			
+			local ObjectInstance = require("single_game.resolver.ObjectInstance")
+			
+			local instance_id = "temp_stance_" .. state.turn_number .. "_" .. owner .. "_" .. #state.temporary_stances
+			local temp_stance = ObjectInstance.new(
+				instance_id,
+				effect.value.stance_id,
+				"temporary_stance",
+				owner,
+				"created",
+				{ remaining_rounds = effect.value.rounds }
+			)
+			
+			temp_stance.created_this_turn = true
+			state.temporary_stances[#state.temporary_stances + 1] = temp_stance
+		end,
+	}
+end
+
 --- Double corner nearby territory effect (special board effect).
 --- @param row integer
 --- @param col integer

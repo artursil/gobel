@@ -28,6 +28,10 @@ local function append_stance_effects(state, phase, out)
 		local generated = effects_registry.stances.resolve(stance, state)
 		for _, e in ipairs(generated) do
 			if e.phase == phase then
+				e.context = {
+					stance_owner = stance.owner,
+					instance = stance.instance,
+				}
 				table.insert(out, e)
 			end
 		end
@@ -162,8 +166,19 @@ function M.apply_phase(state, phase, context)
 	context = context or { state = state }
 	for _, effect in ipairs(effects) do
 		local eval_context = { state = state }
+		if context.current_turn_owner then
+			eval_context.current_turn_owner = context.current_turn_owner
+		end
 		if context.last_placed_stone then
 			eval_context.last_placed_stone = context.last_placed_stone
+		end
+		if effect.context then
+			if effect.context.stance_owner then
+				eval_context.stance_owner = effect.context.stance_owner
+			end
+			if effect.context.instance then
+				eval_context.instance = effect.context.instance
+			end
 		end
 		if conditions.eval_all(effect.conditions, eval_context) then
 			effect.apply(state, nil, eval_context)

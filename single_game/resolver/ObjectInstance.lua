@@ -7,10 +7,10 @@ local M = {}
 --- Create a new ObjectInstance.
 --- @param instance_id string: Unique instance ID
 --- @param def_id string: Definition ID (e.g., "stone_basic")
---- @param object_type string: "stone" | "card" | "stance"
+--- @param object_type string: "stone" | "card" | "stance" | "temporary_stance"
 --- @param owner string: "A" | "B" | "run"
 --- @param source string: "starter" | "reward" | "shop" | "generated"
---- @param base_properties table: {rarity, probability, defense, cost, tags?}
+--- @param base_properties table: {rarity, probability, defense, cost, tags?, remaining_rounds?}
 --- @return table: ObjectInstance
 function M.new(instance_id, def_id, object_type, owner, source, base_properties)
 	base_properties = base_properties or {}
@@ -43,6 +43,10 @@ function M.new(instance_id, def_id, object_type, owner, source, base_properties)
 
 		extra_effects = {},
 		removed_effect_indexes = {},
+
+		duration = {
+			remaining_rounds = base_properties.remaining_rounds,
+		},
 
 		status = {
 			disabled = false,
@@ -161,6 +165,25 @@ function M.record_use(instance, turn_number, game_number)
 	instance.telemetry.uses_this_game = instance.telemetry.uses_this_game + 1
 	instance.telemetry.last_used_turn = turn_number
 	instance.telemetry.last_used_game = game_number
+end
+
+--- Decrement duration by one round.
+--- @param instance table
+--- @return nil
+function M.decrement_duration(instance)
+	if instance.duration and instance.duration.remaining_rounds then
+		instance.duration.remaining_rounds = instance.duration.remaining_rounds - 1
+	end
+end
+
+--- Check if instance duration has expired (remaining_rounds <= 0).
+--- @param instance table
+--- @return boolean
+function M.is_expired(instance)
+	if not instance.duration or instance.duration.remaining_rounds == nil then
+		return false
+	end
+	return instance.duration.remaining_rounds <= 0
 end
 
 return M

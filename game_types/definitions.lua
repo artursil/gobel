@@ -113,6 +113,29 @@ M.special_steel_showcase = {
 	white_energy_max = 3,
 }
 
+M.temporary_stance_test = {
+	id = "temporary_stance_test",
+	name = "Temporary Stance Test",
+	description = "Test temporary stance: black has focus_stance card (creates +5 pts/round for 3 rounds)",
+	black_stones = {
+		stone_basic = 20,
+	},
+	white_stones = {
+		stone_basic = 20,
+	},
+	stone_hand_size = 6,
+	black_deck = {},
+	white_deck = {},
+	black_initial_hand = {
+		"card_focus_stance",
+	},
+	white_initial_hand = {},
+	black_stances = { fixed = {}, swappable = {} },
+	white_stances = { fixed = {}, swappable = {} },
+	black_energy_max = 3,
+	white_energy_max = 3,
+}
+
 function M.get_game_type(type_id)
 	return M[type_id]
 end
@@ -124,6 +147,7 @@ function M.get_all_types()
 		{ id = "all_towers", name = M.all_towers.name },
 		{ id = "asymmetric", name = M.asymmetric.name },
 		{ id = "special_steel_showcase", name = M.special_steel_showcase.name },
+		{ id = "temporary_stance_test", name = M.temporary_stance_test.name },
 	}
 end
 
