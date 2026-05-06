@@ -4,7 +4,7 @@ local board = require("board")
 local config = require("config")
 local patterns = require("patterns")
 local stone_kinds = require("stone_kinds")
-local territory_resolver = require("resolver.territory")
+local territory_resolver = require("single_game.resolver.territory")
 
 local M = {}
 

@@ -60,49 +60,41 @@ Core rule:
 
 ---
 
-## PR 4 - State Architecture First (Before Resolver Migration)
+## PR 4-6 Combined - State Architecture + Phases + Resolver Adaptation
 
 ### Scope
-- Introduce explicit `run_state` and `game_state` contracts.
-- Add per-key RNG manager to `run_state` with deterministic substreams.
-- Add state fields needed for current + planned effects:
-  - inventory and object instances
-  - played/discarded/remaining tracking
-  - temporary/permanent modifiers
-  - disable/destroy/evolution/usage counters
-  - prediction and sequence state
+- Refactor in one integrated pass:
+  1. Define explicit `run_state` and `game_state` contracts.
+  2. Define and enforce the new phase model (including `distance`).
+  3. Adapt resolver to pure orchestration over effects/conditions.
+- Introduce new folders and migration targets:
+  - `single_game/`
+  - `single_run/`
+  - move `resolver/` under `single_game/resolver/`
+- Add schema files (kept separate, required for implementation):
+  - `single_game/game_state.schema.md`
+  - `single_game/player_game_state.schema.md`
+  - `single_run/run_state.schema.md`
+  - `single_game/resolver/ObjectInstance.schema.md`
+  - `single_game/resolver/Effect.schema.md`
+  - `single_game/resolver/Condition.schema.md`
+- State-first implementation order:
+  - create states and schema contracts first
+  - define final phase ordering second
+  - adapt resolver third
+  - keep compatibility adapters until migration complete
 
 ### Done Criteria
-- Effects and conditions can resolve exclusively from state + context.
-- Legacy behavior preserved via adapters where needed.
-
----
-
-## PR 5 - Phase Model Redesign
-
-### Scope
-- Define and enforce the new phase model (including `distance`).
-- Validate each effect references a legal phase.
-- Document phase order and trigger windows.
-
-### Done Criteria
+- `run_state` and `game_state` are fully defined and used as resolution entry points.
+- Effects/conditions resolve exclusively from state + context.
 - No phase inference from ad-hoc payload logic.
 - Territory-distance interactions are phase-driven.
-
----
-
-## PR 6 - Resolver Adaptation
-
-### Scope
-- Refactor resolver to pure orchestration:
+- Resolver is orchestration-only:
   1. build phase context
   2. collect candidate effects
   3. evaluate conditions
   4. resolve probabilities
   5. apply effects in priority order
-- Territory computation must consume prepared effect-driven state.
-
-### Done Criteria
 - No object-specific branching in resolver loops.
 - Baseline gameplay parity maintained.
 
@@ -128,9 +120,11 @@ Core rule:
 - Include defense scaling in chance computations.
 - Example rule support:
   - base `1/4` with defense `2` becomes `1/8`.
+- Implement per-key RNG as `seed + key + calls` (no mutable stream state field).
 
 ### Done Criteria
 - Chance-based effects use one shared probability path.
+- RNG behavior is deterministic and replayable by key.
 
 ---
 
@@ -173,3 +167,53 @@ Before merging any milestone PR, confirm:
 - State contract changes are explicit and documented.
 - No hidden side effects outside state mutation paths.
 - Tests cover introduced behavior and ordering guarantees.
+
+---
+
+## Schema References (Required)
+
+Code writer must follow these schema files as contracts:
+- `single_game/game_state.schema.md`
+- `single_game/player_game_state.schema.md`
+- `single_run/run_state.schema.md`
+- `single_game/resolver/ObjectInstance.schema.md`
+- `single_game/resolver/Effect.schema.md`
+- `single_game/resolver/Condition.schema.md`
+
+If runtime implementation differs from schema, update schema first, then code.
+
+---
+
+## Per-Key RNG Contract
+
+Use counter-based RNG streams with no mutable per-stream `state` field.
+
+### Required inputs
+- `base_seed` (run-level immutable seed)
+- `key` (stream name, e.g. `draw.cards.player`)
+- `calls` (how many times the stream has been consumed)
+
+### Required behavior
+- random output = deterministic function of `(base_seed, key, calls)`
+- on consume:
+  - read `calls`
+  - compute output
+  - increment `calls` by 1
+
+### Why this model
+- deterministic replay by stream
+- no hidden mutable RNG state blobs
+- easy debugging (`what was call #17 of stream X?`)
+
+### Minimal run-state shape for RNG
+```lua
+seed = {
+  base_seed = 123456789,
+  streams = {
+    ["draw.cards.player"] = { calls = 0 },
+    ["draw.stones.player"] = { calls = 0 },
+    ["effect.destroy_stone"] = { calls = 0 },
+    ["shop.roll"] = { calls = 0 },
+  },
+}
+```

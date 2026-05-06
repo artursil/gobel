@@ -80,14 +80,19 @@ end
 local function draw_score_box_simple(game, box, side, title)
 	local lg = love.graphics
 	local player = match_state.player_for_color(game, side)
-	local territory_simple = math.floor((player.score.turn_bonus or 1) * (player.score.territory or 0))
-	local mult_simple = math.floor((player.score.plus_mult or 1) * (player.score.x_mult or 1))
+	local turn_bonus = player.score.turn_bonus or 1
+	local territory = math.ceil(player.score.territory or 0)
+	local points = math.ceil(player.score.points or 0)
+	local plus_mult = math.ceil(player.score.plus_mult or 1)
+	local x_mult = player.score.x_mult or 1
+	local total = math.ceil((turn_bonus * territory * points * plus_mult * x_mult) or 0)
+	
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	lg.printf(title, box.x, box.y + 8, box.w, "center")
-	lg.printf(string.format("Territory: %d", territory_simple), box.x, box.y + 30, box.w, "center")
-	lg.printf(string.format("Points: %d", player.score.points or 0), box.x, box.y + 48, box.w, "center")
-	lg.printf(string.format("Mult: %d", mult_simple), box.x, box.y + 66, box.w, "center")
-	lg.printf(string.format("Total: %d", math.floor(player.score.total or 0)), box.x, box.y + 84, box.w, "center")
+	lg.printf(string.format("Territory: %d", territory), box.x, box.y + 30, box.w, "center")
+	lg.printf(string.format("Points: %d", points), box.x, box.y + 48, box.w, "center")
+	lg.printf(string.format("Mult: %d", plus_mult), box.x, box.y + 66, box.w, "center")
+	lg.printf(string.format("Total: %d", total), box.x, box.y + 84, box.w, "center")
 end
 
 local function draw_score_box_detailed(game, box, side, title)
@@ -96,6 +101,13 @@ local function draw_score_box_detailed(game, box, side, title)
 	local small_font = love.graphics.newFont(10)
 	local prev_font = lg.getFont()
 	
+	local turn_bonus = player.score.turn_bonus or 1
+	local territory = math.ceil(player.score.territory or 0)
+	local points = math.ceil(player.score.points or 0)
+	local plus_mult = math.ceil(player.score.plus_mult or 1)
+	local x_mult = player.score.x_mult or 1
+	local total = math.ceil(turn_bonus * territory * points * plus_mult * x_mult)
+	
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	lg.printf(title, box.x, box.y + 8, box.w, "center")
 	
@@ -103,34 +115,34 @@ local function draw_score_box_detailed(game, box, side, title)
 	local y_offset = box.y + 24
 	local line_height = 12
 	
-	lg.printf(string.format("Turn Bonus: %.1f", player.score.turn_bonus or 1), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf(string.format("Turn Bonus: %.1f", turn_bonus), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 	
-	lg.printf(string.format("Territory: %d", player.score.territory or 0), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf(string.format("Territory: %d", territory), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 	
-	lg.printf(string.format("Points: %d", player.score.points or 0), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf(string.format("Points: %d", points), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 	
-	lg.printf(string.format("+Mult: %d", player.score.plus_mult or 1), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf(string.format("+Mult: %d", plus_mult), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 	
-	lg.printf(string.format("×Mult: %d", player.score.x_mult or 1), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf(string.format("×Mult: %.1f", x_mult), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 	
 	lg.setColor(0.7, 0.7, 0.7)
-	local formula = string.format("%.1f × %d × %d × %d × %d = %d",
-		player.score.turn_bonus or 1,
-		player.score.territory or 0,
-		player.score.points or 0,
-		player.score.plus_mult or 1,
-		player.score.x_mult or 1,
-		math.floor(player.score.total or 0))
+	local formula = string.format("%.1f × %d × %d × %d × %.1f = %d",
+		turn_bonus,
+		territory,
+		points,
+		plus_mult,
+		x_mult,
+		total)
 	lg.printf(formula, box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 	
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	lg.printf(string.format("Total: %d", player.score.total or 0), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf(string.format("Total: %d", total), box.x + 6, y_offset, box.w - 12, "left")
 	
 	lg.setFont(prev_font)
 end

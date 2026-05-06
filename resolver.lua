@@ -6,7 +6,7 @@ local energy = require("energy")
 local Effects = require("effect_registry")
 local match_state = require("match_state")
 local messages = require("messages")
-local resolve_round = require("resolver.resolve_round")
+local resolve_round = require("single_game.resolver.resolve_round")
 local pouch = require("pouch")
 local rules = require("rules")
 
@@ -233,8 +233,8 @@ local function finish_match_if_needed(state)
 		state.phase = "MATCH_END"
 		state.end_reason = "two_passes"
 		state.to_play = "none"
-		local black_total = state.players.black.score.total
-		local white_total = state.players.white.score.total
+		local black_total = math.ceil(state.players.black.score.total or 0)
+		local white_total = math.ceil(state.players.white.score.total or 0)
 		if black_total > white_total then
 			state.winner = "black"
 		elseif white_total > black_total then

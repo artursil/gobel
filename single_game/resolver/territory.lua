@@ -3,8 +3,8 @@
 
 local board = require("board")
 local config = require("config")
-local enclosure = require("resolver.enclosure")
-local effect_manager = require("resolver.effect_manager")
+local enclosure = require("single_game.resolver.enclosure")
+local effect_manager = require("single_game.resolver.effect_manager")
 
 local M = {}
 

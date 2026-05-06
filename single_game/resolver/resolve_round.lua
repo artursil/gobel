@@ -3,9 +3,9 @@
 
 local config = require("config")
 local match_state = require("match_state")
-local phases = require("resolver.phases")
-local effect_manager = require("resolver.effect_manager")
-local territory = require("resolver.territory")
+local phases = require("single_game.resolver.phases")
+local effect_manager = require("single_game.resolver.effect_manager")
+local territory = require("single_game.resolver.territory")
 local scoring = require("scoring")
 
 local M = {}

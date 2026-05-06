@@ -1,6 +1,6 @@
 local board = require("board")
 local config = require("config")
-local enclosure = require("resolver.enclosure")
+local enclosure = require("single_game.resolver.enclosure")
 
 local DEBUG_INTEGRATION = os.getenv("INTEGRATION_DEBUG") == "1"
 
