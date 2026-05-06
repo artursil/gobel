@@ -1,8 +1,5 @@
---- Stance utility module: active stances enumeration and trigger dispatch.
---- Temporary location: will be unified into objects/ in PR 2.
+--- Stance utility module: active stances enumeration.
 --- @module stances
-
-local content = require("content")
 
 local M = {}
 
@@ -28,19 +25,6 @@ function M.active_stance_ids(player_state)
 		out[#out + 1] = stance_id
 	end)
 	return out
-end
-
---- Dispatch trigger: call callback for each active stance matching trigger_name.
---- @param player_state table
---- @param trigger_name string
---- @param callback function(stance_id, stance_def)
-function M.dispatch_trigger(player_state, trigger_name, callback)
-	for_each_active_stance_id(player_state, function(stance_id)
-		local stance_def = content.get_stance(stance_id)
-		if stance_def and stance_def.trigger == trigger_name then
-			callback(stance_id, stance_def)
-		end
-	end)
 end
 
 return M

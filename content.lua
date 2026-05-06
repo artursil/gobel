@@ -3,13 +3,43 @@
 
 local M = {}
 
+local schema = require("objects.schema")
+
 --- Load all definitions from unified objects/ module
 M.stones = require("objects.definitions.stones")
 M.stances = require("objects.definitions.stances")
 M.cards = require("objects.definitions.cards")
 
---- Temporary compat alias for poses (to be removed in PR 2)
-M.poses = M.stances
+--- Validate all definitions at load time
+local function validate_all_definitions()
+	local valid, errors
+
+	valid, errors = schema.validate_all(M.stones, "stone")
+	if not valid then
+		print("[ERROR] Stone validation failed:")
+		for _, err in ipairs(errors) do
+			print("  - " .. err)
+		end
+	end
+
+	valid, errors = schema.validate_all(M.stances, "stance")
+	if not valid then
+		print("[ERROR] Stance validation failed:")
+		for _, err in ipairs(errors) do
+			print("  - " .. err)
+		end
+	end
+
+	valid, errors = schema.validate_all(M.cards, "card")
+	if not valid then
+		print("[ERROR] Card validation failed:")
+		for _, err in ipairs(errors) do
+			print("  - " .. err)
+		end
+	end
+end
+
+validate_all_definitions()
 
 M.starters = {
 	black = {
@@ -97,11 +127,6 @@ end
 --- @return table|nil
 function M.get_stance(stance_id)
 	return M.stances[stance_id]
-end
-
---- Deprecated compat alias for get_stance.
-function M.get_pose(pose_id)
-	return M.get_stance(pose_id)
 end
 
 return M

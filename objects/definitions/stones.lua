@@ -6,8 +6,12 @@ local M = {}
 
 M.stone_basic = {
 	id = "stone_basic",
+	type = "stone",
 	name = "Basic Stone",
 	description = "Steady placement stone that adds 1 point on placement.",
+	rarity = "common",
+	probability = 1.0,
+	cost = 1,
 	depiction = "Solid circle core",
 	graphic = { draw_key = "solid" },
 	effects = {
@@ -17,8 +21,12 @@ M.stone_basic = {
 
 M.stone_power = {
 	id = "stone_power",
+	type = "stone",
 	name = "Power Stone",
 	description = "Heavy placement stone that adds 2 points on placement.",
+	rarity = "uncommon",
+	probability = 0.8,
+	cost = 1,
 	depiction = "Diamond center mark",
 	graphic = { draw_key = "diamond" },
 	effects = {
@@ -28,8 +36,12 @@ M.stone_power = {
 
 M.stone_focus = {
 	id = "stone_focus",
+	type = "stone",
 	name = "Focus Stone",
 	description = "Precision stone that adds 1 multiplier on placement.",
+	rarity = "common",
+	probability = 1.0,
+	cost = 1,
 	depiction = "Ring with dot center",
 	graphic = { draw_key = "ring" },
 	effects = {
@@ -39,8 +51,12 @@ M.stone_focus = {
 
 M.stone_lieutenant = {
 	id = "stone_lieutenant",
+	type = "stone",
 	name = "Lieutenant",
 	description = "Skilled commander whose presence extends your reach by 1 when calculating territory.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
 	depiction = "Chevron mark",
 	graphic = { draw_key = "diamond" },
 	effects = {
@@ -51,8 +67,12 @@ M.stone_lieutenant = {
 
 M.stone_tower = {
 	id = "stone_tower",
+	type = "stone",
 	name = "Tower",
 	description = "When placed in a corner, doubles territory value of the surrounding 8 tiles.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
 	depiction = "Square tower outline",
 	graphic = { draw_key = "tower" },
 	effects = {

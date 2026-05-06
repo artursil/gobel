@@ -87,7 +87,7 @@ local function draw_score_box_simple(game, box, side, title)
 	lg.printf(string.format("Territory: %d", territory_simple), box.x, box.y + 30, box.w, "center")
 	lg.printf(string.format("Points: %d", player.score.points or 0), box.x, box.y + 48, box.w, "center")
 	lg.printf(string.format("Mult: %d", mult_simple), box.x, box.y + 66, box.w, "center")
-	lg.printf(string.format("Total: %d", player.score.total or 0), box.x, box.y + 84, box.w, "center")
+	lg.printf(string.format("Total: %d", math.floor(player.score.total or 0)), box.x, box.y + 84, box.w, "center")
 end
 
 local function draw_score_box_detailed(game, box, side, title)
@@ -125,7 +125,7 @@ local function draw_score_box_detailed(game, box, side, title)
 		player.score.points or 0,
 		player.score.plus_mult or 1,
 		player.score.x_mult or 1,
-		player.score.total or 0)
+		math.floor(player.score.total or 0))
 	lg.printf(formula, box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 	
