@@ -233,7 +233,7 @@ function M.compute_from_board(b, territory_mode)
 	local mode = territory_mode or "regional"
 	local temp_state = {
 		board = b,
-		poses = {},
+		stances = {},
 		modifiers = {},
 		round_stone_effects = {},
 		active_effects = {},

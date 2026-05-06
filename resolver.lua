@@ -191,7 +191,7 @@ end
 local function push_score_delta_events(state, actor, points_before, mult_before)
 	local actor_state = match_state.player_for_color(state, actor)
 	local points_after = actor_state.score.points or 0
-	local mult_after = actor_state.score.mult or 0
+	local mult_after = actor_state.score.plus_mult or 1
 	local points_delta = points_after - points_before
 	local mult_delta = mult_after - mult_before
 	if points_delta ~= 0 then
@@ -487,7 +487,7 @@ function M.submit_action(state, action)
 	if action.type == "PLACE_STONE" then
 		local actor_state = match_state.player_for_color(state, action.actor)
 		actor_points_before = actor_state.score.points or 0
-		actor_mult_before = actor_state.score.mult or 0
+		actor_mult_before = actor_state.score.plus_mult or 1
 	end
 	if action.type == "PLAY_CARD" then
 		event_queue, compile_error = compile_play_card_events(state, action)

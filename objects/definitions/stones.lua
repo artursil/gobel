@@ -1,5 +1,6 @@
---- Stone content definitions: placement payloads and default `behavior` producers.
---- @module stones.definitions
+--- Unified stone definitions.
+--- Source of truth for all stone content.
+--- @module objects.definitions.stones
 
 local M = {}
 
@@ -13,6 +14,7 @@ M.stone_basic = {
 		{ effect_name = "add_points", phase = "points", value = 1, priority = 10 },
 	},
 }
+
 M.stone_power = {
 	id = "stone_power",
 	name = "Power Stone",
@@ -23,6 +25,7 @@ M.stone_power = {
 		{ effect_name = "add_points", phase = "points", value = 2, priority = 10 },
 	},
 }
+
 M.stone_focus = {
 	id = "stone_focus",
 	name = "Focus Stone",

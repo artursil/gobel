@@ -5,7 +5,7 @@ local M = {}
 M.PHASES = { "pre", "territory", "points", "mult", "post" }
 
 function M.ensure_state_extensions(state)
-	state.poses = state.poses or {}
+	state.stances = state.stances or {}
 	state.modifiers = state.modifiers or {}
 	state.last_played_stone = state.last_played_stone or nil
 	state.scores = state.scores or {
@@ -17,9 +17,9 @@ end
 
 function M.collect_effects(state, phase)
 	local effects = {}
-	for i, pose in ipairs(state.poses or {}) do
-		pose.index = i
-		local generated = Effects.poses.resolve(pose, state)
+	for i, stance in ipairs(state.stances or {}) do
+		stance.index = i
+		local generated = Effects.stances.resolve(stance, state)
 		for _, e in ipairs(generated) do
 			if e.phase == phase then
 				table.insert(effects, e)

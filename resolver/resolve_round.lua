@@ -1,4 +1,4 @@
---- One full scoring round: default fields, opponent sync, poses, pre/main phases, territory, player totals, timed tick.
+--- One full scoring round: default fields, opponent sync, stances, pre/main phases, territory, player totals, timed tick.
 --- @module resolver.resolve_round
 
 local config = require("config")
@@ -17,7 +17,7 @@ local function ensure_state_fields(state)
 	state.last_opponent_modifiers = state.last_opponent_modifiers or {}
 	state.active_effects = state.active_effects or {}
 	state.round_stone_effects = state.round_stone_effects or {}
-	state.poses = state.poses or {}
+	state.stances = state.stances or {}
 	state.modifiers = state.modifiers or {}
 	do
 		local n = config.BOARD_SIZE
@@ -74,18 +74,18 @@ end
 --- Flattens both players’ fixed+swappable poses into `state.poses` with A/B owner.
 --- @param state table
 --- @return nil
-local function rebuild_ordered_poses(state)
+local function rebuild_ordered_stances(state)
 	local ordered = {}
 	for _, side in ipairs({ "black", "white" }) do
 		local player = match_state.player_for_color(state, side)
-		for _, pose_id in ipairs(player.poses.fixed or {}) do
-			ordered[#ordered + 1] = { type = pose_id, owner = side_to_owner(side) }
+		for _, stance_id in ipairs(player.stances.fixed or {}) do
+			ordered[#ordered + 1] = { type = stance_id, owner = side_to_owner(side) }
 		end
-		for _, pose_id in ipairs(player.poses.swappable or {}) do
-			ordered[#ordered + 1] = { type = pose_id, owner = side_to_owner(side) }
+		for _, stance_id in ipairs(player.stances.swappable or {}) do
+			ordered[#ordered + 1] = { type = stance_id, owner = side_to_owner(side) }
 		end
 	end
-	state.poses = ordered
+	state.stances = ordered
 end
 
 --- Resets point/mult baselines from player bonuses and board `overall_mult`.
@@ -162,7 +162,7 @@ end
 function M.resolve(state)
 	ensure_state_fields(state)
 	sync_opponent_state(state)
-	rebuild_ordered_poses(state)
+	rebuild_ordered_stances(state)
 	reset_base_scores(state)
 	for _, phase in ipairs(phases.PRE) do
 		effect_manager.apply_phase(state, phase)

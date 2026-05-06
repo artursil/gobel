@@ -90,12 +90,12 @@ local function build_player(side, starter, rng_next_int)
 			selected_stone = playable_stones[1],
 			hand_target_size = STONE_HAND_TARGET_SIZE,
 		},
-		cards = deck.new(deck_seed_ids, CARD_HAND_TARGET_SIZE, rng_next_int),
-		poses = {
-			fixed = array_utils.clone(starter.poses.fixed),
-			swappable = array_utils.clone(starter.poses.swappable),
-		},
-		prisoners = 0,
+	cards = deck.new(deck_seed_ids, CARD_HAND_TARGET_SIZE, rng_next_int),
+	stances = {
+		fixed = array_utils.clone(starter.stances.fixed),
+		swappable = array_utils.clone(starter.stances.swappable),
+	},
+	prisoners = 0,
 	}
 end
 
@@ -131,7 +131,7 @@ function M.new_match(match_kind, territory_mode, seed)
 			black = black,
 			white = white,
 		},
-		poses = {},
+		stances = {},
 		modifiers = {},
 		last_played_stone = nil,
 		last_opponent_move = nil,

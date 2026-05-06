@@ -46,18 +46,18 @@ function M.from_window(window_w, window_h)
 		score_opponent = { x = window_w - outer - side_w, y = outer, w = side_w, h = score_h },
 		left_panel = { x = outer, y = outer, w = side_w, h = column_h },
 		right_panel = { x = window_w - outer - side_w, y = outer, w = side_w, h = column_h },
-		player_poses_panel = { x = outer, y = outer + score_h + gap, w = side_w, h = math.floor(left_mid_h * 0.62) },
-		player_resources_panel = {
-			x = outer,
-			y = outer + score_h + gap + math.floor(left_mid_h * 0.62) + gap,
-			w = side_w,
-			h = left_mid_h - math.floor(left_mid_h * 0.62) - gap,
-		},
-		pouch_panel = { x = outer, y = window_h - outer - pouch_h, w = side_w, h = pouch_h },
-		opponent_poses_panel = {
-			x = window_w - outer - side_w,
-			y = outer + score_h + gap,
-			w = side_w,
+	player_stances_panel = { x = outer, y = outer + score_h + gap, w = side_w, h = math.floor(left_mid_h * 0.62) },
+	player_resources_panel = {
+		x = outer,
+		y = outer + score_h + gap + math.floor(left_mid_h * 0.62) + gap,
+		w = side_w,
+		h = left_mid_h - math.floor(left_mid_h * 0.62) - gap,
+	},
+	pouch_panel = { x = outer, y = window_h - outer - pouch_h, w = side_w, h = pouch_h },
+	opponent_stances_panel = {
+		x = window_w - outer - side_w,
+		y = outer + score_h + gap,
+		w = side_w,
 			h = math.floor(right_mid_h * 0.72),
 		},
 		opponent_resources_panel = {

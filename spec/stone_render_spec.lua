@@ -25,12 +25,12 @@ describe("T-050 stone graphics-driven rendering path", function()
 			return original_circle(mode, ...)
 		end
 
-		local state = match_state.new_match("pvp", 300)
-		state.players.black.poses.fixed = {}
-		state.players.black.poses.swappable = {}
-		state.players.white.poses.fixed = {}
-		state.players.white.poses.swappable = {}
-		assert.is_true(resolver.begin_turn(state, "black").ok)
+	local state = match_state.new_match("pvp", 300)
+	state.players.black.stances.fixed = {}
+	state.players.black.stances.swappable = {}
+	state.players.white.stances.fixed = {}
+	state.players.white.stances.swappable = {}
+	assert.is_true(resolver.begin_turn(state, "black").ok)
 		state.phase = "PLACE_PHASE"
 		state.players.black.stones.playable_stones = { "stone_power" }
 		state.players.black.stones.selected_stone = "stone_power"
@@ -68,12 +68,12 @@ describe("T-050 stone graphics-driven rendering path", function()
 			return original_printf(text, ...)
 		end
 
-		local state = match_state.new_match("pvp", 301)
-		state.players.black.poses.fixed = {}
-		state.players.black.poses.swappable = {}
-		state.players.white.poses.fixed = {}
-		state.players.white.poses.swappable = {}
-		assert.is_true(resolver.begin_turn(state, "black").ok)
+	local state = match_state.new_match("pvp", 301)
+	state.players.black.stances.fixed = {}
+	state.players.black.stances.swappable = {}
+	state.players.white.stances.fixed = {}
+	state.players.white.stances.swappable = {}
+	assert.is_true(resolver.begin_turn(state, "black").ok)
 		local layout = layout_mod.from_window(1280, 720)
 		render.draw(state, layout, nil, nil, false, { mode = "none" }, { active = false })
 		love.graphics.printf = original_printf

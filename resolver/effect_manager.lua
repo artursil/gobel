@@ -1,4 +1,4 @@
---- Coordinates pose, card, stone, and timed effects by phase; sorts by priority; applies and registers durations.
+--- Coordinates stance, card, stone, and timed effects by phase; sorts by priority; applies and registers durations.
 --- @module resolver.effect_manager
 
 local board = require("board")
@@ -22,10 +22,10 @@ end
 --- @param phase string
 --- @param out table
 --- @return nil
-local function append_pose_effects(state, phase, out)
-	for i, pose in ipairs(state.poses or {}) do
-		pose.index = i
-		local generated = effects_registry.poses.resolve(pose, state)
+local function append_stance_effects(state, phase, out)
+	for i, stance in ipairs(state.stances or {}) do
+		stance.index = i
+		local generated = effects_registry.stances.resolve(stance, state)
 		for _, e in ipairs(generated) do
 			if e.phase == phase then
 				table.insert(out, e)
@@ -131,7 +131,7 @@ end
 --- @return table
 function M.collect_effects(state, phase)
 	local effects = {}
-	append_pose_effects(state, phase, effects)
+	append_stance_effects(state, phase, effects)
 	append_card_effects(state, phase, effects)
 	append_stone_round_effects(state, phase, effects)
 	append_board_stone_effects(state, phase, effects)

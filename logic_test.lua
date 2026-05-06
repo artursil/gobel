@@ -13,7 +13,7 @@ state = {
         mult = {A = 1, B = 1}
     },
 
-    poses = {},
+    stances = {},
     modifiers = {}, -- cards played this turn
 
     last_played_stone = nil,
@@ -95,8 +95,8 @@ end
 -- =========================
 function resolve_blueprint_target(state, start_index)
     local i = start_index + 1
-    while i <= #state.poses do
-        local target = state.poses[i]
+    while i <= #state.stances do
+        local target = state.stances[i]
         if target.type ~= "blueprint" then
             return target
         end
@@ -144,13 +144,13 @@ end
 function collect_effects(state, phase)
     local effects = {}
 
-    -- poses
-    for i, pose in ipairs(state.poses) do
-        pose.index = i
+    -- stances
+    for i, stance in ipairs(state.stances) do
+        stance.index = i
 
-        local generator = Effects[pose.type]
+        local generator = Effects[stance.type]
         if generator then
-            local generated = generator(pose, state)
+            local generated = generator(stance, state)
 
             for _, e in ipairs(generated) do
                 if e.phase == phase then
@@ -222,9 +222,9 @@ end
 -- SETUP TEST
 -- =========================
 
--- poses in hand:
+-- stances in hand:
 -- [Blueprint][Blueprint][Pose B][Pose A][Pose D]
-state.poses = {
+state.stances = {
     {type = "blueprint", owner = "A"},
     {type = "blueprint", owner = "A"},
     {type = "poseB", owner = "A"},

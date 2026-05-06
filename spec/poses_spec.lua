@@ -1,58 +1,58 @@
 require("spec.test_helper")
 
-local poses = require("poses")
+local stances = require("stances")
 
-describe("T-014 poses", function()
-	it("returns active pose ids from fixed and swappable slots", function()
+describe("T-014 stances", function()
+	it("returns active stance ids from fixed and swappable slots", function()
 		local player = {
-			poses = {
-				fixed = { "pose_point_stance" },
-				swappable = { "pose_mult_stance" },
+			stances = {
+				fixed = { "stance_point" },
+				swappable = { "stance_mult" },
 			},
 		}
-		assert.are.same({ "pose_point_stance", "pose_mult_stance" }, poses.active_pose_ids(player))
+		assert.are.same({ "stance_point", "stance_mult" }, stances.active_stance_ids(player))
 	end)
 
 	it("dispatches callback for matching trigger across both slots", function()
 		local player = {
-			poses = {
-				fixed = { "pose_point_stance" },
-				swappable = { "pose_mult_stance" },
+			stances = {
+				fixed = { "stance_point" },
+				swappable = { "stance_mult" },
 			},
 		}
 		local seen = {}
-		poses.dispatch_trigger(player, "TURN_START", function(pose_id, pose_def)
-			seen[#seen + 1] = { id = pose_id, trigger = pose_def.trigger }
+		stances.dispatch_trigger(player, "TURN_START", function(stance_id, stance_def)
+			seen[#seen + 1] = { id = stance_id, trigger = stance_def.trigger }
 		end)
 		assert.are.same({
-			{ id = "pose_point_stance", trigger = "TURN_START" },
-			{ id = "pose_mult_stance", trigger = "TURN_START" },
+			{ id = "stance_point", trigger = "TURN_START" },
+			{ id = "stance_mult", trigger = "TURN_START" },
 		}, seen)
 	end)
 
-	it("does not dispatch unknown pose ids", function()
+	it("does not dispatch unknown stance ids", function()
 		local player = {
-			poses = {
-				fixed = { "pose_missing" },
+			stances = {
+				fixed = { "stance_missing" },
 				swappable = {},
 			},
 		}
 		local calls = 0
-		poses.dispatch_trigger(player, "TURN_START", function()
+		stances.dispatch_trigger(player, "TURN_START", function()
 			calls = calls + 1
 		end)
 		assert.are.equal(0, calls)
 	end)
 
-	it("does not dispatch when no pose matches trigger", function()
+	it("does not dispatch when no stance matches trigger", function()
 		local player = {
-			poses = {
-				fixed = { "pose_point_stance" },
+			stances = {
+				fixed = { "stance_point" },
 				swappable = {},
 			},
 		}
 		local calls = 0
-		poses.dispatch_trigger(player, "ON_CAPTURE", function()
+		stances.dispatch_trigger(player, "ON_CAPTURE", function()
 			calls = calls + 1
 		end)
 		assert.are.equal(0, calls)

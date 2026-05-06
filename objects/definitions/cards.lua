@@ -1,3 +1,7 @@
+--- Unified card definitions.
+--- Source of truth for all card content.
+--- @module objects.definitions.cards
+
 local M = {
 	card_point_tap = {
 		id = "card_point_tap",

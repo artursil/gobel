@@ -71,13 +71,13 @@ function M.apply_game_type(state, game_type_id)
 	end
 
 	if game_type.black_poses then
-		black.poses.fixed = game_type.black_poses.fixed or {}
-		black.poses.swappable = game_type.black_poses.swappable or {}
+		black.stances.fixed = game_type.black_poses.fixed or {}
+		black.stances.swappable = game_type.black_poses.swappable or {}
 	end
 
 	if game_type.white_poses then
-		white.poses.fixed = game_type.white_poses.fixed or {}
-		white.poses.swappable = game_type.white_poses.swappable or {}
+		white.stances.fixed = game_type.white_poses.fixed or {}
+		white.stances.swappable = game_type.white_poses.swappable or {}
 	end
 
 	if game_type.black_energy_max then

@@ -12,10 +12,10 @@ local rules = require("rules")
 
 local function new_started_state(seed)
 	local state = match_state.new_match("pvp", seed or 1)
-	state.players.black.poses.fixed = {}
-	state.players.black.poses.swappable = {}
-	state.players.white.poses.fixed = {}
-	state.players.white.poses.swappable = {}
+	state.players.black.stances.fixed = {}
+	state.players.black.stances.swappable = {}
+	state.players.white.stances.fixed = {}
+	state.players.white.stances.swappable = {}
 	assert.is_true(resolver.begin_turn(state, "black").ok)
 	assert.is_true(resolver.finish_main_phase(state, "black").ok)
 	return state

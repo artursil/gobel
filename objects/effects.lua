@@ -1,11 +1,14 @@
+--- Unified effect operation registry.
+--- Consolidated from individual stone/card/stance modules for PR 3 unification.
+--- @module objects.effects
+
 local config = require("config")
 
 local M = {}
 
-local function stone_key(row, col)
-	return row * 100 + col
-end
-
+--- Add points effect builder.
+--- @param effect table
+--- @return table
 function M.add_points(effect)
 	return {
 		type = "ADD_POINTS",
@@ -18,6 +21,9 @@ function M.add_points(effect)
 	}
 end
 
+--- Add multiplier effect builder.
+--- @param effect table
+--- @return table
 function M.add_mult(effect)
 	return {
 		type = "ADD_MULT",
@@ -30,6 +36,9 @@ function M.add_mult(effect)
 	}
 end
 
+--- Distance bonus effect builder (no apply; used for state precomputation).
+--- @param effect table
+--- @return table
 function M.distance_bonus(effect)
 	return {
 		type = "DISTANCE_BONUS",
@@ -39,6 +48,9 @@ function M.distance_bonus(effect)
 	}
 end
 
+--- Generic effect resolver: dispatch by effect_name.
+--- @param effect table
+--- @return table|nil
 function M.resolve(effect)
 	local builder = M[effect.effect_name]
 	if not builder then
@@ -47,14 +59,7 @@ function M.resolve(effect)
 	return builder(effect)
 end
 
---- Emits distance-phase effects for one concrete stone instance on the board.
---- The resulting effects precompute `state.distance_modifiers.by_stone[stone_key][tile_key] = bonus`.
---- @param stone_cell table
---- @param row integer
---- @param col integer
---- @param state table
---- @return table array of effect entries
---- Doubles the territory value of the 8 tiles surrounding the stone if it sits in a corner.
+--- Double corner nearby territory effect (special board effect).
 --- @param row integer
 --- @param col integer
 --- @param _effect_def table
@@ -85,12 +90,21 @@ function M.double_corner_nearby_territory(row, col, _effect_def)
 	}
 end
 
-local BOARD_EFFECT_BUILDERS = {
-	double_corner_nearby_territory = function(row, col, effect_def)
-		return M.double_corner_nearby_territory(row, col, effect_def)
-	end,
-}
+--- Stone key generator for distance modifier indexing.
+--- @param row integer
+--- @param col integer
+--- @return integer
+local function stone_key(row, col)
+	return row * 100 + col
+end
 
+--- Apply distance bonus for a stone across all tiles.
+--- @param stone_def table
+--- @param current_state table
+--- @param key integer
+--- @param n integer
+--- @param distance_bonus_value integer
+--- @return nil
 local function apply_distance_bonus_for_stone(stone_def, current_state, key, n, distance_bonus_value)
 	current_state.distance_modifiers = current_state.distance_modifiers
 		or {
@@ -108,6 +122,20 @@ local function apply_distance_bonus_for_stone(stone_def, current_state, key, n, 
 	current_state.distance_modifiers.by_stone[key] = by_tile
 end
 
+--- Board effect builders registry.
+local BOARD_EFFECT_BUILDERS = {
+	double_corner_nearby_territory = function(row, col, effect_def)
+		return M.double_corner_nearby_territory(row, col, effect_def)
+	end,
+}
+
+--- Emit effects for a concrete stone instance on the board.
+--- Handles distance-phase and territory-phase effects.
+--- @param stone_cell table
+--- @param row integer
+--- @param col integer
+--- @param state table
+--- @return table array of effect entries
 function M.resolve_board_stone(stone_cell, row, col, state)
 	local content = require("content")
 	local stone_def = content.get_stone(stone_cell.kind)

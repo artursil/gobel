@@ -6,10 +6,10 @@ require("spec.test_helper")
 
 local function new_started_state(seed)
 	local state = match_state.new_match("pvp", seed or 1)
-	state.players.black.poses.fixed = {}
-	state.players.black.poses.swappable = {}
-	state.players.white.poses.fixed = {}
-	state.players.white.poses.swappable = {}
+	state.players.black.stances.fixed = {}
+	state.players.black.stances.swappable = {}
+	state.players.white.stances.fixed = {}
+	state.players.white.stances.swappable = {}
 	local started = resolver.begin_turn(state, "black")
 	assert.is_true(started.ok)
 	return state
@@ -22,7 +22,7 @@ describe("T-050 resolver and core system correctness", function()
 		black.cards.hand.ids = { "card_point_tap" }
 		black.cards.discard.ids = {}
 		black.resources.energy_current = 1
-		black.score.points_bonus = 0
+		black.score.points = 0
 
 		local result = resolver.submit_action(state, {
 			actor = "black",
@@ -35,7 +35,7 @@ describe("T-050 resolver and core system correctness", function()
 		assert.are.equal(0, black.resources.energy_current)
 		assert.are.same({}, black.cards.hand.ids)
 		assert.are.same({ "card_point_tap" }, black.cards.discard.ids)
-		assert.are.equal(2, black.score.points_bonus)
+		assert.are.equal(2, black.score.points)
 		assert.are.equal("Point Tap: +2 points", state.messages.recent[#state.messages.recent])
 	end)
 
@@ -45,7 +45,7 @@ describe("T-050 resolver and core system correctness", function()
 		black.cards.hand.ids = { "card_point_push" }
 		black.cards.discard.ids = {}
 		black.resources.energy_current = 1
-		black.score.points_bonus = 0
+		black.score.points = 0
 
 		local result = resolver.submit_action(state, {
 			actor = "black",
@@ -58,7 +58,7 @@ describe("T-050 resolver and core system correctness", function()
 		assert.are.same({ "card_point_push" }, black.cards.hand.ids)
 		assert.are.same({}, black.cards.discard.ids)
 		assert.are.equal(1, black.resources.energy_current)
-		assert.are.equal(0, black.score.points_bonus)
+		assert.are.equal(0, black.score.points)
 	end)
 
 	it("rejects invalid hand index without state mutation", function()
@@ -84,7 +84,7 @@ describe("T-050 resolver and core system correctness", function()
 		local black = state.players.black
 		black.stones.playable_stones = { "stone_basic" }
 		black.stones.selected_stone = "stone_basic"
-		black.score.points_bonus = 0
+		black.score.points = 0
 		resolver.finish_main_phase(state, "black")
 
 		local legal_moves = rules.all_legal_moves(state.board, config.STONE_BLACK, state.ko_ban, "stone_basic")
@@ -99,7 +99,7 @@ describe("T-050 resolver and core system correctness", function()
 		assert.are.equal("Basic Stone placement: +1 points", state.messages.recent[#state.messages.recent])
 		assert.are.equal("white", state.to_play)
 		assert.are.equal("MAIN_PHASE", state.phase)
-		assert.are.equal(1, black.score.points_bonus)
+		assert.are.equal(1, black.score.points)
 		assert.is_true(#black.stones.playable_stones >= 0)
 		if black.stones.selected_stone then
 			local selected_exists = false
