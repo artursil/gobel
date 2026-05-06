@@ -350,9 +350,6 @@ local function compile_place_stone_events(state, action)
 		return nil, "Illegal move: rule violation"
 	end
 	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor)
-	if type(resolved_effects) ~= "table" or #resolved_effects == 0 then
-		return nil, "Stone behavior produced invalid effect"
-	end
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
 		if not resolved or type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then

@@ -29,8 +29,8 @@ function M.stances.resolve(stance, state)
 			out[#out + 1] = effect_builder(e)
 			out[#out].apply = (function(eff)
 				local fn = eff.apply
-				return function(s)
-					fn(s, owner)
+				return function(s, _, context)
+					fn(s, owner, context)
 				end
 			end)(out[#out])
 		end
@@ -58,8 +58,8 @@ function M.cards.resolve(card, state)
 			out[#out + 1] = effect_builder(e)
 			out[#out].apply = (function(eff)
 				local fn = eff.apply
-				return function(s)
-					fn(s, owner)
+				return function(s, _, context)
+					fn(s, owner, context)
 				end
 			end)(out[#out])
 		end

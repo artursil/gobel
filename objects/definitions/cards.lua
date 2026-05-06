@@ -66,6 +66,19 @@ local M = {
 			{ effect_name = "add_mult", phase = "mult", value = 1, priority = 10 },
 		},
 	},
+	card_steel = {
+		id = "card_steel",
+		type = "card",
+		name = "Steel",
+		description = "A steel card with no immediate effects.",
+		display_name = "Steel",
+		rarity = "common",
+		probability = 1.0,
+		cost = 1,
+		energy_cost = 1,
+		tags = { "steel" },
+		effects = {},
+	},
 }
 
 return M

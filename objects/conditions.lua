@@ -38,6 +38,28 @@ function M.random(context)
 	return math.random() < context.probability
 end
 
+--- Stone tag just added condition.
+--- Checks if a stone with a specific tag was just placed on the board.
+--- @param condition_def table: {condition_name, tag}
+--- @param context table: {last_placed_stone?, ...}
+--- @return boolean
+function M.stone_tag_just_added(condition_def, context)
+	if not condition_def or not condition_def.tag then
+		return false
+	end
+	if not context or not context.last_placed_stone then
+		return false
+	end
+
+	local placed_stone_tags = context.last_placed_stone.tags or {}
+	for _, tag in ipairs(placed_stone_tags) do
+		if tag == condition_def.tag then
+			return true
+		end
+	end
+	return false
+end
+
 --- Evaluate a single condition.
 --- Dispatch by condition name; return true if unknown (fail-safe).
 --- @param condition_def table: {condition_name, ...params...}

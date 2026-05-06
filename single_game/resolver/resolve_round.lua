@@ -156,6 +156,33 @@ local function tick_timed_effects(state)
 	state.active_effects = kept
 end
 
+--- Builds effect context for a given phase.
+--- @param state table
+--- @param phase string
+--- @return table: context with state, phase, and trigger info
+local function build_effect_context(state, phase)
+	local content = require("content")
+	local context = {
+		state = state,
+		phase = phase,
+		last_placed_stone = nil,
+		last_played_card = nil,
+		actor = nil,
+		opponent = nil,
+	}
+	
+	if state.round_stone_effects and #state.round_stone_effects > 0 then
+		local last_stone_event = state.round_stone_effects[#state.round_stone_effects]
+		local stone_def = content.get_stone(last_stone_event.stone_type)
+		context.last_placed_stone = {
+			tags = (stone_def and stone_def.tags) or {},
+			stone_id = last_stone_event.stone_type,
+		}
+	end
+	
+	return context
+end
+
 --- Main entry: runs full PRE/MAIN pipeline including territory begin/finish and clears `round_stone_effects`.
 --- @param state table
 --- @return nil
@@ -165,13 +192,17 @@ function M.resolve(state)
 	rebuild_ordered_stances(state)
 	reset_base_scores(state)
 	for _, phase in ipairs(phases.PRE) do
-		effect_manager.apply_phase(state, phase)
+		local context = build_effect_context(state, phase)
+		effect_manager.apply_phase(state, phase, context)
 	end
 	for _, phase in ipairs(phases.MAIN) do
 		if phase == "territory" then
 			territory.begin_assignment(state)
 		end
-		effect_manager.apply_phase(state, phase)
+		
+		local context = build_effect_context(state, phase)
+		effect_manager.apply_phase(state, phase, context)
+		
 		if phase == "territory" then
 			territory.finish_assignment(state)
 		end

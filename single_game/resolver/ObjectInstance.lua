@@ -10,7 +10,7 @@ local M = {}
 --- @param object_type string: "stone" | "card" | "stance"
 --- @param owner string: "A" | "B" | "run"
 --- @param source string: "starter" | "reward" | "shop" | "generated"
---- @param base_properties table: {rarity, probability, defense, cost}
+--- @param base_properties table: {rarity, probability, defense, cost, tags?}
 --- @return table: ObjectInstance
 function M.new(instance_id, def_id, object_type, owner, source, base_properties)
 	base_properties = base_properties or {}
@@ -18,6 +18,7 @@ function M.new(instance_id, def_id, object_type, owner, source, base_properties)
 		instance_id = instance_id,
 		def_id = def_id,
 		object_type = object_type,
+		tags = base_properties.tags or {},
 
 		owner = owner,
 		source = source,

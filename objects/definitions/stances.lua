@@ -42,6 +42,27 @@ local M = {
 			{ effect_name = "add_points", phase = "points", value = 2, priority = 20 },
 		},
 	},
+	stance_special_steel_sync = {
+		id = "stance_special_steel_sync",
+		type = "stance",
+		name = "Special Steel Sync",
+		display_name = "Special Steel Sync",
+		description = "When a special stone is placed, multiply ×Mult by 1.5 for each steel card in hand.",
+		rarity = "rare",
+		probability = 0.6,
+		cost = 0,
+		effects = {
+			{
+				effect_name = "count_and_multiply_x_mult",
+				phase = "mult",
+				value = 0.5,
+				priority = 15,
+				conditions = {
+					{ condition_name = "stone_tag_just_added", tag = "special" },
+				},
+			},
+		},
+	},
 }
 
 return M

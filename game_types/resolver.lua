@@ -70,6 +70,14 @@ function M.apply_game_type(state, game_type_id)
 		white.cards.hand.ids = {}
 	end
 
+	if game_type.black_initial_hand then
+		black.cards.hand.ids = game_type.black_initial_hand
+	end
+
+	if game_type.white_initial_hand then
+		white.cards.hand.ids = game_type.white_initial_hand
+	end
+
 	if game_type.black_poses then
 		black.stances.fixed = game_type.black_poses.fixed or {}
 		black.stances.swappable = game_type.black_poses.swappable or {}
@@ -78,6 +86,16 @@ function M.apply_game_type(state, game_type_id)
 	if game_type.white_poses then
 		white.stances.fixed = game_type.white_poses.fixed or {}
 		white.stances.swappable = game_type.white_poses.swappable or {}
+	end
+
+	if game_type.black_stances then
+		black.stances.fixed = game_type.black_stances.fixed or {}
+		black.stances.swappable = game_type.black_stances.swappable or {}
+	end
+
+	if game_type.white_stances then
+		white.stances.fixed = game_type.white_stances.fixed or {}
+		white.stances.swappable = game_type.white_stances.swappable or {}
 	end
 
 	if game_type.black_energy_max then

@@ -87,6 +87,32 @@ M.asymmetric = {
 	white_energy_max = 3,
 }
 
+M.special_steel_showcase = {
+	id = "special_steel_showcase",
+	name = "Special Steel Showcase",
+	description = "Black has special stones, steel cards, and special-steel sync stance to showcase the new feature",
+	black_stones = {
+		stone_special = 10,
+		stone_basic = 6,
+	},
+	white_stones = {
+		stone_basic = 20,
+	},
+	stone_hand_size = 6,
+	black_deck = {},
+	white_deck = {},
+	black_initial_hand = {
+		"card_steel",
+		"card_steel",
+		"card_steel",
+	},
+	white_initial_hand = {},
+	black_stances = { fixed = { "stance_special_steel_sync" }, swappable = {} },
+	white_stances = { fixed = {}, swappable = {} },
+	black_energy_max = 3,
+	white_energy_max = 3,
+}
+
 function M.get_game_type(type_id)
 	return M[type_id]
 end
@@ -97,6 +123,7 @@ function M.get_all_types()
 		{ id = "basic_stones", name = M.basic_stones.name },
 		{ id = "all_towers", name = M.all_towers.name },
 		{ id = "asymmetric", name = M.asymmetric.name },
+		{ id = "special_steel_showcase", name = M.special_steel_showcase.name },
 	}
 end
 

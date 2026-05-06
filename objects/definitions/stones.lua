@@ -81,4 +81,18 @@ M.stone_tower = {
 	},
 }
 
+M.stone_special = {
+	id = "stone_special",
+	type = "stone",
+	name = "Special",
+	description = "A special stone that triggers bonuses when placed.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	tags = { "special" },
+	depiction = "Star symbol",
+	graphic = { draw_key = "star" },
+	effects = {},
+}
+
 return M

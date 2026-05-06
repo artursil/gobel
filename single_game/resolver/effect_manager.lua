@@ -55,19 +55,29 @@ end
 --- @param out table
 --- @return nil
 local function append_stone_round_effects(state, phase, out)
+	local content = require("content")
 	for _, stone_event in ipairs(state.round_stone_effects or {}) do
+		local stone_def = content.get_stone(stone_event.stone_type)
 		for _, stone_effect in ipairs(stone_event.effects or {}) do
 			local resolved = effects_registry.stones.resolve(stone_effect)
 			if resolved then
 				local effect_phase = phase_from_payload(resolved)
 				if effect_phase == phase then
 					local owner = stone_event.owner
+					local stone_context = {
+						last_placed_stone = {
+							tags = (stone_def and stone_def.tags) or {},
+							stone_id = stone_event.stone_type,
+						},
+					}
 					table.insert(out, {
 						phase = effect_phase,
 						priority = resolved.priority or 10,
-						apply = function(current_state)
-							resolved.apply(current_state, owner)
+						conditions = resolved.conditions,
+						apply = function(current_state, _, ctx)
+							resolved.apply(current_state, owner, stone_context)
 						end,
+						context = stone_context,
 					})
 				end
 			end
@@ -144,14 +154,19 @@ end
 --- Evaluates conditions before applying each effect.
 --- @param state table
 --- @param phase string
+--- @param context table: Optional context to pass to effects
 --- @return nil
-function M.apply_phase(state, phase)
+function M.apply_phase(state, phase, context)
 	local conditions = require("objects.conditions")
 	local effects = M.collect_effects(state, phase)
+	context = context or { state = state }
 	for _, effect in ipairs(effects) do
-		local context = { state = state }
-		if conditions.eval_all(effect.conditions, context) then
-			effect.apply(state)
+		local eval_context = { state = state }
+		if context.last_placed_stone then
+			eval_context.last_placed_stone = context.last_placed_stone
+		end
+		if conditions.eval_all(effect.conditions, eval_context) then
+			effect.apply(state, nil, eval_context)
 			add_effect_duration(state, effect)
 		end
 	end

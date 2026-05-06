@@ -17,7 +17,7 @@ function M.add_points(effect)
 		value = effect.value,
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, owner)
+		apply = function(state, owner, context)
 			state.scores.points[owner] = state.scores.points[owner] + effect.value
 		end,
 	}
@@ -33,7 +33,7 @@ function M.add_mult(effect)
 		value = effect.value,
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, owner)
+		apply = function(state, owner, context)
 			state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + effect.value
 		end,
 	}
@@ -52,6 +52,56 @@ function M.distance_bonus(effect)
 	}
 end
 
+--- Count and multiply x_mult effect builder.
+--- Counts cards with a specific tag in hand and multiplies x_mult by (1 + value) for each card.
+--- @param effect table: {effect_name, phase, value, priority, conditions?}
+--- @return table: {type, phase, value, priority, conditions?, apply}
+function M.count_and_multiply_x_mult(effect)
+	return {
+		type = "COUNT_AND_MULTIPLY_X_MULT",
+		phase = effect.phase or "mult",
+		value = effect.value,
+		priority = effect.priority or 15,
+		conditions = effect.conditions,
+		apply = function(state, owner, context)
+			context = context or {}
+			local match_state = require("match_state")
+			local player_state = match_state.player_for_color(state, owner == "A" and "black" or "white")
+			if not player_state then
+				return
+			end
+
+			local hand_ids = player_state.cards.hand and player_state.cards.hand.ids
+			if not hand_ids then
+				return
+			end
+
+			local content = require("content")
+			local steel_card_count = 0
+			for _, card_id in ipairs(hand_ids) do
+				if card_id then
+					local card_def = content.get_card(card_id)
+					if card_def and card_def.tags then
+						for _, tag in ipairs(card_def.tags) do
+							if tag == "steel" then
+								steel_card_count = steel_card_count + 1
+								break
+							end
+						end
+					end
+				end
+			end
+
+			if steel_card_count > 0 then
+				local multiplier_factor = 1 + effect.value
+				for _ = 1, steel_card_count do
+					state.scores.x_mult[owner] = state.scores.x_mult[owner] * multiplier_factor
+				end
+			end
+		end,
+	}
+end
+
 --- Double corner nearby territory effect (special board effect).
 --- @param row integer
 --- @param col integer
@@ -63,7 +113,7 @@ function M.double_corner_nearby_territory(row, col, effect_def)
 		phase = "territory",
 		priority = effect_def.priority or 10,
 		conditions = effect_def.conditions,
-		apply = function(state)
+		apply = function(state, owner, context)
 			local n = config.BOARD_SIZE
 			local is_corner = (row == 1 or row == n) and (col == 1 or col == n)
 			if not is_corner then
