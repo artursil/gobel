@@ -85,6 +85,58 @@ local M = {
 			},
 		},
 	},
+	stance_blueprint = {
+		id = "stance_blueprint",
+		type = "stance",
+		name = "Blueprint",
+		display_name = "Blueprint",
+		description = "Copies effects from the first non-blueprint stance to the right.",
+		rarity = "rare",
+		probability = 0.4,
+		cost = 0,
+		effects = {
+			{ effect_name = "copy_right_stance_effects", phase = "distance", priority = 5 },
+			{ effect_name = "copy_right_stance_effects", phase = "territory", priority = 5 },
+			{ effect_name = "copy_right_stance_effects", phase = "points", priority = 5 },
+			{ effect_name = "copy_right_stance_effects", phase = "mult", priority = 5 },
+		},
+	},
+	stance_persistent_flux = {
+		id = "stance_persistent_flux",
+		type = "stance",
+		name = "Persistent Flux",
+		display_name = "Persistent Flux",
+		description = "Run-persistent mult: +3 on special stone, -3 on wall stone.",
+		rarity = "rare",
+		probability = 0.4,
+		cost = 0,
+		effects = {
+			{
+				effect_name = "adjust_run_persistent_counter",
+				phase = "mult",
+				value = { counter_key = "persistent_flux_mult", delta = 3 },
+				priority = 10,
+				conditions = {
+					{ condition_name = "stone_tag_just_added", tag = "special" },
+				},
+			},
+			{
+				effect_name = "adjust_run_persistent_counter",
+				phase = "mult",
+				value = { counter_key = "persistent_flux_mult", delta = -3 },
+				priority = 10,
+				conditions = {
+					{ condition_name = "stone_tag_just_added", tag = "wall" },
+				},
+			},
+			{
+				effect_name = "apply_run_persistent_counter_as_mult",
+				phase = "mult",
+				value = { counter_key = "persistent_flux_mult" },
+				priority = 20,
+			},
+		},
+	},
 }
 
 return M

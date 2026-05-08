@@ -7,6 +7,9 @@ local resolver = require("resolver")
 local game_type_resolver = require("game_types.resolver")
 
 local M = {}
+local RUN_PERSISTENCE = {
+	counters = {},
+}
 
 --- Whether the active player is controlled by this device (both colors in PvP, only Black vs bot).
 --- @param g table
@@ -29,6 +32,7 @@ end
 function M.new(match_kind, game_type_id, territory_mode)
 	game_type_id = game_type_id or "standard"
 	local g = match_state.new_match(match_kind, territory_mode)
+	g.run_state = RUN_PERSISTENCE
 	game_type_resolver.apply_game_type(g, game_type_id)
 	local started = resolver.begin_turn(g, g.to_play)
 	if not started.ok then
@@ -178,6 +182,18 @@ function M.play_card(g, hand_index)
 		payload = { hand_index = hand_index },
 	})
 	return set_status_from_result(g, result, "Card resolved.")
+end
+
+function M.select_board_target(g, row, col)
+	if not M.is_human_turn(g) then
+		return false
+	end
+	local result = resolver.submit_action(g, {
+		actor = g.to_play,
+		type = "SELECT_BOARD_TARGET",
+		payload = { row = row, col = col },
+	})
+	return set_status_from_result(g, result, "Board target selected.")
 end
 
 function M.select_stone(g, stone_id)

@@ -1,10 +1,15 @@
 --- Entry point: menu, LÖVE callbacks, and routing input to game or home.
-
+if os.getenv("DEBUG") then
+    require("mobdebug").start()
+end
 local game = require("game")
 local home = require("home")
 local layout_mod = require("layout")
 local match_state = require("match_state")
 local render = require("render")
+local board = require("board")
+local content = require("content")
+
 
 local screen
 local match
@@ -30,12 +35,26 @@ end
 
 --- @return nil
 local function reset_popup()
-	popup_state = { mode = "none", stone_id = nil, stones = {}, focus_index = nil, anchor_rect = nil, selected_slot = nil }
+	popup_state = { mode = "none", stone_id = nil, stones = {}, focus_index = nil, anchor_rect = nil, selected_slot = nil, row = nil, col = nil, owner = nil, game_state = nil }
 end
 
 --- @return nil
 local function close_selector_popup()
 	reset_popup()
+end
+
+local function open_board_stone_popup(row, col)
+	local cell = match.board[row] and match.board[row][col]
+	if board.is_empty(cell) then
+		return false
+	end
+	popup_state.mode = "board-stone-info"
+	popup_state.stone_id = cell.kind
+	popup_state.row = row
+	popup_state.col = col
+	popup_state.owner = cell.color
+	popup_state.game_state = match
+	return true
 end
 
 --- @param active table
@@ -170,6 +189,14 @@ local function handle_active_popup_click(x, y, active, stone_count)
 		end
 		return true
 	end
+	if popup_state.mode == "board-stone-info" then
+		local popup_hit = render.popup_hit_test(layout, popup_state, x, y)
+		if popup_hit.kind == "close" then
+			reset_popup()
+			return true
+		end
+		return true
+	end
 	if not is_popup_open() then
 		return false
 	end
@@ -260,6 +287,18 @@ end
 local function handle_board_press(x, y)
 	local row, col = layout_mod.pixel_to_grid(layout, x, y)
 	if not row then
+		return
+	end
+	local cell = match.board[row] and match.board[row][col]
+	if cell and not board.is_empty(cell) then
+		local active = match_state.player_for_color(match, match.to_play)
+		local selected_index = card_ui.selected_index
+		local card_id = selected_index and active.cards.hand.ids[selected_index] or nil
+		local card_def = card_id and content.get_card(card_id) or nil
+		if card_def and card_def.targeting and card_def.targeting.kind == "board_stone" then
+			game.select_board_target(match, row, col)
+		end
+		open_board_stone_popup(row, col)
 		return
 	end
 	game.player_move(match, row, col)

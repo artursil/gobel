@@ -215,6 +215,7 @@ local function on_turn_start(state, actor)
 	local actor_state = match_state.player_for_color(state, actor)
 	energy.refresh(actor_state.resources)
 	state.modifiers = {}
+	state.selected_card_target = nil
 	if not actor_state.stones.selected_stone then
 		actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
 	end
@@ -273,6 +274,10 @@ local function validate_actor_phase(state, action)
 		if state.phase ~= "MAIN_PHASE" and state.phase ~= "PLACE_PHASE" then
 			return false, "SELECT_STONE allowed only in MAIN_PHASE or PLACE_PHASE"
 		end
+	elseif action.type == "SELECT_BOARD_TARGET" then
+		if state.phase ~= "MAIN_PHASE" then
+			return false, "SELECT_BOARD_TARGET allowed only in MAIN_PHASE"
+		end
 	elseif action.type == "PLACE_STONE" or action.type == "PASS_TURN" then
 		if state.phase ~= "PLACE_PHASE" then
 			return false, action.type .. " allowed only in PLACE_PHASE"
@@ -297,6 +302,12 @@ local function compile_play_card_events(state, action)
 	if not energy.can_spend(actor_state.resources, card_def.energy_cost) then
 		return nil, "Insufficient energy"
 	end
+	local selected_target = state.selected_card_target
+	if card_def.targeting and card_def.targeting.kind == "board_stone" then
+		if not selected_target or not selected_target.row or not selected_target.col then
+			return nil, "Card requires selected board target"
+		end
+	end
 	local events = {
 		{
 			kind = "PLAY_CARD_COMMIT",
@@ -304,6 +315,7 @@ local function compile_play_card_events(state, action)
 			hand_index = hand_index,
 			energy_cost = card_def.energy_cost,
 			card_id = card_id,
+			selected_target = selected_target,
 		},
 	}
 	return events, nil
@@ -394,6 +406,31 @@ local function compile_select_stone_events(state, action)
 	return nil, "Stone is not selectable"
 end
 
+local function compile_select_board_target_events(state, action)
+	local row = action.payload and action.payload.row or nil
+	local col = action.payload and action.payload.col or nil
+	if not row or not col then
+		return nil, "Missing board target coordinates"
+	end
+	if not state.board[row] then
+		return nil, "Target row out of bounds"
+	end
+	local cell = state.board[row][col]
+	if board.is_empty(cell) then
+		return nil, "Target must be a placed stone"
+	end
+	return {
+		{
+			kind = "SELECT_BOARD_TARGET_COMMIT",
+			actor = action.actor,
+			row = row,
+			col = col,
+			stone_id = cell.kind,
+			stone_color = cell.color,
+		},
+	}, nil
+end
+
 local function append_reactive_pose_events(state, actor, events)
 	return state, actor, events
 end
@@ -412,6 +449,7 @@ local function apply_non_effect_event(state, event)
 		state.modifiers[#state.modifiers + 1] = {
 			type = event.card_id,
 			owner = owner_for_side(event.actor),
+			selected_target = event.selected_target,
 		}
 		state.last_opponent_modifiers = state.last_opponent_modifiers or {}
 		state.last_opponent_modifiers[#state.last_opponent_modifiers + 1] = {
@@ -419,6 +457,7 @@ local function apply_non_effect_event(state, event)
 			actor = event.actor,
 		}
 		recalc_all_scores(state)
+		state.selected_card_target = nil
 		local cdef = content.get_card(event.card_id)
 		if cdef then
 			messages.push(state.messages, card_play_message(cdef))
@@ -431,6 +470,18 @@ local function apply_non_effect_event(state, event)
 		actor_state.stones.selected_stone = event.stone_id
 		local stone = content.get_stone(event.stone_id)
 		messages.push(state.messages, "Selected stone: " .. (stone and stone.name or event.stone_id))
+		push_status_from_messages(state)
+		return true, nil
+	end
+	if event.kind == "SELECT_BOARD_TARGET_COMMIT" then
+		state.selected_card_target = {
+			row = event.row,
+			col = event.col,
+			stone_id = event.stone_id,
+			stone_color = event.stone_color,
+		}
+		local stone = content.get_stone(event.stone_id)
+		messages.push(state.messages, "Selected board target: " .. (stone and stone.name or event.stone_id))
 		push_status_from_messages(state)
 		return true, nil
 	end
@@ -490,6 +541,8 @@ function M.submit_action(state, action)
 		event_queue, compile_error = compile_place_stone_events(state, action)
 	elseif action.type == "SELECT_STONE" then
 		event_queue, compile_error = compile_select_stone_events(state, action)
+	elseif action.type == "SELECT_BOARD_TARGET" then
+		event_queue, compile_error = compile_select_board_target_events(state, action)
 	else
 		event_queue, compile_error = compile_pass_events()
 	end
@@ -521,7 +574,7 @@ function M.submit_action(state, action)
 		end
 	end
 
-	if action.type == "PLAY_CARD" or action.type == "SELECT_STONE" then
+	if action.type == "PLAY_CARD" or action.type == "SELECT_STONE" or action.type == "SELECT_BOARD_TARGET" then
 		return {
 			ok = true,
 			error = nil,

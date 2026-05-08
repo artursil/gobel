@@ -421,7 +421,7 @@ local function draw_hand(game, layout)
 	end
 end
 
-local function draw_board(game, layout, hover_row, hover_col, show_hover)
+local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_state)
 	local lg = love.graphics
 	draw_panel(layout.board)
 	local territory = game.territory
@@ -467,11 +467,43 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover)
 			end
 		end
 	end
+	local selected_target = game.selected_card_target
+	if selected_target and selected_target.row and selected_target.col then
+		local px, py = layout_mod.grid_to_pixel(layout, selected_target.row, selected_target.col)
+		lg.setColor(0.96, 0.84, 0.22, 0.95)
+		lg.setLineWidth(3)
+		lg.circle("line", px, py, rad * 1.15)
+		lg.setLineWidth(1)
+	end
 	if hover_row and hover_col and show_hover then
 		local px, py = layout_mod.grid_to_pixel(layout, hover_row, hover_col)
 		lg.setColor(config.COLOR_HIGHLIGHT[1], config.COLOR_HIGHLIGHT[2], config.COLOR_HIGHLIGHT[3], config.COLOR_HIGHLIGHT[4])
 		lg.circle("fill", px, py, layout.board_metrics.cell * 0.2)
 	end
+end
+
+local function draw_board_stone_popup(layout, popup_state)
+	local stone = content.get_stone(popup_state.stone_id)
+	if not stone then
+		return
+	end
+	local lg = love.graphics
+	local box = begin_modal_popup(layout)
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
+	lg.printf("Stone Details", box.x + 20, box.y + 18, box.w - 40, "left")
+	lg.printf(stone.name or popup_state.stone_id, box.x + 20, box.y + 56, box.w - 40, "left")
+	lg.printf(stone.description or "", box.x + 20, box.y + 82, box.w - 40, "left")
+	if stone.depiction then
+		lg.printf("Depiction: " .. stone.depiction, box.x + 20, box.y + 120, box.w - 40, "left")
+	end
+	local owner_label = popup_state.owner == config.STONE_BLACK and "Black" or "White"
+	lg.printf("Owner: " .. owner_label, box.x + 20, box.y + 150, box.w - 40, "left")
+	lg.printf(string.format("Board Position: (%d, %d)", popup_state.row, popup_state.col), box.x + 20, box.y + 176, box.w - 40, "left")
+	lg.printf("Tags: " .. table.concat(stone.tags or {}, ", "), box.x + 20, box.y + 202, box.w - 40, "left")
+	local key = popup_state.row .. ":" .. popup_state.col
+	local mods = popup_state.game_state and popup_state.game_state.board_stone_modifiers and popup_state.game_state.board_stone_modifiers[key]
+	local points_bonus = mods and mods.points_bonus or 0
+	lg.printf("Dynamic Bonus Points: " .. tostring(points_bonus), box.x + 20, box.y + 228, box.w - 40, "left")
 end
 
 --- @param layout table
@@ -610,6 +642,8 @@ local function draw_popup(layout, popup_state)
 		draw_pouch_browser_popup(layout, popup_state)
 	elseif popup_state.mode == "deck-browser" then
 		draw_deck_browser_popup(layout, popup_state)
+	elseif popup_state.mode == "board-stone-info" then
+		draw_board_stone_popup(layout, popup_state)
 	end
 end
 
@@ -621,6 +655,12 @@ function M.popup_hit_test(layout, popup_state, x, y)
 		return { kind = "none" }
 	end
 	local close = layout_mod.popup_close_rect(layout)
+	if popup_state.mode == "board-stone-info" then
+		if inside(close, x, y) then
+			return { kind = "close" }
+		end
+		return { kind = "consume" }
+	end
 	if inside(close, x, y) then
 		return { kind = "close" }
 	end
@@ -676,7 +716,7 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, sto
 	draw_side_columns(game, layout)
 	draw_selector(game, layout, popup_state)
 	draw_hand(game, layout)
-	draw_board(game, layout, hover_row, hover_col, show_hover)
+	draw_board(game, layout, hover_row, hover_col, show_hover, popup_state)
 	draw_popup(layout, popup_state)
 	if stone_drag and stone_drag.active and stone_drag.moved and stone_drag.stone_id then
 		draw_stone_chip(

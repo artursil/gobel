@@ -31,6 +31,7 @@ local function append_stance_effects(state, phase, out)
 				e.context = {
 					stance_owner = stance.owner,
 					instance = stance.instance,
+					stance_entry = stance,
 				}
 				table.insert(out, e)
 			end
@@ -47,6 +48,8 @@ local function append_card_effects(state, phase, out)
 		local generated = effects_registry.cards.resolve(card, state)
 		for _, e in ipairs(generated) do
 			if e.phase == phase then
+				e.context = e.context or {}
+				e.context.selected_target = card.selected_target
 				table.insert(out, e)
 			end
 		end
@@ -94,6 +97,15 @@ end
 --- @param out table
 --- @return nil
 local function append_board_stone_effects(state, phase, out)
+	local owner_from_color = function(color)
+		if color == 1 then
+			return "A"
+		end
+		if color == 2 then
+			return "B"
+		end
+		return nil
+	end
 	local n = #state.board
 	for r = 1, n do
 		for c = 1, n do
@@ -103,6 +115,24 @@ local function append_board_stone_effects(state, phase, out)
 				for _, e in ipairs(generated) do
 					if e.phase == phase then
 						table.insert(out, e)
+					end
+				end
+				if phase == "points" then
+					local key = r .. ":" .. c
+					local mods = state.board_stone_modifiers and state.board_stone_modifiers[key]
+					local bonus = mods and mods.points_bonus or 0
+					if bonus ~= 0 then
+						local owner = owner_from_color(cell.color)
+						if owner then
+							table.insert(out, {
+								phase = "points",
+								priority = 25,
+								conditions = nil,
+								apply = function(current_state)
+									current_state.scores.points[owner] = current_state.scores.points[owner] + bonus
+								end,
+							})
+						end
 					end
 				end
 			end
@@ -163,9 +193,10 @@ end
 function M.apply_phase(state, phase, context)
 	local conditions = require("objects.conditions")
 	local effects = M.collect_effects(state, phase)
+	dbg.log_stack("effects", {phase = phase, effects = effects})
 	context = context or { state = state }
 	for _, effect in ipairs(effects) do
-		local eval_context = { state = state }
+		local eval_context = { state = state, phase = phase }
 		if context.current_turn_owner then
 			eval_context.current_turn_owner = context.current_turn_owner
 		end
@@ -173,13 +204,20 @@ function M.apply_phase(state, phase, context)
 			eval_context.last_placed_stone = context.last_placed_stone
 		end
 		if effect.context then
+			if effect.context.selected_target then
+				eval_context.selected_target = effect.context.selected_target
+			end
 			if effect.context.stance_owner then
 				eval_context.stance_owner = effect.context.stance_owner
 			end
 			if effect.context.instance then
 				eval_context.instance = effect.context.instance
 			end
+			if effect.context.stance_entry then
+				eval_context.stance_entry = effect.context.stance_entry
+			end
 		end
+		eval_context.effect_owner = effect.owner
 		if conditions.eval_all(effect.conditions, eval_context) then
 			effect.apply(state, nil, eval_context)
 			add_effect_duration(state, effect)

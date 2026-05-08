@@ -4,6 +4,8 @@
 --- @module objects.conditions
 
 local M = {}
+local config = require("config")
+local board = require("board")
 
 --- Always true condition.
 --- @param context table
@@ -95,6 +97,63 @@ function M.stance_owner_is_current_turn(condition_def, context)
 		return false
 	end
 	return context.stance_owner ~= nil and context.current_turn_owner ~= nil and context.stance_owner == context.current_turn_owner
+end
+
+--- Selected board target exists in effect context.
+--- @param condition_def table
+--- @param context table
+--- @return boolean
+function M.selected_target_exists(condition_def, context)
+	return context
+		and context.selected_target
+		and context.selected_target.row ~= nil
+		and context.selected_target.col ~= nil
+end
+
+--- Selected target must be an enemy stone relative to effect owner.
+--- @param condition_def table
+--- @param context table
+--- @return boolean
+function M.selected_target_is_enemy_stone(condition_def, context)
+	if not M.selected_target_exists(condition_def, context) then
+		return false
+	end
+	local state = context.state
+	local owner = context.effect_owner
+	if not state or not owner then
+		return false
+	end
+	local row = context.selected_target.row
+	local col = context.selected_target.col
+	local cell = state.board and state.board[row] and state.board[row][col]
+	if board.is_empty(cell) then
+		return false
+	end
+	local owner_color = owner == "A" and config.STONE_BLACK or config.STONE_WHITE
+	return cell.color ~= owner_color
+end
+
+--- Selected target must be a friendly stone relative to effect owner.
+--- @param condition_def table
+--- @param context table
+--- @return boolean
+function M.selected_target_is_friendly_stone(condition_def, context)
+	if not M.selected_target_exists(condition_def, context) then
+		return false
+	end
+	local state = context.state
+	local owner = context.effect_owner
+	if not state or not owner then
+		return false
+	end
+	local row = context.selected_target.row
+	local col = context.selected_target.col
+	local cell = state.board and state.board[row] and state.board[row][col]
+	if board.is_empty(cell) then
+		return false
+	end
+	local owner_color = owner == "A" and config.STONE_BLACK or config.STONE_WHITE
+	return cell.color == owner_color
 end
 
 --- Evaluate a single condition.

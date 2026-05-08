@@ -138,6 +138,8 @@ function M.new_match(match_kind, territory_mode, seed)
 		last_opponent_modifiers = {},
 		active_effects = {},
 		round_stone_effects = {},
+		selected_card_target = nil,
+		board_stone_modifiers = {},
 		territory_value = (function()
 			local n = config.BOARD_SIZE
 			local tv = {}
@@ -150,9 +152,11 @@ function M.new_match(match_kind, territory_mode, seed)
 			return tv
 		end)(),
 		scores = {
+			turn_bonus = { A = 1, B = 1 },
 			territory = { A = 0, B = 0 },
 			points = { A = 0, B = 0 },
-			mult = { A = 1, B = 1 },
+			plus_mult = { A = 1, B = 1 },
+			x_mult = { A = 1, B = 1 },
 		},
 		rng = rng_state,
 		match_kind = match_kind,

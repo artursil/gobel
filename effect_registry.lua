@@ -9,61 +9,48 @@ local objects_cards = require("objects.cards")
 
 local M = {}
 
+local function normalize_owner(owner)
+	local preserved = (owner == "A" or owner == "B") and owner or nil
+	return preserved or ((owner == "white" or owner == "B") and "B" or "A")
+end
+
+local function wrap_effect_with_owner(effect_payload, owner)
+	effect_payload.owner = owner
+	effect_payload.apply = (function(eff)
+		local fn = eff.apply
+		return function(s, _, context)
+			fn(s, owner, context)
+		end
+	end)(effect_payload)
+	return effect_payload
+end
+
+local function append_wrapped_effects(out, effects, owner, selected_target)
+	for i = 1, #effects do
+		local wrapped = wrap_effect_with_owner(effects[i], owner)
+		wrapped.context = wrapped.context or {}
+		wrapped.context.selected_target = selected_target
+		out[#out + 1] = wrapped
+	end
+end
+
 --- Stance effects (unified in objects.effects).
 M.stances = {}
 function M.stances.resolve(stance, state)
-	local objects_defs = require("objects.definitions.stances")
-	local stance_def = objects_defs[stance.type]
-	if not stance_def or not stance_def.effects then
-		return {}
-	end
-	local owner = stance.owner
-	if owner ~= "A" and owner ~= "B" then
-		owner = (owner == "white" or owner == "B") and "B" or "A"
-	end
+	local owner = normalize_owner(stance.owner)
 	local out = {}
-	for i = 1, #stance_def.effects do
-		local e = stance_def.effects[i]
-		local effect_builder = objects_effects[e.effect_name]
-		if effect_builder then
-			out[#out + 1] = effect_builder(e)
-			out[#out].apply = (function(eff)
-				local fn = eff.apply
-				return function(s, _, context)
-					fn(s, owner, context)
-				end
-			end)(out[#out])
-		end
-	end
+	local resolved = objects_effects.resolve_stance_definition_effects(stance.type)
+	append_wrapped_effects(out, resolved, owner, nil)
 	return out
 end
 
 --- Card effects (unified in objects.effects).
 M.cards = {}
 function M.cards.resolve(card, state)
-	local objects_defs = require("objects.definitions.cards")
-	local card_def = objects_defs[card.type]
-	if not card_def or not card_def.effects then
-		return {}
-	end
-	local owner = card.owner
-	if owner ~= "A" and owner ~= "B" then
-		owner = (owner == "white" or owner == "B") and "B" or "A"
-	end
+	local owner = normalize_owner(card.owner)
 	local out = {}
-	for i = 1, #card_def.effects do
-		local e = card_def.effects[i]
-		local effect_builder = objects_effects[e.effect_name]
-		if effect_builder then
-			out[#out + 1] = effect_builder(e)
-			out[#out].apply = (function(eff)
-				local fn = eff.apply
-				return function(s, _, context)
-					fn(s, owner, context)
-				end
-			end)(out[#out])
-		end
-	end
+	local resolved = objects_effects.resolve_card_effects(card)
+	append_wrapped_effects(out, resolved, owner, card.selected_target)
 	return out
 end
 

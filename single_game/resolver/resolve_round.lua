@@ -7,6 +7,7 @@ local phases = require("single_game.resolver.phases")
 local effect_manager = require("single_game.resolver.effect_manager")
 local territory = require("single_game.resolver.territory")
 local scoring = require("scoring")
+local dbg = require("debugger")
 
 local M = {}
 
@@ -98,7 +99,7 @@ end
 local function reset_base_scores(state)
 	local tn = state.turn_number or 1
 	local turn_bonus = 1 + (0.1 * tn)
-	
+
 	state.scores.turn_bonus = { A = turn_bonus, B = turn_bonus }
 	state.scores.territory = { A = 0, B = 0 }
 	state.scores.plus_mult = state.scores.plus_mult or { A = 1, B = 1 }
@@ -112,32 +113,32 @@ end
 local function sync_player_scores(state)
 	local black = match_state.player_for_color(state, "black")
 	local white = match_state.player_for_color(state, "white")
-	
+
 	local function calculate_score(turn_bonus, territory, points, plus_mult, x_mult)
 		return turn_bonus * territory * points * plus_mult * x_mult
 	end
-	
+
 	local turn_bonus_a = state.scores.turn_bonus.A
 	local territory_a = state.scores.territory.A
 	local points_a = state.scores.points.A
 	local plus_mult_a = state.scores.plus_mult.A
 	local x_mult_a = state.scores.x_mult.A
 	local total_a = calculate_score(turn_bonus_a, territory_a, points_a, plus_mult_a, x_mult_a)
-	
+
 	local turn_bonus_b = state.scores.turn_bonus.B
 	local territory_b = state.scores.territory.B
 	local points_b = state.scores.points.B
 	local plus_mult_b = state.scores.plus_mult.B
 	local x_mult_b = state.scores.x_mult.B
 	local total_b = calculate_score(turn_bonus_b, territory_b, points_b, plus_mult_b, x_mult_b)
-	
+
 	black.score.turn_bonus = turn_bonus_a
 	black.score.territory = territory_a
 	black.score.points = points_a
 	black.score.plus_mult = plus_mult_a
 	black.score.x_mult = x_mult_a
 	black.score.total = total_a
-	
+
 	white.score.turn_bonus = turn_bonus_b
 	white.score.territory = territory_b
 	white.score.points = points_b
@@ -187,7 +188,7 @@ local function populate_active_cards(state)
 	state.modifiers = state.modifiers or {}
 	local black = match_state.player_for_color(state, "black")
 	local white = match_state.player_for_color(state, "white")
-	
+
 	for _, card_id in ipairs(black.cards.hand.ids or {}) do
 		state.modifiers[#state.modifiers + 1] = { type = card_id, owner = "A" }
 	end
@@ -210,8 +211,9 @@ local function build_effect_context(state, phase)
 		actor = nil,
 		opponent = nil,
 		current_turn_owner = side_to_owner(state.to_play),
+		selected_targets = state.selected_card_target,
 	}
-	
+
 	if state.round_stone_effects and #state.round_stone_effects > 0 then
 		local last_stone_event = state.round_stone_effects[#state.round_stone_effects]
 		local stone_def = content.get_stone(last_stone_event.stone_type)
@@ -220,7 +222,7 @@ local function build_effect_context(state, phase)
 			stone_id = last_stone_event.stone_type,
 		}
 	end
-	
+
 	return context
 end
 
@@ -228,22 +230,25 @@ end
 --- @param state table
 --- @return nil
 function M.resolve(state)
+	dbg.log_stack("resolve_round", state)
 	ensure_state_fields(state)
+	dbg.log_stack("ensure_state_fields", state)
 	sync_opponent_state(state)
 	rebuild_ordered_stances(state)
 	reset_base_scores(state)
 	for _, phase in ipairs(phases.PRE) do
 		local context = build_effect_context(state, phase)
+		dbg.log_stack("PRE phase", {phase = phase, context = context})
 		effect_manager.apply_phase(state, phase, context)
 	end
 	for _, phase in ipairs(phases.MAIN) do
 		if phase == "territory" then
 			territory.begin_assignment(state)
 		end
-		
+
 		local context = build_effect_context(state, phase)
 		effect_manager.apply_phase(state, phase, context)
-		
+
 		if phase == "territory" then
 			territory.finish_assignment(state)
 		end

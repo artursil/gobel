@@ -95,4 +95,18 @@ M.stone_special = {
 	effects = {},
 }
 
+M.stone_wall = {
+	id = "stone_wall",
+	type = "stone",
+	name = "Wall",
+	description = "A defensive wall stone used for tag-triggered effects.",
+	rarity = "common",
+	probability = 1.0,
+	cost = 1,
+	tags = { "wall" },
+	depiction = "Wall block icon",
+	graphic = { draw_key = "tower" },
+	effects = {},
+}
+
 return M

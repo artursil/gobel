@@ -94,6 +94,54 @@ local M = {
 			{ effect_name = "create_temporary_stance", phase = "points", value = { stance_id = "stance_focus_bonus", rounds = 3, points = 5 }, priority = 5 },
 		},
 	},
+	card_destroy_enemy_stone = {
+		id = "card_destroy_enemy_stone",
+		type = "card",
+		name = "Shatter Mark",
+		description = "Target an enemy stone. Destroy it with 1/4 chance.",
+		display_name = "Shatter Mark",
+		rarity = "rare",
+		probability = 0.5,
+		cost = 2,
+		energy_cost = 2,
+		targeting = { kind = "board_stone", rule = "enemy" },
+		effects = {
+			{
+				effect_name = "destroy_selected_enemy_stone",
+				phase = "points",
+				value = { chance_numerator = 1, chance_denominator = 4 },
+				priority = 10,
+				conditions = {
+					{ condition_name = "selected_target_exists" },
+					{ condition_name = "selected_target_is_enemy_stone" },
+				},
+			},
+		},
+	},
+	card_forge_mark = {
+		id = "card_forge_mark",
+		type = "card",
+		name = "Forge Mark",
+		description = "Target a friendly board stone. Permanently add +10 points for this game.",
+		display_name = "Forge Mark",
+		rarity = "rare",
+		probability = 0.5,
+		cost = 2,
+		energy_cost = 2,
+		targeting = { kind = "board_stone", rule = "friendly" },
+		effects = {
+			{
+				effect_name = "add_permanent_points_to_selected_stone",
+				phase = "points",
+				value = { points = 10 },
+				priority = 10,
+				conditions = {
+					{ condition_name = "selected_target_exists" },
+					{ condition_name = "selected_target_is_friendly_stone" },
+				},
+			},
+		},
+	},
 }
 
 return M

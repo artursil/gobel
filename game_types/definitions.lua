@@ -136,6 +136,34 @@ M.temporary_stance_test = {
 	white_energy_max = 3,
 }
 
+M.vertical_slice_test = {
+	id = "vertical_slice_test",
+	name = "Vertical Slice Test",
+	description = "Blueprint + persistent mult + targeted cards + wall/special stones.",
+	black_stones = {
+		stone_special = 8,
+		stone_wall = 8,
+		stone_basic = 6,
+	},
+	white_stones = {
+		stone_special = 6,
+		stone_wall = 6,
+		stone_basic = 10,
+	},
+	stone_hand_size = 6,
+	black_deck = {},
+	white_deck = {},
+	black_initial_hand = {
+		"card_destroy_enemy_stone",
+		"card_forge_mark",
+	},
+	white_initial_hand = {},
+	black_stances = { fixed = { "stance_blueprint", "stance_persistent_flux", "stance_point" }, swappable = {} },
+	white_stances = { fixed = { "stance_mult" }, swappable = {} },
+	black_energy_max = 8,
+	white_energy_max = 8,
+}
+
 function M.get_game_type(type_id)
 	return M[type_id]
 end
@@ -148,6 +176,7 @@ function M.get_all_types()
 		{ id = "asymmetric", name = M.asymmetric.name },
 		{ id = "special_steel_showcase", name = M.special_steel_showcase.name },
 		{ id = "temporary_stance_test", name = M.temporary_stance_test.name },
+		{ id = "vertical_slice_test", name = M.vertical_slice_test.name },
 	}
 end
 
