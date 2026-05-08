@@ -10,6 +10,7 @@ local pouch = require("pouch")
 local M = {}
 local SCORE_ANIM_BASE_DURATION = 0.45
 local score_anim_font = nil
+local sprite_cache = {}
 M._score_anim = {
 	queue = {},
 	current = nil,
@@ -17,6 +18,12 @@ M._score_anim = {
 	duration = 0,
 }
 M._score_display_mode = "simple"
+M._stone_draw_anim = {
+	queue = {},
+	current = nil,
+	elapsed = 0,
+	duration = 0.22,
+}
 
 local function ease_out_cubic(t)
 	local inv = 1 - t
@@ -34,6 +41,30 @@ local function draw_panel(box)
 	lg.rectangle("fill", box.x, box.y, box.w, box.h, 8, 8)
 	lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3])
 	lg.rectangle("line", box.x, box.y, box.w, box.h, 8, 8)
+end
+
+local function get_ui_sprite(name)
+	if sprite_cache[name] ~= nil then
+		return sprite_cache[name]
+	end
+	local ok, image = pcall(love.graphics.newImage, "sprites/" .. name .. ".png")
+	sprite_cache[name] = ok and image or false
+	return sprite_cache[name]
+end
+
+local function draw_icon_or_fallback(name, rect)
+	local lg = love.graphics
+	local img = get_ui_sprite(name)
+	if img and img ~= false then
+		lg.setColor(1, 1, 1, 1)
+		lg.draw(img, rect.x, rect.y, 0, rect.w / img:getWidth(), rect.h / img:getHeight())
+		return
+	end
+	lg.setColor(0.8, 0.8, 0.82, 0.7)
+	lg.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 6, 6)
+	lg.setColor(0.15, 0.15, 0.2, 1)
+	lg.rectangle("line", rect.x, rect.y, rect.w, rect.h, 6, 6)
+	lg.printf(name, rect.x + 4, rect.y + math.floor(rect.h * 0.35), rect.w - 8, "center")
 end
 
 local function draw_stone_graphic(draw_key, x, y, w, h, color)
@@ -155,30 +186,107 @@ local function draw_score_box(game, box, side, title)
 	end
 end
 
-local function draw_stances(box, stance_entries)
-	local lg = love.graphics
+local function get_stance_card_rects(box, stance_entries)
+	local cards = {}
+	local count = #stance_entries
+	if count == 0 then
+		return cards
+	end
 	local cols = 2
-	local gap = 6
-	local pad = 8
-	local cell_w = math.floor((box.w - pad * 2 - gap) / cols)
-	local row_h = 20
-	for i = 1, #stance_entries do
+	local gap_x = 8
+	local gap_y = 10
+	local pad = 10
+	local title_h = 28
+	local card_w = math.floor((box.w - pad * 2 - gap_x) / cols)
+	card_w = math.max(72, card_w)
+	local card_h = math.max(82, math.floor(card_w * 1.4))
+	local rows = math.ceil(count / cols)
+	local usable_h = math.max(1, box.h - title_h - pad)
+	local total_h = rows * card_h + math.max(0, rows - 1) * gap_y
+	local step_y = card_h + gap_y
+	if total_h > usable_h and rows > 1 then
+		step_y = (usable_h - card_h) / (rows - 1)
+		step_y = math.min(card_h + gap_y, step_y)
+	end
+	for i = 1, count do
 		local col = (i - 1) % cols
 		local row = math.floor((i - 1) / cols)
-		local x = box.x + pad + col * (cell_w + gap)
-		local y = box.y + 28 + row * (row_h + gap)
+		cards[i] = {
+			x = box.x + pad + col * (card_w + gap_x),
+			y = box.y + title_h + row * step_y,
+			w = card_w,
+			h = card_h,
+		}
+	end
+	return cards
+end
+
+local function draw_stance_card_front(rect, display_name)
+	local lg = love.graphics
+	lg.setColor(0.96, 0.96, 0.96, 0.96)
+	lg.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 8, 8)
+	lg.setColor(0.2, 0.2, 0.24, 1)
+	lg.rectangle("line", rect.x, rect.y, rect.w, rect.h, 8, 8)
+	lg.setColor(0.12, 0.12, 0.14, 1)
+	lg.printf(display_name, rect.x + 8, rect.y + 12, rect.w - 16, "center")
+end
+
+local function draw_stance_card_back(rect, display_name, description)
+	local lg = love.graphics
+	lg.setColor(0.97, 0.97, 0.97, 0.98)
+	lg.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 8, 8)
+	lg.setColor(0.2, 0.2, 0.24, 1)
+	lg.rectangle("line", rect.x, rect.y, rect.w, rect.h, 8, 8)
+	lg.setColor(0.12, 0.12, 0.14, 1)
+	lg.printf(display_name, rect.x + 8, rect.y + 10, rect.w - 16, "center")
+	lg.printf(description or "", rect.x + 10, rect.y + 34, rect.w - 20, "left")
+end
+
+local function draw_stances(box, stance_entries, owner_key)
+	local lg = love.graphics
+	local cards = get_stance_card_rects(box, stance_entries)
+	local selected = M._stance_ui
+	local selected_index = nil
+	local dragging_index = nil
+	if selected and selected.owner_key == owner_key then
+		selected_index = selected.index
+		if selected.drag_active and selected.moved then
+			dragging_index = selected.drag_index
+		end
+	end
+	for i = 1, #stance_entries do
 		local entry = stance_entries[i]
 		local stance_id = entry.id or entry
-		local duration = entry.duration
 		local stance = content.get_stance(stance_id)
-		lg.setColor(0.3, 0.26, 0.2, 0.65)
-		lg.rectangle("fill", x, y, cell_w, row_h, 4, 4)
-		lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-		local display_name = (stance and stance.display_name) or stance_id
-		if duration then
-			display_name = display_name .. " (" .. duration .. ")"
+		local display_name = (stance and (stance.name or stance.display_name)) or stance_id
+		if i ~= selected_index and i ~= dragging_index then
+			draw_stance_card_front(cards[i], display_name)
 		end
-		lg.printf(display_name, x + 3, y + 3, cell_w - 6, "center")
+	end
+	if selected_index and cards[selected_index] and selected_index ~= dragging_index then
+		local entry = stance_entries[selected_index]
+		local stance_id = entry.id or entry
+		local stance = content.get_stance(stance_id)
+		local display_name = (stance and (stance.name or stance.display_name)) or stance_id
+		local focus = cards[selected_index]
+		draw_stance_card_back(focus, display_name, stance and stance.description or "")
+	end
+	if dragging_index and cards[dragging_index] and stance_entries[dragging_index] then
+		local entry = stance_entries[dragging_index]
+		local stance_id = entry.id or entry
+		local stance = content.get_stance(stance_id)
+		local display_name = (stance and (stance.name or stance.display_name)) or stance_id
+		local float_rect = {
+			x = selected.current_x - math.floor(cards[dragging_index].w * 0.5),
+			y = selected.current_y - math.floor(cards[dragging_index].h * 0.5),
+			w = cards[dragging_index].w,
+			h = cards[dragging_index].h,
+		}
+		if selected_index == dragging_index then
+			draw_stance_card_back(float_rect, display_name, stance and stance.description or "")
+		else
+			draw_stance_card_front(float_rect, display_name)
+		end
 	end
 end
 
@@ -274,34 +382,27 @@ local function draw_side_columns(game, layout)
 	local lg = love.graphics
 	local player = match_state.player_for_color(game, "black")
 	local opp = match_state.player_for_color(game, "white")
-	draw_panel(layout.left_panel)
-	draw_panel(layout.right_panel)
-	draw_panel(layout.player_stances_panel)
-	draw_panel(layout.player_resources_panel)
-	draw_panel(layout.opponent_stances_panel)
-	draw_panel(layout.opponent_resources_panel)
-	draw_panel(layout.pouch_panel)
-	draw_panel(layout.deck_panel)
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	lg.printf("Player Stances", layout.player_stances_panel.x, layout.player_stances_panel.y + 8, layout.player_stances_panel.w, "center")
-	draw_stances(layout.player_stances_panel, stances.all_active_stances(player, game, "A"))
-	lg.printf("Player Resources", layout.player_resources_panel.x, layout.player_resources_panel.y + 8, layout.player_resources_panel.w, "center")
-	lg.printf(string.format("Energy: %d/%d", player.resources.energy_current, player.resources.energy_max), layout.player_resources_panel.x + 10, layout.player_resources_panel.y + 34, layout.player_resources_panel.w - 20, "left")
-	lg.printf(string.format("Money: %d", player.resources.money), layout.player_resources_panel.x + 10, layout.player_resources_panel.y + 58, layout.player_resources_panel.w - 20, "left")
-	lg.printf("Player Pouch", layout.pouch_panel.x, layout.pouch_panel.y + 8, layout.pouch_panel.w, "center")
-	lg.printf(string.format("Stones: %d", pouch.remaining_count(player.stones.pouch)), layout.pouch_panel.x + 10, layout.pouch_panel.y + 34, layout.pouch_panel.w - 20, "left")
-	lg.printf("Opponent Stances", layout.opponent_stances_panel.x, layout.opponent_stances_panel.y + 8, layout.opponent_stances_panel.w, "center")
-	draw_stances(layout.opponent_stances_panel, stances.all_active_stances(opp, game, "B"))
-	lg.printf("Opponent Energy", layout.opponent_resources_panel.x, layout.opponent_resources_panel.y + 8, layout.opponent_resources_panel.w, "center")
-	lg.printf(string.format("%d/%d", opp.resources.energy_current, opp.resources.energy_max), layout.opponent_resources_panel.x + 10, layout.opponent_resources_panel.y + 34, layout.opponent_resources_panel.w - 20, "center")
-	lg.printf("Player Deck", layout.deck_panel.x, layout.deck_panel.y + 8, layout.deck_panel.w, "center")
+	draw_stances(layout.player_stances_panel, stances.all_active_stances(player, game, "A"), "A")
+	draw_stances(layout.opponent_stances_panel, stances.all_active_stances(opp, game, "B"), "B")
+	local stat_rects = layout_mod.player_stat_icon_rects(layout)
+	draw_icon_or_fallback("energy", stat_rects[1])
+	draw_icon_or_fallback("money", stat_rects[2])
+	draw_icon_or_fallback("prison", stat_rects[3])
+	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
 	lg.printf(
-		string.format("Deck: %d  Played: %d", #player.cards.deck.ids, #player.cards.discard.ids),
-		layout.deck_panel.x + 10,
-		layout.deck_panel.y + 34,
-		layout.deck_panel.w - 20,
-		"left"
+		string.format("%d/%d", player.resources.energy_current, player.resources.energy_max),
+		stat_rects[1].x,
+		stat_rects[1].y + stat_rects[1].h + 2,
+		stat_rects[1].w,
+		"center"
 	)
+	lg.printf(tostring(player.resources.money), stat_rects[2].x, stat_rects[2].y + stat_rects[2].h + 2, stat_rects[2].w, "center")
+	lg.printf(tostring(player.prisoners or 0), stat_rects[3].x, stat_rects[3].y + stat_rects[3].h + 2, stat_rects[3].w, "center")
+	local action_rects = layout_mod.player_action_icon_rects(layout)
+	draw_icon_or_fallback("bowl", action_rects[1])
+	draw_icon_or_fallback("deck", action_rects[2])
+	draw_icon_or_fallback("discarded", layout_mod.discard_icon_rect(layout))
 end
 
 local function stone_color_for_side(side)
@@ -313,12 +414,28 @@ end
 
 local function draw_selector(game, layout, popup_state)
 	local player = match_state.player_for_color(game, "black")
-	local rects = layout_mod.stone_chip_rects(layout, #player.stones.playable_stones)
+	local dragged_index = nil
+	local dragging = M._stone_drag
+	if dragging and dragging.active and dragging.moved then
+		dragged_index = dragging.source_index
+	end
+	local visible_stones = {}
+	local visible_to_real = {}
+	for i = 1, #player.stones.playable_stones do
+		if i ~= dragged_index then
+			visible_stones[#visible_stones + 1] = player.stones.playable_stones[i]
+			visible_to_real[#visible_to_real + 1] = i
+		end
+	end
+	local rects = layout_mod.stone_chip_rects(layout, #visible_stones)
 	local selected_slot = popup_state and popup_state.selected_slot or nil
+	if (not selected_slot) and player.stones.selected_stone_index then
+		selected_slot = player.stones.selected_stone_index
+	end
 	if selected_slot and (selected_slot < 1 or selected_slot > #player.stones.playable_stones) then
 		selected_slot = nil
 	end
-	if not selected_slot then
+	if (not selected_slot) and player.stones.selected_stone then
 		for i = 1, #player.stones.playable_stones do
 			if player.stones.playable_stones[i] == player.stones.selected_stone then
 				selected_slot = i
@@ -328,8 +445,9 @@ local function draw_selector(game, layout, popup_state)
 	end
 	for i = 1, #rects do
 		local rect = rects[i]
-		local stone_id = player.stones.playable_stones[i]
-		draw_stone_chip(stone_id, rect, stone_color_for_side("black"), selected_slot == i)
+		local stone_id = visible_stones[i]
+		local highlighted = selected_slot and visible_to_real[i] == selected_slot or false
+		draw_stone_chip(stone_id, rect, stone_color_for_side("black"), highlighted)
 	end
 end
 
@@ -427,6 +545,7 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 	local territory = game.territory
 	local n = layout.board_metrics.n
 	if territory then
+		lg.setScissor(layout.board_metrics.x, layout.board_metrics.y, layout.board_metrics.w, layout.board_metrics.h)
 		local half = layout.board_metrics.cell * 0.5
 		for r = 1, n do
 			for c = 1, n do
@@ -445,6 +564,7 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 				end
 			end
 		end
+		lg.setScissor()
 	end
 	lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3])
 	lg.setLineWidth(config.GRID_LINE_WIDTH)
@@ -472,7 +592,7 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 		local px, py = layout_mod.grid_to_pixel(layout, selected_target.row, selected_target.col)
 		lg.setColor(0.96, 0.84, 0.22, 0.95)
 		lg.setLineWidth(3)
-		lg.circle("line", px, py, rad * 1.15)
+		lg.circle("line", px, py, rad * 0.92)
 		lg.setLineWidth(1)
 	end
 	if hover_row and hover_col and show_hover then
@@ -482,28 +602,41 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 	end
 end
 
+local function board_stone_info_rect(layout, popup_state)
+	local px, py = layout_mod.grid_to_pixel(layout, popup_state.row, popup_state.col)
+	local box_w = 250
+	local box_h = 96
+	local offset = 18
+	local x = px + offset
+	local y = py - math.floor(box_h * 0.5)
+	if x + box_w > layout.board.x + layout.board.w then
+		x = px - offset - box_w
+	end
+	if y < layout.board.y then
+		y = layout.board.y + 4
+	end
+	if y + box_h > layout.board.y + layout.board.h then
+		y = layout.board.y + layout.board.h - box_h - 4
+	end
+	return { x = x, y = y, w = box_w, h = box_h }
+end
+
 local function draw_board_stone_popup(layout, popup_state)
 	local stone = content.get_stone(popup_state.stone_id)
 	if not stone then
 		return
 	end
 	local lg = love.graphics
-	local box = begin_modal_popup(layout)
+	local box = board_stone_info_rect(layout, popup_state)
+	draw_panel(box)
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
-	lg.printf("Stone Details", box.x + 20, box.y + 18, box.w - 40, "left")
-	lg.printf(stone.name or popup_state.stone_id, box.x + 20, box.y + 56, box.w - 40, "left")
-	lg.printf(stone.description or "", box.x + 20, box.y + 82, box.w - 40, "left")
-	if stone.depiction then
-		lg.printf("Depiction: " .. stone.depiction, box.x + 20, box.y + 120, box.w - 40, "left")
-	end
-	local owner_label = popup_state.owner == config.STONE_BLACK and "Black" or "White"
-	lg.printf("Owner: " .. owner_label, box.x + 20, box.y + 150, box.w - 40, "left")
-	lg.printf(string.format("Board Position: (%d, %d)", popup_state.row, popup_state.col), box.x + 20, box.y + 176, box.w - 40, "left")
-	lg.printf("Tags: " .. table.concat(stone.tags or {}, ", "), box.x + 20, box.y + 202, box.w - 40, "left")
+	lg.printf(stone.name or popup_state.stone_id, box.x + 10, box.y + 10, box.w - 20, "left")
+	lg.printf(stone.description or "", box.x + 10, box.y + 34, box.w - 20, "left")
 	local key = popup_state.row .. ":" .. popup_state.col
 	local mods = popup_state.game_state and popup_state.game_state.board_stone_modifiers and popup_state.game_state.board_stone_modifiers[key]
 	local points_bonus = mods and mods.points_bonus or 0
-	lg.printf("Dynamic Bonus Points: " .. tostring(points_bonus), box.x + 20, box.y + 228, box.w - 40, "left")
+	lg.printf("Bonus: " .. tostring(points_bonus), box.x + 10, box.y + box.h - 22, box.w - 20, "left")
+	lg.printf("Selected target", box.x + 10, box.y + box.h - 22, box.w - 20, "right")
 end
 
 --- @param layout table
@@ -608,17 +741,21 @@ end
 local function draw_deck_browser_popup(layout, popup_state)
 	local lg = love.graphics
 	local box = begin_modal_popup(layout)
-	lg.printf("Deck Browser", box.x + 20, box.y + 18, box.w - 140, "left")
+	local title = popup_state.mode == "discard-browser" and "Discard Browser" or "Deck Browser"
+	lg.printf(title, box.x + 20, box.y + 18, box.w - 140, "left")
 	local deck_cards = popup_state.cards or {}
 	local played_cards = popup_state.played_cards or {}
 	local y_top = box.y + 52
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
-	lg.printf("Deck", box.x + 20, y_top - 20, box.w - 40, "left")
+	if popup_state.mode ~= "discard-browser" then
+		lg.printf("Deck", box.x + 20, y_top - 20, box.w - 40, "left")
+	end
 	local deck_rects = layout_mod.pouch_popup_grid_rects(layout, #deck_cards)
 	for i = 1, #deck_rects do
 		draw_popup_card_tile(deck_cards[i], deck_rects[i], popup_state.focus_group == "deck" and popup_state.focus_index == i)
 	end
-	lg.printf("Played", box.x + 20, y_top + 140, box.w - 40, "left")
+	local played_label = popup_state.mode == "discard-browser" and "Discarded" or "Played"
+	lg.printf(played_label, box.x + 20, y_top + 140, box.w - 40, "left")
 	draw_played_cards_grid(box, played_cards, popup_state.focus_group, popup_state.focus_index)
 	if not popup_state.focus_group or not popup_state.focus_index then
 		return
@@ -642,6 +779,8 @@ local function draw_popup(layout, popup_state)
 		draw_pouch_browser_popup(layout, popup_state)
 	elseif popup_state.mode == "deck-browser" then
 		draw_deck_browser_popup(layout, popup_state)
+	elseif popup_state.mode == "discard-browser" then
+		draw_deck_browser_popup(layout, popup_state)
 	elseif popup_state.mode == "board-stone-info" then
 		draw_board_stone_popup(layout, popup_state)
 	end
@@ -656,10 +795,11 @@ function M.popup_hit_test(layout, popup_state, x, y)
 	end
 	local close = layout_mod.popup_close_rect(layout)
 	if popup_state.mode == "board-stone-info" then
-		if inside(close, x, y) then
-			return { kind = "close" }
+		local box = board_stone_info_rect(layout, popup_state)
+		if inside(box, x, y) then
+			return { kind = "consume" }
 		end
-		return { kind = "consume" }
+		return { kind = "none" }
 	end
 	if inside(close, x, y) then
 		return { kind = "close" }
@@ -672,7 +812,7 @@ function M.popup_hit_test(layout, popup_state, x, y)
 			end
 		end
 	end
-	if popup_state.mode == "deck-browser" then
+	if popup_state.mode == "deck-browser" or popup_state.mode == "discard-browser" then
 		local box = layout.popup
 		local deck_cards = popup_state.cards or {}
 		local deck_rects = layout_mod.pouch_popup_grid_rects(layout, #deck_cards)
@@ -726,16 +866,53 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, sto
 			false
 		)
 	end
+	local draw_anim = M._stone_draw_anim
+	if draw_anim.current and draw_anim.current.actor == "black" then
+		local event = draw_anim.current
+		local start_rect = layout_mod.player_action_icon_rects(layout)[1]
+		local end_rects = layout_mod.stone_chip_rects(layout, #match_state.player_for_color(game, "black").stones.playable_stones)
+		local target = end_rects[event.target_index]
+		if start_rect and target then
+			local t = 0
+			if draw_anim.duration > 0 then
+				t = math.max(0, math.min(1, draw_anim.elapsed / draw_anim.duration))
+			end
+			local sx = start_rect.x + start_rect.w * 0.5
+			local sy = start_rect.y + start_rect.h * 0.5
+			local tx = target.x + target.w * 0.5
+			local ty = target.y + target.h * 0.5
+			local x = sx + (tx - sx) * t
+			local y = sy + (ty - sy) * t
+			draw_stone_chip(event.stone_id, { x = x - 24, y = y - 24, w = 48, h = 48 }, stone_color_for_side("black"), false)
+		end
+	end
 	lg.setColor(1, 1, 1, 1)
 end
 
 function M.update(dt, game)
 	local anim = M._score_anim
+	local draw_anim = M._stone_draw_anim
 	local events = game.messages.score_events or {}
 	for i = 1, #events do
 		anim.queue[#anim.queue + 1] = events[i]
 	end
 	game.messages.score_events = {}
+	local draw_events = game.stone_draw_events or {}
+	for i = 1, #draw_events do
+		draw_anim.queue[#draw_anim.queue + 1] = draw_events[i]
+	end
+	game.stone_draw_events = {}
+	if draw_anim.current then
+		draw_anim.elapsed = draw_anim.elapsed + dt
+		if draw_anim.elapsed >= draw_anim.duration then
+			draw_anim.current = nil
+			draw_anim.elapsed = 0
+		end
+	end
+	if (not draw_anim.current) and #draw_anim.queue > 0 then
+		draw_anim.current = table.remove(draw_anim.queue, 1)
+		draw_anim.elapsed = 0
+	end
 	if anim.current then
 		anim.remaining = anim.remaining - dt
 		if anim.remaining > 0 then
@@ -759,6 +936,36 @@ end
 
 function M.set_card_ui_state(card_ui_state)
 	M._card_ui = card_ui_state
+end
+
+function M.set_stance_ui_state(stance_ui_state)
+	M._stance_ui = stance_ui_state
+end
+
+function M.set_stone_drag_state(stone_drag_state)
+	M._stone_drag = stone_drag_state
+end
+
+function M.stance_hit_test(game, layout, x, y)
+	local player = match_state.player_for_color(game, "black")
+	local opp = match_state.player_for_color(game, "white")
+	local panels = {
+		{ owner_key = "A", box = layout.player_stances_panel, entries = stances.all_active_stances(player, game, "A") },
+		{ owner_key = "B", box = layout.opponent_stances_panel, entries = stances.all_active_stances(opp, game, "B") },
+	}
+	for p = 1, #panels do
+		local panel = panels[p]
+		local rects = get_stance_card_rects(panel.box, panel.entries)
+		for i = #rects, 1, -1 do
+			if inside(rects[i], x, y) then
+				return { kind = "stance_card", owner_key = panel.owner_key, index = i }
+			end
+		end
+		if inside(panel.box, x, y) then
+			return { kind = "stance_panel", owner_key = panel.owner_key }
+		end
+	end
+	return { kind = "none" }
 end
 
 function M.toggle_score_display_mode()

@@ -19,6 +19,7 @@ local hover_col
 local popup_state
 local stone_drag
 local card_ui
+local stance_ui
 local menu_step
 local dropdown_open
 local selected_game_type
@@ -65,7 +66,7 @@ local function open_selector_popup(active, slot_index)
 	if not stone_id then
 		return false
 	end
-	if not game.select_stone(match, stone_id) then
+	if not game.select_stone(match, stone_id, slot_index) then
 		return false
 	end
 	local rects = layout_mod.stone_chip_rects(layout, #active.stones.playable_stones)
@@ -120,6 +121,26 @@ local function open_deck_popup(active)
 	popup_state.selected_slot = nil
 end
 
+local function open_discard_popup(active)
+	popup_state.mode = "discard-browser"
+	popup_state.cards = {}
+	popup_state.played_cards = {}
+	local discarded = active.cards.discard.ids
+	for i = 1, #discarded do
+		popup_state.played_cards[i] = discarded[i]
+	end
+	if #popup_state.played_cards > 0 then
+		popup_state.focus_group = "played"
+		popup_state.focus_index = 1
+	else
+		popup_state.focus_group = nil
+		popup_state.focus_index = nil
+	end
+	popup_state.stone_id = nil
+	popup_state.anchor_rect = nil
+	popup_state.selected_slot = nil
+end
+
 --- @param x number
 --- @param y number
 --- @return boolean
@@ -146,12 +167,20 @@ local function handle_open_popup_click(x, y, active, stone_count)
 	if is_popup_open() then
 		return false
 	end
-	if x >= layout.pouch_panel.x and x <= layout.pouch_panel.x + layout.pouch_panel.w and y >= layout.pouch_panel.y and y <= layout.pouch_panel.y + layout.pouch_panel.h then
+	local action_rects = layout_mod.player_action_icon_rects(layout)
+	local bowl = action_rects[1]
+	if x >= bowl.x and x <= bowl.x + bowl.w and y >= bowl.y and y <= bowl.y + bowl.h then
 		open_pouch_popup(active)
 		return true
 	end
-	if x >= layout.deck_panel.x and x <= layout.deck_panel.x + layout.deck_panel.w and y >= layout.deck_panel.y and y <= layout.deck_panel.y + layout.deck_panel.h then
+	local deck = action_rects[2]
+	if x >= deck.x and x <= deck.x + deck.w and y >= deck.y and y <= deck.y + deck.h then
 		open_deck_popup(active)
+		return true
+	end
+	local discard = layout_mod.discard_icon_rect(layout)
+	if x >= discard.x and x <= discard.x + discard.w and y >= discard.y and y <= discard.y + discard.h then
+		open_discard_popup(active)
 		return true
 	end
 	local stone_index = layout_mod.stone_index_at(layout, x, y, stone_count)
@@ -182,7 +211,7 @@ local function handle_active_popup_click(x, y, active, stone_count)
 		local stone_index = layout_mod.stone_index_at(layout, x, y, stone_count)
 		if not stone_index then
 			close_selector_popup()
-			return true
+			return false
 		end
 		if popup_state.selected_slot ~= stone_index then
 			open_selector_popup(active, stone_index)
@@ -191,11 +220,13 @@ local function handle_active_popup_click(x, y, active, stone_count)
 	end
 	if popup_state.mode == "board-stone-info" then
 		local popup_hit = render.popup_hit_test(layout, popup_state, x, y)
-		if popup_hit.kind == "close" then
-			reset_popup()
-			return true
+		if popup_hit.kind == "consume" then
+			return false
 		end
-		return true
+		if popup_hit.kind == "none" then
+			reset_popup()
+			return false
+		end
 	end
 	if not is_popup_open() then
 		return false
@@ -245,11 +276,109 @@ local function reset_card_ui()
 	}
 end
 
+local function reset_stance_ui()
+	stance_ui = {
+		owner_key = nil,
+		index = nil,
+		drag_active = false,
+		drag_index = nil,
+		drag_was_selected = false,
+		start_x = 0,
+		start_y = 0,
+		current_x = 0,
+		current_y = 0,
+		moved = false,
+	}
+end
+
+local function owner_color_from_key(owner_key)
+	if owner_key == "A" then
+		return "black"
+	end
+	return "white"
+end
+
+local function swap_stance_positions(owner_key, from_index, to_index)
+	if not from_index or not to_index or from_index == to_index then
+		return
+	end
+	local player = match_state.player_for_color(match, owner_color_from_key(owner_key))
+	local fixed_count = #player.stances.fixed
+	local base_count = fixed_count + #player.stances.swappable
+	if from_index > base_count or to_index > base_count then
+		return
+	end
+	local combined = {}
+	for i = 1, fixed_count do
+		combined[#combined + 1] = player.stances.fixed[i]
+	end
+	for i = 1, #player.stances.swappable do
+		combined[#combined + 1] = player.stances.swappable[i]
+	end
+	combined[from_index], combined[to_index] = combined[to_index], combined[from_index]
+	for i = 1, fixed_count do
+		player.stances.fixed[i] = combined[i]
+	end
+	for i = fixed_count + 1, #combined do
+		player.stances.swappable[i - fixed_count] = combined[i]
+	end
+end
+
+local function begin_stance_drag(x, y)
+	local hit = render.stance_hit_test(match, layout, x, y)
+	if hit.kind == "stance_card" then
+		stance_ui.drag_active = true
+		stance_ui.drag_index = hit.index
+		stance_ui.owner_key = hit.owner_key
+		stance_ui.start_x = x
+		stance_ui.start_y = y
+		stance_ui.current_x = x
+		stance_ui.current_y = y
+		stance_ui.moved = false
+		stance_ui.drag_was_selected = (stance_ui.owner_key == hit.owner_key and stance_ui.index == hit.index)
+		return true
+	end
+	if stance_ui.index and hit.kind == "none" then
+		reset_stance_ui()
+		return false
+	end
+	return hit.kind == "stance_panel"
+end
+
+local function end_stance_drag(x, y)
+	if not stance_ui.drag_active then
+		return false
+	end
+	local owner_key = stance_ui.owner_key
+	local drag_index = stance_ui.drag_index
+	local moved = stance_ui.moved
+	stance_ui.drag_active = false
+	stance_ui.drag_index = nil
+	stance_ui.moved = false
+	if moved then
+		local hit = render.stance_hit_test(match, layout, x, y)
+		if hit.kind == "stance_card" and hit.owner_key == owner_key then
+			swap_stance_positions(owner_key, drag_index, hit.index)
+		end
+		return true
+	end
+	if stance_ui.owner_key == owner_key and stance_ui.index == drag_index then
+		reset_stance_ui()
+	else
+		stance_ui.owner_key = owner_key
+		stance_ui.index = drag_index
+	end
+	return true
+end
+
 --- @param x number
 --- @param y number
 --- @param active table
 --- @return boolean
 local function handle_card_press(x, y, active)
+	if popup_state.mode == "selector-details" then
+		close_selector_popup()
+	end
 	local hand_count = #active.cards.hand.ids
 	if card_ui.selected_index and card_ui.selected_index > hand_count then
 		card_ui.selected_index = nil
@@ -291,6 +420,12 @@ local function handle_board_press(x, y)
 	end
 	local cell = match.board[row] and match.board[row][col]
 	if cell and not board.is_empty(cell) then
+		match.selected_card_target = {
+			row = row,
+			col = col,
+			stone_id = cell.kind,
+			stone_color = cell.color,
+		}
 		local active = match_state.player_for_color(match, match.to_play)
 		local selected_index = card_ui.selected_index
 		local card_id = selected_index and active.cards.hand.ids[selected_index] or nil
@@ -313,6 +448,7 @@ local function reset_to_menu()
 	reset_popup()
 	reset_stone_drag()
 	reset_card_ui()
+	reset_stance_ui()
 end
 
 --- Seeds RNG, fonts, and opens the home screen.
@@ -327,6 +463,7 @@ function love.load()
 	reset_popup()
 	reset_stone_drag()
 	reset_card_ui()
+	reset_stance_ui()
 	love.math.setRandomSeed(love.timer.getTime() * 1000000 + os.time())
 end
 
@@ -364,6 +501,8 @@ function love.draw()
 	local hr, hc = hover_row, hover_col
 	local show_hover = game.is_human_turn(match)
 	render.set_card_ui_state(card_ui)
+	render.set_stance_ui_state(stance_ui)
+	render.set_stone_drag_state(stone_drag)
 	render.draw(match, layout, hr, hc, show_hover, popup_state, stone_drag)
 end
 
@@ -400,6 +539,7 @@ function love.mousepressed(x, y, button)
 				reset_popup()
 				reset_stone_drag()
 				reset_card_ui()
+				reset_stance_ui()
 			end
 			return
 		end
@@ -411,9 +551,15 @@ function love.mousepressed(x, y, button)
 	if stone_drag.active then
 		return
 	end
+	if stance_ui.drag_active then
+		return
+	end
 	local active = match_state.player_for_color(match, match.to_play)
 	local stone_count = #active.stones.playable_stones
 	if handle_score_box_click(x, y) then
+		return
+	end
+	if begin_stance_drag(x, y) then
 		return
 	end
 	if handle_active_popup_click(x, y, active, stone_count) then
@@ -448,6 +594,15 @@ function love.mousemoved(x, y)
 			end
 		end
 	end
+	if stance_ui.drag_active then
+		stance_ui.current_x = x
+		stance_ui.current_y = y
+		local dx = x - stance_ui.start_x
+		local dy = y - stance_ui.start_y
+		if (dx * dx + dy * dy) > 64 then
+			stance_ui.moved = true
+		end
+	end
 	if card_ui.drag_active then
 		card_ui.current_x = x
 		card_ui.current_y = y
@@ -471,7 +626,7 @@ function love.mousereleased(x, y, button)
 		local stone_id = stone_drag.stone_id
 		if stone_drag.moved then
 			if stone_id then
-				game.select_stone(match, stone_id)
+				game.select_stone(match, stone_id, source_index)
 			end
 			local r, c = layout_mod.pixel_to_grid(layout, x, y)
 			if r and c then
@@ -484,6 +639,9 @@ function love.mousereleased(x, y, button)
 			open_selector_popup(active, source_index)
 		end
 		reset_stone_drag()
+		return
+	end
+	if end_stance_drag(x, y) then
 		return
 	end
 	if card_ui.drag_active then
@@ -541,6 +699,7 @@ function love.keypressed(key)
 		reset_popup()
 		reset_stone_drag()
 		reset_card_ui()
+		reset_stance_ui()
 		return
 	end
 	if key == "p" and match then

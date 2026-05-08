@@ -88,6 +88,7 @@ local function build_player(side, starter, rng_next_int)
 			pouch = starter_pouch,
 			playable_stones = playable_stones,
 			selected_stone = playable_stones[1],
+			selected_stone_index = (#playable_stones > 0) and 1 or nil,
 			hand_target_size = STONE_HAND_TARGET_SIZE,
 		},
 	cards = deck.new(deck_seed_ids, CARD_HAND_TARGET_SIZE, rng_next_int),
@@ -138,6 +139,7 @@ function M.new_match(match_kind, territory_mode, seed)
 		last_opponent_modifiers = {},
 		active_effects = {},
 		round_stone_effects = {},
+		stone_draw_events = {},
 		selected_card_target = nil,
 		board_stone_modifiers = {},
 		territory_value = (function()

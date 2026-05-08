@@ -3,6 +3,7 @@
 
 local board = require("board")
 local effects_registry = require("effect_registry")
+local dbg = require("debugger")
 
 local M = {}
 
@@ -181,6 +182,7 @@ function M.collect_effects(state, phase)
 	append_board_stone_effects(state, phase, effects)
 	append_timed_effects(state, phase, effects)
 	table.sort(effects, effect_priority)
+	dbg.log_stack("collected effects", {phase = phase, effects = effects})
 	return effects
 end
 
@@ -193,7 +195,7 @@ end
 function M.apply_phase(state, phase, context)
 	local conditions = require("objects.conditions")
 	local effects = M.collect_effects(state, phase)
-	dbg.log_stack("effects", {phase = phase, effects = effects})
+	-- dbg.log_stack("effects", {context = context})
 	context = context or { state = state }
 	for _, effect in ipairs(effects) do
 		local eval_context = { state = state, phase = phase }
@@ -204,7 +206,7 @@ function M.apply_phase(state, phase, context)
 			eval_context.last_placed_stone = context.last_placed_stone
 		end
 		if effect.context then
-			if effect.context.selected_target then
+			if effect.context.selected_target then -- TODO: What does it even do?
 				eval_context.selected_target = effect.context.selected_target
 			end
 			if effect.context.stance_owner then

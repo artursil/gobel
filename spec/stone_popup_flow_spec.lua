@@ -94,8 +94,9 @@ describe("T-051 stone popup and interaction integration", function()
 	it("pouch popup shows remaining stones grid and detail focus updates on tile click", function()
 		local layout, match = setup_play_state()
 		local active = match_state.player_for_color(match, match.to_play)
-		local px = layout.pouch_panel.x + 8
-		local py = layout.pouch_panel.y + 8
+		local actions = layout_mod.player_action_icon_rects(layout)
+		local px = actions[1].x + 8
+		local py = actions[1].y + 8
 		love.mousepressed(px, py, 1)
 
 		local popup_state = get_popup_state()
@@ -122,7 +123,8 @@ describe("T-051 stone popup and interaction integration", function()
 	it("deck popup opens from deck panel and supports deck/played focus selection", function()
 		local layout, match = setup_play_state()
 		local active = match_state.player_for_color(match, match.to_play)
-		love.mousepressed(layout.deck_panel.x + 8, layout.deck_panel.y + 8, 1)
+		local actions = layout_mod.player_action_icon_rects(layout)
+		love.mousepressed(actions[2].x + 8, actions[2].y + 8, 1)
 
 		local popup_state = get_popup_state()
 		assert.are.equal("deck-browser", popup_state.mode)
@@ -142,7 +144,7 @@ describe("T-051 stone popup and interaction integration", function()
 		active.cards.deck.ids = {}
 		local close_before_refresh = layout_mod.popup_close_rect(layout)
 		love.mousepressed(close_before_refresh.x + 2, close_before_refresh.y + 2, 1)
-		love.mousepressed(layout.deck_panel.x + 8, layout.deck_panel.y + 8, 1)
+		love.mousepressed(actions[2].x + 8, actions[2].y + 8, 1)
 		popup_state = get_popup_state()
 		local box = layout.popup
 		local cols = 5
@@ -162,6 +164,18 @@ describe("T-051 stone popup and interaction integration", function()
 		assert.are.equal("none", popup_state.mode)
 	end)
 
+	it("discard icon opens discard browser", function()
+		local layout, match = setup_play_state()
+		local active = match_state.player_for_color(match, match.to_play)
+		table.insert(active.cards.discard.ids, "card_point_tap")
+		local discard = layout_mod.discard_icon_rect(layout)
+		love.mousepressed(discard.x + 8, discard.y + 8, 1)
+		local popup_state = get_popup_state()
+		assert.are.equal("discard-browser", popup_state.mode)
+		assert.are.equal(0, #popup_state.cards)
+		assert.are.equal(#active.cards.discard.ids, #popup_state.played_cards)
+	end)
+
 	it("popup guard prevents board placement and card play while active", function()
 		local layout, match = setup_play_state()
 		local active = match_state.player_for_color(match, match.to_play)
@@ -169,7 +183,8 @@ describe("T-051 stone popup and interaction integration", function()
 		local discard_before = #active.cards.discard.ids
 		local board_before = board.clone(match.board)
 
-		love.mousepressed(layout.pouch_panel.x + 8, layout.pouch_panel.y + 8, 1)
+		local actions = layout_mod.player_action_icon_rects(layout)
+		love.mousepressed(actions[1].x + 8, actions[1].y + 8, 1)
 
 		local hand_rect = layout_mod.hand_card_rects(layout, #active.cards.hand.ids)[1]
 		love.mousepressed(hand_rect.x + 2, hand_rect.y + 2, 1)
@@ -185,7 +200,8 @@ describe("T-051 stone popup and interaction integration", function()
 	it("core loop still works after popup open and close cycle", function()
 		local layout, match = setup_play_state()
 		local active = match_state.player_for_color(match, match.to_play)
-		love.mousepressed(layout.pouch_panel.x + 8, layout.pouch_panel.y + 8, 1)
+		local actions = layout_mod.player_action_icon_rects(layout)
+		love.mousepressed(actions[1].x + 8, actions[1].y + 8, 1)
 		local close = layout_mod.popup_close_rect(layout)
 		love.mousepressed(close.x + 2, close.y + 2, 1)
 

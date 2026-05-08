@@ -196,14 +196,14 @@ function M.select_board_target(g, row, col)
 	return set_status_from_result(g, result, "Board target selected.")
 end
 
-function M.select_stone(g, stone_id)
+function M.select_stone(g, stone_id, stone_index)
 	if not M.is_human_turn(g) then
 		return false
 	end
 	local result = resolver.submit_action(g, {
 		actor = g.to_play,
 		type = "SELECT_STONE",
-		payload = { stone_id = stone_id },
+		payload = { stone_id = stone_id, stone_index = stone_index },
 	})
 	return set_status_from_result(g, result, "Stone selected.")
 end

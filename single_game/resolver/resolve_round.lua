@@ -230,15 +230,15 @@ end
 --- @param state table
 --- @return nil
 function M.resolve(state)
-	dbg.log_stack("resolve_round", state)
+	-- dbg.log_stack("resolve_round", state)
 	ensure_state_fields(state)
-	dbg.log_stack("ensure_state_fields", state)
+	-- dbg.log_stack("ensure_state_fields", state)
 	sync_opponent_state(state)
 	rebuild_ordered_stances(state)
 	reset_base_scores(state)
 	for _, phase in ipairs(phases.PRE) do
-		local context = build_effect_context(state, phase)
-		dbg.log_stack("PRE phase", {phase = phase, context = context})
+		local context = build_effect_context(state, phase) -- TODO: Why we pass state to the context and then state and the context?
+		-- dbg.log_stack("PRE phase", {phase = phase, context = context})
 		effect_manager.apply_phase(state, phase, context)
 	end
 	for _, phase in ipairs(phases.MAIN) do

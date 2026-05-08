@@ -32,6 +32,11 @@ function M.from_window(window_w, window_h)
 	local pouch_h = math.max(88, math.floor(column_h * 0.16))
 	local left_mid_h = column_h - score_h - pouch_h - gap * 2
 	local right_mid_h = left_mid_h
+	local resources_h = math.max(120, math.floor(column_h * 0.2))
+	local resources_y = window_h - outer - resources_h
+	local stances_y = outer + score_h + gap
+	local stances_h = resources_y - gap - stances_y
+	stances_h = math.max(160, stances_h)
 	local selector_h = math.max(56, math.floor(bottom_h * 0.28))
 	local hand_y = bottom_y + selector_h + gap
 	local hand_h = bottom_h - selector_h - gap
@@ -46,14 +51,14 @@ function M.from_window(window_w, window_h)
 		score_opponent = { x = window_w - outer - side_w, y = outer, w = side_w, h = score_h },
 		left_panel = { x = outer, y = outer, w = side_w, h = column_h },
 		right_panel = { x = window_w - outer - side_w, y = outer, w = side_w, h = column_h },
-	player_stances_panel = { x = outer, y = outer + score_h + gap, w = side_w, h = math.floor(left_mid_h * 0.62) },
+	player_stances_panel = { x = outer, y = stances_y, w = side_w, h = stances_h },
 	player_resources_panel = {
 		x = outer,
-		y = outer + score_h + gap + math.floor(left_mid_h * 0.62) + gap,
+		y = resources_y,
 		w = side_w,
-		h = left_mid_h - math.floor(left_mid_h * 0.62) - gap,
+		h = resources_h,
 	},
-	pouch_panel = { x = outer, y = window_h - outer - pouch_h, w = side_w, h = pouch_h },
+	pouch_panel = { x = outer + 10, y = window_h - outer - pouch_h + 10, w = math.floor((side_w - 30) * 0.5), h = pouch_h - 20 },
 	opponent_stances_panel = {
 		x = window_w - outer - side_w,
 		y = outer + score_h + gap,
@@ -66,7 +71,7 @@ function M.from_window(window_w, window_h)
 			w = side_w,
 			h = right_mid_h - math.floor(right_mid_h * 0.72) - gap,
 		},
-		deck_panel = { x = window_w - outer - side_w, y = window_h - outer - pouch_h, w = side_w, h = pouch_h },
+		deck_panel = { x = window_w - outer - side_w + 10, y = window_h - outer - pouch_h + 10, w = side_w - 20, h = pouch_h - 20 },
 		board = { x = center_x, y = board_y, w = center_w, h = board_h },
 		message_panel = { x = center_x, y = top_y, w = center_w, h = message_h },
 		stone_selector_panel = { x = hand_x, y = bottom_y, w = hand_w, h = selector_h },
@@ -254,6 +259,39 @@ function M.pouch_popup_grid_rects(layout, count)
 		}
 	end
 	return out
+end
+
+function M.player_stat_icon_rects(layout)
+	local box = layout.player_resources_panel
+	local pad_x = 12
+	local top_y = box.y + 10
+	local gap = 10
+	local icon_w = math.floor((box.w - pad_x * 2 - gap * 2) / 3)
+	icon_w = math.max(44, math.min(78, icon_w))
+	local x0 = box.x + math.floor((box.w - (icon_w * 3 + gap * 2)) * 0.5)
+	local out = {}
+	for i = 1, 3 do
+		out[i] = { x = x0 + (i - 1) * (icon_w + gap), y = top_y, w = icon_w, h = icon_w }
+	end
+	return out
+end
+
+function M.player_action_icon_rects(layout)
+	local box = layout.player_resources_panel
+	local gap = 14
+	local icon_w = math.floor((box.w - gap * 3) * 0.5)
+	icon_w = math.max(40, math.min(72, icon_w))
+	local row_y = box.y + box.h - icon_w - 10
+	local x0 = box.x + math.floor((box.w - (icon_w * 2 + gap)) * 0.5)
+	return {
+		{ x = x0, y = row_y, w = icon_w, h = icon_w },
+		{ x = x0 + icon_w + gap, y = row_y, w = icon_w, h = icon_w },
+	}
+end
+
+function M.discard_icon_rect(layout)
+	local p = layout.deck_panel
+	return { x = p.x, y = p.y, w = p.h, h = p.h }
 end
 
 return M

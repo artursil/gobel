@@ -134,20 +134,25 @@ local function remove_first_stone_id(ids, stone_id)
 end
 
 local function refill_playable_stones(actor_state)
+	local drawn_events = {}
 	while #actor_state.stones.playable_stones < actor_state.stones.hand_target_size do
 		local drawn = pouch.draw(actor_state.stones.pouch)
 		if not drawn then
-			return
+			return drawn_events
 		end
 		actor_state.stones.playable_stones[#actor_state.stones.playable_stones + 1] = drawn
+		drawn_events[#drawn_events + 1] = { stone_id = drawn, target_index = #actor_state.stones.playable_stones }
 	end
+	return drawn_events
 end
 
 local function refresh_selected_stone(actor_state)
-	if contains_stone_id(actor_state.stones.playable_stones, actor_state.stones.selected_stone) then
+	local selected_index = actor_state.stones.selected_stone_index
+	if selected_index and actor_state.stones.playable_stones[selected_index] == actor_state.stones.selected_stone then
 		return
 	end
 	actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
+	actor_state.stones.selected_stone_index = (#actor_state.stones.playable_stones > 0) and 1 or nil
 end
 
 --- @param state table
@@ -163,8 +168,9 @@ local function run_event_queue(state, event_queue)
 			state.last_opponent_move = { stone_id = event.stone_id, row = event.row, col = event.col, actor = event.actor }
 			local actor_state = match_state.player_for_color(state, event.actor)
 			actor_state.prisoners = actor_state.prisoners + event.captures
-			if remove_first_stone_id(actor_state.stones.playable_stones, event.stone_id) then
-				refill_playable_stones(actor_state)
+			if event.stone_index and actor_state.stones.playable_stones[event.stone_index] == event.stone_id then
+				table.remove(actor_state.stones.playable_stones, event.stone_index)
+			elseif remove_first_stone_id(actor_state.stones.playable_stones, event.stone_id) then
 			end
 			refresh_selected_stone(actor_state)
 			state.consecutive_passes = 0
@@ -216,8 +222,9 @@ local function on_turn_start(state, actor)
 	energy.refresh(actor_state.resources)
 	state.modifiers = {}
 	state.selected_card_target = nil
-	if not actor_state.stones.selected_stone then
+	if not actor_state.stones.selected_stone or not actor_state.stones.selected_stone_index then
 		actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
+		actor_state.stones.selected_stone_index = (#actor_state.stones.playable_stones > 0) and 1 or nil
 	end
 	deck.draw_to_hand_target(actor_state.cards, function(max_value)
 		return match_state.rng_next_int(state, max_value)
@@ -253,6 +260,17 @@ local function finish_match_if_needed(state)
 end
 
 local function begin_next_turn(state)
+	local previous_actor = state.to_play
+	local previous_actor_state = match_state.player_for_color(state, previous_actor)
+	local drawn = refill_playable_stones(previous_actor_state)
+	state.stone_draw_events = state.stone_draw_events or {}
+	for i = 1, #drawn do
+		state.stone_draw_events[#state.stone_draw_events + 1] = {
+			actor = previous_actor,
+			stone_id = drawn[i].stone_id,
+			target_index = drawn[i].target_index,
+		}
+	end
 	state.turn_number = state.turn_number + 1
 	state.to_play = opponent_color(state.to_play)
 	state.phase = "TURN_START"
@@ -323,7 +341,11 @@ end
 
 local function compile_place_stone_events(state, action)
 	local actor_state = match_state.player_for_color(state, action.actor)
-	local stone_id = actor_state.stones.selected_stone
+	local selected_index = actor_state.stones.selected_stone_index
+	if not selected_index or not actor_state.stones.playable_stones[selected_index] then
+		return nil, "No stone selected"
+	end
+	local stone_id = actor_state.stones.playable_stones[selected_index]
 	if not stone_id then
 		return nil, "No stone selected"
 	end
@@ -375,6 +397,7 @@ local function compile_place_stone_events(state, action)
 			ko_ban = new_ko,
 			captures = captures,
 			stone_id = stone_id,
+			stone_index = selected_index,
 			row = row,
 			col = col,
 			stone_effects = placement_round,
@@ -391,15 +414,34 @@ end
 local function compile_select_stone_events(state, action)
 	local actor_state = match_state.player_for_color(state, action.actor)
 	local stone_id = action.payload and action.payload.stone_id or nil
+	local stone_index = action.payload and action.payload.stone_index or nil
 	if not stone_id then
 		return nil, "Missing stone selection"
 	end
-	if contains_stone_id(actor_state.stones.playable_stones, stone_id) then
+	if stone_index and actor_state.stones.playable_stones[stone_index] == stone_id then
 		return {
 			{
 				kind = "SELECT_STONE_COMMIT",
 				actor = action.actor,
 				stone_id = stone_id,
+				stone_index = stone_index,
+			},
+		}, nil
+	end
+	if contains_stone_id(actor_state.stones.playable_stones, stone_id) then
+		local found_index = nil
+		for i = 1, #actor_state.stones.playable_stones do
+			if actor_state.stones.playable_stones[i] == stone_id then
+				found_index = i
+				break
+			end
+		end
+		return {
+			{
+				kind = "SELECT_STONE_COMMIT",
+				actor = action.actor,
+				stone_id = stone_id,
+				stone_index = found_index,
 			},
 		}, nil
 	end
@@ -468,6 +510,7 @@ local function apply_non_effect_event(state, event)
 	if event.kind == "SELECT_STONE_COMMIT" then
 		local actor_state = match_state.player_for_color(state, event.actor)
 		actor_state.stones.selected_stone = event.stone_id
+		actor_state.stones.selected_stone_index = event.stone_index
 		local stone = content.get_stone(event.stone_id)
 		messages.push(state.messages, "Selected stone: " .. (stone and stone.name or event.stone_id))
 		push_status_from_messages(state)
