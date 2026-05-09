@@ -385,19 +385,149 @@ local function collect_region_boundary_colors(b, n, region_tiles)
 end
 
 local function assign_empty_owners_from_walls(walls)
-	table.sort(walls, function(a, b)
-		if a.field_count == b.field_count then return a.owner < b.owner end
-		return a.field_count < b.field_count
-	end)
-	local map = {}
-	for i = 1, #walls do
-		for j = 1, #walls[i].inside_fields do
-			local r, c = walls[i].inside_fields[j][1], walls[i].inside_fields[j][2]
-			local key = cell_key(r, c)
-			if map[key] == nil then
-				map[key] = walls[i].owner
+	--- Builds a lookup set for each wall's interior cells.
+	--- Example: if wall #2 contains inside fields {(4,4), (4,5)}, `sets[2][404]` and `sets[2][405]` are true.
+	--- This lets later conflict checks run in O(1) per cell-key membership test.
+	--- @param list table[] Array of wall records containing `inside_fields`.
+	--- @return table<integer, table<integer, boolean>> inside_sets Index-aligned cell-key sets.
+	local function build_inside_sets(list)
+		local sets = {}
+		for i = 1, #list do
+			local set = {}
+			for j = 1, #list[i].inside_fields do
+				local r, c = list[i].inside_fields[j][1], list[i].inside_fields[j][2]
+				set[cell_key(r, c)] = true
+			end
+			sets[i] = set
+		end
+		return sets
+	end
+
+	--- Counts entries in a set-like table.
+	--- Example: a set with keys {101=true, 102=true, 103=true} returns 3.
+	--- @param set table<integer, boolean>
+	--- @return integer count
+	local function set_size(set)
+		local n = 0
+		for _ in pairs(set) do
+			n = n + 1
+		end
+		return n
+	end
+
+	--- Checks whether two inside-field sets share at least one cell.
+	--- Example: A={101,102}, B={102,103} => true.
+	--- @param a table<integer, boolean>
+	--- @param b table<integer, boolean>
+	--- @return boolean intersects
+	local function sets_intersect(a, b)
+		for k in pairs(a) do
+			if b[k] then
+				return true
 			end
 		end
+		return false
+	end
+
+	--- Returns true when set `a` fully contains every key from set `b`.
+	--- Example: A={101,102,103}, B={102,103} => true.
+	--- @param a table<integer, boolean>
+	--- @param b table<integer, boolean>
+	--- @return boolean contains
+	local function set_contains(a, b)
+		for k in pairs(b) do
+			if not a[k] then
+				return false
+			end
+		end
+		return true
+	end
+
+	--- Determines whether two enclosure interiors geometrically cross (overlap without containment).
+	--- Crossing means ambiguous ownership and must resolve to neutral for shared cells.
+	--- Examples:
+	--- - Nested: A contains B entirely -> false (not crossing, smallest can win).
+	--- - Disjoint: A and B do not overlap -> false.
+	--- - Overlap without containment: A∩B non-empty and neither contains the other -> true.
+	--- @param a_set table<integer, boolean>
+	--- @param b_set table<integer, boolean>
+	--- @return boolean crosses
+	local function walls_cross(a_set, b_set)
+		if not sets_intersect(a_set, b_set) then
+			return false
+		end
+		if set_contains(a_set, b_set) or set_contains(b_set, a_set) then
+			return false
+		end
+		return true
+	end
+
+	--- Resolves owner for one empty cell from all wall candidates covering that cell.
+	--- Strategy:
+	--- 1) Single candidate -> that owner.
+	--- 2) Multiple smallest candidates with different owners -> neutral.
+	--- 3) Unique smallest owner vs opposite-owner candidates:
+	---    - crossing interiors -> neutral
+	---    - nested containment or disjoint -> smallest owner wins.
+	--- Example use-cases:
+	--- - A tiny black pocket fully inside a larger white area: black wins for that cell.
+	--- - Black and white enclosures crossing over same cell: cell becomes no-man's-land (nil).
+	--- @param candidates table[] Array of { index: integer, owner: "A"|"B", field_count: integer }.
+	--- @param inside_sets table<integer, table<integer, boolean>> Wall index -> inside cell-key set.
+	--- @return string|nil owner "A", "B", or nil when ambiguous/contested.
+	local function resolve_cell_owner(candidates, inside_sets)
+		if #candidates == 0 then
+			return nil
+		end
+		if #candidates == 1 then
+			return candidates[1].owner
+		end
+		table.sort(candidates, function(a, b)
+			if a.field_count == b.field_count then
+				return a.index < b.index
+			end
+			return a.field_count < b.field_count
+		end)
+		local smallest = candidates[1]
+		for i = 2, #candidates do
+			if candidates[i].field_count ~= smallest.field_count then
+				break
+			end
+			if candidates[i].owner ~= smallest.owner then
+				return nil
+			end
+		end
+		for i = 1, #candidates do
+			local other = candidates[i]
+			if other.owner ~= smallest.owner then
+				local a_set = inside_sets[smallest.index]
+				local b_set = inside_sets[other.index]
+				if walls_cross(a_set, b_set) then
+					return nil
+				end
+			end
+		end
+		return smallest.owner
+	end
+
+	local inside_sets = build_inside_sets(walls)
+	local candidates_by_cell = {}
+	for i = 1, #walls do
+		local wall = walls[i]
+		for j = 1, #wall.inside_fields do
+			local r, c = wall.inside_fields[j][1], wall.inside_fields[j][2]
+			local key = cell_key(r, c)
+			candidates_by_cell[key] = candidates_by_cell[key] or {}
+			candidates_by_cell[key][#candidates_by_cell[key] + 1] = {
+				index = i,
+				owner = wall.owner,
+				field_count = wall.field_count,
+			}
+		end
+	end
+	local map = {}
+	for key, candidates in pairs(candidates_by_cell) do
+		map[key] = resolve_cell_owner(candidates, inside_sets)
 	end
 	return map
 end
