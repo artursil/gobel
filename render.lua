@@ -67,6 +67,23 @@ local function draw_icon_or_fallback(name, rect)
 	lg.printf(name, rect.x + 4, rect.y + math.floor(rect.h * 0.35), rect.w - 8, "center")
 end
 
+--- Draws full-screen board background image if available.
+--- Falls back to solid board color when sprite is missing.
+--- @return nil
+local function draw_game_background()
+	local lg = love.graphics
+	local bg = get_ui_sprite("background_2_light")
+	if bg and bg ~= false then
+		local w = lg.getWidth()
+		local h = lg.getHeight()
+		lg.clear(0, 0, 0, 1)
+		lg.setColor(1, 1, 1, 1)
+		lg.draw(bg, 0, 0, 0, w / bg:getWidth(), h / bg:getHeight())
+		return
+	end
+	lg.clear(config.COLOR_BOARD[1], config.COLOR_BOARD[2], config.COLOR_BOARD[3])
+end
+
 local function draw_stone_graphic(draw_key, x, y, w, h, color)
 	local lg = love.graphics
 	local cx = x + w * 0.5
@@ -117,7 +134,7 @@ local function draw_score_box_simple(game, box, side, title)
 	local plus_mult = math.ceil(player.score.plus_mult or 1)
 	local x_mult = player.score.x_mult or 1
 	local total = math.ceil((turn_bonus * territory * points * plus_mult * x_mult) or 0)
-	
+
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	lg.printf(title, box.x, box.y + 8, box.w, "center")
 	lg.printf(string.format("Territory: %d", territory), box.x, box.y + 30, box.w, "center")
@@ -131,36 +148,36 @@ local function draw_score_box_detailed(game, box, side, title)
 	local player = match_state.player_for_color(game, side)
 	local small_font = love.graphics.newFont(10)
 	local prev_font = lg.getFont()
-	
+
 	local turn_bonus = player.score.turn_bonus or 1
 	local territory = math.ceil(player.score.territory or 0)
 	local points = math.ceil(player.score.points or 0)
 	local plus_mult = math.ceil(player.score.plus_mult or 1)
 	local x_mult = player.score.x_mult or 1
 	local total = math.ceil(turn_bonus * territory * points * plus_mult * x_mult)
-	
+
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	lg.printf(title, box.x, box.y + 8, box.w, "center")
-	
+
 	lg.setFont(small_font)
 	local y_offset = box.y + 24
 	local line_height = 12
-	
+
 	lg.printf(string.format("Turn Bonus: %.1f", turn_bonus), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
-	
+
 	lg.printf(string.format("Territory: %d", territory), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
-	
+
 	lg.printf(string.format("Points: %d", points), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
-	
+
 	lg.printf(string.format("+Mult: %d", plus_mult), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
-	
+
 	lg.printf(string.format("×Mult: %.1f", x_mult), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
-	
+
 	lg.setColor(0.7, 0.7, 0.7)
 	local formula = string.format("%.1f × %d × %d × %d × %.1f = %d",
 		turn_bonus,
@@ -171,10 +188,10 @@ local function draw_score_box_detailed(game, box, side, title)
 		total)
 	lg.printf(formula, box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
-	
+
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	lg.printf(string.format("Total: %d", total), box.x + 6, y_offset, box.w - 12, "left")
-	
+
 	lg.setFont(prev_font)
 end
 
@@ -873,7 +890,7 @@ end
 
 function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, stone_drag)
 	local lg = love.graphics
-	lg.clear(config.COLOR_BOARD[1], config.COLOR_BOARD[2], config.COLOR_BOARD[3])
+	draw_game_background()
 	draw_message(game, layout.message_panel)
 	draw_panel(layout.score_player)
 	draw_panel(layout.score_opponent)
