@@ -595,6 +595,32 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 		lg.circle("line", px, py, rad * 0.92)
 		lg.setLineWidth(1)
 	end
+	local probe = M._influence_probe
+	if probe and probe.contributors then
+		local marked = {}
+		local owners = { "A", "B" }
+		if probe.owner == "A" then
+			owners = { "A" }
+		elseif probe.owner == "B" then
+			owners = { "B" }
+		end
+		for oi = 1, #owners do
+			local owner = owners[oi]
+			local list = probe.contributors[owner] or {}
+			for i = 1, #list do
+				local sr, sc = list[i].r, list[i].c
+				local key = sr * 100 + sc
+				if not marked[key] then
+					marked[key] = true
+					local px, py = layout_mod.grid_to_pixel(layout, sr, sc)
+					lg.setColor(0.96, 0.96, 0.96, 0.95)
+					lg.setLineWidth(3)
+					lg.circle("line", px, py, rad * 1.22)
+				end
+			end
+		end
+		lg.setLineWidth(1)
+	end
 	if hover_row and hover_col and show_hover then
 		local px, py = layout_mod.grid_to_pixel(layout, hover_row, hover_col)
 		lg.setColor(config.COLOR_HIGHLIGHT[1], config.COLOR_HIGHLIGHT[2], config.COLOR_HIGHLIGHT[3], config.COLOR_HIGHLIGHT[4])
@@ -944,6 +970,10 @@ end
 
 function M.set_stone_drag_state(stone_drag_state)
 	M._stone_drag = stone_drag_state
+end
+
+function M.set_influence_probe_state(influence_probe_state)
+	M._influence_probe = influence_probe_state
 end
 
 function M.stance_hit_test(game, layout, x, y)

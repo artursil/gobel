@@ -258,21 +258,66 @@ local function regular_decision(owner, nearest_A, nearest_B)
 	}
 end
 
+--- Collects full enclosure wall boundary contributors for a tile.
+--- Uses persisted wall records from state, so UI can show the complete wall
+--- that actually influences final enclosure ownership for this tile.
+--- @param walls table[]|nil
+--- @param row integer
+--- @param col integer
+--- @param owner "A"|"B"|nil
+--- @param fallback table
+--- @return table
+local function enclosure_sources_for_tile(walls, row, col, owner, fallback)
+	if not walls or not owner then
+		return fallback
+	end
+	local key = row * 100 + col
+	local seen = {}
+	local out = {}
+	for i = 1, #walls do
+		local wall = walls[i]
+		if wall.owner == owner then
+			local inside_match = false
+			for j = 1, #wall.inside_fields do
+				local ir, ic = wall.inside_fields[j][1], wall.inside_fields[j][2]
+				if (ir * 100 + ic) == key then
+					inside_match = true
+					break
+				end
+			end
+			if inside_match then
+				for j = 1, #wall.boundary_fields do
+					local br, bc = wall.boundary_fields[j][1], wall.boundary_fields[j][2]
+					local bkey = br * 100 + bc
+					if not seen[bkey] then
+						seen[bkey] = true
+						out[#out + 1] = { r = br, c = bc }
+					end
+				end
+			end
+		end
+	end
+	if #out > 0 then
+		return out
+	end
+	return fallback
+end
+
 --- Builds provenance entry for enclosure resolution.
---- @param b table
---- @param n integer
---- @param region table|nil
+--- @param walls table[]|nil
+--- @param row integer
+--- @param col integer
 --- @param owner "A"|"B"|nil
 --- @param nearest_A table
 --- @param nearest_B table
 --- @return table
-local function enclosure_decision(b, n, region, owner, nearest_A, nearest_B)
+local function enclosure_decision(walls, row, col, owner, nearest_A, nearest_B)
 	return {
 		mode = "enclosure",
 		owner = owner,
 		contributors = {
-			A = owner == "A" and region_wall_sources(b, n, region, "A") or nearest_A,
-			B = owner == "B" and region_wall_sources(b, n, region, "B") or nearest_B,
+			A = owner == "A" and enclosure_sources_for_tile(walls, row, col, "A", nearest_A) or nearest_A,
+			B = owner == "B" and enclosure_sources_for_tile(walls, row, col, "B", nearest_B) or nearest_B,
 		},
 	}
 end
@@ -306,10 +351,11 @@ end
 --- @param A_stones table
 --- @param B_stones table
 --- @param distance_modifiers table|nil
+--- @param walls table[]|nil
 --- @param print_debug boolean
 --- @return "A"|"B"|nil owner
 --- @return table decision
-local function resolve_empty_tile(tile, row, col, regions, b, n, A_stones, B_stones, distance_modifiers, print_debug)
+local function resolve_empty_tile(tile, row, col, regions, walls, A_stones, B_stones, distance_modifiers, print_debug)
 	local regular_owner, nearest_A, nearest_B = resolve_regular_owner(row, col, A_stones, B_stones, distance_modifiers)
 	if tile.override_owner then
 		if print_debug then
@@ -319,7 +365,7 @@ local function resolve_empty_tile(tile, row, col, regions, b, n, A_stones, B_sto
 	end
 	local region = tile.region_id and regions and regions[tile.region_id] or nil
 	if region and region.owner then
-		return region.owner, enclosure_decision(b, n, region, region.owner, nearest_A, nearest_B)
+		return region.owner, enclosure_decision(walls, row, col, region.owner, nearest_A, nearest_B)
 	end
 	return regular_owner, regular_decision(regular_owner, nearest_A, nearest_B)
 end
@@ -329,10 +375,11 @@ end
 --- @param regions table|nil
 --- @param b table
 --- @param state table
+--- @param walls table[]|nil
 --- @param print_debug boolean
 --- @return table territory_grid
 --- @return table territory_decision_sources
-local function finish_resolve_owners(tiles, regions, b, state, print_debug)
+local function finish_resolve_owners(tiles, regions, walls, b, state, print_debug)
 	local n = config.BOARD_SIZE
 	local territory_grid = {}
 	local decision_sources = {}
@@ -355,8 +402,7 @@ local function finish_resolve_owners(tiles, regions, b, state, print_debug)
 					r,
 					c,
 					regions,
-					b,
-					n,
+					walls,
 					A_stones,
 					B_stones,
 					distance_modifiers,
@@ -411,6 +457,7 @@ function M.begin_assignment(state)
 	local b = state.board
 	local tiles = init_tiles(b)
 	state.territory_tiles = tiles
+	state.enclosure_walls = enclosure.extract_walls(b)
 	state.regions = enclosure.detect_regions_and_ownership(b, tiles)
 	print("[Territory] region count", region_count(state.regions))
 end
@@ -422,10 +469,11 @@ function M.finish_assignment(state)
 	local b = state.board
 	local tiles = state.territory_tiles
 	local regions = state.regions
+	local walls = state.enclosure_walls
 	if not tiles then
 		return
 	end
-	state.territory, state.territory_decision_sources = finish_resolve_owners(tiles, regions, b, state, true)
+	state.territory, state.territory_decision_sources = finish_resolve_owners(tiles, regions, walls, b, state, true)
 	local black_c, white_c = count_controlled(state.territory, b, state)
 	state.scores.territory.A = black_c
 	state.scores.territory.B = white_c
@@ -437,6 +485,7 @@ end
 --- @return table
 function M.compute_from_board(b, territory_mode)
 	local tiles = init_tiles(b)
+	local walls = enclosure.extract_walls(b)
 	local regions = enclosure.detect_regions_and_ownership(b, tiles)
 	local mode = territory_mode or "regional"
 	local temp_state = {
@@ -464,7 +513,7 @@ function M.compute_from_board(b, territory_mode)
 		},
 	}
 	effect_manager.apply_phase(temp_state, "distance")
-	return finish_resolve_owners(tiles, regions, b, temp_state, false)
+	return finish_resolve_owners(tiles, regions, walls, b, temp_state, false)
 end
 
 return M

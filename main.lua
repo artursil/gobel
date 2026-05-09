@@ -20,6 +20,7 @@ local popup_state
 local stone_drag
 local card_ui
 local stance_ui
+local influence_probe
 local menu_step
 local dropdown_open
 local selected_game_type
@@ -291,6 +292,59 @@ local function reset_stance_ui()
 	}
 end
 
+local function reset_influence_probe()
+	influence_probe = nil
+end
+
+local function update_influence_probe(dt)
+	if not influence_probe then
+		return
+	end
+	influence_probe.remaining = (influence_probe.remaining or 0) - dt
+	if influence_probe.remaining <= 0 then
+		reset_influence_probe()
+	end
+end
+
+local function clear_influence_probe_on_board_click(x, y)
+	local row, col = layout_mod.pixel_to_grid(layout, x, y)
+	if not row or not col then
+		return false
+	end
+	reset_influence_probe()
+	return true
+end
+
+local function handle_influence_probe_click(x, y)
+	if screen ~= "play" or not match then
+		return false
+	end
+	local row, col = layout_mod.pixel_to_grid(layout, x, y)
+	if not row or not col then
+		reset_influence_probe()
+		return true
+	end
+	local cell = match.board[row] and match.board[row][col]
+	if not cell or not board.is_empty(cell) then
+		reset_influence_probe()
+		return true
+	end
+	local by_row = match.territory_decision_sources and match.territory_decision_sources[row]
+	local source = by_row and by_row[col] or nil
+	if not source or not source.contributors then
+		reset_influence_probe()
+		return true
+	end
+	influence_probe = {
+		row = row,
+		col = col,
+		owner = source.owner,
+		contributors = source.contributors,
+		remaining = 3,
+	}
+	return true
+end
+
 local function owner_color_from_key(owner_key)
 	if owner_key == "A" then
 		return "black"
@@ -449,6 +503,7 @@ local function reset_to_menu()
 	reset_stone_drag()
 	reset_card_ui()
 	reset_stance_ui()
+	reset_influence_probe()
 end
 
 --- Seeds RNG, fonts, and opens the home screen.
@@ -464,6 +519,7 @@ function love.load()
 	reset_stone_drag()
 	reset_card_ui()
 	reset_stance_ui()
+	reset_influence_probe()
 	love.math.setRandomSeed(love.timer.getTime() * 1000000 + os.time())
 end
 
@@ -480,6 +536,7 @@ end
 --- @param dt number
 function love.update(dt)
 	if screen == "play" and match then
+		update_influence_probe(dt)
 		render.update(dt, match)
 		if not render.is_score_animating() then
 			game.tick_ai(match, dt)
@@ -503,6 +560,7 @@ function love.draw()
 	render.set_card_ui_state(card_ui)
 	render.set_stance_ui_state(stance_ui)
 	render.set_stone_drag_state(stone_drag)
+	render.set_influence_probe_state(influence_probe)
 	render.draw(match, layout, hr, hc, show_hover, popup_state, stone_drag)
 end
 
@@ -511,6 +569,11 @@ end
 --- @param y number
 --- @param button integer
 function love.mousepressed(x, y, button)
+	if button == 2 then
+		clear_influence_probe_on_board_click(x, y)
+		handle_influence_probe_click(x, y)
+		return
+	end
 	if button ~= 1 then
 		return
 	end
@@ -540,6 +603,7 @@ function love.mousepressed(x, y, button)
 				reset_stone_drag()
 				reset_card_ui()
 				reset_stance_ui()
+				reset_influence_probe()
 			end
 			return
 		end
@@ -548,6 +612,7 @@ function love.mousepressed(x, y, button)
 	if match.over then
 		return
 	end
+	clear_influence_probe_on_board_click(x, y)
 	if stone_drag.active then
 		return
 	end
@@ -700,6 +765,7 @@ function love.keypressed(key)
 		reset_stone_drag()
 		reset_card_ui()
 		reset_stance_ui()
+		reset_influence_probe()
 		return
 	end
 	if key == "p" and match then
