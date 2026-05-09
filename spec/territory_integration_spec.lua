@@ -155,7 +155,7 @@ describe("Territory ASCII integration (regular stones)", function()
 			"b a a a a a a a b",
 			"b b a a a a a b b",
 			"b b b a a a b b b",
-			"B b b b . b b b B",
+			"B b b b b b b b B",
 		})
 	end)
 
@@ -172,10 +172,10 @@ describe("Territory ASCII integration (regular stones)", function()
 			". . . . . . . . .",
 		}, {
 			"A A b b B b b b b",
-			"A b b B b . . . .",
-			"b B B b . a a a a",
-			"B B b . . A a a a",
-			"b b . . B B b b b",
+			"A b b B b b b b b",
+			"b B B b b a a a a",
+			"B B b b . A a a a",
+			"b b b . B B b b b",
 			"b . a A . b b b b",
 			"b . a a . b b b b",
 			"b . a a . b b b b",
@@ -198,12 +198,12 @@ describe("Territory ASCII integration (regular stones)", function()
 			"b b b B b b B b b",
 			"b A b B b b B b b",
 			"A b B A A A B b b",
-			"b B A B a B A B A",
+			"b B A B b B A B A",
 			"b B A a B a A B b",
-			"b b B A A A . B b",
+			"b b B A A A a B b",
 			"b A b B . a b B b",
-			"B B B b . a b b B",
-			"b b b b . a b b b",
+			"B B B b b a b b B",
+			"b b b b b a b b b",
 		})
 	end)
 
