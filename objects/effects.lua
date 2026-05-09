@@ -5,6 +5,7 @@
 
 local config = require("config")
 local board = require("board")
+local queries = require("single_game.resolver.state_queries")
 
 local M = {}
 
@@ -164,7 +165,7 @@ function M.create_temporary_stance(effect)
 end
 
 --- Copies effects from the first non-blueprint stance to the right for the current scoring phase only.
---- Child effects run inside this apply when their definition phase matches `context.phase`, using the target stance owner for application and condition evaluation.
+--- Child effects run when ``queries.resolution_phase`` matches each child effect phase; originating stance row comes from ``queries.source_stance_entry`` (`state.resolution.source_stance_index`). Populate resolution via the resolver before apply (standalone tests use ``state_queries.ensure_resolution`` and set ``phase`` / ``source_stance_index`` accordingly).
 --- @param effect table
 --- @return table
 function M.copy_right_stance_effects(effect)
@@ -175,10 +176,15 @@ function M.copy_right_stance_effects(effect)
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
 		apply = function(state, _blueprint_owner, context)
-			context = context or {}
 			local conditions_mod = require("objects.conditions")
-			local phase = context.phase
-			local stance_entry = context.stance_entry
+			local phase = queries.resolution_phase(state)
+			local stance_entry = queries.source_stance_entry(state)
+			if context and context.phase then
+				phase = context.phase
+			end
+			if context and context.stance_entry then
+				stance_entry = context.stance_entry
+			end
 			if not phase or not stance_entry then
 				return
 			end
@@ -197,18 +203,25 @@ function M.copy_right_stance_effects(effect)
 				if effect_def.effect_name ~= "copy_right_stance_effects" then
 					local resolved = M.resolve(effect_def)
 					if resolved and resolved.phase == phase and resolved.apply then
-						local eval_context = {
-							state = state,
-							phase = phase,
-							current_turn_owner = context.current_turn_owner,
-							last_placed_stone = context.last_placed_stone,
-							selected_target = context.selected_target,
-							stance_owner = target_owner,
-							instance = target.instance,
-						}
-						if conditions_mod.eval_all(resolved.conditions, eval_context) then
-							resolved.apply(state, target_owner, eval_context)
+						local resolution = queries.ensure_resolution(state)
+						local prev_source_owner = resolution.source_owner
+						local prev_stance_index = resolution.source_stance_index
+						local prev_instance_id = resolution.source_instance_id
+						local prev_def_id = resolution.source_def_id
+						local prev_type = resolution.source_object_type
+						resolution.source_owner = target_owner
+						resolution.source_stance_index = nil
+						resolution.source_instance_id = target.instance and target.instance.instance_id or nil
+						resolution.source_def_id = target.type
+						resolution.source_object_type = "stance"
+						if conditions_mod.eval_all(resolved.conditions, state) then
+							resolved.apply(state, target_owner, nil)
 						end
+						resolution.source_owner = prev_source_owner
+						resolution.source_stance_index = prev_stance_index
+						resolution.source_instance_id = prev_instance_id
+						resolution.source_def_id = prev_def_id
+						resolution.source_object_type = prev_type
 					end
 				end
 			end
@@ -310,7 +323,7 @@ function M.destroy_selected_enemy_stone(effect)
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
 		apply = function(state, owner, context)
-			local target = context and context.selected_target
+			local target = queries.selected_target(state)
 			if not target or not target.row or not target.col then
 				return
 			end
@@ -359,7 +372,7 @@ function M.add_permanent_points_to_selected_stone(effect)
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
 		apply = function(state, owner, context)
-			local target = context and context.selected_target
+			local target = queries.selected_target(state)
 			if not target or not target.row or not target.col then
 				return
 			end

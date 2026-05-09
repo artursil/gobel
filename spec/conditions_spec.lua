@@ -12,18 +12,30 @@ describe("T-101 conditions system", function()
 	end)
 
 	it("evaluates random condition with probability 1.0", function()
-		local context = { probability = 1.0 }
-		assert.is_true(conditions.random(context))
+		local def = { probability = 1.0 }
+		assert.is_true(conditions.random(def, {}))
 	end)
 
 	it("evaluates random condition with probability 0.0", function()
-		local context = { probability = 0.0 }
-		assert.is_false(conditions.random(context))
+		local def = { probability = 0.0 }
+		assert.is_false(conditions.random(def, {}))
 	end)
 
 	it("evaluates random condition with invalid probability as false", function()
-		local context = { probability = nil }
-		assert.is_false(conditions.random(context))
+		local def = { probability = nil }
+		assert.is_false(conditions.random(def, {}))
+	end)
+
+	it("fractional random without rng is false (replay-safe fallback)", function()
+		assert.is_false(conditions.random({ probability = 0.37 }, {}))
+		assert.is_false(conditions.random({ probability = 0.37 }, nil))
+	end)
+
+	it("fractional random uses state.rng deterministically", function()
+		local def = { probability = 0.37 }
+		local s1 = { rng = { seed = 94211 } }
+		local s2 = { rng = { seed = 94211 } }
+		assert.are.equal(conditions.random(def, s1), conditions.random(def, s2))
 	end)
 
 	it("evaluates empty conditions array as true (pass-through)", function()

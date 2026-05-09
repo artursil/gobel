@@ -14,6 +14,7 @@ local function find_effect_by_phase(resolved, phase)
 end
 local game = require("game")
 local match_state = require("match_state")
+local queries = require("single_game.resolver.state_queries")
 local resolve_round = require("single_game.resolver.resolve_round")
 local resolver = require("resolver")
 
@@ -37,11 +38,10 @@ describe("vertical slice features", function()
 		local copy_points = find_effect_by_phase(effects, "points")
 		assert.is_not_nil(copy_points)
 		assert.are.equal("COPY_RIGHT_STANCE_EFFECTS", copy_points.type)
-		copy_points.apply(state, nil, {
-			phase = "points",
-			stance_entry = state.stances[1],
-			current_turn_owner = "A",
-		})
+		local r = queries.ensure_resolution(state)
+		r.phase = "points"
+		r.source_stance_index = 1
+		copy_points.apply(state, nil)
 		assert.are.equal(1, state.scores.points.A)
 	end)
 
@@ -64,11 +64,10 @@ describe("vertical slice features", function()
 		assert.are.equal(4, #chain_effects)
 		local copy_mult = find_effect_by_phase(chain_effects, "mult")
 		assert.is_not_nil(copy_mult)
-		copy_mult.apply(chain_state, nil, {
-			phase = "mult",
-			stance_entry = chain_state.stances[1],
-			current_turn_owner = "A",
-		})
+		local r2 = queries.ensure_resolution(chain_state)
+		r2.phase = "mult"
+		r2.source_stance_index = 1
+		copy_mult.apply(chain_state, nil)
 		assert.are.equal(2, chain_state.scores.plus_mult.A)
 
 		local empty_state = {
@@ -84,11 +83,10 @@ describe("vertical slice features", function()
 		local empty_effects = effect_registry.stances.resolve(empty_state.stances[1], empty_state)
 		assert.are.equal(4, #empty_effects)
 		local empty_pts = find_effect_by_phase(empty_effects, "points")
-		empty_pts.apply(empty_state, nil, {
-			phase = "points",
-			stance_entry = empty_state.stances[1],
-			current_turn_owner = "A",
-		})
+		local r3 = queries.ensure_resolution(empty_state)
+		r3.phase = "points"
+		r3.source_stance_index = 1
+		empty_pts.apply(empty_state, nil)
 		assert.are.equal(0, empty_state.scores.points.A)
 	end)
 

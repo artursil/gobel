@@ -5,6 +5,7 @@ local config = require("config")
 local match_state = require("match_state")
 local phases = require("single_game.resolver.phases")
 local effect_manager = require("single_game.resolver.effect_manager")
+local queries = require("single_game.resolver.state_queries")
 local territory = require("single_game.resolver.territory")
 local scoring = require("scoring")
 local dbg = require("debugger")
@@ -48,6 +49,7 @@ local function ensure_state_fields(state)
 		end,
 	}
 	state.last_played_stone = state.last_played_stone or nil
+	queries.ensure_resolution(state)
 	state.scores = state.scores or {
 		turn_bonus = { A = 1, B = 1 },
 		territory = { A = 0, B = 0 },
@@ -197,35 +199,6 @@ local function populate_active_cards(state)
 	end
 end
 
---- Builds effect context for a given phase.
---- @param state table
---- @param phase string
---- @return table: context with state, phase, and trigger info
-local function build_effect_context(state, phase)
-	local content = require("content")
-	local context = {
-		state = state,
-		phase = phase,
-		last_placed_stone = nil,
-		last_played_card = nil,
-		actor = nil,
-		opponent = nil,
-		current_turn_owner = side_to_owner(state.to_play),
-		selected_targets = state.selected_card_target,
-	}
-
-	if state.round_stone_effects and #state.round_stone_effects > 0 then
-		local last_stone_event = state.round_stone_effects[#state.round_stone_effects]
-		local stone_def = content.get_stone(last_stone_event.stone_type)
-		context.last_placed_stone = {
-			tags = (stone_def and stone_def.tags) or {},
-			stone_id = last_stone_event.stone_type,
-		}
-	end
-
-	return context
-end
-
 --- Main entry: runs full PRE/MAIN pipeline including territory begin/finish and clears `round_stone_effects`.
 --- @param state table
 --- @return nil
@@ -236,18 +209,16 @@ function M.resolve(state)
 	sync_opponent_state(state)
 	rebuild_ordered_stances(state)
 	reset_base_scores(state)
+	queries.clear_resolution(state)
 	for _, phase in ipairs(phases.PRE) do
-		local context = build_effect_context(state, phase) -- TODO: Why we pass state to the context and then state and the context?
-		-- dbg.log_stack("PRE phase", {phase = phase, context = context})
-		effect_manager.apply_phase(state, phase, context)
+		effect_manager.apply_phase(state, phase)
 	end
 	for _, phase in ipairs(phases.MAIN) do
 		if phase == "territory" then
 			territory.begin_assignment(state)
 		end
 
-		local context = build_effect_context(state, phase)
-		effect_manager.apply_phase(state, phase, context)
+		effect_manager.apply_phase(state, phase)
 
 		if phase == "territory" then
 			territory.finish_assignment(state)
@@ -258,6 +229,7 @@ function M.resolve(state)
 	state.modifiers = {}
 	tick_timed_effects(state)
 	tick_temporary_stances(state)
+	queries.clear_resolution(state)
 end
 
 return M

@@ -140,6 +140,17 @@ function M.new_match(match_kind, territory_mode, seed)
 		active_effects = {},
 		round_stone_effects = {},
 		stone_draw_events = {},
+		resolution = {
+			phase = nil,
+			effect_owner = nil,
+			source_owner = nil,
+			source_def_id = nil,
+			source_instance_id = nil,
+			source_object_type = nil,
+			source_stance_index = nil,
+			selected_target = nil,
+			trigger = nil,
+		},
 		selected_card_target = nil,
 		board_stone_modifiers = {},
 		territory_value = (function()

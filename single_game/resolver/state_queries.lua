@@ -1,0 +1,173 @@
+--- State query helpers for resolver/effect/condition evaluation.
+--- Centralizes derived reads from game state and transient resolution metadata.
+--- @module resolver.state_queries
+
+local content = require("content")
+local config = require("config")
+
+local M = {}
+
+--- Maps side color to owner token.
+--- @param side string
+--- @return "A"|"B"
+function M.owner_from_side(side)
+	if side == "white" then
+		return "B"
+	end
+	return "A"
+end
+
+--- Ensures state.resolution exists with stable keys.
+--- @param state table
+--- @return table
+function M.ensure_resolution(state)
+	state.resolution = state.resolution or {}
+	local r = state.resolution
+	r.phase = r.phase or nil
+	r.effect_owner = r.effect_owner or nil
+	r.source_owner = r.source_owner or nil
+	r.source_def_id = r.source_def_id or nil
+	r.source_instance_id = r.source_instance_id or nil
+	r.source_object_type = r.source_object_type or nil
+	r.source_stance_index = r.source_stance_index or nil
+	r.selected_target = r.selected_target or nil
+	r.trigger = r.trigger or nil
+	return r
+end
+
+--- Clears transient resolution metadata.
+--- @param state table
+--- @return nil
+function M.clear_resolution(state)
+	local r = M.ensure_resolution(state)
+	r.phase = nil
+	r.effect_owner = nil
+	r.source_owner = nil
+	r.source_def_id = nil
+	r.source_instance_id = nil
+	r.source_object_type = nil
+	r.source_stance_index = nil
+	r.selected_target = nil
+	r.trigger = nil
+end
+
+--- Returns current turn owner token.
+--- @param state table
+--- @return "A"|"B"|nil
+function M.current_turn_owner(state)
+	if not state or not state.to_play then
+		return nil
+	end
+	return M.owner_from_side(state.to_play)
+end
+
+--- Returns the latest round stone event.
+--- @param state table
+--- @return table|nil
+function M.last_round_stone_event(state)
+	local events = state and state.round_stone_effects or nil
+	if not events or #events == 0 then
+		return nil
+	end
+	return events[#events]
+end
+
+--- Returns last placed stone metadata used by conditions.
+--- @param state table
+--- @return table|nil
+function M.last_placed_stone(state)
+	local event = M.last_round_stone_event(state)
+	if not event then
+		return nil
+	end
+	local stone_def = content.get_stone(event.stone_type)
+	return {
+		stone_id = event.stone_type,
+		tags = (stone_def and stone_def.tags) or {},
+	}
+end
+
+--- Returns selected target from transient resolution metadata.
+--- @param state table
+--- @return table|nil
+function M.selected_target(state)
+	local r = M.ensure_resolution(state)
+	return r.selected_target
+end
+
+--- Returns effect owner token from transient resolution metadata.
+--- @param state table
+--- @return "A"|"B"|nil
+function M.effect_owner(state)
+	local r = M.ensure_resolution(state)
+	return r.effect_owner
+end
+
+--- Returns source owner token from transient resolution metadata.
+--- @param state table
+--- @return "A"|"B"|nil
+function M.source_owner(state)
+	local r = M.ensure_resolution(state)
+	return r.source_owner
+end
+
+--- Returns source stance instance from state.stances and source_stance_index.
+--- @param state table
+--- @return table|nil
+function M.source_stance_instance(state)
+	local r = M.ensure_resolution(state)
+	local idx = r.source_stance_index
+	local stances = state and state.stances or nil
+	if not idx or not stances or not stances[idx] then
+		return nil
+	end
+	return stances[idx].instance
+end
+
+--- Returns source stance entry from state.stances and source_stance_index.
+--- @param state table
+--- @return table|nil
+function M.source_stance_entry(state)
+	local r = M.ensure_resolution(state)
+	local idx = r.source_stance_index
+	local stances = state and state.stances or nil
+	if not idx or not stances then
+		return nil
+	end
+	return stances[idx]
+end
+
+--- Returns source phase from transient resolution metadata.
+--- @param state table
+--- @return string|nil
+function M.resolution_phase(state)
+	local r = M.ensure_resolution(state)
+	return r.phase
+end
+
+--- Returns whether selected target points to an occupied board stone.
+--- @param state table
+--- @return boolean
+function M.selected_target_exists(state)
+	local target = M.selected_target(state)
+	if not target or target.row == nil or target.col == nil then
+		return false
+	end
+	local row = state.board and state.board[target.row]
+	local cell = row and row[target.col]
+	return cell ~= nil and cell ~= config.STONE_NONE
+end
+
+--- Returns selected target board cell.
+--- @param state table
+--- @return table|nil
+function M.selected_target_cell(state)
+	local target = M.selected_target(state)
+	if not target or target.row == nil or target.col == nil then
+		return nil
+	end
+	local row = state.board and state.board[target.row]
+	return row and row[target.col] or nil
+end
+
+return M

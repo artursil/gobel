@@ -28,8 +28,8 @@ end
 local function append_wrapped_effects(out, effects, owner, selected_target)
 	for i = 1, #effects do
 		local wrapped = wrap_effect_with_owner(effects[i], owner)
-		wrapped.context = wrapped.context or {}
-		wrapped.context.selected_target = selected_target
+		wrapped.meta = wrapped.meta or {}
+		wrapped.meta.selected_target = selected_target
 		out[#out + 1] = wrapped
 	end
 end

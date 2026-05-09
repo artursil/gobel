@@ -1,9 +1,15 @@
 --- Coordinates stance, card, stone, and timed effects by phase; sorts by priority; applies and registers durations.
+---
+--- Transient `state.resolution` (see `state_queries.ensure_resolution`) is set per effect before conditions run:
+--- - **effect_owner**: who receives score/application for this wrapped effect (`effect.owner`), same convention as registry wrap.
+---   Stone round snippets set `effect.owner`; if absent, falls back to `meta.source_owner` so `queries.effect_owner` stays consistent.
+--- - **source_owner** / **source_def_id** / **source_instance_id**: originating object (stance lane, card modifier, copied target, etc.).
 --- @module resolver.effect_manager
 
 local board = require("board")
 local effects_registry = require("effect_registry")
 local dbg = require("debugger")
+local queries = require("single_game.resolver.state_queries")
 
 local M = {}
 
@@ -29,11 +35,12 @@ local function append_stance_effects(state, phase, out)
 		local generated = effects_registry.stances.resolve(stance, state)
 		for _, e in ipairs(generated) do
 			if e.phase == phase then
-				e.context = {
-					stance_owner = stance.owner,
-					instance = stance.instance,
-					stance_entry = stance,
-				}
+				e.meta = e.meta or {}
+				e.meta.source_owner = stance.owner
+				e.meta.source_object_type = "stance"
+				e.meta.source_stance_index = i
+				e.meta.source_instance_id = stance.instance and stance.instance.instance_id or nil
+				e.meta.source_def_id = stance.type
 				table.insert(out, e)
 			end
 		end
@@ -49,8 +56,11 @@ local function append_card_effects(state, phase, out)
 		local generated = effects_registry.cards.resolve(card, state)
 		for _, e in ipairs(generated) do
 			if e.phase == phase then
-				e.context = e.context or {}
-				e.context.selected_target = card.selected_target
+				e.meta = e.meta or {}
+				e.meta.source_owner = card.owner
+				e.meta.source_object_type = "card"
+				e.meta.source_def_id = card.type
+				e.meta.selected_target = card.selected_target
 				table.insert(out, e)
 			end
 		end
@@ -63,29 +73,26 @@ end
 --- @param out table
 --- @return nil
 local function append_stone_round_effects(state, phase, out)
-	local content = require("content")
 	for _, stone_event in ipairs(state.round_stone_effects or {}) do
-		local stone_def = content.get_stone(stone_event.stone_type)
 		for _, stone_effect in ipairs(stone_event.effects or {}) do
 			local resolved = effects_registry.stones.resolve(stone_effect)
 			if resolved then
 				local effect_phase = phase_from_payload(resolved)
 				if effect_phase == phase then
 					local owner = stone_event.owner
-					local stone_context = {
-						last_placed_stone = {
-							tags = (stone_def and stone_def.tags) or {},
-							stone_id = stone_event.stone_type,
-						},
-					}
 					table.insert(out, {
+						owner = owner,
 						phase = effect_phase,
 						priority = resolved.priority or 10,
 						conditions = resolved.conditions,
-						apply = function(current_state, _, ctx)
-							resolved.apply(current_state, owner, stone_context)
+						apply = function(current_state)
+							resolved.apply(current_state, owner, nil)
 						end,
-						context = stone_context,
+						meta = {
+							source_owner = owner,
+							source_object_type = "stone",
+							source_def_id = stone_event.stone_type,
+						},
 					})
 				end
 			end
@@ -126,12 +133,17 @@ local function append_board_stone_effects(state, phase, out)
 						local owner = owner_from_color(cell.color)
 						if owner then
 							table.insert(out, {
+								owner = owner,
 								phase = "points",
 								priority = 25,
 								conditions = nil,
 								apply = function(current_state)
 									current_state.scores.points[owner] = current_state.scores.points[owner] + bonus
 								end,
+								meta = {
+									source_owner = owner,
+									source_object_type = "board_modifier",
+								},
 							})
 						end
 					end
@@ -170,6 +182,25 @@ local function add_effect_duration(state, effect)
 	end
 end
 
+--- Applies metadata of current effect into state.resolution.
+--- @param state table
+--- @param phase string
+--- @param effect table
+--- @return nil
+local function set_resolution_for_effect(state, phase, effect)
+	local resolution = queries.ensure_resolution(state)
+	local meta = effect.meta or {}
+	resolution.phase = phase
+	resolution.trigger = "phase"
+	resolution.effect_owner = effect.owner ~= nil and effect.owner or meta.source_owner
+	resolution.source_owner = meta.source_owner
+	resolution.source_def_id = meta.source_def_id
+	resolution.source_instance_id = meta.source_instance_id
+	resolution.source_object_type = meta.source_object_type
+	resolution.source_stance_index = meta.source_stance_index
+	resolution.selected_target = meta.selected_target
+end
+
 --- Gathers and sorts all effects for one phase.
 --- @param state table
 --- @param phase string
@@ -190,41 +221,19 @@ end
 --- Evaluates conditions before applying each effect.
 --- @param state table
 --- @param phase string
---- @param context table: Optional context to pass to effects
 --- @return nil
-function M.apply_phase(state, phase, context)
+function M.apply_phase(state, phase)
 	local conditions = require("objects.conditions")
 	local effects = M.collect_effects(state, phase)
-	-- dbg.log_stack("effects", {context = context})
-	context = context or { state = state }
+	queries.clear_resolution(state)
 	for _, effect in ipairs(effects) do
-		local eval_context = { state = state, phase = phase }
-		if context.current_turn_owner then
-			eval_context.current_turn_owner = context.current_turn_owner
-		end
-		if context.last_placed_stone then
-			eval_context.last_placed_stone = context.last_placed_stone
-		end
-		if effect.context then
-			if effect.context.selected_target then -- TODO: What does it even do?
-				eval_context.selected_target = effect.context.selected_target
-			end
-			if effect.context.stance_owner then
-				eval_context.stance_owner = effect.context.stance_owner
-			end
-			if effect.context.instance then
-				eval_context.instance = effect.context.instance
-			end
-			if effect.context.stance_entry then
-				eval_context.stance_entry = effect.context.stance_entry
-			end
-		end
-		eval_context.effect_owner = effect.owner
-		if conditions.eval_all(effect.conditions, eval_context) then
-			effect.apply(state, nil, eval_context)
+		set_resolution_for_effect(state, phase, effect)
+		if conditions.eval_all(effect.conditions, state) then
+			effect.apply(state, nil, nil)
 			add_effect_duration(state, effect)
 		end
 	end
+	queries.clear_resolution(state)
 end
 
 return M
