@@ -2,18 +2,20 @@
 --- Unified condition evaluation for gating effects
 --- @module single_game.resolver.Condition
 
+local config = require("config")
+
 local M = {}
 
 --- Create a condition context from components.
 --- @param run_state table
 --- @param game_state table
---- @param actor string: "A" or "B"
+--- @param actor string: `config.OWNER_BLACK` or `config.OWNER_WHITE`
 --- @param source_instance_id string|nil
 --- @param source_def_id string|nil
 --- @param source_object_type string|nil: "stone" | "card" | "stance"
 --- @return table: ConditionContext
 function M.new_context(run_state, game_state, actor, source_instance_id, source_def_id, source_object_type)
-	local opponent = (actor == "A") and "B" or "A"
+	local opponent = (actor == config.OWNER_BLACK) and config.OWNER_WHITE or config.OWNER_BLACK
 	return {
 		run_state = run_state,
 		game_state = game_state,

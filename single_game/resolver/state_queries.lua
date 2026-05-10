@@ -7,14 +7,14 @@ local config = require("config")
 
 local M = {}
 
---- Maps side color to owner token.
+--- Maps side color to owner token (`config.OWNER_BLACK` / `config.OWNER_WHITE`).
 --- @param side string
---- @return "A"|"B"
+--- @return "B"|"W"
 function M.owner_from_side(side)
 	if side == "white" then
-		return "B"
+		return config.OWNER_WHITE
 	end
-	return "A"
+	return config.OWNER_BLACK
 end
 
 --- Ensures state.resolution exists with stable keys.
@@ -53,7 +53,7 @@ end
 
 --- Returns current turn owner token.
 --- @param state table
---- @return "A"|"B"|nil
+--- @return "B"|"W"|nil
 function M.current_turn_owner(state)
 	if not state or not state.to_play then
 		return nil
@@ -97,7 +97,7 @@ end
 
 --- Returns effect owner token from transient resolution metadata.
 --- @param state table
---- @return "A"|"B"|nil
+--- @return "B"|"W"|nil
 function M.effect_owner(state)
 	local r = M.ensure_resolution(state)
 	return r.effect_owner
@@ -105,7 +105,7 @@ end
 
 --- Returns source owner token from transient resolution metadata.
 --- @param state table
---- @return "A"|"B"|nil
+--- @return "B"|"W"|nil
 function M.source_owner(state)
 	local r = M.ensure_resolution(state)
 	return r.source_owner

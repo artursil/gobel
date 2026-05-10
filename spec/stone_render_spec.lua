@@ -33,6 +33,7 @@ describe("T-050 stone graphics-driven rendering path", function()
 	assert.is_true(resolver.begin_turn(state, "black").ok)
 		state.phase = "PLACE_PHASE"
 		state.players.black.stones.playable_stones = { "stone_power" }
+		state.players.black.stones.selected_stone_index = 1
 		state.players.black.stones.selected_stone = "stone_power"
 		assert.is_true(resolver.submit_action(state, {
 			actor = "black",
@@ -43,6 +44,7 @@ describe("T-050 stone graphics-driven rendering path", function()
 		state.phase = "PLACE_PHASE"
 		state.to_play = "black"
 		state.players.black.stones.playable_stones = { "stone_focus" }
+		state.players.black.stones.selected_stone_index = 1
 		state.players.black.stones.selected_stone = "stone_focus"
 		assert.is_true(resolver.submit_action(state, {
 			actor = "black",

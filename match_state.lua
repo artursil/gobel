@@ -165,11 +165,11 @@ function M.new_match(match_kind, territory_mode, seed)
 			return tv
 		end)(),
 		scores = {
-			turn_bonus = { A = 1, B = 1 },
-			territory = { A = 0, B = 0 },
-			points = { A = 0, B = 0 },
-			plus_mult = { A = 1, B = 1 },
-			x_mult = { A = 1, B = 1 },
+			turn_bonus = { B = 1, W = 1 },
+			territory = { B = 0, W = 0 },
+			points = { B = 0, W = 0 },
+			plus_mult = { B = 1, W = 1 },
+			x_mult = { B = 1, W = 1 },
 		},
 		rng = rng_state,
 		match_kind = match_kind,

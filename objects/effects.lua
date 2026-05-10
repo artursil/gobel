@@ -29,8 +29,11 @@ end
 --- @param owner string
 --- @return string
 local function normalize_stance_owner(owner)
-	local preserved = (owner == "A" or owner == "B") and owner or nil
-	return preserved or ((owner == "white" or owner == "B") and "B" or "A")
+	local ob, ow = config.OWNER_BLACK, config.OWNER_WHITE
+	if owner == ob or owner == ow then
+		return owner
+	end
+	return ((owner == "white" or owner == ow) and ow) or ob
 end
 
 --- Add points effect builder.
@@ -92,7 +95,7 @@ function M.count_and_multiply_x_mult(effect)
 		apply = function(state, owner, context)
 			context = context or {}
 			local match_state = require("match_state")
-			local player_state = match_state.player_for_color(state, owner == "A" and "black" or "white")
+			local player_state = match_state.player_for_color(state, owner == config.OWNER_BLACK and "black" or "white")
 			if not player_state then
 				return
 			end
@@ -282,7 +285,7 @@ function M.adjust_run_persistent_counter(effect)
 			end
 			state.run_state = state.run_state or {}
 			state.run_state.counters = state.run_state.counters or {}
-			state.run_state.counters[counter_key] = state.run_state.counters[counter_key] or { A = 0, B = 0 }
+			state.run_state.counters[counter_key] = state.run_state.counters[counter_key] or { B = 0, W = 0 }
 			local delta = effect.value.delta or 0
 			state.run_state.counters[counter_key][owner] = state.run_state.counters[counter_key][owner] + delta
 		end,
@@ -337,7 +340,7 @@ function M.destroy_selected_enemy_stone(effect)
 			if board.is_empty(cell) then
 				return
 			end
-			local owner_color = owner == "A" and config.STONE_BLACK or config.STONE_WHITE
+			local owner_color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
 			if cell.color == owner_color then
 				return
 			end
@@ -354,7 +357,7 @@ function M.destroy_selected_enemy_stone(effect)
 			end
 
 			state.board[row][col] = config.STONE_NONE
-			local actor_side = owner == "A" and "black" or "white"
+			local actor_side = owner == config.OWNER_BLACK and "black" or "white"
 			local actor_state = match_state.player_for_color(state, actor_side)
 			actor_state.prisoners = (actor_state.prisoners or 0) + 1
 		end,

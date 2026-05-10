@@ -2,6 +2,7 @@
 --- Single-game container, resets between games in a run.
 --- @module single_game.game_state
 
+local config = require("config")
 local player_game_state = require("single_game.player_game_state")
 local M = {}
 
@@ -30,24 +31,24 @@ function M.new(game_id, game_index)
 		},
 
 		players = {
-			A = player_game_state.new("A"),
-			B = player_game_state.new("B"),
+			B = player_game_state.new(config.OWNER_BLACK),
+			W = player_game_state.new(config.OWNER_WHITE),
 		},
 
 		turn = {
-			to_play = "A",
+			to_play = config.OWNER_BLACK,
 			consecutive_passes = 0,
 			cards_played_this_turn = 0,
 			stones_played_this_turn = 0,
 		},
 
 		scores = {
-			turn_bonus = { A = 1, B = 1 },
-			territory = { A = 0, B = 0 },
-			points = { A = 0, B = 0 },
-			plus_mult = { A = 1, B = 1 },
-			x_mult = { A = 1, B = 1 },
-			total = { A = 0, B = 0 },
+			turn_bonus = { B = 1, W = 1 },
+			territory = { B = 0, W = 0 },
+			points = { B = 0, W = 0 },
+			plus_mult = { B = 1, W = 1 },
+			x_mult = { B = 1, W = 1 },
+			total = { B = 0, W = 0 },
 		},
 
 		effects = {
@@ -64,11 +65,11 @@ function M.new(game_id, game_index)
 				stone_instance_id = nil,
 				card_instance_id = nil,
 				by_player = {
-					A = { stone_instance_id = nil, card_instance_id = nil },
 					B = { stone_instance_id = nil, card_instance_id = nil },
+					W = { stone_instance_id = nil, card_instance_id = nil },
 				},
 			},
-			sequences = { A = {}, B = {} },
+			sequences = { B = {}, W = {} },
 			predictions = {},
 			message_queue = {},
 			score_events = {},
@@ -78,7 +79,7 @@ end
 
 --- Get player state by owner.
 --- @param game_state table
---- @param owner string: "A" or "B"
+--- @param owner string: `config.OWNER_BLACK` or `config.OWNER_WHITE`
 --- @return table: PlayerGameState
 function M.get_player(game_state, owner)
 	return game_state.players[owner]
@@ -110,7 +111,7 @@ end
 
 --- Mark game as ended.
 --- @param game_state table
---- @param winner string: "A" or "B"
+--- @param winner string: `config.OWNER_BLACK` or `config.OWNER_WHITE`
 --- @param reason string: Why game ended
 --- @return nil
 function M.end_game(game_state, winner, reason)

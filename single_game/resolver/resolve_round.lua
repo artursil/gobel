@@ -7,7 +7,6 @@ local phases = require("single_game.resolver.phases")
 local effect_manager = require("single_game.resolver.effect_manager")
 local queries = require("single_game.resolver.state_queries")
 local territory = require("single_game.resolver.territory")
-local scoring = require("scoring")
 local dbg = require("debugger")
 
 local M = {}
@@ -51,11 +50,11 @@ local function ensure_state_fields(state)
 	state.last_played_stone = state.last_played_stone or nil
 	queries.ensure_resolution(state)
 	state.scores = state.scores or {
-		turn_bonus = { A = 1, B = 1 },
-		territory = { A = 0, B = 0 },
-		points = { A = 0, B = 0 },
-		plus_mult = { A = 1, B = 1 },
-		x_mult = { A = 1, B = 1 },
+		turn_bonus = { B = 1, W = 1 },
+		territory = { B = 0, W = 0 },
+		points = { B = 0, W = 0 },
+		plus_mult = { B = 1, W = 1 },
+		x_mult = { B = 1, W = 1 },
 	}
 end
 
@@ -70,9 +69,9 @@ end
 --- @return string
 local function side_to_owner(side)
 	if side == "white" then
-		return "B"
+		return config.OWNER_WHITE
 	end
-	return "A"
+	return config.OWNER_BLACK
 end
 
 --- Flattens both players’ fixed+swappable poses into `state.poses` with A/B owner.
@@ -102,11 +101,11 @@ local function reset_base_scores(state)
 	local tn = state.turn_number or 1
 	local turn_bonus = 1 + (0.1 * tn)
 
-	state.scores.turn_bonus = { A = turn_bonus, B = turn_bonus }
-	state.scores.territory = { A = 0, B = 0 }
-	state.scores.plus_mult = state.scores.plus_mult or { A = 1, B = 1 }
-	state.scores.x_mult = state.scores.x_mult or { A = 1, B = 1 }
-	state.scores.points = state.scores.points or { A = 0, B = 0 }
+	state.scores.turn_bonus = { B = turn_bonus, W = turn_bonus }
+	state.scores.territory = { B = 0, W = 0 }
+	state.scores.plus_mult = state.scores.plus_mult or { B = 1, W = 1 }
+	state.scores.x_mult = state.scores.x_mult or { B = 1, W = 1 }
+	state.scores.points = state.scores.points or { B = 0, W = 0 }
 end
 
 --- Pushes `state.scores` into `match_state` player `score` tables and `total`.
@@ -120,33 +119,33 @@ local function sync_player_scores(state)
 		return turn_bonus * territory * points * plus_mult * x_mult
 	end
 
-	local turn_bonus_a = state.scores.turn_bonus.A
-	local territory_a = state.scores.territory.A
-	local points_a = state.scores.points.A
-	local plus_mult_a = state.scores.plus_mult.A
-	local x_mult_a = state.scores.x_mult.A
-	local total_a = calculate_score(turn_bonus_a, territory_a, points_a, plus_mult_a, x_mult_a)
+	local turn_bonus_black = state.scores.turn_bonus.B
+	local territory_black = state.scores.territory.B
+	local points_black = state.scores.points.B
+	local plus_mult_black = state.scores.plus_mult.B
+	local x_mult_black = state.scores.x_mult.B
+	local total_black = calculate_score(turn_bonus_black, territory_black, points_black, plus_mult_black, x_mult_black)
 
-	local turn_bonus_b = state.scores.turn_bonus.B
-	local territory_b = state.scores.territory.B
-	local points_b = state.scores.points.B
-	local plus_mult_b = state.scores.plus_mult.B
-	local x_mult_b = state.scores.x_mult.B
-	local total_b = calculate_score(turn_bonus_b, territory_b, points_b, plus_mult_b, x_mult_b)
+	local turn_bonus_white = state.scores.turn_bonus.W
+	local territory_white = state.scores.territory.W
+	local points_white = state.scores.points.W
+	local plus_mult_white = state.scores.plus_mult.W
+	local x_mult_white = state.scores.x_mult.W
+	local total_white = calculate_score(turn_bonus_white, territory_white, points_white, plus_mult_white, x_mult_white)
 
-	black.score.turn_bonus = turn_bonus_a
-	black.score.territory = territory_a
-	black.score.points = points_a
-	black.score.plus_mult = plus_mult_a
-	black.score.x_mult = x_mult_a
-	black.score.total = total_a
+	black.score.turn_bonus = turn_bonus_black
+	black.score.territory = territory_black
+	black.score.points = points_black
+	black.score.plus_mult = plus_mult_black
+	black.score.x_mult = x_mult_black
+	black.score.total = total_black
 
-	white.score.turn_bonus = turn_bonus_b
-	white.score.territory = territory_b
-	white.score.points = points_b
-	white.score.plus_mult = plus_mult_b
-	white.score.x_mult = x_mult_b
-	white.score.total = total_b
+	white.score.turn_bonus = turn_bonus_white
+	white.score.territory = territory_white
+	white.score.points = points_white
+	white.score.plus_mult = plus_mult_white
+	white.score.x_mult = x_mult_white
+	white.score.total = total_white
 end
 
 --- Decrements `active_effects` remaining turns; drops expired entries.
@@ -192,10 +191,10 @@ local function populate_active_cards(state)
 	local white = match_state.player_for_color(state, "white")
 
 	for _, card_id in ipairs(black.cards.hand.ids or {}) do
-		state.modifiers[#state.modifiers + 1] = { type = card_id, owner = "A" }
+		state.modifiers[#state.modifiers + 1] = { type = card_id, owner = config.OWNER_BLACK }
 	end
 	for _, card_id in ipairs(white.cards.hand.ids or {}) do
-		state.modifiers[#state.modifiers + 1] = { type = card_id, owner = "B" }
+		state.modifiers[#state.modifiers + 1] = { type = card_id, owner = config.OWNER_WHITE }
 	end
 end
 

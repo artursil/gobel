@@ -34,9 +34,9 @@ end
 --- @return string
 local function owner_for_side(side)
 	if side == "white" then
-		return "B"
+		return config.OWNER_WHITE
 	end
-	return "A"
+	return config.OWNER_BLACK
 end
 
 --- @param state table

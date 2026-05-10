@@ -13,9 +13,9 @@ local function parse_board_ascii(rows)
 	for r = 1, #rows do
 		local c = 1
 		for token in string.gmatch(rows[r], "%S+") do
-			if token == "A" then
+			if token == "B" then
 				place_stone(b, r, c, config.STONE_BLACK)
-			elseif token == "B" then
+			elseif token == "W" then
 				place_stone(b, r, c, config.STONE_WHITE)
 			end
 			c = c + 1
@@ -33,9 +33,9 @@ local function board_ascii(b)
 			if board.is_empty(cell) then
 				row[#row + 1] = "."
 			elseif cell.color == config.STONE_BLACK then
-				row[#row + 1] = "A"
-			else
 				row[#row + 1] = "B"
+			else
+				row[#row + 1] = "W"
 			end
 		end
 		lines[#lines + 1] = table.concat(row, " ")
@@ -54,8 +54,8 @@ local function walls_ascii(_b, n, wall)
 		local p = wall.inside_fields[i]
 		inside[p[1] * 100 + p[2]] = true
 	end
-	local boundary_mark = wall.owner == "A" and "A" or "B"
-	local inside_mark = wall.owner == "A" and "a" or "b"
+	local boundary_mark = wall.owner == "B" and "B" or "W"
+	local inside_mark = wall.owner == "B" and "b" or "w"
 
 	local lines = {}
 	for r = 1, n do
@@ -112,11 +112,11 @@ describe("Wall detection", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . B B . . . .",
-			". . B . . B . . .",
-			". . B . . B . . .",
-			". . . B . B . . .",
-			". . . . B . . . .",
+			". . . W W . . . .",
+			". . W . . W . . .",
+			". . W . . W . . .",
+			". . . W . W . . .",
+			". . . . W . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
@@ -138,11 +138,11 @@ describe("Wall detection", function()
 		local expected = table.concat({
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . B B . . . .",
-			". . B b b B . . .",
-			". . B b b B . . .",
-			". . . B b B . . .",
-			". . . . B . . . .",
+			". . . W W . . . .",
+			". . W w w W . . .",
+			". . W w w W . . .",
+			". . . W w W . . .",
+			". . . . W . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		}, "\n")
@@ -151,13 +151,13 @@ describe("Wall detection", function()
 	end)
 	it("extracts and renders biggest wall from sample board", function()
 		local b = parse_board_ascii({
-			". . . A . . . B .",
-			"A A A A . . B . .",
-			". . . . . B . . .",
-			"B B B B B . . . .",
-			". . . B . . . . .",
-			"B B B . . . . . .",
-			". . . . . . A . .",
+			". . . B . . . W .",
+			"B B B B . . W . .",
+			". . . . . W . . .",
+			"W W W W W . . . .",
+			". . . W . . . . .",
+			"W W W . . . . . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
@@ -177,51 +177,10 @@ describe("Wall detection", function()
 		local actual = walls_ascii(b, config.BOARD_SIZE, biggest)
 		debug_dump("biggest_wall", b, actual)
 		local expected = table.concat({
-			"b b b b b b b B .",
-			"b b b b b b B . .",
-			"b b b b b B . . .",
-			"B B B B B . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		}, "\n")
-
-		assert.are.equal(expected, actual)
-	end)
-	it("extracts and renders biggest wall from sample board", function()
-		local b = parse_board_ascii({
-			". . . A . . . B .",
-			"A A A A . . B . .",
-			". . . . . B B . .",
-			"B B B B B B B . .",
-			". . . B . B . . .",
-			"B B B . . . . . .",
-			". . . . . . A . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		})
-
-		local walls = enclosure.extract_walls(b)
-		assert.is_true(type(walls) == "table")
-		assert.is_true(#walls > 0)
-		debug_dump_all_walls("biggest_wall", b, walls)
-
-		local biggest = walls[1]
-		for i = 2, #walls do
-			if wall_size(walls[i]) > wall_size(biggest) then
-				biggest = walls[i]
-			end
-		end
-
-		local actual = walls_ascii(b, config.BOARD_SIZE, biggest)
-		debug_dump("biggest_wall", b, actual)
-		local expected = table.concat({
-			"b b b b b b b B .",
-			"b b b b b b B . .",
-			"b b b b b B B . .",
-			"B B B B B B . . .",
+			"w w w w w w w W .",
+			"w w w w w w W . .",
+			"w w w w w W . . .",
+			"W W W W W . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -233,13 +192,13 @@ describe("Wall detection", function()
 	end)
 	it("extracts and renders biggest wall from sample board", function()
 		local b = parse_board_ascii({
-			". . . A . . . B .",
-			"A A A A . . B . .",
-			". . . . . B . . .",
-			"B B B B B . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . A . .",
+			". . . B . . . W .",
+			"B B B B . . W . .",
+			". . . . . W W . .",
+			"W W W W W W W . .",
+			". . . W . W . . .",
+			"W W W . . . . . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
@@ -259,10 +218,51 @@ describe("Wall detection", function()
 		local actual = walls_ascii(b, config.BOARD_SIZE, biggest)
 		debug_dump("biggest_wall", b, actual)
 		local expected = table.concat({
-			"b b b b b b b B .",
-			"b b b b b b B . .",
-			"b b b b b B . . .",
-			"B B B B B . . . .",
+			"w w w w w w w W .",
+			"w w w w w w W . .",
+			"w w w w w W W . .",
+			"W W W W W W . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		}, "\n")
+
+		assert.are.equal(expected, actual)
+	end)
+	it("extracts and renders biggest wall from sample board", function()
+		local b = parse_board_ascii({
+			". . . B . . . W .",
+			"B B B B . . W . .",
+			". . . . . W . . .",
+			"W W W W W . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+
+		local walls = enclosure.extract_walls(b)
+		assert.is_true(type(walls) == "table")
+		assert.is_true(#walls > 0)
+		debug_dump_all_walls("biggest_wall", b, walls)
+
+		local biggest = walls[1]
+		for i = 2, #walls do
+			if wall_size(walls[i]) > wall_size(biggest) then
+				biggest = walls[i]
+			end
+		end
+
+		local actual = walls_ascii(b, config.BOARD_SIZE, biggest)
+		debug_dump("biggest_wall", b, actual)
+		local expected = table.concat({
+			"w w w w w w w W .",
+			"w w w w w w W . .",
+			"w w w w w W . . .",
+			"W W W W W . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -274,13 +274,13 @@ describe("Wall detection", function()
 	end)
 	it("extracts and renders smallest wall from sample board", function()
 		local b = parse_board_ascii({
-			". . . A . . . B .",
-			"A A A A . . B . .",
-			". . . . . B . . .",
-			"B B B B B . . . .",
+			". . . B . . . W .",
+			"B B B B . . W . .",
+			". . . . . W . . .",
+			"W W W W W . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . A . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
@@ -295,8 +295,8 @@ describe("Wall detection", function()
 		local actual = walls_ascii(b, config.BOARD_SIZE, smallest)
 		debug_dump("smallest_wall", b, actual)
 		local expected = table.concat({
-			"a a a A . . . . .",
-			"A A A A . . . . .",
+			"b b b B . . . . .",
+			"B B B B . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -312,10 +312,10 @@ describe("Wall detection", function()
 	it("renders inside including enclosed stones", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
-			". . A A A . . . .",
-			". . A B A . . . .",
-			". . A . A . . . .",
-			". . A A A . . . .",
+			". . B B B . . . .",
+			". . B W B . . . .",
+			". . B . B . . . .",
+			". . B B B . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -338,10 +338,10 @@ describe("Wall detection", function()
 		debug_dump("inside_includes_stones", b, actual)
 		local expected = table.concat({
 			". . . . . . . . .",
-			". . A A A . . . .",
-			". . A a A . . . .",
-			". . A a A . . . .",
-			". . A A A . . . .",
+			". . B B B . . . .",
+			". . B b B . . . .",
+			". . B b B . . . .",
+			". . B B B . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -355,9 +355,9 @@ describe("Wall detection", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . B A A . . .",
-			". . . A . A . . .",
-			". . . A A A . . .",
+			". . . W B B . . .",
+			". . . B . B . . .",
+			". . . B B B . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -381,9 +381,9 @@ describe("Wall detection", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . A A . . .",
-			". . . A a A . . .",
-			". . . A A A . . .",
+			". . . . B B . . .",
+			". . . B b B . . .",
+			". . . B B B . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -394,14 +394,14 @@ describe("Wall detection", function()
 	it("renders inside including enclosed stones", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A . . . . .",
-			"B B B B A . . . .",
-			". A . . B A . . .",
-			"A . . . B A . . .",
-			". A A A B A . . .",
-			". A . A B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B . . . . .",
+			"W W W W B . . . .",
+			". B . . W B . . .",
+			"B . . . W B . . .",
+			". B B B W B . . .",
+			". B . B W B . . .",
 		})
 
 		local walls = enclosure.extract_walls(b)
@@ -422,12 +422,12 @@ describe("Wall detection", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			"A A A A . . . . .",
-			"a a a a A . . . .",
-			"a a a a a A . . .",
-			"a a a a a A . . .",
-			"a a a a a A . . .",
-			"a a a a a A . . .",
+			"B B B B . . . . .",
+			"b b b b B . . . .",
+			"b b b b b B . . .",
+			"b b b b b B . . .",
+			"b b b b b B . . .",
+			"b b b b b B . . .",
 		}, "\n")
 
 		assert.are.equal(expected, actual)

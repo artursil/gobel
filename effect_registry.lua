@@ -2,6 +2,7 @@
 --- All gameplay effects resolve through this single entry point.
 --- @module effect_registry
 
+local config = require("config")
 local objects_effects = require("objects.effects")
 local objects_stones = require("objects.stones")
 local objects_stances = require("objects.stances")
@@ -10,8 +11,11 @@ local objects_cards = require("objects.cards")
 local M = {}
 
 local function normalize_owner(owner)
-	local preserved = (owner == "A" or owner == "B") and owner or nil
-	return preserved or ((owner == "white" or owner == "B") and "B" or "A")
+	local ob, ow = config.OWNER_BLACK, config.OWNER_WHITE
+	if owner == ob or owner == ow then
+		return owner
+	end
+	return ((owner == "white" or owner == ow) and ow) or ob
 end
 
 local function wrap_effect_with_owner(effect_payload, owner)

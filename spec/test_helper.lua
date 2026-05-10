@@ -111,6 +111,7 @@ function M.install_love_test_stubs()
 	love.graphics.pop = love.graphics.pop or function() end
 	love.graphics.translate = love.graphics.translate or function() end
 	love.graphics.rotate = love.graphics.rotate or function() end
+	love.graphics.setScissor = love.graphics.setScissor or function(...) end
 end
 
 function M.reset_module(name)

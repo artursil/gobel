@@ -22,15 +22,15 @@ describe("vertical slice features", function()
 	it("blueprint copies immediate right stance effects", function()
 		local state = {
 			stances = {
-				{ type = "stance_blueprint", owner = "A", index = 1 },
-				{ type = "stance_point", owner = "A", index = 2 },
+				{ type = "stance_blueprint", owner = "B", index = 1 },
+				{ type = "stance_point", owner = "B", index = 2 },
 			},
 			scores = {
-				turn_bonus = { A = 1, B = 1 },
-				territory = { A = 0, B = 0 },
-				points = { A = 0, B = 0 },
-				plus_mult = { A = 1, B = 1 },
-				x_mult = { A = 1, B = 1 },
+				turn_bonus = { B = 1, W = 1 },
+				territory = { B = 0, W = 0 },
+				points = { B = 0, W = 0 },
+				plus_mult = { B = 1, W = 1 },
+				x_mult = { B = 1, W = 1 },
 			},
 		}
 		local effects = effect_registry.stances.resolve(state.stances[1], state)
@@ -42,22 +42,22 @@ describe("vertical slice features", function()
 		r.phase = "points"
 		r.source_stance_index = 1
 		copy_points.apply(state, nil)
-		assert.are.equal(1, state.scores.points.A)
+		assert.are.equal(1, state.scores.points.B)
 	end)
 
 	it("blueprint skips blueprint chains and no-ops without a target", function()
 		local chain_state = {
 			stances = {
-				{ type = "stance_blueprint", owner = "A", index = 1 },
-				{ type = "stance_blueprint", owner = "A", index = 2 },
-				{ type = "stance_mult", owner = "A", index = 3 },
+				{ type = "stance_blueprint", owner = "B", index = 1 },
+				{ type = "stance_blueprint", owner = "B", index = 2 },
+				{ type = "stance_mult", owner = "B", index = 3 },
 			},
 			scores = {
-				turn_bonus = { A = 1, B = 1 },
-				territory = { A = 0, B = 0 },
-				points = { A = 0, B = 0 },
-				plus_mult = { A = 1, B = 1 },
-				x_mult = { A = 1, B = 1 },
+				turn_bonus = { B = 1, W = 1 },
+				territory = { B = 0, W = 0 },
+				points = { B = 0, W = 0 },
+				plus_mult = { B = 1, W = 1 },
+				x_mult = { B = 1, W = 1 },
 			},
 		}
 		local chain_effects = effect_registry.stances.resolve(chain_state.stances[1], chain_state)
@@ -68,16 +68,16 @@ describe("vertical slice features", function()
 		r2.phase = "mult"
 		r2.source_stance_index = 1
 		copy_mult.apply(chain_state, nil)
-		assert.are.equal(2, chain_state.scores.plus_mult.A)
+		assert.are.equal(2, chain_state.scores.plus_mult.B)
 
 		local empty_state = {
-			stances = { { type = "stance_blueprint", owner = "A", index = 1 } },
+			stances = { { type = "stance_blueprint", owner = "B", index = 1 } },
 			scores = {
-				turn_bonus = { A = 1, B = 1 },
-				territory = { A = 0, B = 0 },
-				points = { A = 0, B = 0 },
-				plus_mult = { A = 1, B = 1 },
-				x_mult = { A = 1, B = 1 },
+				turn_bonus = { B = 1, W = 1 },
+				territory = { B = 0, W = 0 },
+				points = { B = 0, W = 0 },
+				plus_mult = { B = 1, W = 1 },
+				x_mult = { B = 1, W = 1 },
 			},
 		}
 		local empty_effects = effect_registry.stances.resolve(empty_state.stances[1], empty_state)
@@ -87,7 +87,7 @@ describe("vertical slice features", function()
 		r3.phase = "points"
 		r3.source_stance_index = 1
 		empty_pts.apply(empty_state, nil)
-		assert.are.equal(0, empty_state.scores.points.A)
+		assert.are.equal(0, empty_state.scores.points.B)
 	end)
 
 	it("destroy card respects deterministic seeded pass/fail and invalid target safety", function()
@@ -127,21 +127,21 @@ describe("vertical slice features", function()
 		state.players.white.stances.swappable = {}
 		state.to_play = "black"
 		state.round_stone_effects = {
-			{ owner = "A", stone_type = "stone_special", effects = {} },
+			{ owner = "B", stone_type = "stone_special", effects = {} },
 		}
 		resolve_round.resolve(state)
-		assert.are.equal(3, state.run_state.counters.persistent_flux_mult.A)
+		assert.are.equal(3, state.run_state.counters.persistent_flux_mult.B)
 
 		state.round_stone_effects = {
-			{ owner = "A", stone_type = "stone_wall", effects = {} },
+			{ owner = "B", stone_type = "stone_wall", effects = {} },
 		}
 		resolve_round.resolve(state)
-		assert.are.equal(0, state.run_state.counters.persistent_flux_mult.A)
+		assert.are.equal(0, state.run_state.counters.persistent_flux_mult.B)
 
 		local g1 = game.new("pvp", "vertical_slice_test")
-		g1.run_state.counters.persistent_flux_mult = { A = 9, B = 0 }
+		g1.run_state.counters.persistent_flux_mult = { B = 9, W = 0 }
 		local g2 = game.new("pvp", "vertical_slice_test")
-		assert.are.equal(9, g2.run_state.counters.persistent_flux_mult.A)
+		assert.are.equal(9, g2.run_state.counters.persistent_flux_mult.B)
 	end)
 
 	it("permanent +10 card buffs selected stone across subsequent resolves", function()

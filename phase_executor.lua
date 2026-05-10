@@ -9,9 +9,9 @@ function M.ensure_state_extensions(state)
 	state.modifiers = state.modifiers or {}
 	state.last_played_stone = state.last_played_stone or nil
 	state.scores = state.scores or {
-		territory = { A = 0, B = 0 },
-		points = { A = 0, B = 0 },
-		mult = { A = 1, B = 1 },
+		territory = { B = 0, W = 0 },
+		points = { B = 0, W = 0 },
+		mult = { B = 1, W = 1 },
 	}
 end
 

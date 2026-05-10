@@ -3,8 +3,8 @@ local config = require("config")
 local scoring = require("scoring")
 
 -- Stone letter mapping:
---   A  = black, stone_basic
---   B  = white, stone_basic
+--   B  = black, stone_basic
+--   W  = white, stone_basic
 --   C  = black, stone_power
 --   F  = black, stone_focus
 --   L  = black, stone_lieutenant
@@ -12,8 +12,8 @@ local scoring = require("scoring")
 --   .  = empty
 
 local LETTER_TO_STONE = {
-	A = { color = config.STONE_BLACK, kind = "stone_basic" },
-	B = { color = config.STONE_WHITE, kind = "stone_basic" },
+	B = { color = config.STONE_BLACK, kind = "stone_basic" },
+	W = { color = config.STONE_WHITE, kind = "stone_basic" },
 	C = { color = config.STONE_BLACK, kind = "stone_power" },
 	F = { color = config.STONE_BLACK, kind = "stone_focus" },
 	L = { color = config.STONE_BLACK, kind = "stone_lieutenant" },
@@ -51,9 +51,9 @@ local function result_board_ascii(b)
 			if board.is_empty(cell) then
 				row[#row + 1] = "."
 			elseif cell.color == config.STONE_WHITE then
-				row[#row + 1] = "B"
+				row[#row + 1] = "W"
 			else
-				row[#row + 1] = STONE_TO_LETTER[cell.kind] or "A"
+				row[#row + 1] = STONE_TO_LETTER[cell.kind] or "B"
 			end
 		end
 		lines[#lines + 1] = table.concat(row, " ")
@@ -92,11 +92,11 @@ local function territory_ownership_ascii(b, territory)
 		for c = 1, config.BOARD_SIZE do
 			local cell = b[r][c]
 			if not board.is_empty(cell) then
-				row[#row + 1] = cell.color == config.STONE_BLACK and "A" or "B"
+				row[#row + 1] = cell.color == config.STONE_BLACK and "B" or "W"
 			elseif territory[r][c] == config.STONE_BLACK then
-				row[#row + 1] = "a"
-			elseif territory[r][c] == config.STONE_WHITE then
 				row[#row + 1] = "b"
+			elseif territory[r][c] == config.STONE_WHITE then
+				row[#row + 1] = "w"
 			else
 				row[#row + 1] = "."
 			end
@@ -116,7 +116,7 @@ local function run_case(name, input_rows, expected_rows, expected_black, expecte
 	print("\n=== " .. name .. " ===")
 	print("result board:")
 	print(result_board_ascii(b))
-	print("expected territory (a/b = empty owned, A/B = stone):")
+	print("expected territory (b/w = empty owned by black/white, B/W = stone):")
 	print(expected_board_ascii(expected_rows))
 	print("actual territory:")
 	print(territory_ownership_ascii(b, territory))
@@ -129,30 +129,31 @@ local function run_case(name, input_rows, expected_rows, expected_black, expecte
 	assert.are.equal(expected_white, scoring.territory_points(territory, config.STONE_WHITE))
 end
 
--- describe("Territory scoring integration", function()
--- 	it("case_01: single black in center", function()
--- 		run_case("case_01", {
--- 			". . . . . . . . .",
--- 			". . . . . . . . .",
--- 			". . . . . . . . .",
--- 			". . . . . . . . .",
--- 			". . . . A . . . .",
--- 			". . . . . . . . .",
--- 			". . . . . . . . .",
--- 			". . . . . . . . .",
--- 			". . . . . . . . .",
--- 		}, {
--- 			"FILL ME",
--- 			"FILL ME",
--- 			"FILL ME",
--- 			"FILL ME",
--- 			"FILL ME",
--- 			"FILL ME",
--- 			"FILL ME",
--- 			"FILL ME",
--- 			"FILL ME",
--- 		}, 0, 0)
--- 	end)
+describe("Territory scoring integration", function()
+	it("case_01: single black in center", function()
+		run_case("case_01", {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . B . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		}, {
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+			"b b b b B b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+		}, 81, 0)
+	end)
+end)
 
 -- 	it("case_02: black vs white", function()
 -- 		run_case("case_02", {

@@ -38,9 +38,9 @@ describe("T-201 state construction and schema conformance", function()
 	end)
 
 	it("creates valid player_game_state", function()
-		local pgs = player_game_state.new("A")
+		local pgs = player_game_state.new("B")
 
-		assert.are.equal("A", pgs.owner)
+		assert.are.equal("B", pgs.owner)
 		assert.is_not_nil(pgs.resources)
 		assert.is_not_nil(pgs.limits)
 		assert.is_not_nil(pgs.card_zones)
@@ -52,10 +52,10 @@ describe("T-201 state construction and schema conformance", function()
 	it("initializes both players in game_state", function()
 		local gs = game_state.new("game1", 1)
 
-		assert.is_not_nil(gs.players.A)
 		assert.is_not_nil(gs.players.B)
-		assert.are.equal("A", gs.players.A.owner)
+		assert.is_not_nil(gs.players.W)
 		assert.are.equal("B", gs.players.B.owner)
+		assert.are.equal("W", gs.players.W.owner)
 	end)
 
 	it("creates valid ObjectInstance", function()
@@ -63,7 +63,7 @@ describe("T-201 state construction and schema conformance", function()
 			"inst_1",
 			"stone_basic",
 			"stone",
-			"A",
+			"B",
 			"starter",
 			{ rarity = "common", cost = 1 }
 		)
@@ -71,7 +71,7 @@ describe("T-201 state construction and schema conformance", function()
 		assert.are.equal("inst_1", inst.instance_id)
 		assert.are.equal("stone_basic", inst.def_id)
 		assert.are.equal("stone", inst.object_type)
-		assert.are.equal("A", inst.owner)
+		assert.are.equal("B", inst.owner)
 		assert.are.equal("starter", inst.source)
 		assert.are.equal("common", inst.base.rarity)
 		assert.are.equal(1, inst.level)
@@ -81,7 +81,7 @@ describe("T-201 state construction and schema conformance", function()
 
 	it("stores and retrieves instances", function()
 		local rs = run_state.new("run1", 42)
-		local inst = ObjectInstance.new("inst_1", "stone_basic", "stone", "A", "starter", {})
+		local inst = ObjectInstance.new("inst_1", "stone_basic", "stone", "B", "starter", {})
 
 		run_state.store_instance(rs, inst)
 		local retrieved = run_state.get_instance(rs, "inst_1")
@@ -90,7 +90,7 @@ describe("T-201 state construction and schema conformance", function()
 	end)
 
 	it("tracks zone membership", function()
-		local pgs = player_game_state.new("A")
+		local pgs = player_game_state.new("B")
 
 		player_game_state.add_to_zone(pgs, "card_zones.hand", "card_1")
 		assert.are.equal(1, #pgs.card_zones.hand.instance_ids)
@@ -100,7 +100,7 @@ describe("T-201 state construction and schema conformance", function()
 	end)
 
 	it("removes instance from zone", function()
-		local pgs = player_game_state.new("A")
+		local pgs = player_game_state.new("B")
 
 		player_game_state.add_to_zone(pgs, "card_zones.hand", "card_1")
 		player_game_state.add_to_zone(pgs, "card_zones.hand", "card_2")
@@ -112,7 +112,7 @@ describe("T-201 state construction and schema conformance", function()
 	end)
 
 	it("ObjectInstance property access uses mutable overrides", function()
-		local inst = ObjectInstance.new("inst_1", "stone_basic", "stone", "A", "starter", {
+		local inst = ObjectInstance.new("inst_1", "stone_basic", "stone", "B", "starter", {
 			rarity = "common",
 			cost = 1,
 		})
@@ -124,7 +124,7 @@ describe("T-201 state construction and schema conformance", function()
 	end)
 
 	it("ObjectInstance disable tracking", function()
-		local inst = ObjectInstance.new("inst_1", "stone_basic", "stone", "A", "starter", {})
+		local inst = ObjectInstance.new("inst_1", "stone_basic", "stone", "B", "starter", {})
 
 		assert.is_false(ObjectInstance.is_disabled(inst, 5, 3))
 

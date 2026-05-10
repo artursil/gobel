@@ -19,13 +19,13 @@ local function manhattan(r1, c1, r2, c2)
 end
 
 --- @param color any
---- @return "A"|"B"|nil
+--- @return "B"|"W"|nil
 local function color_to_owner(color)
 	if color == config.STONE_BLACK then
-		return "A"
+		return config.OWNER_BLACK
 	end
 	if color == config.STONE_WHITE then
-		return "B"
+		return config.OWNER_WHITE
 	end
 	return nil
 end
@@ -34,7 +34,7 @@ end
 --- @return table
 local function new_tile()
 	return {
-		influence = { A = 0, B = 0 },
+		influence = { B = 0, W = 0 },
 		region_id = nil,
 		override_owner = nil,
 		owner = nil,
@@ -58,10 +58,10 @@ end
 --- @param owner string|nil
 --- @return any
 local function owner_to_stone(owner)
-	if owner == "A" then
+	if owner == config.OWNER_BLACK then
 		return config.STONE_BLACK
 	end
-	if owner == "B" then
+	if owner == config.OWNER_WHITE then
 		return config.STONE_WHITE
 	end
 	return config.STONE_NONE
@@ -90,16 +90,16 @@ end
 --- Each entry stores row/col/key and whether the stone is tagged as special.
 --- @param b table
 --- @param n integer
---- @return table A_stones
---- @return table B_stones
+--- @return table black_stones
+--- @return table white_stones
 local function collect_stones_by_owner(b, n)
-	local A_stones, B_stones = {}, {}
+	local black_stones, white_stones = {}, {}
 	for r = 1, n do
 		for c = 1, n do
 			local cell = b[r][c]
 			if not board.is_empty(cell) then
 				local owner = color_to_owner(cell.color)
-				if owner == "A" or owner == "B" then
+				if owner == config.OWNER_BLACK or owner == config.OWNER_WHITE then
 					local stone = {
 						row = r,
 						col = c,
@@ -107,16 +107,16 @@ local function collect_stones_by_owner(b, n)
 						kind = cell.kind,
 						special = is_special_stone(cell.kind),
 					}
-					if owner == "A" then
-						A_stones[#A_stones + 1] = stone
+					if owner == config.OWNER_BLACK then
+						black_stones[#black_stones + 1] = stone
 					else
-						B_stones[#B_stones + 1] = stone
+						white_stones[#white_stones + 1] = stone
 					end
 				end
 			end
 		end
 	end
-	return A_stones, B_stones
+	return black_stones, white_stones
 end
 
 --- Returns nearest effective distance and all nearest contributors for one side.
@@ -153,28 +153,28 @@ end
 --- If both distance and nearest count tie, owner is nil (no-man's-land).
 --- @param tile_r integer
 --- @param tile_c integer
---- @param A_stones table
---- @param B_stones table
+--- @param black_stones table
+--- @param white_stones table
 --- @param distance_modifiers table|nil
---- @return "A"|"B"|nil owner
---- @return table nearest_A
---- @return table nearest_B
-local function resolve_regular_owner(tile_r, tile_c, A_stones, B_stones, distance_modifiers)
-	local da, nearest_A = nearest_effective(tile_r, tile_c, A_stones, distance_modifiers)
-	local db, nearest_B = nearest_effective(tile_r, tile_c, B_stones, distance_modifiers)
+--- @return "B"|"W"|nil owner
+--- @return table nearest_black
+--- @return table nearest_white
+local function resolve_regular_owner(tile_r, tile_c, black_stones, white_stones, distance_modifiers)
+	local da, nearest_black = nearest_effective(tile_r, tile_c, black_stones, distance_modifiers)
+	local db, nearest_white = nearest_effective(tile_r, tile_c, white_stones, distance_modifiers)
 	if da < db then
-		return "A", nearest_A, nearest_B
+		return config.OWNER_BLACK, nearest_black, nearest_white
 	end
 	if db < da then
-		return "B", nearest_A, nearest_B
+		return config.OWNER_WHITE, nearest_black, nearest_white
 	end
-	if #nearest_A > #nearest_B then
-		return "A", nearest_A, nearest_B
+	if #nearest_black > #nearest_white then
+		return config.OWNER_BLACK, nearest_black, nearest_white
 	end
-	if #nearest_B > #nearest_A then
-		return "B", nearest_A, nearest_B
+	if #nearest_white > #nearest_black then
+		return config.OWNER_WHITE, nearest_black, nearest_white
 	end
-	return nil, nearest_A, nearest_B
+	return nil, nearest_black, nearest_white
 end
 
 --- Collects region boundary stones for a given owner.
@@ -182,13 +182,13 @@ end
 --- @param b table
 --- @param n integer
 --- @param region table|nil
---- @param owner "A"|"B"|nil
+--- @param owner "B"|"W"|nil
 --- @return table
 local function region_wall_sources(b, n, region, owner)
 	if not region or not owner then
 		return {}
 	end
-	local owner_color = owner == "A" and config.STONE_BLACK or config.STONE_WHITE
+	local owner_color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
 	local seen = {}
 	local out = {}
 	local dirs = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { -1, 1 }, { 1, -1 }, { 1, 1 } }
@@ -232,29 +232,29 @@ end
 --- Builds provenance entry for occupied tile.
 --- @param row integer
 --- @param col integer
---- @param owner "A"|"B"|nil
+--- @param owner "B"|"W"|nil
 --- @return table
 local function occupied_decision(row, col, owner)
 	return {
 		mode = "occupied",
 		owner = owner,
 		contributors = {
-			A = owner == "A" and { { r = row, c = col } } or {},
-			B = owner == "B" and { { r = row, c = col } } or {},
+			B = owner == config.OWNER_BLACK and { { r = row, c = col } } or {},
+			W = owner == config.OWNER_WHITE and { { r = row, c = col } } or {},
 		},
 	}
 end
 
 --- Builds provenance entry for regular/tie resolution.
---- @param owner "A"|"B"|nil
---- @param nearest_A table
---- @param nearest_B table
+--- @param owner "B"|"W"|nil
+--- @param nearest_black table
+--- @param nearest_white table
 --- @return table
-local function regular_decision(owner, nearest_A, nearest_B)
+local function regular_decision(owner, nearest_black, nearest_white)
 	return {
 		mode = owner and "regular" or "tie",
 		owner = owner,
-		contributors = { A = nearest_A, B = nearest_B },
+		contributors = { B = nearest_black, W = nearest_white },
 	}
 end
 
@@ -264,7 +264,7 @@ end
 --- @param walls table[]|nil
 --- @param row integer
 --- @param col integer
---- @param owner "A"|"B"|nil
+--- @param owner "B"|"W"|nil
 --- @param fallback table
 --- @return table
 local function enclosure_sources_for_tile(walls, row, col, owner, fallback)
@@ -307,35 +307,37 @@ end
 --- @param walls table[]|nil
 --- @param row integer
 --- @param col integer
---- @param owner "A"|"B"|nil
---- @param nearest_A table
---- @param nearest_B table
+--- @param owner "B"|"W"|nil
+--- @param nearest_black table
+--- @param nearest_white table
 --- @return table
-local function enclosure_decision(walls, row, col, owner, nearest_A, nearest_B)
+local function enclosure_decision(walls, row, col, owner, nearest_black, nearest_white)
 	return {
 		mode = "enclosure",
 		owner = owner,
 		contributors = {
-			A = owner == "A" and enclosure_sources_for_tile(walls, row, col, "A", nearest_A) or nearest_A,
-			B = owner == "B" and enclosure_sources_for_tile(walls, row, col, "B", nearest_B) or nearest_B,
+			B = owner == config.OWNER_BLACK and enclosure_sources_for_tile(walls, row, col, config.OWNER_BLACK, nearest_black)
+				or nearest_black,
+			W = owner == config.OWNER_WHITE and enclosure_sources_for_tile(walls, row, col, config.OWNER_WHITE, nearest_white)
+				or nearest_white,
 		},
 	}
 end
 
 --- Builds provenance entry for special override resolution.
---- @param owner "A"|"B"|nil
---- @param A_stones table
---- @param B_stones table
---- @param nearest_A table
---- @param nearest_B table
+--- @param owner "B"|"W"|nil
+--- @param black_stones table
+--- @param white_stones table
+--- @param nearest_black table
+--- @param nearest_white table
 --- @return table
-local function override_decision(owner, A_stones, B_stones, nearest_A, nearest_B)
+local function override_decision(owner, black_stones, white_stones, nearest_black, nearest_white)
 	return {
 		mode = "special_override",
 		owner = owner,
 		contributors = {
-			A = owner == "A" and override_sources(A_stones, nearest_A) or nearest_A,
-			B = owner == "B" and override_sources(B_stones, nearest_B) or nearest_B,
+			B = owner == config.OWNER_BLACK and override_sources(black_stones, nearest_black) or nearest_black,
+			W = owner == config.OWNER_WHITE and override_sources(white_stones, nearest_white) or nearest_white,
 		},
 	}
 end
@@ -348,26 +350,28 @@ end
 --- @param regions table|nil
 --- @param b table
 --- @param n integer
---- @param A_stones table
---- @param B_stones table
+--- @param black_stones table
+--- @param white_stones table
 --- @param distance_modifiers table|nil
 --- @param walls table[]|nil
 --- @param print_debug boolean
---- @return "A"|"B"|nil owner
+--- @return "B"|"W"|nil owner
 --- @return table decision
-local function resolve_empty_tile(tile, row, col, regions, walls, A_stones, B_stones, distance_modifiers, print_debug)
-	local regular_owner, nearest_A, nearest_B = resolve_regular_owner(row, col, A_stones, B_stones, distance_modifiers)
+local function resolve_empty_tile(tile, row, col, regions, walls, black_stones, white_stones, distance_modifiers, print_debug)
+	local regular_owner, nearest_black, nearest_white =
+		resolve_regular_owner(row, col, black_stones, white_stones, distance_modifiers)
 	if tile.override_owner then
 		if print_debug then
 			print("[Territory] override at", row, col, "->", tile.override_owner)
 		end
-		return tile.override_owner, override_decision(tile.override_owner, A_stones, B_stones, nearest_A, nearest_B)
+		return tile.override_owner,
+			override_decision(tile.override_owner, black_stones, white_stones, nearest_black, nearest_white)
 	end
 	local region = tile.region_id and regions and regions[tile.region_id] or nil
 	if region and region.owner then
-		return region.owner, enclosure_decision(walls, row, col, region.owner, nearest_A, nearest_B)
+		return region.owner, enclosure_decision(walls, row, col, region.owner, nearest_black, nearest_white)
 	end
-	return regular_owner, regular_decision(regular_owner, nearest_A, nearest_B)
+	return regular_owner, regular_decision(regular_owner, nearest_black, nearest_white)
 end
 
 --- Writes final owner on each tile and returns territory colors plus provenance map.
@@ -383,7 +387,7 @@ local function finish_resolve_owners(tiles, regions, walls, b, state, print_debu
 	local n = config.BOARD_SIZE
 	local territory_grid = {}
 	local decision_sources = {}
-	local A_stones, B_stones = collect_stones_by_owner(b, n)
+	local black_stones, white_stones = collect_stones_by_owner(b, n)
 	local distance_modifiers = state.distance_modifiers
 
 	for r = 1, n do
@@ -403,8 +407,8 @@ local function finish_resolve_owners(tiles, regions, walls, b, state, print_debu
 					c,
 					regions,
 					walls,
-					A_stones,
-					B_stones,
+					black_stones,
+					white_stones,
 					distance_modifiers,
 					print_debug
 				)
@@ -475,8 +479,8 @@ function M.finish_assignment(state)
 	end
 	state.territory, state.territory_decision_sources = finish_resolve_owners(tiles, regions, walls, b, state, true)
 	local black_c, white_c = count_controlled(state.territory, b, state)
-	state.scores.territory.A = black_c
-	state.scores.territory.B = white_c
+	state.scores.territory.B = black_c
+	state.scores.territory.W = white_c
 end
 
 --- Standalone helper: no `state` mutation. Returns a territory color grid.

@@ -13,9 +13,9 @@ local function parse_board_ascii(rows)
 	for r = 1, #rows do
 		local c = 1
 		for token in string.gmatch(rows[r], "%S+") do
-			if token == "A" then
+			if token == "B" then
 				place_stone(b, r, c, config.STONE_BLACK)
-			elseif token == "B" then
+			elseif token == "W" then
 				place_stone(b, r, c, config.STONE_WHITE)
 			end
 			c = c + 1
@@ -30,7 +30,7 @@ local function new_tiles()
 		tiles[r] = {}
 		for c = 1, config.BOARD_SIZE do
 			tiles[r][c] = {
-				influence = { A = 0, B = 0 },
+				influence = { B = 0, W = 0 },
 				region_id = nil,
 				override_owner = nil,
 				owner = nil,
@@ -49,9 +49,9 @@ local function board_ascii(b)
 			if board.is_empty(cell) then
 				row[#row + 1] = "."
 			elseif cell.color == config.STONE_BLACK then
-				row[#row + 1] = "A"
-			else
 				row[#row + 1] = "B"
+			else
+				row[#row + 1] = "W"
 			end
 		end
 		lines[#lines + 1] = table.concat(row, " ")
@@ -65,14 +65,14 @@ local function regions_ascii(b, regions, tiles)
 		local row = {}
 		for c = 1, config.BOARD_SIZE do
 			if not board.is_empty(b[r][c]) then
-				row[#row + 1] = board.chain_color(b[r][c]) == config.STONE_BLACK and "A" or "B"
+				row[#row + 1] = board.chain_color(b[r][c]) == config.STONE_BLACK and "B" or "W"
 			else
 				local rid = tiles[r][c].region_id
 				local owner = rid and regions[rid] and regions[rid].owner or nil
-				if owner == "A" then
-					row[#row + 1] = "a"
-				elseif owner == "B" then
+				if owner == "B" then
 					row[#row + 1] = "b"
+				elseif owner == "W" then
+					row[#row + 1] = "w"
 				else
 					row[#row + 1] = "."
 				end
@@ -117,7 +117,7 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 
 		local enclosed_region_count = 0
 		for _, region in pairs(regions) do
-			if region.owner == "A" then
+			if region.owner == "B" then
 				enclosed_region_count = enclosed_region_count + 1
 			end
 		end
@@ -125,14 +125,14 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		assert.is_true(enclosed_region_count >= 1)
 		local center_region_id = tiles[5][5].region_id
 		assert.is_true(center_region_id ~= nil)
-		assert.are.equal("A", regions[center_region_id].owner)
+		assert.are.equal("B", regions[center_region_id].owner)
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . A A A . . .",
-			". . . A a A . . .",
-			". . . A A A . . .",
+			". . . B B B . . .",
+			". . . B b B . . .",
+			". . . B B B . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -159,9 +159,9 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . B A A . . .",
-			". . . A a A . . .",
-			". . . A A A . . .",
+			". . . W B B . . .",
+			". . . B b B . . .",
+			". . . B B B . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -181,8 +181,8 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 
 		local edge_region_id = tiles[1][2].region_id
 		assert_expected_ownership_ascii(b, regions, tiles, {
-			". . . A . . . . .",
-			". A A A . . . . .",
+			". . . B . . . . .",
+			". B B B . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -197,10 +197,10 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . B B . . . . .",
-			". . B A B B . . .",
-			". . . B . B . . .",
-			". . . B B B . . .",
+			". . W W . . . . .",
+			". . W B W W . . .",
+			". . . W . W . . .",
+			". . . W W W . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -213,10 +213,10 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . B B . . . . .",
-			". . B A B B . . .",
-			". . . B b B . . .",
-			". . . B B B . . .",
+			". . W W . . . . .",
+			". . W B W W . . .",
+			". . . W w W . . .",
+			". . . W W W . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -225,13 +225,13 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 
 	it("keeps board fixture #2 sampled empty region unowned", function()
 		local b = parse_board_ascii({
-			". . . A . . . B .",
-			"A A A A . . B . .",
-			". . . . . B . . .",
-			"B B B B B . . . .",
+			". . . B . . . W .",
+			"B B B B . . W . .",
+			". . . . . W . . .",
+			"W W W W W . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . A . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
@@ -241,13 +241,13 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 
 		local probe_region_id = tiles[2][5].region_id
 		assert_expected_ownership_ascii(b, regions, tiles, {
-			"a a a A b b b B .",
-			"A A A A b b B . .",
-			"b b b b b B . . .",
-			"B B B B B . . . .",
+			"b b b B w w w W .",
+			"B B B B w w W . .",
+			"w w w w w W . . .",
+			"W W W W W . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . A . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
@@ -255,13 +255,13 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 
 	it("keeps board fixture #3 sampled empty region unowned", function()
 		local b = parse_board_ascii({
-			". . . . . . . B .",
-			"A A A A . . B . .",
-			". . . . . B . . .",
-			"B B B B B . . . .",
+			". . . . . . . W .",
+			"B B B B . . W . .",
+			". . . . . W . . .",
+			"W W W W W . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . A . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
@@ -271,13 +271,13 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 
 		local probe_region_id = tiles[2][5].region_id
 		assert_expected_ownership_ascii(b, regions, tiles, {
-			"b b b b b b b B .",
-			"A A A A b b B . .",
-			"b b b b b B . . .",
-			"B B B B B . . . .",
+			"w w w w w w w W .",
+			"B B B B w w W . .",
+			"w w w w w W . . .",
+			"W W W W W . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . A . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
@@ -285,15 +285,15 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 
 	it("keeps board fixture #4 sampled empty region unowned", function()
 		local b = parse_board_ascii({
-			". . . A . . . B .",
-			"A A A A . . B . .",
-			". . . . . B . . A",
-			"B B B B B . . A .",
-			". . . . . . A . .",
-			". . . . . A . . .",
-			". . . . . A . . .",
-			". . . . . A . . .",
-			". . . . . A . . .",
+			". . . B . . . W .",
+			"B B B B . . W . .",
+			". . . . . W . . B",
+			"W W W W W . . B .",
+			". . . . . . B . .",
+			". . . . . B . . .",
+			". . . . . B . . .",
+			". . . . . B . . .",
+			". . . . . B . . .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
@@ -301,28 +301,28 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 
 		local probe_region_id = tiles[4][6].region_id
 		assert_expected_ownership_ascii(b, regions, tiles, {
-			"a a a A b b b B .",
-			"A A A A b b B . .",
-			"b b b b b B . . A",
-			"B B B B B . . A a",
-			". . . . . . A a a",
-			". . . . . A a a a",
-			". . . . . A a a a",
-			". . . . . A a a a",
-			". . . . . A a a a",
+			"b b b B w w w W .",
+			"B B B B w w W . .",
+			"w w w w w W . . B",
+			"W W W W W . . B b",
+			". . . . . . B b b",
+			". . . . . B b b b",
+			". . . . . B b b b",
+			". . . . . B b b b",
+			". . . . . B b b b",
 		})
 	end)
 	it("keeps board fixture #5 sampled empty region unowned", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . A . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
-			". . . A . . . . .",
-			"B B B . . . . . .",
-			". A . B . . . . .",
-			". A A B . . . . .",
 			". . . B . . . . .",
+			"W W W . . . . . .",
+			". B . W . . . . .",
+			". B B W . . . . .",
+			". . . W . . . . .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
@@ -332,26 +332,26 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . A . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
-			". . . A . . . . .",
-			"B B B . . . . . .",
-			"b A b B . . . . .",
-			"b A A B . . . . .",
-			"b b b B . . . . .",
+			". . . B . . . . .",
+			"W W W . . . . . .",
+			"w B w W . . . . .",
+			"w B B W . . . . .",
+			"w w w W . . . . .",
 		})
 	end)
 	it("keeps board fixture #6 sampled empty region unowned", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			". A A A . . . . .",
-			"B B B B A . . . .",
-			". A . . B A . . .",
-			". . . . B A . . .",
-			". . . . B A . . .",
-			". . . . B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			". B B B . . . . .",
+			"W W W W B . . . .",
+			". B . . W B . . .",
+			". . . . W B . . .",
+			". . . . W B . . .",
+			". . . . W B . . .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
@@ -360,27 +360,27 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		local probe_region_id = tiles[4][6].region_id
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			". A A A . . . . .",
-			"B B B B A . . . .",
-			"b A b b B A . . .",
-			"b b b b B A . . .",
-			"b b b b B A . . .",
-			"b b b b B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			". B B B . . . . .",
+			"W W W W B . . . .",
+			"w B w w W B . . .",
+			"w w w w W B . . .",
+			"w w w w W B . . .",
+			"w w w w W B . . .",
 		})
 	end)
 	it("keeps board fixture #7 sampled empty region unowned", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			". A A A . . . . .",
-			"B B B B A . . . .",
-			". A . . B A . . .",
-			". . A . B A . . .",
-			". . . A B A . . .",
-			". . . . B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			". B B B . . . . .",
+			"W W W W B . . . .",
+			". B . . W B . . .",
+			". . B . W B . . .",
+			". . . B W B . . .",
+			". . . . W B . . .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
@@ -389,27 +389,27 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		local probe_region_id = tiles[4][6].region_id
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			". A A A . . . . .",
-			"B B B B A . . . .",
-			"b A b b B A . . .",
-			"b b A b B A . . .",
-			"b b b A B A . . .",
-			"b b b b B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			". B B B . . . . .",
+			"W W W W B . . . .",
+			"w B w w W B . . .",
+			"w w B w W B . . .",
+			"w w w B W B . . .",
+			"w w w w W B . . .",
 		})
 	end)
 	it("keeps board fixture #8 sampled empty region unowned", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A . . . . .",
-			"B B B B A . . . .",
-			". A . . B A . . .",
-			". . . . B A . . .",
-			". . . . B A . . .",
-			". . . . B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B . . . . .",
+			"W W W W B . . . .",
+			". B . . W B . . .",
+			". . . . W B . . .",
+			". . . . W B . . .",
+			". . . . W B . . .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
@@ -418,27 +418,27 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		local probe_region_id = tiles[4][6].region_id
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A . . . . .",
-			"B B B B A . . . .",
-			"b A b b B A . . .",
-			"b b b b B A . . .",
-			"b b b b B A . . .",
-			"b b b b B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B . . . . .",
+			"W W W W B . . . .",
+			"w B w w W B . . .",
+			"w w w w W B . . .",
+			"w w w w W B . . .",
+			"w w w w W B . . .",
 		})
 	end)
 	it("keeps board fixture #9 sampled empty region unowned", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A . . . . .",
-			"B A B B A . . . .",
-			". A . . B A . . .",
-			". . . . B A . . .",
-			". . . . B A . . .",
-			". . . . B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B . . . . .",
+			"W B W W B . . . .",
+			". B . . W B . . .",
+			". . . . W B . . .",
+			". . . . W B . . .",
+			". . . . W B . . .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
@@ -447,27 +447,27 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		local probe_region_id = tiles[4][6].region_id
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A . . . . .",
-			"B A B B A . . . .",
-			"a A a a B A . . .",
-			"a a a a B A . . .",
-			"a a a a B A . . .",
-			"a a a a B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B . . . . .",
+			"W B W W B . . . .",
+			"b B b b W B . . .",
+			"b b b b W B . . .",
+			"b b b b W B . . .",
+			"b b b b W B . . .",
 		})
 	end)
 	it("keeps board fixture #95 sampled empty region unowned", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A A A . . .",
-			"B A B B . A . . .",
-			". A . . B A . . .",
-			". . . . B A . . .",
-			". . . . B A . . .",
-			". . . . B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B B B . . .",
+			"W B W W . B . . .",
+			". B . . W B . . .",
+			". . . . W B . . .",
+			". . . . W B . . .",
+			". . . . W B . . .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
@@ -476,27 +476,27 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		local probe_region_id = tiles[4][6].region_id
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A A A . . .",
-			"B A B B a A . . .",
-			"a A a a B A . . .",
-			"a a a a B A . . .",
-			"a a a a B A . . .",
-			"a a a a B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B B B . . .",
+			"W B W W b B . . .",
+			"b B b b W B . . .",
+			"b b b b W B . . .",
+			"b b b b W B . . .",
+			"b b b b W B . . .",
 		})
 	end)
 	it("keeps board fixture #10 sampled empty region unowned", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A . . . . .",
-			"B A B B A . . . .",
-			". A . . B A . . .",
-			". . . . B A . . .",
-			". A A A B A . . .",
-			". A . A B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B . . . . .",
+			"W B W W B . . . .",
+			". B . . W B . . .",
+			". . . . W B . . .",
+			". B B B W B . . .",
+			". B . B W B . . .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
@@ -504,27 +504,27 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A . . . . .",
-			"B A B B A . . . .",
-			"a A a a B A . . .",
-			"a a a a B A . . .",
-			"a A A A B A . . .",
-			"a A a A B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B . . . . .",
+			"W B W W B . . . .",
+			"b B b b W B . . .",
+			"b b b b W B . . .",
+			"b B B B W B . . .",
+			"b B b B W B . . .",
 		})
 	end)
 	it("keeps board fixture #11 sampled empty region unowned", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A . . . . .",
-			"B B B B A . . . .",
-			". A . . B A . . .",
-			"A . . . B A . . .",
-			". A A A B A . . .",
-			". A . A B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B . . . . .",
+			"W W W W B . . . .",
+			". B . . W B . . .",
+			"B . . . W B . . .",
+			". B B B W B . . .",
+			". B . B W B . . .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
@@ -532,54 +532,54 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
-			". . . . . B . . .",
-			". . . . . . B . .",
-			"A A A A . . . . .",
-			"B B B B A . . . .",
-			"b A b b B A . . .",
-			"A b b b B A . . .",
-			"a A A A B A . . .",
-			"a A a A B A . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B . . . . .",
+			"W W W W B . . . .",
+			"w B w w W B . . .",
+			"B w w w W B . . .",
+			"b B B B W B . . .",
+			"b B b B W B . . .",
 		})
 	end)
 	it("keeps board fixture #11 sampled empty region unowned", function()
 		local b = parse_board_ascii({
-			"B . A . B . . . .",
-			"A B . B . B . . .",
-			"A A B . A A B . .",
-			"A . A . . B . B .",
-			"B . A . . A . . B",
-			"A B B A A . . B .",
-			". . A B A A B . .",
-			"A A . B B B . B A",
-			". A A . B . . A .",
+			"W . B . W . . . .",
+			"B W . W . W . . .",
+			"B B W . B B W . .",
+			"B . B . . W . W .",
+			"W . B . . B . . W",
+			"B W W B B . . W .",
+			". . B W B B W . .",
+			"B B . W W W . W B",
+			". B B . W . . B .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
 		debug_dump("fixture1q", b, regions, tiles)
 
 		assert_expected_ownership_ascii(b, regions, tiles, {
-			"B b A b B b b b b",
-			"A B b B . B b b b",
-			"A A B . A A B b b",
-			"A a A . . B . B b",
-			"B a A . . A . . B",
-			"A B B A A . . B b",
-			". . A B A A B b b",
-			"A A b B B B b B A",
-			"a A A b B b b A a",
+			"W w B w W w w w w",
+			"B W w W . W w w w",
+			"B B W . B B W w w",
+			"B b B . . W . W w",
+			"W b B . . B . . W",
+			"B W W B B . . W w",
+			". . B W B B W w w",
+			"B B w W W W w W B",
+			"b B B w W w w B b",
 		})
 	end)
 	it("keeps board fixture #11 sampled empty region unowned", function()
 		local b = parse_board_ascii({
-			". . . B . . B . .",
-			". A . B . . B . .",
-			"A . B A A A B . .",
-			". B A B . B A B A",
-			". B A . B . A B .",
-			". . B A A A . B .",
-			". A . B . . . B .",
-			"B B B . . . . . B",
+			". . . W . . W . .",
+			". B . W . . W . .",
+			"B . W B B B W . .",
+			". W B W . W B W B",
+			". W B . W . B W .",
+			". . W B B B . W .",
+			". B . W . . . W .",
+			"W W W . . . . . W",
 			". . . . . . . . .",
 		})
 		local tiles = new_tiles()
@@ -587,14 +587,14 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		debug_dump("fixture1q", b, regions, tiles)
 
 		assert_expected_ownership_ascii(b, regions, tiles, {
-			"b b b B b b B b b",
-			"b A b B b b B b b",
-			"A b B A A A B b b",
-			"b B A B . B A B A",
-			"b B A a B a A B b",
-			"b b B A A A . B b",
-			"b A b B . . . B b",
-			"B B B . . . . . B",
+			"w w w W w w W w w",
+			"w B w W w w W w w",
+			"B w W B B B W w w",
+			"w W B W . W B W B",
+			"w W B b W b B W w",
+			"w w W B B B . W w",
+			"w B w W . . . W w",
+			"W W W . . . . . W",
 			". . . . . . . . .",
 		})
 	end)
@@ -602,41 +602,13 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		local b = parse_board_ascii({
 			". . . . . . . . .",
 			". . . . . . . . .",
-			"A A . . . . . . .",
-			". . A . . . . . .",
-			"B . A . . . . . .",
-			". B B A . . . . .",
-			". . A B . . . . .",
-			"A A . B B . . . .",
-			". . . . B . . . .",
-		})
-		local tiles = new_tiles()
-		local regions = enclosure.detect_regions_and_ownership(b, tiles)
-		debug_dump("fixture1q", b, regions, tiles)
-
-		assert_expected_ownership_ascii(b, regions, tiles, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			"A A . . . . . . .",
-			"a a A . . . . . .",
-			"B a A . . . . . .",
-			". B B A . . . . .",
-			". . A B . . . . .",
-			"A A b B B . . . .",
-			"b b b b B . . . .",
-		})
-	end)
-	it("keeps board fixture #11 sampled empty region unowned", function()
-		local b = parse_board_ascii({
-			". . . . . . . . .",
-			". . . . . . . . .",
-			"B . . . . . . . .",
-			". B . A . . . . .",
-			"A . B A . . . . .",
-			". B . . . . . . .",
-			"B . . A . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"B B . . . . . . .",
+			". . B . . . . . .",
+			"W . B . . . . . .",
+			". W W B . . . . .",
+			". . B W . . . . .",
+			"B B . W W . . . .",
+			". . . . W . . . .",
 		})
 		local tiles = new_tiles()
 		local regions = enclosure.detect_regions_and_ownership(b, tiles)
@@ -645,11 +617,39 @@ describe("Enclosure integration (detect_regions_and_ownership)", function()
 		assert_expected_ownership_ascii(b, regions, tiles, {
 			". . . . . . . . .",
 			". . . . . . . . .",
-			"B . . . . . . . .",
-			"b B . A . . . . .",
-			"A b B A . . . . .",
-			"b B . . . . . . .",
-			"B . . A . . . . .",
+			"B B . . . . . . .",
+			"b b B . . . . . .",
+			"W b B . . . . . .",
+			". W W B . . . . .",
+			". . B W . . . . .",
+			"B B w W W . . . .",
+			"w w w w W . . . .",
+		})
+	end)
+	it("keeps board fixture #11 sampled empty region unowned", function()
+		local b = parse_board_ascii({
+			". . . . . . . . .",
+			". . . . . . . . .",
+			"W . . . . . . . .",
+			". W . B . . . . .",
+			"B . W B . . . . .",
+			". W . . . . . . .",
+			"W . . B . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local tiles = new_tiles()
+		local regions = enclosure.detect_regions_and_ownership(b, tiles)
+		debug_dump("fixture1q", b, regions, tiles)
+
+		assert_expected_ownership_ascii(b, regions, tiles, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			"W . . . . . . . .",
+			"w W . B . . . . .",
+			"B w W B . . . . .",
+			"w W . . . . . . .",
+			"W . . B . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})

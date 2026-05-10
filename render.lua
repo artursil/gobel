@@ -400,8 +400,8 @@ local function draw_side_columns(game, layout)
 	local player = match_state.player_for_color(game, "black")
 	local opp = match_state.player_for_color(game, "white")
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	draw_stances(layout.player_stances_panel, stances.all_active_stances(player, game, "A"), "A")
-	draw_stances(layout.opponent_stances_panel, stances.all_active_stances(opp, game, "B"), "B")
+	draw_stances(layout.player_stances_panel, stances.all_active_stances(player, game, config.OWNER_BLACK), config.OWNER_BLACK)
+	draw_stances(layout.opponent_stances_panel, stances.all_active_stances(opp, game, config.OWNER_WHITE), config.OWNER_WHITE)
 	local stat_rects = layout_mod.player_stat_icon_rects(layout)
 	draw_icon_or_fallback("energy", stat_rects[1])
 	draw_icon_or_fallback("money", stat_rects[2])
@@ -615,11 +615,11 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 	local probe = M._influence_probe
 	if probe and probe.contributors then
 		local marked = {}
-		local owners = { "A", "B" }
-		if probe.owner == "A" then
-			owners = { "A" }
-		elseif probe.owner == "B" then
-			owners = { "B" }
+		local owners = { config.OWNER_BLACK, config.OWNER_WHITE }
+		if probe.owner == config.OWNER_BLACK then
+			owners = { config.OWNER_BLACK }
+		elseif probe.owner == config.OWNER_WHITE then
+			owners = { config.OWNER_WHITE }
 		end
 		for oi = 1, #owners do
 			local owner = owners[oi]
@@ -997,8 +997,8 @@ function M.stance_hit_test(game, layout, x, y)
 	local player = match_state.player_for_color(game, "black")
 	local opp = match_state.player_for_color(game, "white")
 	local panels = {
-		{ owner_key = "A", box = layout.player_stances_panel, entries = stances.all_active_stances(player, game, "A") },
-		{ owner_key = "B", box = layout.opponent_stances_panel, entries = stances.all_active_stances(opp, game, "B") },
+		{ owner_key = config.OWNER_BLACK, box = layout.player_stances_panel, entries = stances.all_active_stances(player, game, config.OWNER_BLACK) },
+		{ owner_key = config.OWNER_WHITE, box = layout.opponent_stances_panel, entries = stances.all_active_stances(opp, game, config.OWNER_WHITE) },
 	}
 	for p = 1, #panels do
 		local panel = panels[p]

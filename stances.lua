@@ -30,7 +30,7 @@ end
 --- Get all active stance entries (IDs + instances) including temporary stances.
 --- @param player_state table
 --- @param game_state table: The global game state containing temporary_stances
---- @param owner string: "A" or "B" to filter temporary stances by owner
+--- @param owner string: `config.OWNER_BLACK` or `config.OWNER_WHITE` to filter temporary stances by owner
 --- @return table list of {id=stance_id, duration=remaining_rounds_or_nil}
 function M.all_active_stances(player_state, game_state, owner)
 	local out = {}

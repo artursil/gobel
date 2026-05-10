@@ -61,7 +61,7 @@ describe("T-100 effects system", function()
 	it("applies add_points effect to state", function()
 		local state = {
 			scores = {
-				points = { A = 0, B = 0 },
+				points = { B = 0, W = 0 },
 			},
 		}
 		local effect_def = {
@@ -69,15 +69,15 @@ describe("T-100 effects system", function()
 			value = 5,
 		}
 		local resolved = effects.resolve(effect_def)
-		resolved.apply(state, "A")
-		assert.are.equal(5, state.scores.points.A)
-		assert.are.equal(0, state.scores.points.B)
+		resolved.apply(state, "B")
+		assert.are.equal(5, state.scores.points.B)
+		assert.are.equal(0, state.scores.points.W)
 	end)
 
 	it("applies add_mult effect to state", function()
 		local state = {
 			scores = {
-				plus_mult = { A = 1, B = 1 },
+				plus_mult = { B = 1, W = 1 },
 			},
 		}
 		local effect_def = {
@@ -85,9 +85,9 @@ describe("T-100 effects system", function()
 			value = 3,
 		}
 		local resolved = effects.resolve(effect_def)
-		resolved.apply(state, "B")
-		assert.are.equal(1, state.scores.plus_mult.A)
-		assert.are.equal(4, state.scores.plus_mult.B)
+		resolved.apply(state, "W")
+		assert.are.equal(1, state.scores.plus_mult.B)
+		assert.are.equal(4, state.scores.plus_mult.W)
 	end)
 
 	it("preserves conditions in resolved effect", function()

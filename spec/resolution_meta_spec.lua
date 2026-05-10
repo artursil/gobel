@@ -7,20 +7,20 @@ local queries = require("single_game.resolver.state_queries")
 
 local function minimal_scores()
 	return {
-		turn_bonus = { A = 1, B = 1 },
-		territory = { A = 0, B = 0 },
-		points = { A = 0, B = 0 },
-		plus_mult = { A = 1, B = 1 },
-		x_mult = { A = 1, B = 1 },
+		turn_bonus = { B = 1, W = 1 },
+		territory = { B = 0, W = 0 },
+		points = { B = 0, W = 0 },
+		plus_mult = { B = 1, W = 1 },
+		x_mult = { B = 1, W = 1 },
 	}
 end
 
 describe("state.resolution metadata wiring", function()
 	it("stance effects carry meta.source_instance_id from ObjectInstance.instance_id", function()
-		local inst = ObjectInstance.new("run_inst_test", "stance_point", "stance", "A", "starter", {})
+		local inst = ObjectInstance.new("run_inst_test", "stance_point", "stance", "B", "starter", {})
 		local state = {
 			board = board.new(),
-			stances = { { type = "stance_point", owner = "A", instance = inst } },
+			stances = { { type = "stance_point", owner = "B", instance = inst } },
 			modifiers = {},
 			round_stone_effects = {},
 			active_effects = {},
@@ -51,10 +51,10 @@ describe("state.resolution metadata wiring", function()
 			return list
 		end
 
-		local inst = ObjectInstance.new("phase_inst_stance", "stance_point", "stance", "A", "starter", {})
+		local inst = ObjectInstance.new("phase_inst_stance", "stance_point", "stance", "B", "starter", {})
 		local state = {
 			board = board.new(),
-			stances = { { type = "stance_point", owner = "A", instance = inst } },
+			stances = { { type = "stance_point", owner = "B", instance = inst } },
 			modifiers = {},
 			round_stone_effects = {},
 			active_effects = {},
@@ -92,7 +92,7 @@ describe("state.resolution metadata wiring", function()
 			modifiers = {},
 			round_stone_effects = {
 				{
-					owner = "B",
+					owner = "W",
 					stone_type = "stone_basic",
 					effects = { { effect_name = "add_points", phase = "points", value = 2, priority = 10 } },
 				},
@@ -104,7 +104,7 @@ describe("state.resolution metadata wiring", function()
 		em.apply_phase(state, "points")
 		em.collect_effects = orig_collect
 
-		assert.are.equal("B", seen_owner)
-		assert.are.equal(2, state.scores.points.B)
+		assert.are.equal("W", seen_owner)
+		assert.are.equal(2, state.scores.points.W)
 	end)
 end)

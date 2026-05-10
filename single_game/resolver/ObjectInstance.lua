@@ -8,7 +8,7 @@ local M = {}
 --- @param instance_id string: Unique instance ID
 --- @param def_id string: Definition ID (e.g., "stone_basic")
 --- @param object_type string: "stone" | "card" | "stance" | "temporary_stance"
---- @param owner string: "A" | "B" | "run"
+--- @param owner string: `config.OWNER_BLACK` | `config.OWNER_WHITE` | "run"
 --- @param source string: "starter" | "reward" | "shop" | "generated"
 --- @param base_properties table: {rarity, probability, defense, cost, tags?, remaining_rounds?}
 --- @return table: ObjectInstance

@@ -2,6 +2,7 @@
 if os.getenv("DEBUG") then
     require("mobdebug").start()
 end
+local config = require("config")
 local game = require("game")
 local home = require("home")
 local layout_mod = require("layout")
@@ -346,7 +347,7 @@ local function handle_influence_probe_click(x, y)
 end
 
 local function owner_color_from_key(owner_key)
-	if owner_key == "A" then
+	if owner_key == config.OWNER_BLACK then
 		return "black"
 	end
 	return "white"

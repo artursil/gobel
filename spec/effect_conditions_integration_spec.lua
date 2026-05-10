@@ -7,7 +7,7 @@ describe("T-102 effects with conditions integration", function()
 	it("applies effect when all conditions pass", function()
 		local state = {
 			scores = {
-				points = { A = 0, B = 0 },
+				points = { B = 0, W = 0 },
 			},
 		}
 		local effect_def = {
@@ -19,18 +19,18 @@ describe("T-102 effects with conditions integration", function()
 		}
 		local resolved = effects.resolve(effect_def)
 		local context = { state = state }
-		
+
 		if conditions.eval_all(resolved.conditions, context) then
-			resolved.apply(state, "A")
+			resolved.apply(state, "B")
 		end
-		
-		assert.are.equal(5, state.scores.points.A)
+
+		assert.are.equal(5, state.scores.points.B)
 	end)
 
 	it("skips effect when condition fails", function()
 		local state = {
 			scores = {
-				points = { A = 0, B = 0 },
+				points = { B = 0, W = 0 },
 			},
 		}
 		local effect_def = {
@@ -42,18 +42,18 @@ describe("T-102 effects with conditions integration", function()
 		}
 		local resolved = effects.resolve(effect_def)
 		local context = { state = state }
-		
+
 		if conditions.eval_all(resolved.conditions, context) then
-			resolved.apply(state, "A")
+			resolved.apply(state, "B")
 		end
-		
-		assert.are.equal(0, state.scores.points.A)
+
+		assert.are.equal(0, state.scores.points.B)
 	end)
 
 	it("applies effect when no conditions present (default pass)", function()
 		local state = {
 			scores = {
-				points = { A = 0, B = 0 },
+				points = { B = 0, W = 0 },
 			},
 		}
 		local effect_def = {
@@ -62,19 +62,19 @@ describe("T-102 effects with conditions integration", function()
 		}
 		local resolved = effects.resolve(effect_def)
 		local context = { state = state }
-		
+
 		if conditions.eval_all(resolved.conditions, context) then
-			resolved.apply(state, "A")
+			resolved.apply(state, "B")
 		end
-		
-		assert.are.equal(7, state.scores.points.A)
+
+		assert.are.equal(7, state.scores.points.B)
 	end)
 
 	it("applies multiple sequential effects with different conditions", function()
 		local state = {
 			scores = {
-				points = { A = 0, B = 0 },
-				plus_mult = { A = 1, B = 1 },
+				points = { B = 0, W = 0 },
+				plus_mult = { B = 1, W = 1 },
 			},
 		}
 		local effects_defs = {
@@ -89,18 +89,18 @@ describe("T-102 effects with conditions integration", function()
 				conditions = { { condition_name = "never" } },
 			},
 		}
-		
+
 		for _, effect_def in ipairs(effects_defs) do
 			local resolved = effects.resolve(effect_def)
 			local context = { state = state }
 			if conditions.eval_all(resolved.conditions, context) then
 				if resolved.apply then
-					resolved.apply(state, "A")
+					resolved.apply(state, "B")
 				end
 			end
 		end
-		
-		assert.are.equal(3, state.scores.points.A)
-		assert.are.equal(1, state.scores.plus_mult.A)
+
+		assert.are.equal(3, state.scores.points.B)
+		assert.are.equal(1, state.scores.plus_mult.B)
 	end)
 end)

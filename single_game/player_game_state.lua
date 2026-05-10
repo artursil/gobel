@@ -1,11 +1,11 @@
 --- Runtime PlayerGameState implementation conforming to single_game/player_game_state.schema.md
---- Nested under game_state.players.A/B
+--- Nested under game_state.players.B (black) / .W (white)
 --- @module single_game.player_game_state
 
 local M = {}
 
 --- Create a new PlayerGameState for a player.
---- @param owner string: "A" or "B"
+--- @param owner string: `config.OWNER_BLACK` (`"B"`) or `config.OWNER_WHITE` (`"W"`)
 --- @return table: Fully initialized PlayerGameState
 function M.new(owner)
 	return {

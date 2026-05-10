@@ -8,16 +8,16 @@ PHASES = { "territory", "points", "mult", "post" }
 -- =========================
 state = {
     scores = {
-        territory = {A = 0, B = 0},
-        points = {A = 0, B = 0},
-        mult = {A = 1, B = 1}
+        territory = {B = 0, W = 0},
+        points = {B = 0, W = 0},
+        mult = {B = 1, W = 1}
     },
 
     stances = {},
     modifiers = {}, -- cards played this turn
 
     last_played_stone = nil,
-    current_player = "A"
+    current_player = "B"
 }
 
 -- =========================
@@ -196,8 +196,8 @@ end
 -- =========================
 function calculate_territory(state)
     print("[System] Calculating territory (dummy)")
-    state.scores.territory.A = 10
-    state.scores.territory.B = 8
+    state.scores.territory.B = 10
+    state.scores.territory.W = 8
 end
 
 -- =========================
@@ -211,11 +211,11 @@ function resolve_turn(state)
     end
 
     -- final score
-    local A = state.scores.territory.A * state.scores.mult.A + state.scores.points.A
-    local B = state.scores.territory.B * state.scores.mult.B + state.scores.points.B
+    local black_total = state.scores.territory.B * state.scores.mult.B + state.scores.points.B
+    local white_total = state.scores.territory.W * state.scores.mult.W + state.scores.points.W
 
     print("\n=== FINAL SCORE ===")
-    print("A:", A, "| B:", B)
+    print("Black:", black_total, "| White:", white_total)
 end
 
 -- =========================
@@ -225,11 +225,11 @@ end
 -- stances in hand:
 -- [Blueprint][Blueprint][Pose B][Pose A][Pose D]
 state.stances = {
-    {type = "blueprint", owner = "A"},
-    {type = "blueprint", owner = "A"},
-    {type = "poseB", owner = "A"},
-    {type = "poseA", owner = "A"},
-    {type = "poseD", owner = "A"}
+    {type = "blueprint", owner = "B"},
+    {type = "blueprint", owner = "B"},
+    {type = "poseB", owner = "B"},
+    {type = "poseA", owner = "B"},
+    {type = "poseD", owner = "B"}
 }
 
 -- simulate playing a card

@@ -19,20 +19,32 @@ local function cell_key(r, c)
 end
 
 local function color_to_owner(color)
-	if color == config.STONE_BLACK then return "A" end
-	if color == config.STONE_WHITE then return "B" end
+	if color == config.STONE_BLACK then
+		return config.OWNER_BLACK
+	end
+	if color == config.STONE_WHITE then
+		return config.OWNER_WHITE
+	end
 	return nil
 end
 
 local function owner_from_colors(colors)
-	local hasA, hasB = false, false
+	local has_black, has_white = false, false
 	for i = 1, #colors do
 		local owner = color_to_owner(colors[i])
-		if owner == "A" then hasA = true end
-		if owner == "B" then hasB = true end
+		if owner == config.OWNER_BLACK then
+			has_black = true
+		end
+		if owner == config.OWNER_WHITE then
+			has_white = true
+		end
 	end
-	if hasA and not hasB then return "A" end
-	if hasB and not hasA then return "B" end
+	if has_black and not has_white then
+		return config.OWNER_BLACK
+	end
+	if has_white and not has_black then
+		return config.OWNER_WHITE
+	end
 	return nil
 end
 
@@ -285,8 +297,8 @@ function M.extract_walls(b)
 	local n = config.BOARD_SIZE
 	local walls = {}
 	local owners = {
-		{ owner = "A", color = config.STONE_BLACK },
-		{ owner = "B", color = config.STONE_WHITE },
+		{ owner = config.OWNER_BLACK, color = config.STONE_BLACK },
+		{ owner = config.OWNER_WHITE, color = config.STONE_WHITE },
 	}
 	local seen_signatures = {}
 
@@ -472,9 +484,9 @@ local function assign_empty_owners_from_walls(walls)
 	--- Example use-cases:
 	--- - A tiny black pocket fully inside a larger white area: black wins for that cell.
 	--- - Black and white enclosures crossing over same cell: cell becomes no-man's-land (nil).
-	--- @param candidates table[] Array of { index: integer, owner: "A"|"B", field_count: integer }.
+	--- @param candidates table[] Array of { index: integer, owner: "B"|"W", field_count: integer }.
 	--- @param inside_sets table<integer, table<integer, boolean>> Wall index -> inside cell-key set.
-	--- @return string|nil owner "A", "B", or nil when ambiguous/contested.
+	--- @return string|nil owner `"B"`, `"W"`, or nil when ambiguous/contested.
 	local function resolve_cell_owner(candidates, inside_sets)
 		if #candidates == 0 then
 			return nil

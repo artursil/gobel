@@ -137,7 +137,7 @@ function M.selected_target_is_enemy_stone(condition_def, state)
 	if board.is_empty(cell) then
 		return false
 	end
-	local owner_color = owner == "A" and config.STONE_BLACK or config.STONE_WHITE
+	local owner_color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
 	return cell.color ~= owner_color
 end
 
@@ -160,7 +160,7 @@ function M.selected_target_is_friendly_stone(condition_def, state)
 	if board.is_empty(cell) then
 		return false
 	end
-	local owner_color = owner == "A" and config.STONE_BLACK or config.STONE_WHITE
+	local owner_color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
 	return cell.color == owner_color
 end
 

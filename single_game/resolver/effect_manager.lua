@@ -7,6 +7,7 @@
 --- @module resolver.effect_manager
 
 local board = require("board")
+local config = require("config")
 local effects_registry = require("effect_registry")
 local dbg = require("debugger")
 local queries = require("single_game.resolver.state_queries")
@@ -107,10 +108,10 @@ end
 local function append_board_stone_effects(state, phase, out)
 	local owner_from_color = function(color)
 		if color == 1 then
-			return "A"
+			return config.OWNER_BLACK
 		end
 		if color == 2 then
-			return "B"
+			return config.OWNER_WHITE
 		end
 		return nil
 	end
