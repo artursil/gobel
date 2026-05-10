@@ -1,90 +1,10 @@
-local board = require("board")
-local config = require("config")
-local scoring = require("scoring")
-
-local DEBUG_INTEGRATION = os.getenv("INTEGRATION_DEBUG") == "1"
-
-local function place_stone(b, row, col, color)
-	b[row][col] = board.make_stone(color, "stone_basic")
-end
-
-local function parse_board_ascii(rows)
-	local b = board.new()
-	for r = 1, #rows do
-		local c = 1
-		for token in string.gmatch(rows[r], "%S+") do
-			if token == "B" then
-				place_stone(b, r, c, config.STONE_BLACK)
-			elseif token == "W" then
-				place_stone(b, r, c, config.STONE_WHITE)
-			end
-			c = c + 1
-		end
-	end
-	return b
-end
-
-local function board_ascii(b)
-	local lines = {}
-	for r = 1, config.BOARD_SIZE do
-		local row = {}
-		for c = 1, config.BOARD_SIZE do
-			local cell = b[r][c]
-			if board.is_empty(cell) then
-				row[#row + 1] = "."
-			elseif cell.color == config.STONE_BLACK then
-				row[#row + 1] = "B"
-			else
-				row[#row + 1] = "W"
-			end
-		end
-		lines[#lines + 1] = table.concat(row, " ")
-	end
-	return table.concat(lines, "\n")
-end
-
-local function territory_ascii(b, territory_grid)
-	local lines = {}
-	for r = 1, config.BOARD_SIZE do
-		local row = {}
-		for c = 1, config.BOARD_SIZE do
-			local cell = b[r][c]
-			if not board.is_empty(cell) then
-				row[#row + 1] = board.chain_color(cell) == config.STONE_BLACK and "B" or "W"
-			else
-				local owner = territory_grid[r][c]
-				if owner == config.STONE_BLACK then
-					row[#row + 1] = "b"
-				elseif owner == config.STONE_WHITE then
-					row[#row + 1] = "w"
-				else
-					row[#row + 1] = "."
-				end
-			end
-		end
-		lines[#lines + 1] = table.concat(row, " ")
-	end
-	return table.concat(lines, "\n")
-end
-
-local function debug_dump(name, b, territory_grid)
-	if not DEBUG_INTEGRATION then
-		return
-	end
-	print("")
-	print("[INTEGRATION_DEBUG] " .. name .. " initial board")
-	print(board_ascii(b))
-	print("[INTEGRATION_DEBUG] " .. name .. " territory assignment")
-	print(territory_ascii(b, territory_grid))
-end
+local helper = require("spec.spec_helper")
 
 local function assert_expected_territory_ascii(case_name, before_rows, expected_rows)
-	local b = parse_board_ascii(before_rows)
-	local territory_grid = scoring.territory_map(b, "regional")
-	debug_dump(case_name, b, territory_grid)
-	local expected = table.concat(expected_rows, "\n")
-	local actual = territory_ascii(b, territory_grid)
-	assert.are.equal(expected, actual)
+	local b = helper.parse_board_ascii(before_rows)
+	local territory_grid = helper.territory_map(b, "regional")
+	helper.debug_dump_territory(case_name, b, territory_grid)
+	assert.are.equal(table.concat(expected_rows, "\n"), helper.territory_ascii(b, territory_grid))
 end
 
 describe("Territory ASCII integration (regular stones)", function()
@@ -206,5 +126,4 @@ describe("Territory ASCII integration (regular stones)", function()
 			"w w w w w b w w w",
 		})
 	end)
-
 end)
