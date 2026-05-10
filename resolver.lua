@@ -273,6 +273,7 @@ local function begin_next_turn(state)
 		}
 	end
 	state.turn_number = state.turn_number + 1
+	state.round_number = match_state.round_number_from_turn(state.turn_number)
 	state.to_play = opponent_color(state.to_play)
 	state.phase = "TURN_START"
 	on_turn_start(state, state.to_play)

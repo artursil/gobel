@@ -7,6 +7,12 @@ local pouch = require("pouch")
 
 local M = {}
 
+--- @param turn_number integer
+--- @return integer
+function M.round_number_from_turn(turn_number)
+	return math.floor((turn_number or 1) / 2) + 1
+end
+
 local ENERGY_MAX_DEFAULT = 3
 local MONEY_DEFAULT = 0
 local CARD_DECK_TARGET_SIZE = 10
@@ -118,6 +124,7 @@ function M.new_match(match_kind, territory_mode, seed)
 		to_play = "black",
 		phase = "TURN_START",
 		turn_number = 1,
+		round_number = M.round_number_from_turn(1),
 		ended = false,
 		end_reason = "none",
 		winner = "none",

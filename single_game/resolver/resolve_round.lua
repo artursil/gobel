@@ -18,6 +18,9 @@ local M = {}
 --- @param state table
 --- @return nil
 local function ensure_state_fields(state)
+	state.round_number = match_state.round_number_from_turn(state.turn_number)
+	state.run_state = state.run_state or {}
+	state.run_state.pending_counter_mult_delta = {}
 	state.last_opponent_move = state.last_opponent_move or nil
 	state.last_opponent_modifiers = state.last_opponent_modifiers or {}
 	state.active_effects = state.active_effects or {}

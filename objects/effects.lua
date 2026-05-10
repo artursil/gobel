@@ -287,7 +287,41 @@ function M.adjust_run_persistent_counter(effect)
 			state.run_state.counters = state.run_state.counters or {}
 			state.run_state.counters[counter_key] = state.run_state.counters[counter_key] or { B = 0, W = 0 }
 			local delta = effect.value.delta or 0
-			state.run_state.counters[counter_key][owner] = state.run_state.counters[counter_key][owner] + delta
+			local old = state.run_state.counters[counter_key][owner]
+			local new_val = math.max(0, old + delta)
+			local effective = new_val - old
+			state.run_state.counters[counter_key][owner] = new_val
+			state.run_state.pending_counter_mult_delta = state.run_state.pending_counter_mult_delta or {}
+			state.run_state.pending_counter_mult_delta[counter_key] = state.run_state.pending_counter_mult_delta[counter_key]
+				or { B = 0, W = 0 }
+			state.run_state.pending_counter_mult_delta[counter_key][owner] = state.run_state.pending_counter_mult_delta[counter_key][owner]
+				+ effective
+		end,
+	}
+end
+
+--- Applies accumulated effective counter delta for this resolve to +mult (round 2+); clears that pending bucket for the owner.
+--- @param effect table
+--- @return table
+function M.apply_run_persistent_pending_delta_as_mult(effect)
+	return {
+		type = "APPLY_RUN_PERSISTENT_PENDING_DELTA_AS_MULT",
+		phase = effect.phase or "mult",
+		value = effect.value or {},
+		priority = effect.priority or 10,
+		conditions = effect.conditions,
+		apply = function(state, owner, context)
+			local counter_key = effect.value.counter_key
+			if not counter_key or owner == nil then
+				return
+			end
+			local pending = state.run_state and state.run_state.pending_counter_mult_delta
+			local by_owner = pending and pending[counter_key]
+			local delta = by_owner and by_owner[owner] or 0
+			state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + delta
+			if by_owner then
+				by_owner[owner] = 0
+			end
 		end,
 	}
 end

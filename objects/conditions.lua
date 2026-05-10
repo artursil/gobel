@@ -109,6 +109,30 @@ function M.stance_owner_is_current_turn(condition_def, state)
 		and queries.source_owner(state) == queries.current_turn_owner(state)
 end
 
+--- Match round number from state (see match_state.round_number_from_turn).
+--- @param condition_def table
+--- @param state table
+--- @return boolean
+function M.round_number_exactly(condition_def, state)
+	local value = condition_def and condition_def.value
+	if value == nil or not state then
+		return false
+	end
+	return (state.round_number or 1) == value
+end
+
+--- Match round number at least value.
+--- @param condition_def table
+--- @param state table
+--- @return boolean
+function M.round_number_at_least(condition_def, state)
+	local value = condition_def and condition_def.value
+	if value == nil or not state then
+		return false
+	end
+	return (state.round_number or 1) >= value
+end
+
 --- Selected board target exists in effect context.
 --- @param condition_def table
 --- @param state table

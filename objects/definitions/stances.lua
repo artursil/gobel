@@ -134,6 +134,18 @@ local M = {
 				phase = "mult",
 				value = { counter_key = "persistent_flux_mult" },
 				priority = 20,
+				conditions = {
+					{ condition_name = "round_number_exactly", value = 1 },
+				},
+			},
+			{
+				effect_name = "apply_run_persistent_pending_delta_as_mult",
+				phase = "mult",
+				value = { counter_key = "persistent_flux_mult" },
+				priority = 20,
+				conditions = {
+					{ condition_name = "round_number_at_least", value = 2 },
+				},
 			},
 		},
 	},

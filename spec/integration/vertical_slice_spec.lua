@@ -131,12 +131,15 @@ describe("vertical slice features", function()
 		}
 		resolve_round.resolve(state)
 		assert.are.equal(3, state.run_state.counters.persistent_flux_mult.B)
+		assert.are.equal(4, state.scores.plus_mult.B)
 
+		state.turn_number = 2
 		state.round_stone_effects = {
 			{ owner = "B", stone_type = "stone_wall", effects = {} },
 		}
 		resolve_round.resolve(state)
 		assert.are.equal(0, state.run_state.counters.persistent_flux_mult.B)
+		assert.are.equal(1, state.scores.plus_mult.B)
 
 		local g1 = game.new("pvp", "vertical_slice_test")
 		g1.run_state.counters.persistent_flux_mult = { B = 9, W = 0 }
