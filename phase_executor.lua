@@ -6,7 +6,8 @@ M.PHASES = { "pre", "territory", "points", "mult", "post" }
 
 function M.ensure_state_extensions(state)
 	state.stances = state.stances or {}
-	state.modifiers = state.modifiers or {}
+	state.just_played = state.just_played or {}
+	state.played_cards = state.played_cards or {}
 	state.last_played_stone = state.last_played_stone or nil
 	state.scores = state.scores or {
 		territory = { B = 0, W = 0 },
@@ -26,7 +27,7 @@ function M.collect_effects(state, phase)
 			end
 		end
 	end
-	for _, card in ipairs(state.modifiers or {}) do
+	for _, card in ipairs(state.just_played or {}) do
 		local generated = Effects.cards.resolve(card, state)
 		for _, e in ipairs(generated) do
 			if e.phase == phase then

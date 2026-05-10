@@ -495,7 +495,8 @@ function M.compute_from_board(b, territory_mode)
 	local temp_state = {
 		board = b,
 		stances = {},
-		modifiers = {},
+		just_played = {},
+		played_cards = {},
 		round_stone_effects = {},
 		active_effects = {},
 		territory_mode = mode,

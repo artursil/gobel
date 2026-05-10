@@ -14,7 +14,8 @@ state = {
     },
 
     stances = {},
-    modifiers = {}, -- cards played this turn
+    just_played = {},
+    played_cards = {},
 
     last_played_stone = nil,
     current_player = "B"
@@ -81,7 +82,7 @@ Effects.poseD = function(pose, state)
             phase = "mult",
             priority = 5,
             apply = function(state)
-                local bonus = #state.modifiers
+                local bonus = #state.just_played
                 print("[Pose D] +" .. bonus .. " mult (cards played)")
                 state.scores.mult[pose.owner] =
                     state.scores.mult[pose.owner] + bonus
@@ -161,7 +162,7 @@ function collect_effects(state, phase)
     end
 
     -- cards
-    for _, card in ipairs(state.modifiers) do
+    for _, card in ipairs(state.just_played) do
         local generator = Effects[card.type]
         if generator then
             local generated = generator(card, state)
@@ -233,7 +234,7 @@ state.stances = {
 }
 
 -- simulate playing a card
-table.insert(state.modifiers, {type = "card_boost"})
+table.insert(state.just_played, {type = "card_boost"})
 
 -- simulate placing a stone
 state.last_played_stone = "anchor"

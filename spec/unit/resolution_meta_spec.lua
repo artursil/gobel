@@ -21,7 +21,8 @@ describe("state.resolution metadata wiring", function()
 		local state = {
 			board = board.new(),
 			stances = { { type = "stance_point", owner = "B", instance = inst } },
-			modifiers = {},
+			just_played = {},
+			played_cards = {},
 			round_stone_effects = {},
 			active_effects = {},
 			scores = minimal_scores(),
@@ -55,7 +56,8 @@ describe("state.resolution metadata wiring", function()
 		local state = {
 			board = board.new(),
 			stances = { { type = "stance_point", owner = "B", instance = inst } },
-			modifiers = {},
+			just_played = {},
+			played_cards = {},
 			round_stone_effects = {},
 			active_effects = {},
 			scores = minimal_scores(),
@@ -89,7 +91,8 @@ describe("state.resolution metadata wiring", function()
 		local state = {
 			board = board.new(),
 			stances = {},
-			modifiers = {},
+			just_played = {},
+			played_cards = {},
 			round_stone_effects = {
 				{
 					owner = "W",

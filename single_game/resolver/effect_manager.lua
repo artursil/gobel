@@ -3,7 +3,7 @@
 --- Transient `state.resolution` (see `state_queries.ensure_resolution`) is set per effect before conditions run:
 --- - **effect_owner**: who receives score/application for this wrapped effect (`effect.owner`), same convention as registry wrap.
 ---   Stone round snippets set `effect.owner`; if absent, falls back to `meta.source_owner` so `queries.effect_owner` stays consistent.
---- - **source_owner** / **source_def_id** / **source_instance_id**: originating object (stance lane, card modifier, copied target, etc.).
+--- - **source_owner** / **source_def_id** / **source_instance_id**: originating object (stance lane, card from `state.just_played`, copied target, etc.).
 --- @module resolver.effect_manager
 
 local board = require("board")
@@ -53,7 +53,7 @@ end
 --- @param out table
 --- @return nil
 local function append_card_effects(state, phase, out)
-	for _, card in ipairs(state.modifiers or {}) do
+	for _, card in ipairs(state.just_played or {}) do
 		local generated = effects_registry.cards.resolve(card, state)
 		for _, e in ipairs(generated) do
 			if e.phase == phase then

@@ -1,4 +1,7 @@
 --- One full scoring round: default fields, opponent sync, stances, pre/main phases, territory, player totals, timed tick.
+---
+--- Card effects read **`state.just_played`** (filled by `PLAY_CARD_COMMIT` in the resolver), not hand contents.
+--- After scoring, **`card_play_memory.flush_just_played_to_history`** appends to **`state.played_cards`** and clears `just_played`.
 --- @module resolver.resolve_round
 
 local config = require("config")
@@ -7,6 +10,7 @@ local phases = require("single_game.resolver.phases")
 local effect_manager = require("single_game.resolver.effect_manager")
 local queries = require("single_game.resolver.state_queries")
 local territory = require("single_game.resolver.territory")
+local card_play_memory = require("single_game.resolver.card_play_memory")
 local dbg = require("debugger")
 
 local M = {}
@@ -20,7 +24,8 @@ local function ensure_state_fields(state)
 	state.round_stone_effects = state.round_stone_effects or {}
 	state.temporary_stances = state.temporary_stances or {}
 	state.stances = state.stances or {}
-	state.modifiers = state.modifiers or {}
+	state.just_played = state.just_played or {}
+	state.played_cards = state.played_cards or {}
 	do
 		local n = config.BOARD_SIZE
 		state.territory_value = {}
@@ -74,7 +79,7 @@ local function side_to_owner(side)
 	return config.OWNER_BLACK
 end
 
---- Flattens both players’ fixed+swappable poses into `state.poses` with A/B owner.
+--- Flattens both players’ fixed+swappable poses into `state.stances` with B/W owner.
 --- @param state table
 --- @return nil
 local function rebuild_ordered_stances(state)
@@ -182,22 +187,6 @@ local function tick_temporary_stances(state)
 	state.temporary_stances = kept
 end
 
---- Adds active cards from player hands to state.modifiers for effect evaluation.
---- @param state table
---- @return nil
-local function populate_active_cards(state)
-	state.modifiers = state.modifiers or {}
-	local black = match_state.player_for_color(state, "black")
-	local white = match_state.player_for_color(state, "white")
-
-	for _, card_id in ipairs(black.cards.hand.ids or {}) do
-		state.modifiers[#state.modifiers + 1] = { type = card_id, owner = config.OWNER_BLACK }
-	end
-	for _, card_id in ipairs(white.cards.hand.ids or {}) do
-		state.modifiers[#state.modifiers + 1] = { type = card_id, owner = config.OWNER_WHITE }
-	end
-end
-
 --- Main entry: runs full PRE/MAIN pipeline including territory begin/finish and clears `round_stone_effects`.
 --- @param state table
 --- @return nil
@@ -224,8 +213,8 @@ function M.resolve(state)
 		end
 	end
 	sync_player_scores(state)
+	card_play_memory.flush_just_played_to_history(state)
 	state.round_stone_effects = {}
-	state.modifiers = {}
 	tick_timed_effects(state)
 	tick_temporary_stances(state)
 	queries.clear_resolution(state)

@@ -7,6 +7,7 @@ local Effects = require("effect_registry")
 local match_state = require("match_state")
 local messages = require("messages")
 local resolve_round = require("single_game.resolver.resolve_round")
+local card_play_memory = require("single_game.resolver.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
 
@@ -220,7 +221,7 @@ end
 local function on_turn_start(state, actor)
 	local actor_state = match_state.player_for_color(state, actor)
 	energy.refresh(actor_state.resources)
-	state.modifiers = {}
+	state.just_played = {}
 	state.selected_card_target = nil
 	if not actor_state.stones.selected_stone or not actor_state.stones.selected_stone_index then
 		actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
@@ -488,11 +489,11 @@ local function apply_non_effect_event(state, event)
 		if not played then
 			return false, "Invalid hand index"
 		end
-		state.modifiers[#state.modifiers + 1] = {
+		card_play_memory.record_just_played_card(state, {
 			type = event.card_id,
 			owner = owner_for_side(event.actor),
 			selected_target = event.selected_target,
-		}
+		})
 		state.last_opponent_modifiers = state.last_opponent_modifiers or {}
 		state.last_opponent_modifiers[#state.last_opponent_modifiers + 1] = {
 			type = event.card_id,
