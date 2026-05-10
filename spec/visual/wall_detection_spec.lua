@@ -83,7 +83,6 @@ describe("Wall detection", function()
 		debug_dump_all_walls("biggest_wall", b, walls)
 
 		local actual = walls_ascii(config.BOARD_SIZE, biggest_wall(walls))
-		if helper.DEBUG_INTEGRATION then helper.debug_dump_territory("biggest_wall", b, {}) end
 		assert.are.equal(table.concat({
 			". . . . . . . . .",
 			". . . . . . . . .",
