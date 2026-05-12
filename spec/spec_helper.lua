@@ -10,25 +10,35 @@ M.DEBUG_INTEGRATION = os.getenv("INTEGRATION_DEBUG") == "1"
 
 --- @param b table
 --- @param territory_mode string|nil
---- @return table
+--- @return table territory_grid
+--- @return table decision_sources
+--- @return table territory_value
 function M.territory_map(b, territory_mode)
 	return territory_resolver.compute_from_board(b, territory_mode or "regional")
 end
 
+--- Weighted controlled empty cells: sums ``territory_value[r][c]`` (default ``1``) for each empty matching ``color``.
+--- When ``territory_value`` is omitted, counts tiles (weight ``1`` each).
 --- @param territory table
 --- @param color integer
+--- @param territory_value table|nil
 --- @return integer
-function M.territory_points(territory, color)
+function M.territory_points(territory, color, territory_value)
 	local n = config.BOARD_SIZE
-	local count = 0
+	local sum = 0
 	for r = 1, n do
 		for c = 1, n do
 			if territory[r][c] == color then
-				count = count + 1
+				if territory_value then
+					local w = (territory_value[r] and territory_value[r][c]) or 1
+					sum = sum + w
+				else
+					sum = sum + 1
+				end
 			end
 		end
 	end
-	return count
+	return sum
 end
 
 --- @param b table
@@ -36,8 +46,8 @@ end
 --- @param territory_mode string|nil
 --- @return integer
 function M.liberty_points(b, color, territory_mode)
-	local territory = M.territory_map(b, territory_mode)
-	return M.territory_points(territory, color)
+	local territory, _, territory_value = M.territory_map(b, territory_mode)
+	return M.territory_points(territory, color, territory_value)
 end
 
 --- Board ASCII helpers (B = black stone, W = white stone) ---

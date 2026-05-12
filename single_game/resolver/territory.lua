@@ -483,15 +483,26 @@ function M.finish_assignment(state)
 	state.scores.territory.W = white_c
 end
 
---- Standalone helper: no `state` mutation. Returns a territory color grid.
+--- Standalone helper: no `state` mutation. Runs distance- and territory-phase board stone effects (per-cell
+--- ``territory_value``), then ownership resolution.
 --- @param b table
 --- @param territory_mode string|nil
---- @return table
+--- @return table territory_grid
+--- @return table territory_decision_sources
+--- @return table territory_value  per-cell multipliers (default ``1``); tower corner adds ``+1`` in its block.
 function M.compute_from_board(b, territory_mode)
 	local tiles = init_tiles(b)
 	local walls = enclosure.extract_walls(b)
 	local regions = enclosure.detect_regions_and_ownership(b, tiles)
 	local mode = territory_mode or "regional"
+	local n = config.BOARD_SIZE
+	local territory_value = {}
+	for r = 1, n do
+		territory_value[r] = {}
+		for c = 1, n do
+			territory_value[r][c] = 1
+		end
+	end
 	local temp_state = {
 		board = b,
 		players = {
@@ -504,6 +515,7 @@ function M.compute_from_board(b, territory_mode)
 		round_stone_effects = {},
 		active_effects = {},
 		territory_mode = mode,
+		territory_value = territory_value,
 		distance_modifiers = {
 			default_bonus = 0,
 			by_stone = {},
@@ -522,7 +534,9 @@ function M.compute_from_board(b, territory_mode)
 		},
 	}
 	effect_manager.apply_phase(temp_state, "distance")
-	return finish_resolve_owners(tiles, regions, walls, b, temp_state, false)
+	effect_manager.apply_phase(temp_state, "territory")
+	local territory_grid, decision_sources = finish_resolve_owners(tiles, regions, walls, b, temp_state, false)
+	return territory_grid, decision_sources, temp_state.territory_value
 end
 
 return M

@@ -350,7 +350,8 @@ function M.add_permanent_points_to_selected_stone(effect)
 	}
 end
 
---- Double corner nearby territory effect (special board effect).
+--- Double corner nearby territory effect: corner tower adds ``1`` to ``territory_value`` on every cell in the
+--- board-aligned ``3×3`` block anchored at that corner (excluding the tower cell). Stacks with prior cell values.
 --- @param row integer
 --- @param col integer
 --- @param effect_def table
@@ -368,14 +369,22 @@ function M.double_corner_nearby_territory(row, col, effect_def)
 				return
 			end
 			state.territory_value = state.territory_value or {}
-			for dr = -1, 1 do
-				for dc = -1, 1 do
-					if dr ~= 0 or dc ~= 0 then
-						local tr, tc = row + dr, col + dc
-						if tr >= 1 and tr <= n and tc >= 1 and tc <= n then
-							state.territory_value[tr] = state.territory_value[tr] or {}
-							state.territory_value[tr][tc] = 2
-						end
+			local r0, r1, c0, c1
+			if row == 1 and col == 1 then
+				r0, r1, c0, c1 = 1, math.min(3, n), 1, math.min(3, n)
+			elseif row == 1 and col == n then
+				r0, r1, c0, c1 = 1, math.min(3, n), math.max(1, n - 2), n
+			elseif row == n and col == 1 then
+				r0, r1, c0, c1 = math.max(1, n - 2), n, 1, math.min(3, n)
+			else
+				r0, r1, c0, c1 = math.max(1, n - 2), n, math.max(1, n - 2), n
+			end
+			for tr = r0, r1 do
+				state.territory_value[tr] = state.territory_value[tr] or {}
+				for tc = c0, c1 do
+					if tr ~= row or tc ~= col then
+						local cur = state.territory_value[tr][tc] or 1
+						state.territory_value[tr][tc] = cur + 1
 					end
 				end
 			end

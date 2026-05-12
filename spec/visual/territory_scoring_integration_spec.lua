@@ -30,19 +30,18 @@ local function parse_board(rows)
 	return helper.parse_board_ascii_kinds(rows, LETTER_TO_STONE)
 end
 
-local function territory_value_ascii(b, territory)
+local board = require("board")
+
+local function territory_value_ascii(b, territory_value)
 	local lines = {}
 	for r = 1, config.BOARD_SIZE do
 		local row = {}
 		for c = 1, config.BOARD_SIZE do
-			if not require("board").is_empty(b[r][c]) then
+			if not board.is_empty(b[r][c]) then
 				row[#row + 1] = "#"
-			elseif territory[r][c] == config.STONE_BLACK then
-				row[#row + 1] = "1"
-			elseif territory[r][c] == config.STONE_WHITE then
-				row[#row + 1] = "2"
 			else
-				row[#row + 1] = "0"
+				local v = (territory_value and territory_value[r] and territory_value[r][c]) or 1
+				row[#row + 1] = tostring(v)
 			end
 		end
 		lines[#lines + 1] = table.concat(row, " ")
@@ -50,16 +49,16 @@ local function territory_value_ascii(b, territory)
 	return table.concat(lines, "\n")
 end
 
-local function print_case(name, b, territory)
-	local actual_black = helper.territory_points(territory, config.STONE_BLACK)
-	local actual_white = helper.territory_points(territory, config.STONE_WHITE)
+local function print_case(name, b, territory, territory_value)
+	local actual_black = helper.territory_points(territory, config.STONE_BLACK, territory_value)
+	local actual_white = helper.territory_points(territory, config.STONE_WHITE, territory_value)
 	print("\n=== " .. name .. " ===")
 	print("result board:")
 	print(helper.board_ascii_kinds(b, STONE_TO_LETTER))
 	print("actual territory (b/w = empty owned, B/W = stone):")
 	print(helper.territory_ascii(b, territory))
-	print("territory value board (1=black empty, 2=white empty, 0=neutral, #=stone):")
-	print(territory_value_ascii(b, territory))
+	print("territory value board (per-empty-cell multiplier; #=stone):")
+	print(territory_value_ascii(b, territory_value))
 	print(string.format("scores — black: %d  white: %d", actual_black, actual_white))
 end
 
@@ -67,13 +66,13 @@ local function assert_territory(b, territory, expected_rows)
 	assert.are.equal(table.concat(expected_rows, "\n"), helper.territory_ascii(b, territory))
 end
 
-local function assert_territory_values(b, territory, expected_rows)
-	assert.are.equal(table.concat(expected_rows, "\n"), territory_value_ascii(b, territory))
+local function assert_territory_values(b, territory_value, expected_rows)
+	assert.are.equal(table.concat(expected_rows, "\n"), territory_value_ascii(b, territory_value))
 end
 
-local function assert_scores(territory, expected_black, expected_white)
-	assert.are.equal(expected_black, helper.territory_points(territory, config.STONE_BLACK))
-	assert.are.equal(expected_white, helper.territory_points(territory, config.STONE_WHITE))
+local function assert_scores(territory, territory_value, expected_black, expected_white)
+	assert.are.equal(expected_black, helper.territory_points(territory, config.STONE_BLACK, territory_value))
+	assert.are.equal(expected_white, helper.territory_points(territory, config.STONE_WHITE, territory_value))
 end
 
 describe("Territory scoring integration", function()
@@ -89,8 +88,8 @@ describe("Territory scoring integration", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local territory = helper.territory_map(b, "regional")
-		print_case("case_01", b, territory)
+		local territory, _, territory_value = helper.territory_map(b, "regional")
+		print_case("case_01", b, territory, territory_value)
 		assert_territory(b, territory, {
 			"b b b b b b b b b",
 			"b b b b b b b b b",
@@ -102,7 +101,7 @@ describe("Territory scoring integration", function()
 			"b b b b b b b b b",
 			"b b b b b b b b b",
 		})
-		assert_scores(territory, 81, 0)
+		assert_scores(territory, territory_value, 81, 0)
 	end)
 
 -- 	it("case_02: black vs white", function()
@@ -121,13 +120,59 @@ describe("Territory scoring integration", function()
 -- 		assert_scores(territory, 0, 0)
 -- 	end)
 
--- 	it("case_04: tower (T) in corner doubles nearby territory value", function()
--- 		local b = parse_board({ ... })
--- 		local territory = helper.territory_map(b, "regional")
--- 		print_case("case_04", b, territory)
--- 		assert_territory_values(b, territory, { ... })
--- 		assert_scores(territory, 0, 0)
--- 	end)
+	it("case_04: tower (T) in top-left corner with white at mid-right", function()
+		local b = parse_board({
+			"T . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . W",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local territory, _, territory_value = helper.territory_map(b, "regional")
+		print_case("case_04", b, territory, territory_value)
+		assert_territory_values(b, territory_value, {
+			"# 2 2 1 1 1 1 1 1",
+			"2 2 2 1 1 1 1 1 1",
+			"2 2 2 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 #",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+		})
+	end)
+
+	it("case_04_5: 2x towers", function()
+		local b = parse_board({
+			"T . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . W",
+			". . . . . . . . .",
+			". . W . . . . . .",
+			". . . . . . . . .",
+			"T . . . . . . . .",
+		})
+		local territory, _, territory_value = helper.territory_map(b, "regional")
+		print_case("case_04", b, territory, territory_value)
+		assert_territory_values(b, territory_value, {
+			"# 2 2 1 1 1 1 1 1",
+			"2 2 2 1 1 1 1 1 1",
+			"2 2 2 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 #",
+			"1 1 1 1 1 1 1 1 1",
+			"2 2 # 1 1 1 1 1 1",
+			"2 2 2 1 1 1 1 1 1",
+			"# 2 2 1 1 1 1 1 1",
+		})
+	end)
 
 -- 	it("case_05: mixed special blacks vs white", function()
 -- 		local b = parse_board({ ... })
