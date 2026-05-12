@@ -1,5 +1,9 @@
 --- One full scoring round: default fields, opponent sync, stances, pre/main phases, territory, player totals, timed tick.
 ---
+--- Stance ownership is canonical under ``state.players.*.stances.fixed`` / ``swappable``. Effect collection
+--- builds ``state._stance_effect_order`` via ``stance_order.flatten_stances_for_resolve`` (see ``stance_order``
+--- module); there is no merged ``state.stances`` array on match state.
+---
 --- Card effects read **`state.just_played`** (filled by `PLAY_CARD_COMMIT` in the resolver), not hand contents.
 --- After scoring, **`card_play_memory.flush_just_played_to_history`** appends to **`state.played_cards`** and clears `just_played`.
 --- @module resolver.resolve_round
@@ -26,9 +30,9 @@ local function ensure_state_fields(state)
 	state.active_effects = state.active_effects or {}
 	state.round_stone_effects = state.round_stone_effects or {}
 	state.temporary_stances = state.temporary_stances or {}
-	state.stances = state.stances or {}
 	state.just_played = state.just_played or {}
 	state.played_cards = state.played_cards or {}
+	state.ui_animation_events = {}
 	do
 		local n = config.BOARD_SIZE
 		state.territory_value = {}
@@ -80,26 +84,6 @@ local function side_to_owner(side)
 		return config.OWNER_WHITE
 	end
 	return config.OWNER_BLACK
-end
-
---- Flattens both players’ fixed+swappable poses into `state.stances` with B/W owner.
---- @param state table
---- @return nil
-local function rebuild_ordered_stances(state)
-	local ordered = {}
-	for _, side in ipairs({ "black", "white" }) do
-		local player = match_state.player_for_color(state, side)
-		for _, stance_id in ipairs(player.stances.fixed or {}) do
-			ordered[#ordered + 1] = { type = stance_id, owner = side_to_owner(side) }
-		end
-		for _, stance_id in ipairs(player.stances.swappable or {}) do
-			ordered[#ordered + 1] = { type = stance_id, owner = side_to_owner(side) }
-		end
-	end
-	for _, temp_stance in ipairs(state.temporary_stances or {}) do
-		ordered[#ordered + 1] = { type = temp_stance.def_id, owner = temp_stance.owner, instance = temp_stance }
-	end
-	state.stances = ordered
 end
 
 --- Resets point/mult baselines from player bonuses and board `overall_mult`.
@@ -198,7 +182,6 @@ function M.resolve(state)
 	ensure_state_fields(state)
 	-- dbg.log_stack("ensure_state_fields", state)
 	sync_opponent_state(state)
-	rebuild_ordered_stances(state)
 	reset_base_scores(state)
 	queries.clear_resolution(state)
 	for _, phase in ipairs(phases.PRE) do

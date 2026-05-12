@@ -1,9 +1,11 @@
 require("spec.test_helper")
 
 local board = require("board")
+local config = require("config")
 local effect_manager = require("single_game.resolver.effect_manager")
 local ObjectInstance = require("single_game.resolver.ObjectInstance")
 local queries = require("single_game.resolver.state_queries")
+local stance_order = require("single_game.resolver.stance_order")
 
 local function minimal_scores()
 	return {
@@ -17,16 +19,21 @@ end
 
 describe("state.resolution metadata wiring", function()
 	it("stance effects carry meta.source_instance_id from ObjectInstance.instance_id", function()
-		local inst = ObjectInstance.new("run_inst_test", "stance_point", "stance", "B", "starter", {})
+		local inst = ObjectInstance.new("run_inst_test", "stance_point", "temporary_stance", config.OWNER_BLACK, "starter", {})
 		local state = {
 			board = board.new(),
-			stances = { { type = "stance_point", owner = "B", instance = inst } },
+			players = {
+				black = { stances = { fixed = {}, swappable = {} } },
+				white = { stances = { fixed = {}, swappable = {} } },
+			},
+			temporary_stances = { inst },
 			just_played = {},
 			played_cards = {},
 			round_stone_effects = {},
 			active_effects = {},
 			scores = minimal_scores(),
 		}
+		stance_order.flatten_stances_for_resolve(state)
 		local effects = effect_manager.collect_effects(state, "points")
 		assert.are.equal(1, #effects)
 		assert.are.equal("run_inst_test", effects[1].meta.source_instance_id)
@@ -52,16 +59,21 @@ describe("state.resolution metadata wiring", function()
 			return list
 		end
 
-		local inst = ObjectInstance.new("phase_inst_stance", "stance_point", "stance", "B", "starter", {})
+		local inst = ObjectInstance.new("phase_inst_stance", "stance_point", "temporary_stance", config.OWNER_BLACK, "starter", {})
 		local state = {
 			board = board.new(),
-			stances = { { type = "stance_point", owner = "B", instance = inst } },
+			players = {
+				black = { stances = { fixed = {}, swappable = {} } },
+				white = { stances = { fixed = {}, swappable = {} } },
+			},
+			temporary_stances = { inst },
 			just_played = {},
 			played_cards = {},
 			round_stone_effects = {},
 			active_effects = {},
 			scores = minimal_scores(),
 		}
+		stance_order.flatten_stances_for_resolve(state)
 
 		em.apply_phase(state, "points")
 		em.collect_effects = orig_collect
@@ -90,7 +102,11 @@ describe("state.resolution metadata wiring", function()
 
 		local state = {
 			board = board.new(),
-			stances = {},
+			players = {
+				black = { stances = { fixed = {}, swappable = {} } },
+				white = { stances = { fixed = {}, swappable = {} } },
+			},
+			temporary_stances = {},
 			just_played = {},
 			played_cards = {},
 			round_stone_effects = {

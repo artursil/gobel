@@ -38,6 +38,7 @@ function M.clear_resolution(state)
 	r.source_instance_id = nil
 	r.source_object_type = nil
 	r.source_stance_index = nil
+	r.source_stance_slot_index = nil
 	r.selected_target = nil
 	r.trigger = nil
 end
@@ -102,30 +103,30 @@ function M.source_owner(state)
 	return r.source_owner
 end
 
---- Returns source stance instance from state.stances and source_stance_index.
+--- Returns source stance instance from ``state._stance_effect_order`` and ``source_stance_index``.
 --- @param state table
 --- @return table|nil
 function M.source_stance_instance(state)
 	local r = M.ensure_resolution(state)
 	local idx = r.source_stance_index
-	local stances = state and state.stances or nil
-	if not idx or not stances or not stances[idx] then
+	local order = state and state._stance_effect_order or nil
+	if not idx or not order or not order[idx] then
 		return nil
 	end
-	return stances[idx].instance
+	return order[idx].instance
 end
 
---- Returns source stance entry from state.stances and source_stance_index.
+--- Returns source stance row from ``state._stance_effect_order`` and ``source_stance_index``.
 --- @param state table
 --- @return table|nil
 function M.source_stance_entry(state)
 	local r = M.ensure_resolution(state)
 	local idx = r.source_stance_index
-	local stances = state and state.stances or nil
-	if not idx or not stances then
+	local order = state and state._stance_effect_order or nil
+	if not idx or not order then
 		return nil
 	end
-	return stances[idx]
+	return order[idx]
 end
 
 --- Returns source phase from transient resolution metadata.

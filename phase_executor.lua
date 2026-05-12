@@ -1,11 +1,11 @@
 local Effects = require("effect_registry")
+local stance_order = require("single_game.resolver.stance_order")
 
 local M = {}
 
 M.PHASES = { "pre", "territory", "points", "mult", "post" }
 
 function M.ensure_state_extensions(state)
-	state.stances = state.stances or {}
 	state.just_played = state.just_played or {}
 	state.played_cards = state.played_cards or {}
 	state.last_played_stone = state.last_played_stone or nil
@@ -18,8 +18,8 @@ end
 
 function M.collect_effects(state, phase)
 	local effects = {}
-	for i, stance in ipairs(state.stances or {}) do
-		stance.index = i
+	local rows = stance_order.flatten_stances_for_resolve(state)
+	for _, stance in ipairs(rows) do
 		local generated = Effects.stances.resolve(stance, state)
 		for _, e in ipairs(generated) do
 			if e.phase == phase then

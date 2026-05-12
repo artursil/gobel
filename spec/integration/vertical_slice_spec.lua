@@ -17,14 +17,16 @@ local match_state = require("match_state")
 local queries = require("single_game.resolver.state_queries")
 local resolve_round = require("single_game.resolver.resolve_round")
 local resolver = require("resolver")
+local stance_order = require("single_game.resolver.stance_order")
 
 describe("vertical slice features", function()
 	it("blueprint copies immediate right stance effects", function()
 		local state = {
-			stances = {
-				{ type = "stance_blueprint", owner = "B", index = 1 },
-				{ type = "stance_point", owner = "B", index = 2 },
+			players = {
+				black = { stances = { fixed = { "stance_blueprint", "stance_point" }, swappable = {} } },
+				white = { stances = { fixed = {}, swappable = {} } },
 			},
+			temporary_stances = {},
 			scores = {
 				turn_bonus = { B = 1, W = 1 },
 				territory = { B = 0, W = 0 },
@@ -33,7 +35,9 @@ describe("vertical slice features", function()
 				x_mult = { B = 1, W = 1 },
 			},
 		}
-		local effects = effect_registry.stances.resolve(state.stances[1], state)
+		stance_order.flatten_stances_for_resolve(state)
+		local stance_row = state._stance_effect_order[1]
+		local effects = effect_registry.stances.resolve(stance_row, state)
 		assert.are.equal(4, #effects)
 		local copy_points = find_effect_by_phase(effects, "points")
 		assert.is_not_nil(copy_points)
@@ -41,17 +45,20 @@ describe("vertical slice features", function()
 		local r = queries.ensure_resolution(state)
 		r.phase = "points"
 		r.source_stance_index = 1
+		r.source_stance_slot_index = 1
 		copy_points.apply(state)
 		assert.are.equal(1, state.scores.points.B)
 	end)
 
 	it("blueprint skips blueprint chains and no-ops without a target", function()
 		local chain_state = {
-			stances = {
-				{ type = "stance_blueprint", owner = "B", index = 1 },
-				{ type = "stance_blueprint", owner = "B", index = 2 },
-				{ type = "stance_mult", owner = "B", index = 3 },
+			players = {
+				black = {
+					stances = { fixed = { "stance_blueprint", "stance_blueprint", "stance_mult" }, swappable = {} },
+				},
+				white = { stances = { fixed = {}, swappable = {} } },
 			},
+			temporary_stances = {},
 			scores = {
 				turn_bonus = { B = 1, W = 1 },
 				territory = { B = 0, W = 0 },
@@ -60,18 +67,24 @@ describe("vertical slice features", function()
 				x_mult = { B = 1, W = 1 },
 			},
 		}
-		local chain_effects = effect_registry.stances.resolve(chain_state.stances[1], chain_state)
+		stance_order.flatten_stances_for_resolve(chain_state)
+		local chain_effects = effect_registry.stances.resolve(chain_state._stance_effect_order[1], chain_state)
 		assert.are.equal(4, #chain_effects)
 		local copy_mult = find_effect_by_phase(chain_effects, "mult")
 		assert.is_not_nil(copy_mult)
 		local r2 = queries.ensure_resolution(chain_state)
 		r2.phase = "mult"
 		r2.source_stance_index = 1
+		r2.source_stance_slot_index = 1
 		copy_mult.apply(chain_state)
 		assert.are.equal(2, chain_state.scores.plus_mult.B)
 
 		local empty_state = {
-			stances = { { type = "stance_blueprint", owner = "B", index = 1 } },
+			players = {
+				black = { stances = { fixed = { "stance_blueprint" }, swappable = {} } },
+				white = { stances = { fixed = {}, swappable = {} } },
+			},
+			temporary_stances = {},
 			scores = {
 				turn_bonus = { B = 1, W = 1 },
 				territory = { B = 0, W = 0 },
@@ -80,12 +93,14 @@ describe("vertical slice features", function()
 				x_mult = { B = 1, W = 1 },
 			},
 		}
-		local empty_effects = effect_registry.stances.resolve(empty_state.stances[1], empty_state)
+		stance_order.flatten_stances_for_resolve(empty_state)
+		local empty_effects = effect_registry.stances.resolve(empty_state._stance_effect_order[1], empty_state)
 		assert.are.equal(4, #empty_effects)
 		local empty_pts = find_effect_by_phase(empty_effects, "points")
 		local r3 = queries.ensure_resolution(empty_state)
 		r3.phase = "points"
 		r3.source_stance_index = 1
+		r3.source_stance_slot_index = 1
 		empty_pts.apply(empty_state)
 		assert.are.equal(0, empty_state.scores.points.B)
 	end)

@@ -139,7 +139,6 @@ function M.new_match(match_kind, territory_mode, seed)
 			black = black,
 			white = white,
 		},
-		stances = {},
 		just_played = {},
 		played_cards = {},
 		last_played_stone = nil,
@@ -147,6 +146,7 @@ function M.new_match(match_kind, territory_mode, seed)
 		last_opponent_modifiers = {},
 		active_effects = {},
 		round_stone_effects = {},
+		ui_animation_events = {},
 		stone_draw_events = {},
 		resolution = {
 			phase = nil,
@@ -156,6 +156,7 @@ function M.new_match(match_kind, territory_mode, seed)
 			source_instance_id = nil,
 			source_object_type = nil,
 			source_stance_index = nil,
+			source_stance_slot_index = nil,
 			selected_target = nil,
 			trigger = nil,
 		},

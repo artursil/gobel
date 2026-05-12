@@ -7,6 +7,7 @@ local config = require("config")
 local board = require("board")
 local queries = require("single_game.resolver.state_queries")
 local helpers = require("objects.effects_helpers")
+local animations = require("objects.animations")
 
 local M = {}
 
@@ -80,13 +81,15 @@ function M.count_and_multiply_x_mult(effect)
 
 			local content = require("content")
 			local steel_card_count = 0
-			for _, card_id in ipairs(hand_ids) do
+			local steel_hand_indices = {}
+			for hand_index, card_id in ipairs(hand_ids) do
 				if card_id then
 					local card_def = content.get_card(card_id)
 					if card_def and card_def.tags then
 						for _, tag in ipairs(card_def.tags) do
 							if tag == "steel" then
 								steel_card_count = steel_card_count + 1
+								steel_hand_indices[#steel_hand_indices + 1] = hand_index
 								break
 							end
 						end
@@ -99,6 +102,7 @@ function M.count_and_multiply_x_mult(effect)
 				for _ = 1, steel_card_count do
 					state.scores.x_mult[owner] = state.scores.x_mult[owner] * multiplier_factor
 				end
+				animations.add_animation("steel_sync_mult")(state, { owner = owner, steel_hand_indices = steel_hand_indices, factor = multiplier_factor })
 			end
 		end,
 	}
@@ -140,8 +144,8 @@ function M.create_temporary_stance(effect)
 	}
 end
 
---- Copies effects from the first non-blueprint stance to the right for the current scoring phase only.
---- Child effects run when their definition phase matches the active resolution phase; the blueprint row is ``queries.source_stance_entry`` (``state.resolution.source_stance_index``). Populate resolution via the resolver before apply (standalone tests use ``state_queries.ensure_resolution`` and set ``phase`` / ``source_stance_index``).
+--- Copies effects from the first non-blueprint stance to the **right on the same player's panel** for the current scoring phase only.
+--- Child effects run when their definition phase matches the active resolution phase; the blueprint row is ``queries.source_stance_entry`` (from ``state._stance_effect_order``). Populate resolution via the resolver before apply (tests set ``phase``, ``source_stance_index``, ``source_stance_slot_index``, and call ``stance_order.flatten_stances_for_resolve`` when needed).
 --- @param effect table
 --- @return table
 function M.copy_right_effect(effect)

@@ -3,7 +3,7 @@
 --- Transient `state.resolution` (see `state_queries.ensure_resolution`) is set per effect before conditions run:
 --- - **effect_owner**: who receives score/application for this wrapped effect (`effect.owner`), same convention as registry wrap.
 ---   Stone round snippets set `effect.owner`; if absent, falls back to `meta.source_owner` so `queries.effect_owner` stays consistent.
---- - **source_owner** / **source_def_id** / **source_instance_id**: originating object (stance lane, card from `state.just_played`, copied target, etc.).
+--- - **source_owner** / **source_def_id** / **source_instance_id** / **source_stance_slot_index**: originating object (stance lane uses slot index within that owner's panel; ``source_stance_index`` indexes ``state._stance_effect_order``).
 --- @module resolver.effect_manager
 
 local board = require("board")
@@ -11,6 +11,7 @@ local config = require("config")
 local effects_registry = require("effect_registry")
 local dbg = require("debugger")
 local queries = require("single_game.resolver.state_queries")
+local stance_order = require("single_game.resolver.stance_order")
 
 local M = {}
 
@@ -31,8 +32,9 @@ end
 --- @param out table
 --- @return nil
 local function append_stance_effects(state, phase, out)
-	for i, stance in ipairs(state.stances or {}) do
-		stance.index = i
+	local rows = stance_order.flatten_stances_for_resolve(state)
+	for _, stance in ipairs(rows) do
+		local i = stance.index
 		local generated = effects_registry.stances.resolve(stance, state)
 		for _, e in ipairs(generated) do
 			if e.phase == phase then
@@ -40,6 +42,7 @@ local function append_stance_effects(state, phase, out)
 				e.meta.source_owner = stance.owner
 				e.meta.source_object_type = "stance"
 				e.meta.source_stance_index = i
+				e.meta.source_stance_slot_index = stance.slot_index
 				e.meta.source_instance_id = stance.instance and stance.instance.instance_id or nil
 				e.meta.source_def_id = stance.type
 				table.insert(out, e)
@@ -199,6 +202,7 @@ local function set_resolution_for_effect(state, phase, effect)
 	resolution.source_instance_id = meta.source_instance_id
 	resolution.source_object_type = meta.source_object_type
 	resolution.source_stance_index = meta.source_stance_index
+	resolution.source_stance_slot_index = meta.source_stance_slot_index
 	resolution.selected_target = meta.selected_target
 end
 

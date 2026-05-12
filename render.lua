@@ -929,10 +929,14 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, sto
 			draw_stone_chip(event.stone_id, { x = x - 24, y = y - 24, w = 48, h = 48 }, stone_color_for_side("black"), false)
 		end
 	end
+	local ui_anim = require("ui.animations")
+	ui_anim.draw(game, layout)
 	lg.setColor(1, 1, 1, 1)
 end
 
-function M.update(dt, game)
+function M.update(dt, game, layout)
+	local ui_anim = require("ui.animations")
+	ui_anim.update(dt, game, layout)
 	local anim = M._score_anim
 	local draw_anim = M._stone_draw_anim
 	local events = game.messages.score_events or {}

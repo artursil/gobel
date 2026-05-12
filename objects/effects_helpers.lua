@@ -6,19 +6,28 @@ local queries = require("single_game.resolver.state_queries")
 
 local H = {}
 
---- Resolves blueprint copy target by scanning right and skipping blueprints.
+--- Next non-blueprint stance on the **same player's** panel to the right of ``source_slot_index``.
 --- @param state table
---- @param start_index integer
---- @return table|nil
-function H.resolve_blueprint_target(state, start_index)
-	local ordered = state and state.stances or {}
-	local i = (start_index or 0) + 1
-	while i <= #ordered do
-		local target = ordered[i]
-		if target and target.type ~= "stance_blueprint" then
-			return target
+--- @param owner string Normalized ``config`` owner token for the blueprint row.
+--- @param source_slot_index integer|nil 1-based lane on that player's panel; nil yields no target.
+--- @return table|nil Lane ``{ type, owner, instance?, slot_index }``.
+function H.resolve_blueprint_target(state, owner, source_slot_index)
+	if not owner or type(source_slot_index) ~= "number" then
+		return nil
+	end
+	local stance_order_mod = require("single_game.resolver.stance_order")
+	local side = owner == config.OWNER_WHITE and "white" or "black"
+	local slots = stance_order_mod.canonical_stance_slots_for_side(state, side)
+	for si = source_slot_index + 1, #slots do
+		local row = slots[si]
+		if row.type ~= "stance_blueprint" then
+			return {
+				type = row.type,
+				owner = row.owner,
+				instance = nil,
+				slot_index = row.slot_index,
+			}
 		end
-		i = i + 1
 	end
 	return nil
 end
@@ -44,7 +53,8 @@ function H.get_copy_right_target(state)
 	if not stance_entry then
 		return nil, nil, nil
 	end
-	local target = H.resolve_blueprint_target(state, stance_entry.index)
+	local owner_key = H.normalize_stance_owner(stance_entry.owner)
+	local target = H.resolve_blueprint_target(state, owner_key, stance_entry.slot_index)
 	if not target then
 		return nil, nil, nil
 	end
@@ -85,7 +95,7 @@ function H.get_target_effects(state, target_def, resolve_effect)
 end
 
 --- Temporarily repoints ``state.resolution`` metadata at the copied stance so nested child effects and conditions see the correct ``source_def_id`` / instance while ``source_owner`` stays the lane owner (unchanged from the blueprint row, which is always the same side as the copy target).
---- Only fields that this copy path mutates are saved and restored: stance index is cleared because the synthetic apply is not tied to a single ``state.stances`` index; definition and instance id follow the target row.
+--- Only fields that this copy path mutates are saved and restored: global ``source_stance_index`` is cleared because the synthetic apply is not tied to a single derived-order row; definition and instance id follow the target row.
 --- @param state table
 --- @param target table Copied stance lane row (``type``, optional ``instance``).
 --- @param fn function Callback invoked while resolution points at ``target``.

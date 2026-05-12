@@ -538,7 +538,7 @@ end
 function love.update(dt)
 	if screen == "play" and match then
 		update_influence_probe(dt)
-		render.update(dt, match)
+		render.update(dt, match, layout)
 		if not render.is_score_animating() then
 			game.tick_ai(match, dt)
 		end

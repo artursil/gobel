@@ -494,7 +494,11 @@ function M.compute_from_board(b, territory_mode)
 	local mode = territory_mode or "regional"
 	local temp_state = {
 		board = b,
-		stances = {},
+		players = {
+			black = { stances = { fixed = {}, swappable = {} } },
+			white = { stances = { fixed = {}, swappable = {} } },
+		},
+		temporary_stances = {},
 		just_played = {},
 		played_cards = {},
 		round_stone_effects = {},

@@ -13,7 +13,11 @@ state = {
         mult = {B = 1, W = 1}
     },
 
-    stances = {},
+    players = {
+        black = { stances = { fixed = {}, swappable = {} } },
+        white = { stances = { fixed = {}, swappable = {} } },
+    },
+    temporary_stances = {},
     just_played = {},
     played_cards = {},
 
@@ -95,9 +99,10 @@ end
 -- BLUEPRINT (CHAIN SAFE)
 -- =========================
 function resolve_blueprint_target(state, start_index)
+    local rows = state._stance_effect_order or {}
     local i = start_index + 1
-    while i <= #state.stances do
-        local target = state.stances[i]
+    while i <= #rows do
+        local target = rows[i]
         if target.type ~= "blueprint" then
             return target
         end
@@ -145,9 +150,11 @@ end
 function collect_effects(state, phase)
     local effects = {}
 
-    -- stances
-    for i, stance in ipairs(state.stances) do
-        stance.index = i
+    local stance_order = require("single_game.resolver.stance_order")
+    local rows = stance_order.flatten_stances_for_resolve(state)
+
+    for i, stance in ipairs(rows) do
+        stance.index = stance.index or i
 
         local generator = Effects[stance.type]
         if generator then
@@ -223,15 +230,17 @@ end
 -- SETUP TEST
 -- =========================
 
--- stances in hand:
--- [Blueprint][Blueprint][Pose B][Pose A][Pose D]
-state.stances = {
-    {type = "blueprint", owner = "B"},
-    {type = "blueprint", owner = "B"},
-    {type = "poseB", owner = "B"},
-    {type = "poseA", owner = "B"},
-    {type = "poseD", owner = "B"}
+state.players = {
+    black = {
+        stances = {
+            fixed = { "blueprint", "blueprint", "poseB", "poseA", "poseD" },
+            swappable = {},
+        },
+    },
+    white = { stances = { fixed = {}, swappable = {} } },
 }
+state.temporary_stances = {}
+require("single_game.resolver.stance_order").flatten_stances_for_resolve(state)
 
 -- simulate playing a card
 table.insert(state.just_played, {type = "card_boost"})
