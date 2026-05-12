@@ -87,7 +87,7 @@ local function append_stone_round_effects(state, phase, out)
 						priority = resolved.priority or 10,
 						conditions = resolved.conditions,
 						apply = function(current_state)
-							resolved.apply(current_state, owner, nil)
+							resolved.apply(current_state, owner)
 						end,
 						meta = {
 							source_owner = owner,
@@ -230,7 +230,7 @@ function M.apply_phase(state, phase)
 	for _, effect in ipairs(effects) do
 		set_resolution_for_effect(state, phase, effect)
 		if conditions.eval_all(effect.conditions, state) then
-			effect.apply(state, nil, nil)
+			effect.apply(state)
 			add_effect_duration(state, effect)
 		end
 	end

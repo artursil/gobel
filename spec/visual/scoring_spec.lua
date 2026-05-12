@@ -41,7 +41,6 @@ end
 --- @param color string
 --- @param stone_ids table
 local function set_hand(g, color, stone_ids)
-  require("mobdebug").pause()
 	local player = match_state.player_for_color(g, color)
 	player.stones.playable_stones = stone_ids
 	player.stones.selected_stone = stone_ids[1]
@@ -280,7 +279,6 @@ describe("Scoring visual spec", function()
 		})
 
 		local snap = snapshot(g)
-		require("mobdebug").pause()
 
 		-- Act: play card_point_tap (+2 pts, costs 1 energy), then place stone_basic at center
 		play_card_and_stone(g, 1, {
@@ -490,5 +488,27 @@ describe("Scoring visual spec", function()
 		})
 
 		assert_mult_delta(g, snap, 6, 0)
+	end)
+	it("2 x blueprint + persistent_flux round 4 special stone: pending delta applied twice", function()
+		set_persistent_counter(g, "persistent_flux_mult", 9, 0)
+		set_stances(g, "black", { "stance_blueprint", "stance_blueprint", "stance_persistent_flux" }, {})
+		set_hand(g, "black", { "stone_special" })
+		set_round(g, 4)
+
+		local snap = snapshot(g)
+
+		place_stone(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . S . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+
+		assert_mult_delta(g, snap, 9, 0)
 	end)
 end)

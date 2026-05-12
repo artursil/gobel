@@ -23,15 +23,6 @@ end
 function M.ensure_resolution(state)
 	state.resolution = state.resolution or {}
 	local r = state.resolution
-	r.phase = r.phase or nil
-	r.effect_owner = r.effect_owner or nil
-	r.source_owner = r.source_owner or nil
-	r.source_def_id = r.source_def_id or nil
-	r.source_instance_id = r.source_instance_id or nil
-	r.source_object_type = r.source_object_type or nil
-	r.source_stance_index = r.source_stance_index or nil
-	r.selected_target = r.selected_target or nil
-	r.trigger = r.trigger or nil
 	return r
 end
 

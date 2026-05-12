@@ -37,11 +37,11 @@ describe("vertical slice features", function()
 		assert.are.equal(4, #effects)
 		local copy_points = find_effect_by_phase(effects, "points")
 		assert.is_not_nil(copy_points)
-		assert.are.equal("COPY_RIGHT_STANCE_EFFECTS", copy_points.type)
+		assert.are.equal("COPY_RIGHT_EFFECT", copy_points.type)
 		local r = queries.ensure_resolution(state)
 		r.phase = "points"
 		r.source_stance_index = 1
-		copy_points.apply(state, nil)
+		copy_points.apply(state)
 		assert.are.equal(1, state.scores.points.B)
 	end)
 
@@ -67,7 +67,7 @@ describe("vertical slice features", function()
 		local r2 = queries.ensure_resolution(chain_state)
 		r2.phase = "mult"
 		r2.source_stance_index = 1
-		copy_mult.apply(chain_state, nil)
+		copy_mult.apply(chain_state)
 		assert.are.equal(2, chain_state.scores.plus_mult.B)
 
 		local empty_state = {
@@ -86,7 +86,7 @@ describe("vertical slice features", function()
 		local r3 = queries.ensure_resolution(empty_state)
 		r3.phase = "points"
 		r3.source_stance_index = 1
-		empty_pts.apply(empty_state, nil)
+		empty_pts.apply(empty_state)
 		assert.are.equal(0, empty_state.scores.points.B)
 	end)
 

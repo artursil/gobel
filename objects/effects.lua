@@ -6,35 +6,9 @@
 local config = require("config")
 local board = require("board")
 local queries = require("single_game.resolver.state_queries")
+local helpers = require("objects.effects_helpers")
 
 local M = {}
-
---- Resolves blueprint copy target by scanning right and skipping blueprints.
---- @param state table
---- @param start_index integer
---- @return table|nil
-local function resolve_blueprint_target(state, start_index)
-	local ordered = state and state.stances or {}
-	local i = (start_index or 0) + 1
-	while i <= #ordered do
-		local target = ordered[i]
-		if target and target.type ~= "stance_blueprint" then
-			return target
-		end
-		i = i + 1
-	end
-	return nil
-end
-
---- @param owner string
---- @return string
-local function normalize_stance_owner(owner)
-	local ob, ow = config.OWNER_BLACK, config.OWNER_WHITE
-	if owner == ob or owner == ow then
-		return owner
-	end
-	return ((owner == "white" or owner == ow) and ow) or ob
-end
 
 --- Add points effect builder.
 --- @param effect table: {effect_name, phase, value, priority, conditions?}
@@ -46,7 +20,7 @@ function M.add_points(effect)
 		value = effect.value,
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, owner, context)
+		apply = function(state, owner)
 			state.scores.points[owner] = state.scores.points[owner] + effect.value
 		end,
 	}
@@ -62,7 +36,7 @@ function M.add_mult(effect)
 		value = effect.value,
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, owner, context)
+		apply = function(state, owner)
 			state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + effect.value
 		end,
 	}
@@ -92,8 +66,7 @@ function M.count_and_multiply_x_mult(effect)
 		value = effect.value,
 		priority = effect.priority or 15,
 		conditions = effect.conditions,
-		apply = function(state, owner, context)
-			context = context or {}
+		apply = function(state, owner)
 			local match_state = require("match_state")
 			local player_state = match_state.player_for_color(state, owner == config.OWNER_BLACK and "black" or "white")
 			if not player_state then
@@ -142,15 +115,15 @@ function M.create_temporary_stance(effect)
 		value = effect.value,
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, owner, context)
+		apply = function(state, owner)
 			if not effect.value or not effect.value.stance_id or not effect.value.rounds then
 				return
 			end
-			
+
 			state.temporary_stances = state.temporary_stances or {}
-			
+
 			local ObjectInstance = require("single_game.resolver.ObjectInstance")
-			
+
 			local instance_id = "temp_stance_" .. state.turn_number .. "_" .. owner .. "_" .. #state.temporary_stances
 			local temp_stance = ObjectInstance.new(
 				instance_id,
@@ -160,7 +133,7 @@ function M.create_temporary_stance(effect)
 				"created",
 				{ remaining_rounds = effect.value.rounds }
 			)
-			
+
 			temp_stance.created_this_turn = true
 			state.temporary_stances[#state.temporary_stances + 1] = temp_stance
 		end,
@@ -168,66 +141,26 @@ function M.create_temporary_stance(effect)
 end
 
 --- Copies effects from the first non-blueprint stance to the right for the current scoring phase only.
---- Child effects run when ``queries.resolution_phase`` matches each child effect phase; originating stance row comes from ``queries.source_stance_entry`` (`state.resolution.source_stance_index`). Populate resolution via the resolver before apply (standalone tests use ``state_queries.ensure_resolution`` and set ``phase`` / ``source_stance_index`` accordingly).
+--- Child effects run when their definition phase matches the active resolution phase; the blueprint row is ``queries.source_stance_entry`` (``state.resolution.source_stance_index``). Populate resolution via the resolver before apply (standalone tests use ``state_queries.ensure_resolution`` and set ``phase`` / ``source_stance_index``).
 --- @param effect table
 --- @return table
-function M.copy_right_stance_effects(effect)
+function M.copy_right_effect(effect)
 	return {
-		type = "COPY_RIGHT_STANCE_EFFECTS",
-		phase = effect.phase or "points",
+		type = "COPY_RIGHT_EFFECT",
+		phase = effect.phase,
 		value = effect.value,
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, _blueprint_owner, context)
-			local conditions_mod = require("objects.conditions")
-			local phase = queries.resolution_phase(state)
-			local stance_entry = queries.source_stance_entry(state)
-			if context and context.phase then
-				phase = context.phase
-			end
-			if context and context.stance_entry then
-				stance_entry = context.stance_entry
-			end
-			if not phase or not stance_entry then
+		apply = function(state, _owner)
+			local target, target_owner, target_def = helpers.get_copy_right_target(state)
+			if not target or not target_def then
 				return
 			end
-			local target = resolve_blueprint_target(state, stance_entry.index)
-			if not target then
+			local resolved_effects = helpers.get_target_effects(state, target_def, M.resolve)
+			if not resolved_effects then
 				return
 			end
-			local target_owner = normalize_stance_owner(target.owner)
-			local defs = require("objects.definitions.stances")
-			local target_def = defs[target.type]
-			if not target_def or not target_def.effects then
-				return
-			end
-			for i = 1, #target_def.effects do
-				local effect_def = target_def.effects[i]
-				if effect_def.effect_name ~= "copy_right_stance_effects" then
-					local resolved = M.resolve(effect_def)
-					if resolved and resolved.phase == phase and resolved.apply then
-						local resolution = queries.ensure_resolution(state)
-						local prev_source_owner = resolution.source_owner
-						local prev_stance_index = resolution.source_stance_index
-						local prev_instance_id = resolution.source_instance_id
-						local prev_def_id = resolution.source_def_id
-						local prev_type = resolution.source_object_type
-						resolution.source_owner = target_owner
-						resolution.source_stance_index = nil
-						resolution.source_instance_id = target.instance and target.instance.instance_id or nil
-						resolution.source_def_id = target.type
-						resolution.source_object_type = "stance"
-						if conditions_mod.eval_all(resolved.conditions, state) then
-							resolved.apply(state, target_owner, nil)
-						end
-						resolution.source_owner = prev_source_owner
-						resolution.source_stance_index = prev_stance_index
-						resolution.source_instance_id = prev_instance_id
-						resolution.source_def_id = prev_def_id
-						resolution.source_object_type = prev_type
-					end
-				end
-			end
+			helpers.apply_copied_effect(state, target, target_owner, resolved_effects)
 		end,
 	}
 end
@@ -249,24 +182,6 @@ function M.resolve_stance_definition_effects(stance_type)
 	return out
 end
 
---- Resolves card definition effects.
---- @param card table
---- @return table
-function M.resolve_card_effects(card)
-	local defs = require("objects.definitions.cards")
-	local card_def = defs[card.type]
-	if not card_def or not card_def.effects then
-		return {}
-	end
-	local out = {}
-	for i = 1, #card_def.effects do
-		local resolved = M.resolve(card_def.effects[i])
-		if resolved then
-			out[#out + 1] = resolved
-		end
-	end
-	return out
-end
 
 --- Adds an owner-scoped run-persistent counter.
 --- @param effect table
@@ -278,7 +193,7 @@ function M.adjust_run_persistent_counter(effect)
 		value = effect.value or {},
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, owner, context)
+		apply = function(state, owner)
 			local counter_key = effect.value.counter_key
 			if not counter_key or owner == nil then
 				return
@@ -310,7 +225,7 @@ function M.apply_run_persistent_pending_delta_as_mult(effect)
 		value = effect.value or {},
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, owner, context)
+		apply = function(state, owner)
 			local counter_key = effect.value.counter_key
 			if not counter_key or owner == nil then
 				return
@@ -336,7 +251,7 @@ function M.apply_run_persistent_counter_as_mult(effect)
 		value = effect.value or {},
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, owner, context)
+		apply = function(state, owner)
 			local counter_key = effect.value.counter_key
 			if not counter_key or owner == nil then
 				return
@@ -359,7 +274,7 @@ function M.destroy_selected_enemy_stone(effect)
 		value = effect.value or {},
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, owner, context)
+		apply = function(state, owner)
 			local target = queries.selected_target(state)
 			if not target or not target.row or not target.col then
 				return
@@ -408,7 +323,7 @@ function M.add_permanent_points_to_selected_stone(effect)
 		value = effect.value or {},
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
-		apply = function(state, owner, context)
+		apply = function(state, owner)
 			local target = queries.selected_target(state)
 			if not target or not target.row or not target.col then
 				return
@@ -442,7 +357,7 @@ function M.double_corner_nearby_territory(row, col, effect_def)
 		phase = "territory",
 		priority = effect_def.priority or 10,
 		conditions = effect_def.conditions,
-		apply = function(state, owner, context)
+		apply = function(state, owner)
 			local n = config.BOARD_SIZE
 			local is_corner = (row == 1 or row == n) and (col == 1 or col == n)
 			if not is_corner then
@@ -479,38 +394,6 @@ function M.resolve(effect)
 	return builder(effect)
 end
 
---- Stone key generator for distance modifier indexing.
---- @param row integer
---- @param col integer
---- @return integer
-local function stone_key(row, col)
-	return row * 100 + col
-end
-
---- Apply distance bonus for a stone across all tiles.
---- @param stone_def table
---- @param current_state table
---- @param key integer
---- @param n integer
---- @param distance_bonus_value integer
---- @return nil
-local function apply_distance_bonus_for_stone(stone_def, current_state, key, n, distance_bonus_value)
-	current_state.distance_modifiers = current_state.distance_modifiers
-		or {
-			default_bonus = 0,
-			by_stone = {},
-			get_bonus = nil,
-		}
-	current_state.distance_modifiers.by_stone = current_state.distance_modifiers.by_stone or {}
-	local by_tile = {}
-	for tr = 1, n do
-		for tc = 1, n do
-			by_tile[tr * 100 + tc] = distance_bonus_value
-		end
-	end
-	current_state.distance_modifiers.by_stone[key] = by_tile
-end
-
 --- Board effect builders registry.
 local BOARD_EFFECT_BUILDERS = {
 	double_corner_nearby_territory = function(row, col, effect_def)
@@ -528,7 +411,7 @@ local BOARD_EFFECT_BUILDERS = {
 function M.resolve_board_stone(stone_cell, row, col, state)
 	local content = require("content")
 	local stone_def = content.get_stone(stone_cell.kind)
-	local key = stone_key(row, col)
+	local key = helpers.stone_key(row, col)
 	local n = config.BOARD_SIZE
 	local out = {}
 
@@ -541,7 +424,7 @@ function M.resolve_board_stone(stone_cell, row, col, state)
 					priority = effect_def.priority or 10,
 					conditions = effect_def.conditions,
 					apply = function(current_state)
-						apply_distance_bonus_for_stone(
+						helpers.apply_distance_bonus_for_stone(
 							stone_def,
 							current_state,
 							key,
@@ -559,6 +442,25 @@ function M.resolve_board_stone(stone_cell, row, col, state)
 		end
 	end
 
+	return out
+end
+
+--- Resolves card definition effects.
+--- @param card table
+--- @return table
+function M.resolve_card_effects(card)
+	local defs = require("objects.definitions.cards")
+	local card_def = defs[card.type]
+	if not card_def or not card_def.effects then
+		return {}
+	end
+	local out = {}
+	for i = 1, #card_def.effects do
+		local resolved = M.resolve(card_def.effects[i])
+		if resolved then
+			out[#out + 1] = resolved
+		end
+	end
 	return out
 end
 

@@ -95,10 +95,10 @@ local M = {
 		probability = 0.4,
 		cost = 0,
 		effects = {
-			{ effect_name = "copy_right_stance_effects", phase = "distance", priority = 5 },
-			{ effect_name = "copy_right_stance_effects", phase = "territory", priority = 5 },
-			{ effect_name = "copy_right_stance_effects", phase = "points", priority = 5 },
-			{ effect_name = "copy_right_stance_effects", phase = "mult", priority = 5 },
+			{ effect_name = "copy_right_effect", phase = "distance", priority = 5 },
+			{ effect_name = "copy_right_effect", phase = "territory", priority = 5 },
+			{ effect_name = "copy_right_effect", phase = "points", priority = 5 },
+			{ effect_name = "copy_right_effect", phase = "mult", priority = 5 },
 		},
 	},
 	stance_persistent_flux = {

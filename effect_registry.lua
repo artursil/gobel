@@ -22,8 +22,8 @@ local function wrap_effect_with_owner(effect_payload, owner)
 	effect_payload.owner = owner
 	effect_payload.apply = (function(eff)
 		local fn = eff.apply
-		return function(s, _, context)
-			fn(s, owner, context)
+		return function(s)
+			fn(s, owner)
 		end
 	end)(effect_payload)
 	return effect_payload
