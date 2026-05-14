@@ -23,7 +23,7 @@ describe("vertical slice features", function()
 	it("blueprint copies immediate right stance effects", function()
 		local state = {
 			players = {
-				black = { stances = { fixed = { "stance_blueprint", "stance_point" }, swappable = {} } },
+				black = { stances = { fixed = { "stance_echo", "stance_point" }, swappable = {} } },
 				white = { stances = { fixed = {}, swappable = {} } },
 			},
 			temporary_stances = {},
@@ -54,7 +54,7 @@ describe("vertical slice features", function()
 		local chain_state = {
 			players = {
 				black = {
-					stances = { fixed = { "stance_blueprint", "stance_blueprint", "stance_mult" }, swappable = {} },
+					stances = { fixed = { "stance_echo", "stance_echo", "stance_mult" }, swappable = {} },
 				},
 				white = { stances = { fixed = {}, swappable = {} } },
 			},
@@ -81,7 +81,7 @@ describe("vertical slice features", function()
 
 		local empty_state = {
 			players = {
-				black = { stances = { fixed = { "stance_blueprint" }, swappable = {} } },
+				black = { stances = { fixed = { "stance_echo" }, swappable = {} } },
 				white = { stances = { fixed = {}, swappable = {} } },
 			},
 			temporary_stances = {},

@@ -9,15 +9,9 @@ local render = require("render")
 local resolver = require("resolver")
 
 describe("T-050 stone graphics-driven rendering path", function()
-	it("uses graphic draw_key-specific marks for board stones", function()
-		local polygon_calls = 0
+	it("draws owner ring outlines for board stones", function()
 		local line_circle_calls = 0
-		local original_polygon = love.graphics.polygon
 		local original_circle = love.graphics.circle
-		love.graphics.polygon = function(...)
-			polygon_calls = polygon_calls + 1
-			return original_polygon(...)
-		end
 		love.graphics.circle = function(mode, ...)
 			if mode == "line" then
 				line_circle_calls = line_circle_calls + 1
@@ -53,13 +47,12 @@ describe("T-050 stone graphics-driven rendering path", function()
 		}).ok)
 
 		local layout = layout_mod.from_window(1280, 720)
+		require("ui.fonts").init()
 		render.draw(state, layout, nil, nil, false, { mode = "none" }, { active = false })
 
-		love.graphics.polygon = original_polygon
 		love.graphics.circle = original_circle
 
-		assert.is_true(polygon_calls > 0)
-		assert.is_true(line_circle_calls > 0)
+		assert.is_true(line_circle_calls >= 2)
 	end)
 
 	it("selector row does not print stone names/descriptions by default", function()
@@ -77,6 +70,7 @@ describe("T-050 stone graphics-driven rendering path", function()
 	state.players.white.stances.swappable = {}
 	assert.is_true(resolver.begin_turn(state, "black").ok)
 		local layout = layout_mod.from_window(1280, 720)
+		require("ui.fonts").init()
 		render.draw(state, layout, nil, nil, false, { mode = "none" }, { active = false })
 		love.graphics.printf = original_printf
 

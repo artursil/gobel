@@ -89,6 +89,13 @@ function M.from_window(window_w, window_h)
 	}
 end
 
+--- Pixel diameter of a board stone (matches ``render.draw_board`` chip size).
+--- @param layout table
+--- @return number
+function M.board_stone_outer_diameter(layout)
+	return layout.board_metrics.cell * config.STONE_RADIUS_FACTOR * 2
+end
+
 --- Converts grid coordinates to the pixel center of that intersection.
 --- @param layout table
 --- @param row integer
@@ -210,12 +217,16 @@ function M.stone_chip_rects(layout, stone_count)
 	local pad = 10
 	local gap = layout.stone_chip_gap
 	local slots = math.max(stone_count, 1)
-	local w = math.floor((panel.w - pad * 2 - gap * (slots - 1)) / slots)
-	w = math.max(70, math.min(110, w))
-	local h = panel.h - 20
+	local target = M.board_stone_outer_diameter(layout)
+	local max_w = math.floor((panel.w - pad * 2 - gap * (slots - 1)) / slots)
+	local max_h = panel.h - 20
+	local chip = math.min(target, max_w, max_h)
+	chip = math.max(36, chip)
+	local w = chip
+	local h = chip
 	local total = slots * w + gap * (slots - 1)
 	local x0 = panel.x + math.floor((panel.w - total) * 0.5)
-	local y = panel.y + 10
+	local y = panel.y + math.floor((panel.h - h) * 0.5)
 	local out = {}
 	for i = 1, stone_count do
 		out[i] = { x = x0 + (i - 1) * (w + gap), y = y, w = w, h = h }

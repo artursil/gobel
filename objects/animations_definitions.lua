@@ -4,13 +4,13 @@
 
 local animations_helper = require("objects.animations_helper")
 
-local STEEL_SYNC_DEF_ID = "stance_special_steel_sync"
+local STEEL_SYNC_DEF_ID = "stance_gluttony"
 
 local M = {}
 
 --- Steel sync: stance shake + sequential hand floats (timing via ``sequence_id`` + drain scheduler).
 --- **Args**: ``owner``, ``steel_hand_indices``, ``factor`` (numeric multiplier factor for ``×`` label, e.g. ``1.5``).
---- Emits nothing unless ``state.resolution`` indicates ``stance_special_steel_sync`` stance.
+--- Emits nothing unless ``state.resolution`` indicates ``stance_gluttony`` stance.
 --- @param state table
 --- @param args table
 --- @return nil

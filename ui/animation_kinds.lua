@@ -27,6 +27,8 @@ local M = {}
 
 local hand_float_font_cache = {}
 
+local ui_fonts_mod = nil
+
 --- @param px integer
 --- @return userdata|nil
 local function cached_hand_float_font(px)
@@ -35,10 +37,12 @@ local function cached_hand_float_font(px)
 		return nil
 	end
 	local f = hand_float_font_cache[px]
-	if not f then
-		f = lg.newFont(px)
-		hand_float_font_cache[px] = f
+	if f then
+		return f
 	end
+	ui_fonts_mod = ui_fonts_mod or require("ui.fonts")
+	f = ui_fonts_mod.get_pixel_operator(px)
+	hand_float_font_cache[px] = f
 	return f
 end
 

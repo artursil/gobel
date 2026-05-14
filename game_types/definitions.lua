@@ -3,6 +3,14 @@
 
 local M = {}
 
+local function fill_steel_hand(n)
+	local t = {}
+	for i = 1, n do
+		t[i] = "card_steel"
+	end
+	return t
+end
+
 M.standard = {
 	id = "standard",
 	name = "Standard",
@@ -134,7 +142,7 @@ M.special_steel_showcase = {
 		"card_steel",
 	},
 	white_initial_hand = {},
-	black_stances = { fixed = { "stance_special_steel_sync" }, swappable = {} },
+	black_stances = { fixed = { "stance_gluttony" }, swappable = {} },
 	white_stances = { fixed = {}, swappable = {} },
 	black_energy_max = 3,
 	white_energy_max = 3,
@@ -185,10 +193,33 @@ M.vertical_slice_test = {
 		"card_forge_mark",
 	},
 	white_initial_hand = {},
-	black_stances = { fixed = { "stance_blueprint", "stance_persistent_flux", "stance_point" }, swappable = {} },
+	black_stances = { fixed = { "stance_echo", "stance_persistent_flux", "stance_point" }, swappable = {} },
 	white_stances = { fixed = { "stance_mult" }, swappable = {} },
 	black_energy_max = 8,
 	white_energy_max = 8,
+}
+
+M.echo_gluttony_steel = {
+	id = "echo_gluttony_steel",
+	name = "Echo + Gluttony (steel)",
+	description = "Echo and Gluttony stances, basic and tower stones, steel cards only.",
+	black_stones = {
+		stone_basic = 10,
+		stone_tower = 10,
+	},
+	white_stones = {
+		stone_basic = 10,
+		stone_tower = 10,
+	},
+	stone_hand_size = 6,
+	black_deck = {},
+	white_deck = {},
+	black_initial_hand = fill_steel_hand(4),
+	white_initial_hand = fill_steel_hand(4),
+	black_stances = { fixed = { "stance_echo", "stance_gluttony" }, swappable = {} },
+	white_stances = { fixed = { "stance_echo", "stance_gluttony" }, swappable = {} },
+	black_energy_max = 3,
+	white_energy_max = 3,
 }
 
 function M.get_game_type(type_id)
@@ -202,6 +233,7 @@ function M.get_all_types()
 		{ id = "all_towers", name = M.all_towers.name },
 		{ id = "asymmetric", name = M.asymmetric.name },
 		{ id = "special_steel_showcase", name = M.special_steel_showcase.name },
+		{ id = "echo_gluttony_steel", name = M.echo_gluttony_steel.name },
 		{ id = "temporary_stance_test", name = M.temporary_stance_test.name },
 		{ id = "vertical_slice_test", name = M.vertical_slice_test.name },
 	}

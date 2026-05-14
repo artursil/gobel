@@ -1,4 +1,4 @@
---- Shared helpers for ``objects.effects`` (blueprint copy-right, board stone distance layout). Kept separate so ``objects.effects`` stays effect builders and dispatch only.
+--- Shared helpers for ``objects.effects`` (Echo copy-right, board stone distance layout). Kept separate so ``objects.effects`` stays effect builders and dispatch only.
 --- @module objects.effects_helpers
 
 local config = require("config")
@@ -6,9 +6,9 @@ local queries = require("single_game.resolver.state_queries")
 
 local H = {}
 
---- Next non-blueprint stance on the **same player's** panel to the right of ``source_slot_index``.
+--- Next non-echo stance on the **same player's** panel to the right of ``source_slot_index``.
 --- @param state table
---- @param owner string Normalized ``config`` owner token for the blueprint row.
+--- @param owner string Normalized ``config`` owner token for the Echo row.
 --- @param source_slot_index integer|nil 1-based lane on that player's panel; nil yields no target.
 --- @return table|nil Lane ``{ type, owner, instance?, slot_index }``.
 function H.resolve_blueprint_target(state, owner, source_slot_index)
@@ -20,7 +20,7 @@ function H.resolve_blueprint_target(state, owner, source_slot_index)
 	local slots = stance_order_mod.canonical_stance_slots_for_side(state, side)
 	for si = source_slot_index + 1, #slots do
 		local row = slots[si]
-		if row.type ~= "stance_blueprint" then
+		if row.type ~= "stance_echo" then
 			return {
 				type = row.type,
 				owner = row.owner,
@@ -42,8 +42,8 @@ function H.normalize_stance_owner(owner)
 	return ((owner == "white" or owner == ow) and ow) or ob
 end
 
---- Resolves the first non-blueprint stance to the right of the blueprint row, plus its definition.
---- The copied lane belongs to the same side as the blueprint, so the normalized owner matches the blueprint owner; child effects still need ``source_def_id`` / optional instance metadata to point at the copied stance type for conditions and telemetry.
+--- Resolves the first non-echo stance to the right of the Echo row, plus its definition.
+--- The copied lane belongs to the same side as Echo, so the normalized owner matches the Echo owner; child effects still need ``source_def_id`` / optional instance metadata to point at the copied stance type for conditions and telemetry.
 --- @param state table
 --- @return table|nil target Lane table (``type``, ``owner``, optional ``instance``).
 --- @return string|nil target_owner Normalized ``config`` owner token.
@@ -94,7 +94,7 @@ function H.get_target_effects(state, target_def, resolve_effect)
 	return resolved_effects
 end
 
---- Temporarily repoints ``state.resolution`` metadata at the copied stance so nested child effects and conditions see the correct ``source_def_id`` / instance while ``source_owner`` stays the lane owner (unchanged from the blueprint row, which is always the same side as the copy target).
+--- Temporarily repoints ``state.resolution`` metadata at the copied stance so nested child effects and conditions see the correct ``source_def_id`` / instance while ``source_owner`` stays the lane owner (unchanged from the Echo row, which is always the same side as the copy target).
 --- Only fields that this copy path mutates are saved and restored: global ``source_stance_index`` is cleared because the synthetic apply is not tied to a single derived-order row; definition and instance id follow the target row.
 --- @param state table
 --- @param target table Copied stance lane row (``type``, optional ``instance``).
@@ -115,7 +115,7 @@ function H.with_resolution_for_copied_stance_target(state, target, fn)
 	resolution.source_def_id = prev_def_id
 end
 
---- For each resolved child from a blueprint copy, temporarily repoints ``state.resolution`` at ``target``, evaluates conditions, and applies the child with ``target_owner``.
+--- For each resolved child from an Echo copy, temporarily repoints ``state.resolution`` at ``target``, evaluates conditions, and applies the child with ``target_owner``.
 --- @param state table
 --- @param target table Copied stance lane row (``type``, optional ``instance``).
 --- @param target_owner string Normalized owner token for child ``apply``.

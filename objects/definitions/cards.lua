@@ -1,6 +1,32 @@
---- Unified card definitions.
---- Source of truth for all card content.
+--- Unified card definitions (gameplay + **visual**).
+---
+--- **Visual schema** (``card.visual``; defaults merged in ``ui.card_visual``):
+--- - ``background``: PNG behind the face.
+--- - ``graphic``: PNG art on the face (required per card type; default path if omitted).
+--- - ``border_color``: ``#RRGGBB`` thin border around the background.
+--- - ``title_box_color``: fill for the title strip (default white).
+--- - ``description_box_color``: fill for the description panel (default ``#E6CDA4``).
+--- - ``circle_color``: ``#B43321`` for card chrome circles when drawn.
+---
+--- **Graphics-first checklist** for a new card: set ``id``, gameplay fields, then ``visual.graphic`` (and optional overrides).
 --- @module objects.definitions.cards
+
+local function V(overrides)
+	local v = {
+		background = "sprites/cards/background_test2.png",
+		graphic = "sprites/cards/graphic_default.png",
+		border_color = "#E6CDA4",
+		title_box_color = "#FFFFFF",
+		description_box_color = "#E6CDA4",
+		circle_color = "#B43321",
+	}
+	if overrides then
+		for k, val in pairs(overrides) do
+			v[k] = val
+		end
+	end
+	return v
+end
 
 local M = {
 	card_point_tap = {
@@ -13,6 +39,7 @@ local M = {
 		probability = 1.0,
 		cost = 1,
 		energy_cost = 1,
+		visual = V(),
 		effects = { { effect_name = "add_points", phase = "points", value = 2, priority = 10 } },
 	},
 	card_point_push = {
@@ -25,6 +52,7 @@ local M = {
 		probability = 0.8,
 		cost = 2,
 		energy_cost = 2,
+		visual = V(),
 		effects = { { effect_name = "add_points", phase = "points", value = 4, priority = 10 } },
 	},
 	card_small_mult = {
@@ -37,6 +65,7 @@ local M = {
 		probability = 1.0,
 		cost = 1,
 		energy_cost = 1,
+		visual = V(),
 		effects = { { effect_name = "add_mult", phase = "mult", value = 1, priority = 10 } },
 	},
 	card_big_mult = {
@@ -49,6 +78,7 @@ local M = {
 		probability = 0.8,
 		cost = 2,
 		energy_cost = 2,
+		visual = V(),
 		effects = { { effect_name = "add_mult", phase = "mult", value = 2, priority = 10 } },
 	},
 	card_balanced_boost = {
@@ -61,6 +91,7 @@ local M = {
 		probability = 0.6,
 		cost = 2,
 		energy_cost = 2,
+		visual = V(),
 		effects = {
 			{ effect_name = "add_points", phase = "points", value = 2, priority = 10 },
 			{ effect_name = "add_mult", phase = "mult", value = 1, priority = 10 },
@@ -77,6 +108,7 @@ local M = {
 		cost = 1,
 		energy_cost = 1,
 		tags = { "steel" },
+		visual = V({ graphic = "sprites/cards/graphic_steel.png" }),
 		effects = {},
 	},
 	card_focus_stance = {
@@ -90,6 +122,7 @@ local M = {
 		cost = 2,
 		energy_cost = 2,
 		tags = {},
+		visual = V(),
 		effects = {
 			{ effect_name = "create_temporary_stance", phase = "points", value = { stance_id = "stance_focus_bonus", rounds = 3, points = 5 }, priority = 5 },
 		},
@@ -104,6 +137,7 @@ local M = {
 		probability = 0.5,
 		cost = 2,
 		energy_cost = 2,
+		visual = V(),
 		targeting = { kind = "board_stone", rule = "enemy" },
 		effects = {
 			{
@@ -128,6 +162,7 @@ local M = {
 		probability = 0.5,
 		cost = 2,
 		energy_cost = 2,
+		visual = V(),
 		targeting = { kind = "board_stone", rule = "friendly" },
 		effects = {
 			{

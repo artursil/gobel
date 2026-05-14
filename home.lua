@@ -2,6 +2,7 @@
 
 local config = require("config")
 local game_types = require("game_types.definitions")
+local ui_fonts = require("ui.fonts")
 
 local M = {}
 
@@ -104,6 +105,7 @@ end
 --- @param selected_game_type string
 function M.draw_game_type_menu(window_w, window_h, dropdown_open, selected_game_type)
 	local lg = love.graphics
+	ui_fonts.apply_default()
 	lg.clear(config.COLOR_BOARD[1], config.COLOR_BOARD[2], config.COLOR_BOARD[3])
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	local title = "Go"
@@ -157,6 +159,7 @@ end
 --- @param selected_game_type string
 function M.draw_match_menu(window_w, window_h, selected_game_type)
 	local lg = love.graphics
+	ui_fonts.apply_default()
 	lg.clear(config.COLOR_BOARD[1], config.COLOR_BOARD[2], config.COLOR_BOARD[3])
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	local title = "Go"

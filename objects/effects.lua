@@ -144,8 +144,8 @@ function M.create_temporary_stance(effect)
 	}
 end
 
---- Copies effects from the first non-blueprint stance to the **right on the same player's panel** for the current scoring phase only.
---- Child effects run when their definition phase matches the active resolution phase; the blueprint row is ``queries.source_stance_entry`` (from ``state._stance_effect_order``). Populate resolution via the resolver before apply (tests set ``phase``, ``source_stance_index``, ``source_stance_slot_index``, and call ``stance_order.flatten_stances_for_resolve`` when needed).
+--- Copies effects from the first non-echo stance to the **right on the same player's panel** for the current scoring phase only.
+--- Child effects run when their definition phase matches the active resolution phase; the echo row is ``queries.source_stance_entry`` (from ``state._stance_effect_order``). Populate resolution via the resolver before apply (tests set ``phase``, ``source_stance_index``, ``source_stance_slot_index``, and call ``stance_order.flatten_stances_for_resolve`` when needed).
 --- @param effect table
 --- @return table
 function M.copy_right_effect(effect)

@@ -10,6 +10,7 @@ local match_state = require("match_state")
 local render = require("render")
 local board = require("board")
 local content = require("content")
+local ui_fonts = require("ui.fonts")
 
 
 local screen
@@ -38,7 +39,7 @@ end
 
 --- @return nil
 local function reset_popup()
-	popup_state = { mode = "none", stone_id = nil, stones = {}, focus_index = nil, anchor_rect = nil, selected_slot = nil, row = nil, col = nil, owner = nil, game_state = nil }
+	popup_state = { mode = "none", stone_id = nil, stones = {}, focus_index = nil, anchor_rect = nil, selected_slot = nil, row = nil, col = nil, owner = nil, game_state = nil, ring_side = nil }
 end
 
 --- @return nil
@@ -92,6 +93,7 @@ local function open_pouch_popup(active)
 	popup_state.stone_id = nil
 	popup_state.anchor_rect = nil
 	popup_state.selected_slot = nil
+	popup_state.ring_side = active.side
 end
 
 --- @param active table
@@ -509,7 +511,8 @@ end
 
 --- Seeds RNG, fonts, and opens the home screen.
 function love.load()
-	love.graphics.setFont(love.graphics.newFont(18))
+	ui_fonts.init()
+	ui_fonts.apply_default()
 	local w, h = love.graphics.getDimensions()
 	layout = layout_mod.from_window(w, h)
 	screen = "menu"

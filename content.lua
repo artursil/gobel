@@ -1,4 +1,10 @@
 --- Central content loader: loads all definitions from objects/
+---
+--- **Adding content (graphics-first)**:
+--- 1. **Stones** — ``objects/definitions/stones.lua``: gameplay + ``visual.color`` + ``visual.sprite`` (PNG path).
+--- 2. **Cards** — ``objects/definitions/cards.lua``: gameplay + ``visual`` (see ``ui.card_visual`` defaults / schema in cards module).
+--- 3. **Stances** — ``objects/definitions/stances.lua``: gameplay + ``visual.graphic`` + ``visual.frame``.
+--- 4. Register pools / starters in ``game_types`` and ``content.starters`` as needed.
 --- @module content
 
 local M = {}

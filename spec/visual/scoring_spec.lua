@@ -469,7 +469,7 @@ describe("Scoring visual spec", function()
 		--   → apply pending delta: plus_mult += 3, pending cleared
 		-- total plus_mult added = 3 + 3 = 6, delta = +6
 		set_persistent_counter(g, "persistent_flux_mult", 9, 0)
-		set_stances(g, "black", { "stance_blueprint", "stance_persistent_flux" }, {})
+		set_stances(g, "black", { "stance_echo", "stance_persistent_flux" }, {})
 		set_hand(g, "black", { "stone_special" })
 		set_round(g, 4)
 
@@ -491,7 +491,7 @@ describe("Scoring visual spec", function()
 	end)
 	it("2 x blueprint + persistent_flux round 4 special stone: pending delta applied twice", function()
 		set_persistent_counter(g, "persistent_flux_mult", 9, 0)
-		set_stances(g, "black", { "stance_blueprint", "stance_blueprint", "stance_persistent_flux" }, {})
+		set_stances(g, "black", { "stance_echo", "stance_echo", "stance_persistent_flux" }, {})
 		set_hand(g, "black", { "stone_special" })
 		set_round(g, 4)
 

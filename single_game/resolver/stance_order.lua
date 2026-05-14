@@ -8,7 +8,7 @@
 --- rebuilt whenever effects are collected: black slots in panel order, white slots, then temporary
 --- entries. Each row has ``type``, ``owner``, optional ``instance``, ``slot_index`` (1-based within
 --- that owner's panel; ``nil`` for temporaries), and ``index`` (global walk index). Effect collection,
---- ``state_queries.source_stance_*``, and blueprint copy-right scan the derived list or canonical
+--- ``state_queries.source_stance_*``, and Echo copy-right scan the derived list or canonical
 --- per-owner slots — never a standalone ``state.stances`` flat list as source of truth.
 ---
 --- @module single_game.resolver.stance_order

@@ -1,6 +1,13 @@
---- Unified stance definitions.
---- Source of truth for all stance content.
+--- Unified stance definitions (gameplay + **visual**).
+---
+--- **Graphics-first checklist** for a new stance:
+--- 1. Add ``id``, ``type = "stance"``, names, ``effects`` as usual.
+--- 2. Set ``visual.graphic`` (main PNG) and ``visual.frame`` (overlay PNG). Render draws **graphic**, then **frame**.
+--- 3. Wire effects in ``objects.effects`` / registry; reference this ``id`` in ``game_types`` / starters.
+--- 4. If the stance chains copy-right (Echo), ensure ``objects.effects_helpers`` skips the same ``id`` when scanning.
 --- @module objects.definitions.stances
+
+local FRAME = "sprites/stances/frame_1.png"
 
 local M = {
 	stance_point = {
@@ -12,6 +19,7 @@ local M = {
 		rarity = "common",
 		probability = 1.0,
 		cost = 0,
+		visual = { graphic = "sprites/background_1.png", frame = FRAME },
 		effects = {
 			{ effect_name = "add_points", phase = "points", value = 1, priority = 20 },
 		},
@@ -25,6 +33,7 @@ local M = {
 		rarity = "common",
 		probability = 1.0,
 		cost = 0,
+		visual = { graphic = "sprites/background_1.png", frame = FRAME },
 		effects = {
 			{ effect_name = "add_mult", phase = "mult", value = 1, priority = 20 },
 		},
@@ -38,19 +47,21 @@ local M = {
 		rarity = "uncommon",
 		probability = 0.8,
 		cost = 0,
+		visual = { graphic = "sprites/background_1.png", frame = FRAME },
 		effects = {
 			{ effect_name = "add_points", phase = "points", value = 2, priority = 20 },
 		},
 	},
-	stance_special_steel_sync = {
-		id = "stance_special_steel_sync",
+	stance_gluttony = {
+		id = "stance_gluttony",
 		type = "stance",
-		name = "Special Steel Sync",
-		display_name = "Special Steel Sync",
+		name = "Gluttony",
+		display_name = "Gluttony",
 		description = "When a special stone is placed, multiply ×Mult by 1.5 for each steel card in hand.",
 		rarity = "rare",
 		probability = 0.6,
 		cost = 0,
+		visual = { graphic = "sprites/stances/gluttony.png", frame = FRAME },
 		effects = {
 			{
 				effect_name = "count_and_multiply_x_mult",
@@ -72,6 +83,7 @@ local M = {
 		rarity = "rare",
 		probability = 0,
 		cost = 0,
+		visual = { graphic = "sprites/background_1.png", frame = FRAME },
 		effects = {
 			{
 				effect_name = "add_points",
@@ -85,15 +97,16 @@ local M = {
 			},
 		},
 	},
-	stance_blueprint = {
-		id = "stance_blueprint",
+	stance_echo = {
+		id = "stance_echo",
 		type = "stance",
-		name = "Blueprint",
-		display_name = "Blueprint",
-		description = "Copies effects from the first non-blueprint stance to the right.",
+		name = "Echo",
+		display_name = "Echo",
+		description = "Copies effects from the first non-echo stance to the right.",
 		rarity = "rare",
 		probability = 0.4,
 		cost = 0,
+		visual = { graphic = "sprites/stances/echo.png", frame = FRAME },
 		effects = {
 			{ effect_name = "copy_right_effect", phase = "distance", priority = 5 },
 			{ effect_name = "copy_right_effect", phase = "territory", priority = 5 },
@@ -110,6 +123,7 @@ local M = {
 		rarity = "rare",
 		probability = 0.4,
 		cost = 0,
+		visual = { graphic = "sprites/background_2.png", frame = FRAME },
 		effects = {
 			{
 				effect_name = "adjust_run_persistent_counter",

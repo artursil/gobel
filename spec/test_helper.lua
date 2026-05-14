@@ -83,6 +83,21 @@ function M.install_love_test_stubs()
 			return 18
 		end }
 	end
+	love.graphics.newImage = love.graphics.newImage or function()
+		return {
+			getWidth = function()
+				return 64
+			end,
+			getHeight = function()
+				return 64
+			end,
+		}
+	end
+	love.graphics.draw = love.graphics.draw or function() end
+	love.filesystem = love.filesystem or {}
+	love.filesystem.getInfo = love.filesystem.getInfo or function()
+		return nil
+	end
 	love.graphics.setFont = love.graphics.setFont or function() end
 	love.graphics.getFont = love.graphics.getFont or function()
 		return { getHeight = function()

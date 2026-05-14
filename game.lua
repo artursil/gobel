@@ -34,6 +34,7 @@ function M.new(match_kind, game_type_id, territory_mode)
 	local g = match_state.new_match(match_kind, territory_mode)
 	g.run_state = RUN_PERSISTENCE
 	game_type_resolver.apply_game_type(g, game_type_id)
+	g.to_play = "black"
 	local started = resolver.begin_turn(g, g.to_play)
 	if not started.ok then
 		g.status = started.error

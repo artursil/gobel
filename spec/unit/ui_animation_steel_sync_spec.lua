@@ -8,7 +8,7 @@ describe("ui animation steel sync (factory)", function()
 	it("enqueue via add_animation steel_sync_mult appends shake plus floats when resolution matches", function()
 		local state = {
 			resolution = {
-				source_def_id = "stance_special_steel_sync",
+				source_def_id = "stance_gluttony",
 				source_object_type = "stance",
 				source_owner = config.OWNER_BLACK,
 				source_stance_slot_index = 1,
@@ -62,7 +62,7 @@ describe("ui animation steel sync (factory)", function()
 		local resolved = effects.resolve(def)
 		local state = {
 			resolution = {
-				source_def_id = "stance_special_steel_sync",
+				source_def_id = "stance_gluttony",
 				source_object_type = "stance",
 				source_owner = config.OWNER_BLACK,
 				source_stance_index = 1,
@@ -78,7 +78,7 @@ describe("ui animation steel sync (factory)", function()
 			},
 			players = {
 				black = {
-					stances = { fixed = { "stance_special_steel_sync" }, swappable = {} },
+					stances = { fixed = { "stance_gluttony" }, swappable = {} },
 					cards = { hand = { ids = { "card_steel", "card_point_tap", "card_steel" } } },
 				},
 				white = { stances = { fixed = {}, swappable = {} }, cards = { hand = { ids = {} } } },
