@@ -1,7 +1,8 @@
 --- Registry of UI animation kinds keyed by intent ``type`` (same string as ``job.animation_id``).
 ---
 --- **Intent** (element of ``game.ui_animation_events`` before drain): plain table with required ``type``
---- (``"stance_shake"`` | ``"hand_card_float_text"``). Optional fields override that kind's ``defaults``.
+--- (``"stance_shake"`` | ``"hand_card_float_text"`` | ``"display_update_territory"`` | ``"display_update_points"`` |
+--- ``"display_update_plus_mult"`` | ``"display_update_x_mult"``). Optional fields override that kind's ``defaults``.
 --- For ``hand_card_float_text``, optional ``font_size_px`` sets the cached LÖVE font pixel height for the label.
 --- Stance shake: ``stance_slot_index`` (1-based on that owner's stance panel). Shakes portrait + frame as one unit. Optional ``stance_def_id`` / ``stance_instance_id`` for telemetry.
 ---
@@ -11,6 +12,9 @@
 --- the sequence tail to ``max(tail, start_delay_ms + duration_ms)`` so the next non-parallel step waits for overlap
 --- to finish. Intents without ``sequence_id`` use ``start_delay_ms`` alone (no cross-intent chaining).
 --- ``sequence_id``, ``parallel``, and ``type`` are not merged onto animation payloads. Unknown ``type`` values are ignored.
+---
+--- **display_update_***: visual-only score HUD steps; ``owner`` + ``value`` (number shown after this step, Option A).
+--- Jobs apply at **start** (first frame with ``age >= delay_start_s``); default ``duration_ms`` is 1 for sequencing.
 ---
 --- **Job** (runtime queue entry): plain table with ``animation_id``, ``age``, ``delay_start_s``, ``dur_s``,
 --- plus kind-specific numeric/string fields copied at spawn. No functions or userdata.
@@ -166,7 +170,7 @@ function hand_card_float_text.spawn(intent, game, layout)
 	if not m.owner or m.hand_index == nil or m.text == nil or m.text == "" then
 		return nil
 	end
-	return {
+	local job = {
 		animation_id = "hand_card_float_text",
 		age = 0,
 		delay_start_s = (m.start_delay_ms or 0) / 1000,
@@ -181,7 +185,12 @@ function hand_card_float_text.spawn(intent, game, layout)
 		text_r = m.text_r,
 		text_g = m.text_g,
 		text_b = m.text_b,
+		_score_x_mult_applied = false,
 	}
+	if type(m.presented_x_mult) == "number" then
+		job.presented_x_mult = m.presented_x_mult
+	end
+	return job
 end
 
 --- Draws rising label text above the hand slot. Skips when no anchor (e.g. white owner until layout adds opponent hand rects).
@@ -212,9 +221,38 @@ function hand_card_float_text.draw(job, ui_index)
 	lg.setColor(1, 1, 1, 1)
 end
 
+local function make_display_update_kind(animation_id, field_name)
+	local kind = {}
+	kind.defaults = {
+		duration_ms = 1,
+		start_delay_ms = 0,
+	}
+	function kind.spawn(intent, game, layout)
+		local m = merge_defaults(kind.defaults, intent)
+		if not m.owner or type(m.value) ~= "number" then
+			return nil
+		end
+		return {
+			animation_id = animation_id,
+			age = 0,
+			delay_start_s = (m.start_delay_ms or 0) / 1000,
+			dur_s = math.max(0.001, (m.duration_ms or kind.defaults.duration_ms) / 1000),
+			owner = m.owner,
+			field = field_name,
+			value = m.value,
+			_display_value_applied = false,
+		}
+	end
+	return kind
+end
+
 M.by_id = {
 	stance_shake = stance_shake,
 	hand_card_float_text = hand_card_float_text,
+	display_update_territory = make_display_update_kind("display_update_territory", "territory"),
+	display_update_points = make_display_update_kind("display_update_points", "points"),
+	display_update_plus_mult = make_display_update_kind("display_update_plus_mult", "plus_mult"),
+	display_update_x_mult = make_display_update_kind("display_update_x_mult", "x_mult"),
 }
 
 --- Merged ``duration_ms`` for an intent (registry defaults plus intent overrides). Used by the scheduler.

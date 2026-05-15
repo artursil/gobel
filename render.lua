@@ -10,6 +10,8 @@ local ui_fonts = require("ui.fonts")
 local card_visual = require("ui.card_visual")
 local stance_card_draw = require("ui.stance_card_draw")
 local ui_animations = require("ui.animations")
+local score_display = require("ui.score_display")
+local number_format = require("ui.number_format")
 local resolver = require("resolver")
 
 local M = {}
@@ -175,35 +177,35 @@ end
 
 local function draw_score_box_simple(game, box, side, title)
 	local lg = love.graphics
-	local player = match_state.player_for_color(game, side)
-	local turn_bonus = player.score.turn_bonus or 1
-	local territory = math.ceil(player.score.territory or 0)
-	local points = math.ceil(player.score.points or 0)
-	local plus_mult = math.ceil(player.score.plus_mult or 1)
-	local x_mult = player.score.x_mult or 1
+	local row = score_display.effective_row(game, side)
+	local turn_bonus = row.turn_bonus or 1
+	local territory = math.ceil(row.territory or 0)
+	local points = math.ceil(row.points or 0)
+	local plus_mult = math.ceil(row.plus_mult or 1)
+	local x_mult = row.x_mult or 1
 	local overall_mult = plus_mult * x_mult
-	local total = math.ceil((turn_bonus * territory * points * plus_mult * x_mult) or 0)
+	local total = score_display.calculate_display_total(row)
 
 	ui_fonts.set("body")
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
 	lg.printf(title, box.x, box.y + 8, box.w, "center")
-	lg.printf(string.format("Territory: %d", territory), box.x, box.y + 30, box.w, "center")
-	lg.printf(string.format("Points: %d", points), box.x, box.y + 48, box.w, "center")
-	lg.printf(string.format("Mult: %.1f", overall_mult), box.x, box.y + 66, box.w, "center")
-	lg.printf(string.format("Total: %d", total), box.x, box.y + 84, box.w, "center")
+	lg.printf("Territory: " .. number_format.format_integer(territory), box.x, box.y + 30, box.w, "center")
+	lg.printf("Points: " .. number_format.format_integer(points), box.x, box.y + 48, box.w, "center")
+	lg.printf("Mult: " .. number_format.format_decimal(overall_mult, 1), box.x, box.y + 66, box.w, "center")
+	lg.printf("Total: " .. number_format.format_integer(total), box.x, box.y + 84, box.w, "center")
 	ui_fonts.apply_default()
 end
 
 local function draw_score_box_detailed(game, box, side, title)
 	local lg = love.graphics
-	local player = match_state.player_for_color(game, side)
+	local row = score_display.effective_row(game, side)
 
-	local turn_bonus = player.score.turn_bonus or 1
-	local territory = math.ceil(player.score.territory or 0)
-	local points = math.ceil(player.score.points or 0)
-	local plus_mult = math.ceil(player.score.plus_mult or 1)
-	local x_mult = player.score.x_mult or 1
-	local total = math.ceil(turn_bonus * territory * points * plus_mult * x_mult)
+	local turn_bonus = row.turn_bonus or 1
+	local territory = math.ceil(row.territory or 0)
+	local points = math.ceil(row.points or 0)
+	local plus_mult = math.ceil(row.plus_mult or 1)
+	local x_mult = row.x_mult or 1
+	local total = score_display.calculate_display_total(row)
 
 	ui_fonts.set("body")
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
@@ -213,34 +215,35 @@ local function draw_score_box_detailed(game, box, side, title)
 	local y_offset = box.y + 24
 	local line_height = 12
 
-	lg.printf(string.format("Turn Bonus: %.1f", turn_bonus), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf("Turn Bonus: " .. number_format.format_decimal(turn_bonus, 1), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 
-	lg.printf(string.format("Territory: %d", territory), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf("Territory: " .. number_format.format_integer(territory), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 
-	lg.printf(string.format("Points: %d", points), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf("Points: " .. number_format.format_integer(points), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 
-	lg.printf(string.format("+Mult: %d", plus_mult), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf("+Mult: " .. number_format.format_integer(plus_mult), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 
-	lg.printf(string.format("×Mult: %.1f", x_mult), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf("×Mult: " .. number_format.format_decimal(x_mult, 1), box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 
 	lg.setColor(0.7, 0.7, 0.7)
-	local formula = string.format("%.1f × %d × %d × %d × %.1f = %d",
-		turn_bonus,
-		territory,
-		points,
-		plus_mult,
-		x_mult,
-		total)
+	local formula = table.concat({
+		number_format.format_decimal(turn_bonus, 1),
+		number_format.format_integer(territory),
+		number_format.format_integer(points),
+		number_format.format_integer(plus_mult),
+		number_format.format_decimal(x_mult, 1),
+	}, " × ")
+	formula = formula .. " = " .. number_format.format_integer(total)
 	lg.printf(formula, box.x + 6, y_offset, box.w - 12, "left")
 	y_offset = y_offset + line_height
 
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3])
-	lg.printf(string.format("Total: %d", total), box.x + 6, y_offset, box.w - 12, "left")
+	lg.printf("Total: " .. number_format.format_integer(total), box.x + 6, y_offset, box.w - 12, "left")
 
 	ui_fonts.apply_default()
 end

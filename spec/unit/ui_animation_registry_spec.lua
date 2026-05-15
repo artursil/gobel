@@ -46,6 +46,19 @@ describe("ui.animation_kinds registry", function()
 		assert.are.equal("×1.5", job.text)
 	end)
 
+	it("spawn_job_from_intent builds display_update_x_mult job with value and field", function()
+		local job = animation_kinds.spawn_job_from_intent({
+			type = "display_update_x_mult",
+			owner = config.OWNER_BLACK,
+			value = 2.25,
+		}, nil, nil)
+		assert.is_not_nil(job)
+		assert.are.equal("display_update_x_mult", job.animation_id)
+		assert.are.equal("x_mult", job.field)
+		assert.is_true(math.abs(job.value - 2.25) < 1e-9)
+		assert.are.equal(config.OWNER_BLACK, job.owner)
+	end)
+
 	it("drain_state_intents empties ui_animation_events after dispatch", function()
 		local layout = {
 			player_stances_panel = { x = 0, y = 0, w = 200, h = 300 },

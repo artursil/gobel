@@ -8,8 +8,13 @@ local STEEL_SYNC_DEF_ID = "stance_gluttony"
 
 local M = {}
 
---- Steel sync: stance shake + sequential hand floats (timing via ``sequence_id`` + drain scheduler).
---- **Args**: ``owner``, ``steel_hand_indices``, ``factor`` (numeric multiplier factor for ``×`` label, e.g. ``1.5``).
+--- Steel sync: stance shake + sequential ``hand_card_float_text`` per steel card in hand.
+--- Each float carries ``presented_x_mult`` (post-step authoritative ``x_mult`` for that card); the UI applies it
+--- when the float **starts**, so the HUD ticks once per steel card in sync with the ``×`` label. Float text is
+--- visual-only and does not mutate ``state.scores``. Generic ``display_update_*`` intents remain available for
+--- other effects.
+--- **Args**: ``owner``, ``steel_hand_indices``, ``factor`` (``×`` label, e.g. ``1.5``), ``x_mult_steps`` (array
+--- of post-multiply ``x_mult`` values, one per steel card, same order as ``steel_hand_indices``).
 --- Emits nothing unless ``state.resolution`` indicates ``stance_gluttony`` stance.
 --- @param state table
 --- @param args table
@@ -18,11 +23,15 @@ function M.steel_sync_mult(state, args)
 	local owner = args.owner
 	local steel_hand_indices = args.steel_hand_indices
 	local factor = args.factor
+	local x_mult_steps = args.x_mult_steps
 	local r = state.resolution
 	if not r or r.source_def_id ~= STEEL_SYNC_DEF_ID or r.source_object_type ~= "stance" then
 		return
 	end
 	if not steel_hand_indices or #steel_hand_indices == 0 or type(factor) ~= "number" then
+		return
+	end
+	if not x_mult_steps or #x_mult_steps ~= #steel_hand_indices then
 		return
 	end
 	state.ui_animation_events = state.ui_animation_events or {}
@@ -33,6 +42,7 @@ function M.steel_sync_mult(state, args)
 	local inst = r.source_instance_id
 	local label = string.format("×%.1f", factor)
 	local float_step_ms = animations_helper.steel_hand_float_step_duration_ms(#steel_hand_indices)
+	local n = #steel_hand_indices
 	ev[#ev + 1] = {
 		type = "stance_shake",
 		sequence_id = seq_id,
@@ -42,7 +52,7 @@ function M.steel_sync_mult(state, args)
 		stance_slot_index = stance_slot,
 		stance_instance_id = inst,
 	}
-	for i = 1, #steel_hand_indices do
+	for i = 1, n do
 		ev[#ev + 1] = {
 			type = "hand_card_float_text",
 			sequence_id = seq_id,
@@ -51,6 +61,7 @@ function M.steel_sync_mult(state, args)
 			owner = owner,
 			hand_index = steel_hand_indices[i],
 			text = label,
+			presented_x_mult = x_mult_steps[i],
 		}
 	end
 end

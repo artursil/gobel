@@ -7,6 +7,7 @@ local Effects = require("effect_registry")
 local match_state = require("match_state")
 local messages = require("messages")
 local resolve_round = require("single_game.resolver.resolve_round")
+local score_display = require("ui.score_display")
 local card_play_memory = require("single_game.resolver.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
@@ -43,7 +44,9 @@ end
 --- @param state table
 --- @return nil
 local function recalc_all_scores(state)
+	local baseline = score_display.snapshot_scores(state)
 	resolve_round.resolve(state)
+	score_display.after_resolve(state, baseline, state.ui_animation_events)
 end
 
 local function push_status_from_messages(state)
@@ -668,6 +671,7 @@ function M.flush_pending_turn_if_ready(state)
 		return
 	end
 	state.pending_turn_after_ui = false
+	score_display.end_rollout(state)
 	begin_next_turn(state)
 end
 

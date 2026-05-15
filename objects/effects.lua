@@ -99,10 +99,17 @@ function M.count_and_multiply_x_mult(effect)
 
 			if steel_card_count > 0 then
 				local multiplier_factor = 1 + effect.value
+				local x_mult_steps = {}
 				for _ = 1, steel_card_count do
 					state.scores.x_mult[owner] = state.scores.x_mult[owner] * multiplier_factor
+					x_mult_steps[#x_mult_steps + 1] = state.scores.x_mult[owner]
 				end
-				animations.add_animation("steel_sync_mult")(state, { owner = owner, steel_hand_indices = steel_hand_indices, factor = multiplier_factor })
+				animations.add_animation("steel_sync_mult")(state, {
+					owner = owner,
+					steel_hand_indices = steel_hand_indices,
+					factor = multiplier_factor,
+					x_mult_steps = x_mult_steps,
+				})
 			end
 		end,
 	}

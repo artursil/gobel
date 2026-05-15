@@ -44,4 +44,15 @@ describe("ui.animation_schedule effective_start_ms_list", function()
 		local eff = animation_schedule.effective_start_ms_list(intents)
 		assert.are.same({ 7, 3 }, eff)
 	end)
+
+	it("chains shake then sequential hand floats for steel sync ordering", function()
+		local seq = "steel_sync_order_test"
+		local intents = {
+			{ type = "stance_shake", owner = config.OWNER_BLACK, stance_slot_index = 1, sequence_id = seq, duration_ms = 100, start_delay_ms = 0 },
+			{ type = "hand_card_float_text", owner = config.OWNER_BLACK, hand_index = 1, text = "×", sequence_id = seq, duration_ms = 200, start_delay_ms = 0 },
+			{ type = "hand_card_float_text", owner = config.OWNER_BLACK, hand_index = 2, text = "×", sequence_id = seq, duration_ms = 200, start_delay_ms = 0 },
+		}
+		local eff = animation_schedule.effective_start_ms_list(intents)
+		assert.are.same({ 0, 100, 300 }, eff)
+	end)
 end)

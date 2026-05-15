@@ -2,7 +2,8 @@
 ---
 --- **Intent schema**: plain tables on ``game.ui_animation_events``; builders emit them from
 --- ``objects.animations_definitions`` via ``objects.animations.add_animation``; see ``ui.animation_schedule``
---- and ``ui.animation_kinds``. ``type`` must match a registry key.
+--- and ``ui.animation_kinds``. ``type`` must match a registry key. ``display_update_*`` intents adjust only
+--- the HUD via ``ui.score_display`` (authoritative ``player.score`` unchanged after resolve).
 ---
 --- **Drain policy**: Each ``love.update`` tick, ``render.update`` calls ``update``, which runs
 --- ``drain_state_intents`` first: ``ui.animation_schedule.effective_start_ms_list`` resolves wall-clock
@@ -11,6 +12,8 @@
 --- list is cleared afterward.
 ---
 --- **Threading**: Single-threaded; ``ui.animation_kinds.tick_job_age`` advances each job's ``age``.
+--- ``display_update_*`` jobs apply at **job start** (see ``ui.score_display.apply_display_job_at_start``) before age tick.
+--- When ``active_jobs`` becomes empty, ``ui.score_display.end_rollout`` runs so the HUD reads authoritative scores again.
 ---
 --- @module ui.animations
 
@@ -22,6 +25,7 @@ local stances = require("stances")
 local animation_kinds = require("ui.animation_kinds")
 local animation_schedule = require("ui.animation_schedule")
 local ui_fonts = require("ui.fonts")
+local score_display = require("ui.score_display")
 
 local M = {}
 
@@ -197,11 +201,19 @@ end
 --- @return nil
 function M.update(dt, game, layout)
 	M.drain_state_intents(game, layout)
+	for ji = 1, #active_jobs do
+		local j = active_jobs[ji]
+		score_display.apply_display_job_at_start(j, game)
+		score_display.apply_hand_float_x_mult_at_start(j, game)
+	end
 	for i = #active_jobs, 1, -1 do
 		local j = active_jobs[i]
 		if animation_kinds.tick_job_age(j, dt) then
 			table.remove(active_jobs, i)
 		end
+	end
+	if #active_jobs == 0 then
+		score_display.end_rollout(game)
 	end
 end
 
