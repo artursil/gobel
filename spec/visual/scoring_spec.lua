@@ -325,10 +325,10 @@ describe("Scoring visual spec", function()
 		})
 
 		-- formula: turn_bonus * territory * points * plus_mult * x_mult
-		-- black: 1.1 (turn 1) * 80 (territory) * 3 (stone_basic=1 + card_point_tap=2) * 1 * 1 = 264
-		-- white: 1.1 * 0 * 0 * 1 * 1 = 0
-		assert_scores(g, 264, 0)
-		assert_score_delta(g, snap, 264, 0)
+		-- black: 1.1 (turn 1) * 80 (territory) * 4 (starting 1 + stone_basic=1 + card_point_tap=2) * 1 * 1 = 352
+		-- white: 1.1 * 0 * 1 * 1 * 1 = 0
+		assert_scores(g, 352, 0)
+		assert_score_delta(g, snap, 352, 0)
 	end)
 
 	it("persistent_flux round 1 basic stone: counter applied in full as mult", function()

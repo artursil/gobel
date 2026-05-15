@@ -181,6 +181,7 @@ local function draw_score_box_simple(game, box, side, title)
 	local points = math.ceil(player.score.points or 0)
 	local plus_mult = math.ceil(player.score.plus_mult or 1)
 	local x_mult = player.score.x_mult or 1
+	local overall_mult = plus_mult * x_mult
 	local total = math.ceil((turn_bonus * territory * points * plus_mult * x_mult) or 0)
 
 	ui_fonts.set("body")
@@ -188,7 +189,7 @@ local function draw_score_box_simple(game, box, side, title)
 	lg.printf(title, box.x, box.y + 8, box.w, "center")
 	lg.printf(string.format("Territory: %d", territory), box.x, box.y + 30, box.w, "center")
 	lg.printf(string.format("Points: %d", points), box.x, box.y + 48, box.w, "center")
-	lg.printf(string.format("Mult: %d", plus_mult), box.x, box.y + 66, box.w, "center")
+	lg.printf(string.format("Mult: %.1f", overall_mult), box.x, box.y + 66, box.w, "center")
 	lg.printf(string.format("Total: %d", total), box.x, box.y + 84, box.w, "center")
 	ui_fonts.apply_default()
 end

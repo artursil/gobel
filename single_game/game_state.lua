@@ -45,7 +45,7 @@ function M.new(game_id, game_index)
 		scores = {
 			turn_bonus = { B = 1, W = 1 },
 			territory = { B = 0, W = 0 },
-			points = { B = 0, W = 0 },
+			points = { B = 1, W = 1 },
 			plus_mult = { B = 1, W = 1 },
 			x_mult = { B = 1, W = 1 },
 			total = { B = 0, W = 0 },

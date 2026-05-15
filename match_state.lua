@@ -80,7 +80,7 @@ local function build_player(side, starter, rng_next_int)
 		score = {
 			turn_bonus = 1,
 			territory = 0,
-			points = 0,
+			points = 1,
 			plus_mult = 1,
 			x_mult = 1,
 			total = 0,
@@ -176,7 +176,7 @@ function M.new_match(match_kind, territory_mode, seed)
 		scores = {
 			turn_bonus = { B = 1, W = 1 },
 			territory = { B = 0, W = 0 },
-			points = { B = 0, W = 0 },
+			points = { B = 1, W = 1 },
 			plus_mult = { B = 1, W = 1 },
 			x_mult = { B = 1, W = 1 },
 		},

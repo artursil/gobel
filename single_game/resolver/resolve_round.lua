@@ -64,7 +64,7 @@ local function ensure_state_fields(state)
 	state.scores = state.scores or {
 		turn_bonus = { B = 1, W = 1 },
 		territory = { B = 0, W = 0 },
-		points = { B = 0, W = 0 },
+		points = { B = 1, W = 1 },
 		plus_mult = { B = 1, W = 1 },
 		x_mult = { B = 1, W = 1 },
 	}
@@ -97,7 +97,7 @@ local function reset_base_scores(state)
 	state.scores.territory = { B = 0, W = 0 }
 	state.scores.plus_mult = state.scores.plus_mult or { B = 1, W = 1 }
 	state.scores.x_mult = state.scores.x_mult or { B = 1, W = 1 }
-	state.scores.points = state.scores.points or { B = 0, W = 0 }
+	state.scores.points = state.scores.points or { B = 1, W = 1 }
 end
 
 --- Pushes `state.scores` into `match_state` player `score` tables and `total`.
