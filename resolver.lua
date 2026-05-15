@@ -642,13 +642,33 @@ function M.submit_action(state, action)
 			emitted_events = #event_queue,
 		}
 	end
-	begin_next_turn(state)
+	local ev = state.ui_animation_events
+	if type(ev) == "table" and #ev > 0 then
+		state.pending_turn_after_ui = true
+	else
+		begin_next_turn(state)
+	end
 	return {
 		ok = true,
 		error = nil,
 		consumed_phase = "PLACE_PHASE",
 		emitted_events = #event_queue,
 	}
+end
+
+--- When ``submit_action`` deferred ``begin_next_turn`` because UI intents were queued, runs it after jobs finish.
+--- @param state table
+--- @return nil
+function M.flush_pending_turn_if_ready(state)
+	if not state or state.pending_turn_after_ui ~= true then
+		return
+	end
+	local ui_animations = require("ui.animations")
+	if ui_animations.has_active_jobs() then
+		return
+	end
+	state.pending_turn_after_ui = false
+	begin_next_turn(state)
 end
 
 return M

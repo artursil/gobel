@@ -15,15 +15,38 @@
 --- @module ui.animations
 
 local config = require("config")
+local content = require("content")
 local layout_mod = require("layout")
 local match_state = require("match_state")
 local stances = require("stances")
 local animation_kinds = require("ui.animation_kinds")
 local animation_schedule = require("ui.animation_schedule")
+local ui_fonts = require("ui.fonts")
 
 local M = {}
 
 local active_jobs = {}
+
+--- While a stance shake is drawing that slot, the static tile is omitted to avoid double art.
+--- @param owner_key string
+--- @param lane_index integer
+--- @return boolean
+function M.stance_shake_replaces_slot(owner_key, lane_index)
+	for j = 1, #active_jobs do
+		local job = active_jobs[j]
+		if job.animation_id == "stance_shake" and job.owner == owner_key and job.stance_slot_index == lane_index then
+			if job.age >= job.delay_start_s and job.age < job.delay_start_s + job.dur_s then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+--- @return boolean
+function M.has_active_jobs()
+	return #active_jobs > 0
+end
 
 --- Stance card layout aligned with ``render.draw_stances`` / hit testing.
 --- @param box table
@@ -127,8 +150,19 @@ function M.build_ui_target_index(game, layout)
 		return cx, cy
 	end
 
+	local function stance_at_slot(owner_key, lane_index)
+		local box, entries = stance_panel_and_entries(owner_key)
+		if not box or not entries or lane_index < 1 or lane_index > #entries then
+			return nil
+		end
+		local entry = entries[lane_index]
+		local stance_id = entry.id or entry
+		return content.get_stance(stance_id)
+	end
+
 	return {
 		stance_card_rect = stance_card_rect,
+		stance_at_slot = stance_at_slot,
 		hand_slot_center = hand_slot_center,
 	}
 end
@@ -183,6 +217,7 @@ function M.draw(game, layout)
 	for _, j in ipairs(active_jobs) do
 		animation_kinds.draw_job(j, idx)
 	end
+	ui_fonts.apply_default()
 	lg.setColor(1, 1, 1, 1)
 end
 

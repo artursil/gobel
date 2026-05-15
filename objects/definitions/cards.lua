@@ -13,7 +13,7 @@
 
 local function V(overrides)
 	local v = {
-		background = "sprites/cards/background_test2.png",
+		background = "sprites/cards/background_1.png",
 		graphic = "sprites/cards/graphic_default.png",
 		border_color = "#E6CDA4",
 		title_box_color = "#FFFFFF",
@@ -108,7 +108,7 @@ local M = {
 		cost = 1,
 		energy_cost = 1,
 		tags = { "steel" },
-		visual = V({ graphic = "sprites/cards/graphic_steel.png" }),
+		visual = V({ graphic = "sprites/stones/tower.png" }),
 		effects = {},
 	},
 	card_focus_stance = {

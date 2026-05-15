@@ -97,6 +97,7 @@ describe("T-050 resolver and core system correctness", function()
 
 		assert.is_true(result.ok)
 		assert.are.equal("Basic Stone placement: +1 points", state.messages.recent[#state.messages.recent])
+		require("spec.test_helper").finish_ui_animations_for_turn(state)
 		assert.are.equal("white", state.to_play)
 		assert.are.equal("MAIN_PHASE", state.phase)
 		assert.are.equal(1, black.score.points)

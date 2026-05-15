@@ -20,7 +20,7 @@ describe("ui.animation_kinds registry", function()
 		assert.are.equal(0.3, job.dur_s)
 		assert.are.equal(config.OWNER_BLACK, job.owner)
 		assert.are.equal(2, job.stance_slot_index)
-		assert.are.equal(5, job.shake_amp_max)
+		assert.are.equal(6, job.shake_amp_max)
 	end)
 
 	it("spawn_job_from_intent returns nil for unknown intent type", function()

@@ -37,6 +37,7 @@ describe("T-051 integration minimal playable loop", function()
 		local move = legal_moves[1]
 		local moved = game.player_move(g, move[1], move[2])
 		assert.is_true(moved)
+		require("spec.test_helper").finish_ui_animations_for_turn(g)
 		assert.are.equal("white", g.to_play)
 		assert.are.equal(2, g.turn_number)
 		assert.is_false(board.is_empty(g.board[move[1]][move[2]]))

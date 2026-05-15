@@ -8,6 +8,9 @@ local stances = require("stances")
 local pouch = require("pouch")
 local ui_fonts = require("ui.fonts")
 local card_visual = require("ui.card_visual")
+local stance_card_draw = require("ui.stance_card_draw")
+local ui_animations = require("ui.animations")
+local resolver = require("resolver")
 
 local M = {}
 local SCORE_ANIM_BASE_DURATION = 0.45
@@ -284,50 +287,9 @@ local function get_stance_card_rects(box, stance_entries)
 	return cards
 end
 
-local STANCE_ART_INSET_FRAC = 0.11
-
---- @param rect table x,y,w,h full stance card
---- @return table inner x,y,w,h region for the portrait (inside the frame opening)
-local function stance_art_inner_rect(rect)
-	local m = math.min(rect.w, rect.h) * STANCE_ART_INSET_FRAC
-	return {
-		x = rect.x + m,
-		y = rect.y + m,
-		w = math.max(1, rect.w - 2 * m),
-		h = math.max(1, rect.h - 2 * m),
-	}
-end
-
---- @param img love.graphics.Image
---- @param rect table x,y,w,h
---- @return number dx
---- @return number dy
---- @return number dw
---- @return number dh
-local function stance_image_contain_dest(img, rect)
-	local iw = img:getWidth()
-	local ih = img:getHeight()
-	local sx = rect.w / iw
-	local sy = rect.h / ih
-	local s = math.min(sx, sy)
-	local dw = iw * s
-	local dh = ih * s
-	local dx = rect.x + (rect.w - dw) * 0.5
-	local dy = rect.y + (rect.h - dh) * 0.5
-	return dx, dy, dw, dh
-end
-
 local function draw_stance_tile(rect, stance, variant)
 	local lg = love.graphics
-	local v = stance and stance.visual or {}
-	local g = v.graphic and get_image_at_path(v.graphic)
-	local f = v.frame and get_image_at_path(v.frame)
-	local inner = stance_art_inner_rect(rect)
-	if g and g ~= false then
-		local dx, dy, dw, dh = stance_image_contain_dest(g, inner)
-		lg.setColor(1, 1, 1, 1)
-		lg.draw(g, dx, dy, 0, dw / g:getWidth(), dh / g:getHeight())
-	end
+	stance_card_draw.draw_portrait(rect, stance)
 	if variant == "back" then
 		local display_name = (stance and (stance.display_name or stance.name)) or ""
 		ui_fonts.set("body_small")
@@ -336,10 +298,7 @@ local function draw_stance_tile(rect, stance, variant)
 		lg.printf(stance and stance.description or "", rect.x + 8, rect.y + 34, rect.w - 16, "left")
 		ui_fonts.apply_default()
 	end
-	if f and f ~= false then
-		lg.setColor(1, 1, 1, 1)
-		lg.draw(f, rect.x, rect.y, 0, rect.w / f:getWidth(), rect.h / f:getHeight())
-	end
+	stance_card_draw.draw_frame(rect, stance)
 end
 
 local function draw_stances(box, stance_entries, owner_key)
@@ -359,7 +318,9 @@ local function draw_stances(box, stance_entries, owner_key)
 		local stance_id = entry.id or entry
 		local stance = content.get_stance(stance_id)
 		if i ~= selected_index and i ~= dragging_index then
-			draw_stance_tile(cards[i], stance, "front")
+			if not ui_animations.stance_shake_replaces_slot(owner_key, i) then
+				draw_stance_tile(cards[i], stance, "front")
+			end
 		end
 	end
 	if selected_index and cards[selected_index] and selected_index ~= dragging_index then
@@ -367,7 +328,9 @@ local function draw_stances(box, stance_entries, owner_key)
 		local stance_id = entry.id or entry
 		local stance = content.get_stance(stance_id)
 		local focus = cards[selected_index]
-		draw_stance_tile(focus, stance, "back")
+		if not ui_animations.stance_shake_replaces_slot(owner_key, selected_index) then
+			draw_stance_tile(focus, stance, "back")
+		end
 	end
 	if dragging_index and cards[dragging_index] and stance_entries[dragging_index] then
 		local entry = stance_entries[dragging_index]
@@ -1084,14 +1047,13 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, sto
 			end
 		end
 	end
-	local ui_anim = require("ui.animations")
-	ui_anim.draw(game, layout)
+	ui_animations.draw(game, layout)
 	lg.setColor(1, 1, 1, 1)
 end
 
 function M.update(dt, game, layout)
-	local ui_anim = require("ui.animations")
-	ui_anim.update(dt, game, layout)
+	ui_animations.update(dt, game, layout)
+	resolver.flush_pending_turn_if_ready(game)
 	local anim = M._score_anim
 	local draw_anim = M._stone_draw_anim
 	local events = game.messages.score_events or {}

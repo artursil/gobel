@@ -134,4 +134,21 @@ function M.reset_module(name)
 	return require(name)
 end
 
+--- Advances UI animation jobs until a deferred ``begin_next_turn`` applies (see ``resolver.flush_pending_turn_if_ready``).
+--- @param state table
+--- @return nil
+function M.finish_ui_animations_for_turn(state)
+	local layout_mod = require("layout")
+	local resolver = require("resolver")
+	local ui_animations = require("ui.animations")
+	local layout = layout_mod.from_window(1280, 720)
+	for _ = 1, 200 do
+		if state.pending_turn_after_ui ~= true then
+			break
+		end
+		ui_animations.update(0.05, state, layout)
+		resolver.flush_pending_turn_if_ready(state)
+	end
+end
+
 return M

@@ -187,6 +187,7 @@ function M.new_match(match_kind, territory_mode, seed)
 		ai_delay = 0,
 		animation_speed = 1,
 		status = "",
+		pending_turn_after_ui = false,
 	}
 end
 

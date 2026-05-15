@@ -129,6 +129,7 @@ local function place_stone(g, board_rows)
 				local player = match_state.player_for_color(g, g.to_play)
 				player.stones.selected_stone = new_board[r][c].kind
 				assert.is_true(game.player_move(g, r, c))
+				test_helper.finish_ui_animations_for_turn(g)
 				return
 			end
 		end

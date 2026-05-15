@@ -210,6 +210,7 @@ describe("T-051 stone popup and interaction integration", function()
 		assert.is_true(game.select_stone(match, selected))
 		local legal = rules.all_legal_moves(match.board, config.STONE_BLACK, match.ko_ban, selected)[1]
 		assert.is_true(game.player_move(match, legal[1], legal[2]))
+		require("spec.test_helper").finish_ui_animations_for_turn(match)
 		if match.phase == "MAIN_PHASE" then
 			game.player_pass(match)
 		end

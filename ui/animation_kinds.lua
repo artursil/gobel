@@ -3,7 +3,7 @@
 --- **Intent** (element of ``game.ui_animation_events`` before drain): plain table with required ``type``
 --- (``"stance_shake"`` | ``"hand_card_float_text"``). Optional fields override that kind's ``defaults``.
 --- For ``hand_card_float_text``, optional ``font_size_px`` sets the cached LÖVE font pixel height for the label.
---- Stance shake: ``stance_slot_index`` (1-based on that owner's stance panel). Optional ``stance_def_id`` / ``stance_instance_id`` for telemetry.
+--- Stance shake: ``stance_slot_index`` (1-based on that owner's stance panel). Shakes portrait + frame as one unit. Optional ``stance_def_id`` / ``stance_instance_id`` for telemetry.
 ---
 --- Optional ``sequence_id`` (non-empty string): intents in one drain pass with the same id default to **sequential**
 --- scheduling — each step's effective wall-clock start is the prior step's end plus this intent's ``start_delay_ms``.
@@ -24,6 +24,8 @@
 --- @module ui.animation_kinds
 
 local M = {}
+
+local stance_card_draw = require("ui.stance_card_draw")
 
 local hand_float_font_cache = {}
 
@@ -79,14 +81,10 @@ local stance_shake = {}
 stance_shake.defaults = {
 	duration_ms = 1020,
 	start_delay_ms = 0,
-	shake_amp_max = 5,
-	shake_freq_sin = 16,
-	shake_freq_cos = 14,
-	line_width = 3,
-	line_r = 0.95,
-	line_g = 0.55,
-	line_b = 0.15,
-	line_alpha_peak = 0.45,
+	shake_amp_max = 6,
+	shake_rot_max = 0.055,
+	shake_freq_sin = 22,
+	shake_freq_cos = 19,
 }
 
 --- Builds a stance shake job from a merged intent, or returns nil if targeting is incomplete.
@@ -107,17 +105,13 @@ function stance_shake.spawn(intent, game, layout)
 		owner = m.owner,
 		stance_slot_index = m.stance_slot_index,
 		shake_amp_max = m.shake_amp_max,
+		shake_rot_max = m.shake_rot_max,
 		shake_freq_sin = m.shake_freq_sin,
 		shake_freq_cos = m.shake_freq_cos,
-		line_width = m.line_width,
-		line_r = m.line_r,
-		line_g = m.line_g,
-		line_b = m.line_b,
-		line_alpha_peak = m.line_alpha_peak,
 	}
 end
 
---- Draws a pulsing offset outline around the stance lane rect.
+--- Shakes the stance portrait and frame as one unit (translate + slight rotation).
 --- @param job table
 --- @param ui_index table
 --- @return nil
@@ -126,18 +120,26 @@ function stance_shake.draw(job, ui_index)
 		return
 	end
 	local rect = ui_index.stance_card_rect(job.owner, job.stance_slot_index)
-	if not rect then
+	local stance = ui_index.stance_at_slot(job.owner, job.stance_slot_index)
+	if not rect or not stance then
 		return
 	end
 	local lg = love.graphics
 	local u = (job.age - job.delay_start_s) / math.max(0.0001, job.dur_s)
 	local amp = job.shake_amp_max * (1 - u)
 	local ox = math.sin(job.age * job.shake_freq_sin) * amp
-	local oy = math.cos(job.age * job.shake_freq_cos) * amp * 0.6
-	lg.setColor(job.line_r, job.line_g, job.line_b, job.line_alpha_peak * (1 - u))
-	lg.setLineWidth(job.line_width)
-	lg.rectangle("line", rect.x + ox, rect.y + oy, rect.w, rect.h, 8, 8)
-	lg.setLineWidth(1)
+	local oy = math.cos(job.age * job.shake_freq_cos) * amp * 0.65
+	local rot = math.sin(job.age * job.shake_freq_sin * 0.73) * job.shake_rot_max * (1 - u)
+	local cx = rect.x + rect.w * 0.5
+	local cy = rect.y + rect.h * 0.5
+	lg.push()
+	lg.translate(cx, cy)
+	lg.rotate(rot)
+	lg.translate(-cx, -cy)
+	lg.translate(ox, oy)
+	stance_card_draw.draw_portrait_and_frame(rect, stance)
+	lg.pop()
+	lg.setColor(1, 1, 1, 1)
 end
 
 local hand_card_float_text = {}
@@ -201,15 +203,13 @@ function hand_card_float_text.draw(job, ui_index)
 	lg.setColor(job.text_r, job.text_g, job.text_b, math.max(0, math.min(1, alpha)))
 	local w = job.text_half_width * 2
 	local float_font = cached_hand_float_font(job.font_size_px)
-	local prev_font = nil
-	if float_font and lg.getFont then
-		prev_font = lg.getFont()
+	if float_font and lg.setFont then
 		lg.setFont(float_font)
 	end
 	lg.printf(job.text, cx - job.text_half_width, cy - rise - job.text_offset_y, w, "center")
-	if prev_font and lg.setFont then
-		lg.setFont(prev_font)
-	end
+	ui_fonts_mod = ui_fonts_mod or require("ui.fonts")
+	ui_fonts_mod.apply_default()
+	lg.setColor(1, 1, 1, 1)
 end
 
 M.by_id = {
