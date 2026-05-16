@@ -567,7 +567,9 @@ function M.detect_regions_and_ownership(b, tiles)
 	apply_region_owner_from_map(regions, owner_map)
 	for id, region in pairs(regions) do
 		region.boundary = collect_region_boundary_colors(b, n, region.tiles)
-		print("[Territory] region", id, "size", region.size, "owner", tostring(region.owner))
+		if config.TERRITORY_DEBUG then
+			print("[Territory] region", id, "size", region.size, "owner", tostring(region.owner))
+		end
 	end
 	return regions
 end

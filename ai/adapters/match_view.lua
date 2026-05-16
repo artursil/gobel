@@ -20,11 +20,34 @@ function M.bot_actor()
 	return "black"
 end
 
+--- @param actor "black"|"white"
+--- @return "black"|"white"
+function M.opponent_actor(actor)
+	if actor == "white" then
+		return "black"
+	end
+	return "white"
+end
+
 --- @param game table
 --- @param actor "black"|"white"
 --- @return MatchView
 function M.for_actor(game, actor)
 	return setmetatable({ _game = game, _actor = actor }, MatchView)
+end
+
+--- Overlay board/ko for MCTS rollouts without mutating game state.
+--- @param view table
+--- @param board table
+--- @param ko table|nil
+--- @return MatchView
+function M.with_board(view, board, ko)
+	return setmetatable({
+		_game = view._game,
+		_actor = view._actor,
+		_sim_board = board,
+		_sim_ko = ko,
+	}, MatchView)
 end
 
 --- @param game table
@@ -60,12 +83,28 @@ end
 
 --- @return table
 function MatchView:board()
+	if self._sim_board then
+		return self._sim_board
+	end
 	return self._game.board
 end
 
 --- @return table|nil
 function MatchView:ko_ban()
+	if self._sim_board then
+		return self._sim_ko
+	end
 	return self._game.ko_ban
+end
+
+--- @return string|nil
+function MatchView:ai_strategy()
+	return self._game.ai_strategy
+end
+
+--- @return table|nil
+function MatchView:ai_mcts()
+	return self._game.ai_mcts
 end
 
 --- @return string|nil

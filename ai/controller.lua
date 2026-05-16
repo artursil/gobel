@@ -5,6 +5,7 @@ local match_view = require("ai.adapters.match_view")
 
 local STRATEGIES = {
 	heuristic = require("ai.strategies.heuristic"),
+	mcts = require("ai.strategies.heuristic"),
 	random = require("ai.strategies.random"),
 }
 
@@ -31,6 +32,7 @@ function M.decide(game)
 		return nil
 	end
 	local name = game.ai_strategy or "heuristic"
+	-- ``ai_strategy == "mcts"`` uses ``strategies.heuristic``; MCTS is gated by ``mcts_config.should_run`` and ``game.ai_mcts``.
 	local strategy = STRATEGIES[name] or STRATEGIES.heuristic
 	local view = match_view.for_actor(game, M.bot_actor())
 	return strategy.choose_action(view)

@@ -3,6 +3,7 @@
 
 local features = require("ai.board_analysis.features")
 local goals = require("ai.heuristics.goals")
+local placement_cheap = require("ai.heuristics.placement_cheap")
 local snapshot = require("ai.board_analysis.snapshot")
 local territory_analysis = require("ai.board_analysis.territory")
 local rules = require("rules")
@@ -20,6 +21,8 @@ M.WEIGHTS = {
 	weak_boundary_penalty = -1.0,
 	self_fill_penalty = -6.0,
 }
+
+M.FULL_EVAL_TOP_N = 8
 
 --- @param view table
 --- @param row integer
@@ -97,13 +100,29 @@ end
 --- @return table|nil best
 function M.best_candidate(view, candidates, stone_id, base_features, territory_before)
 	local mcts = require("ai.search.mcts")
-	local mcts_pick = mcts.choose_placement(view, candidates)
+	local mcts_opts = {
+		territory_before = territory_before,
+		walls = base_features and base_features._walls or nil,
+	}
+	local game = view:raw_game()
+	if game and game.ai_mcts then
+		for k, v in pairs(game.ai_mcts) do
+			mcts_opts[k] = v
+		end
+	end
+	local mcts_pick = mcts.choose_placement(view, candidates, mcts_opts)
 	if mcts_pick and mcts_pick.row and mcts_pick.col then
-		return mcts_pick
+		local scored = M.evaluate_move(view, mcts_pick.row, mcts_pick.col, stone_id, base_features, territory_before)
+		return scored or { row = mcts_pick.row, col = mcts_pick.col, score = 0 }
+	end
+	local walls = base_features and base_features._walls or nil
+	local pool = candidates
+	if #candidates > M.FULL_EVAL_TOP_N then
+		pool = placement_cheap.top_by_cheap_score(view, candidates, stone_id, walls, M.FULL_EVAL_TOP_N)
 	end
 	local best = nil
-	for i = 1, #candidates do
-		local move = candidates[i]
+	for i = 1, #pool do
+		local move = pool[i]
 		local scored = M.evaluate_move(view, move.row, move.col, stone_id, base_features, territory_before)
 		if scored and (not best or scored.score > best.score) then
 			best = scored

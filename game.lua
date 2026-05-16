@@ -1,6 +1,7 @@
 --- Match flow: turns, passes, scoring, bot games, two-player games, and stone pipelines.
 
 local ai_controller = require("ai.controller")
+local mcts_config = require("ai.mcts_config")
 local match_state = require("match_state")
 local messages = require("messages")
 local resolver = require("resolver")
@@ -48,6 +49,8 @@ function M.new(match_kind, game_type_id, territory_mode)
 	g.game_type_id = game_type_id
 	if g.versus_bot then
 		g.ai_strategy = "heuristic"
+		g.ai_difficulty = "normal"
+		g.ai_mcts = mcts_config.for_difficulty("normal")
 	end
 	return g
 end

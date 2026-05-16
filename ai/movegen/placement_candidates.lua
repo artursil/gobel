@@ -90,6 +90,21 @@ local function cheap_prescore(move, b, player, ko, stone_id, owner_key, walls, t
 	return score
 end
 
+--- @param row integer
+--- @param col integer
+--- @param b table
+--- @param player integer
+--- @param ko table|nil
+--- @param stone_id string
+--- @param owner_key "B"|"W"
+--- @param walls table
+--- @param territory_before table
+--- @param mode string|nil
+--- @return number
+function M.cheap_prescore_move(row, col, b, player, ko, stone_id, owner_key, walls, territory_before, mode)
+	return cheap_prescore({ row = row, col = col }, b, player, ko, stone_id, owner_key, walls, territory_before, mode)
+end
+
 --- @param scored table[]
 --- @param k integer
 --- @param rng_next fun(integer): integer
@@ -117,8 +132,9 @@ end
 --- @param k integer|nil
 --- @param territory_before table|nil cached territory counts for ``view:board()``
 --- @param walls table|nil cached ``enclosure.extract_walls`` for current board
+--- @param skip_territory_probe boolean|nil when true, omit ``changes_territory_owner`` filter (faster)
 --- @return table[] moves { row, col }
-function M.top_candidates(view, stone_id, k, territory_before, walls)
+function M.top_candidates(view, stone_id, k, territory_before, walls, skip_territory_probe)
 	k = k or DEFAULT_K
 	local b = view:board()
 	local player = view:stone_color()
@@ -140,7 +156,8 @@ function M.top_candidates(view, stone_id, k, territory_before, walls)
 			add_unique(filtered, move)
 		elseif features.is_placement_frontier(b, row, col, player, walls, owner_key) then
 			add_unique(filtered, move)
-		elseif changes_territory_owner(b, row, col, player, ko, stone_id, territory_before, mode, owner_key) then
+		elseif not skip_territory_probe
+			and changes_territory_owner(b, row, col, player, ko, stone_id, territory_before, mode, owner_key) then
 			add_unique(filtered, move)
 		end
 	end

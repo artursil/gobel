@@ -463,7 +463,9 @@ function M.begin_assignment(state)
 	state.territory_tiles = tiles
 	state.enclosure_walls = enclosure.extract_walls(b)
 	state.regions = enclosure.detect_regions_and_ownership(b, tiles)
-	print("[Territory] region count", region_count(state.regions))
+	if config.TERRITORY_DEBUG then
+		print("[Territory] region count", region_count(state.regions))
+	end
 end
 
 --- Sets `state.territory` and updates `scores.territory` from controlled cell counts.
@@ -477,7 +479,8 @@ function M.finish_assignment(state)
 	if not tiles then
 		return
 	end
-	state.territory, state.territory_decision_sources = finish_resolve_owners(tiles, regions, walls, b, state, true)
+	state.territory, state.territory_decision_sources =
+		finish_resolve_owners(tiles, regions, walls, b, state, config.TERRITORY_DEBUG)
 	local black_c, white_c = count_controlled(state.territory, b, state)
 	state.scores.territory.B = black_c
 	state.scores.territory.W = white_c

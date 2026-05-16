@@ -3,6 +3,7 @@
 
 local enclosure = require("single_game.resolver.enclosure")
 local features = require("ai.board_analysis.features")
+local goals = require("ai.heuristics.goals")
 local movegen = require("ai.movegen.placement_candidates")
 local placement = require("ai.heuristics.placement")
 local stone_select = require("ai.heuristics.stone_select")
@@ -57,6 +58,7 @@ local function place_phase(view)
 		}
 	end
 	local base = features.build(b, view:ko_ban(), owner_key, mode, view:stone_color(), territory_before, walls)
+	goals.refresh(view, base, territory_before)
 	local best = placement.best_candidate(view, candidates, stone_id, base, territory_before)
 	if not best then
 		local pick = candidates[view:rng_next_int(#candidates)]
