@@ -1,6 +1,6 @@
 --- Match flow: turns, passes, scoring, bot games, two-player games, and stone pipelines.
 
-local ai = require("ai")
+local ai_controller = require("ai.controller")
 local match_state = require("match_state")
 local messages = require("messages")
 local resolver = require("resolver")
@@ -46,6 +46,9 @@ function M.new(match_kind, game_type_id, territory_mode)
 		g.status = latest
 	end
 	g.game_type_id = game_type_id
+	if g.versus_bot then
+		g.ai_strategy = "heuristic"
+	end
 	return g
 end
 
@@ -122,55 +125,54 @@ function M.player_pass(g)
 	end
 end
 
---- Runs the random AI when it is White's turn in bot mode.
+--- Runs the bot when it is the configured AI side's turn (one resolver action per tick).
 --- @param g table
 --- @param dt number
 function M.tick_ai(g, dt)
-	if g.over or g.ended or not g.versus_bot or g.to_play ~= "white" then
+	if g.over or g.ended or not ai_controller.is_bot_turn(g) then
 		return
 	end
 	if g.ai_delay > 0 then
 		g.ai_delay = g.ai_delay - dt
 		return
 	end
-	local r, c = ai.random_move(g)
-	if not r then
-		if g.phase == "MAIN_PHASE" then
-			local move_to_place = resolver.finish_main_phase(g, g.to_play)
-			if not move_to_place.ok then
-				g.status = move_to_place.error
-				return
-			end
-		end
-		local pass_result = resolver.submit_action(g, {
-			actor = "white",
-			type = "PASS_TURN",
-			payload = {},
-		})
-		if not pass_result.ok then
-			g.status = pass_result.error
-			return
-		end
-		g.status = "White passed. Your turn (Black)."
-		return
-	end
-	if g.phase == "MAIN_PHASE" then
+	local action, signal = ai_controller.decide(g)
+	if signal == "finish_main" then
 		local move_to_place = resolver.finish_main_phase(g, g.to_play)
 		if not move_to_place.ok then
 			g.status = move_to_place.error
 			return
 		end
+		g.ai_delay = 0.15
+		return
 	end
-	local result = resolver.submit_action(g, {
-		actor = "white",
-		type = "PLACE_STONE",
-		payload = { row = r, col = c },
-	})
+	if not action then
+		return
+	end
+	local result = resolver.submit_action(g, action)
 	if not result.ok then
 		g.status = result.error
 		return
 	end
-	g.status = "Your turn (Black)."
+	local bot = ai_controller.bot_actor()
+	if action.type == "PASS_TURN" then
+		if bot == "white" then
+			g.status = "White passed. Your turn (Black)."
+		else
+			g.status = "Black passed. Your turn (White)."
+		end
+	elseif g.to_play == bot and not g.ended then
+		if bot == "white" then
+			g.status = "White is thinking…"
+		else
+			g.status = "Black is thinking…"
+		end
+		g.ai_delay = 0.35
+	elseif bot == "white" then
+		g.status = "Your turn (Black)."
+	else
+		g.status = "Your turn (White)."
+	end
 end
 
 function M.play_card(g, hand_index)

@@ -1,0 +1,92 @@
+--- Phase 1 bot: stone select + smart placement (no cards).
+--- @module ai.strategies.heuristic
+
+local enclosure = require("single_game.resolver.enclosure")
+local features = require("ai.board_analysis.features")
+local movegen = require("ai.movegen.placement_candidates")
+local placement = require("ai.heuristics.placement")
+local stone_select = require("ai.heuristics.stone_select")
+local territory_analysis = require("ai.board_analysis.territory")
+
+local M = {}
+
+--- Phase 1 MAIN: skip PLAY_CARD; select stone then signal finish_main.
+--- @param view table
+--- @return table|nil action
+--- @return string|nil signal
+local function main_phase(view)
+	local playable = view:playable_stones()
+	if #playable == 0 then
+		return nil, "finish_main"
+	end
+	local idx = stone_select.choose_index(view)
+	local stone_id = playable[idx]
+	if view:selected_stone_index() == idx and view:selected_stone_id() == stone_id then
+		return nil, "finish_main"
+	end
+	return {
+		actor = view:actor(),
+		type = "SELECT_STONE",
+		payload = { stone_id = stone_id, stone_index = idx },
+	}
+end
+
+--- @param view table
+--- @return table|nil action
+--- @return string|nil signal
+local function place_phase(view)
+	local stone_id = view:selected_stone_id()
+	if not stone_id then
+		return {
+			actor = view:actor(),
+			type = "PASS_TURN",
+			payload = {},
+		}
+	end
+	local b = view:board()
+	local mode = view:territory_mode()
+	local owner_key = view:owner_key()
+	local territory_before = territory_analysis.analyze(b, mode, owner_key)
+	local walls = enclosure.extract_walls(b)
+	local candidates = movegen.top_candidates(view, stone_id, nil, territory_before, walls)
+	if #candidates == 0 then
+		return {
+			actor = view:actor(),
+			type = "PASS_TURN",
+			payload = {},
+		}
+	end
+	local base = features.build(b, view:ko_ban(), owner_key, mode, view:stone_color(), territory_before, walls)
+	local best = placement.best_candidate(view, candidates, stone_id, base, territory_before)
+	if not best then
+		local pick = candidates[view:rng_next_int(#candidates)]
+		return {
+			actor = view:actor(),
+			type = "PLACE_STONE",
+			payload = { row = pick.row, col = pick.col },
+		}
+	end
+	return {
+		actor = view:actor(),
+		type = "PLACE_STONE",
+		payload = { row = best.row, col = best.col },
+	}
+end
+
+--- @param view table
+--- @return table|nil action
+--- @return string|nil signal
+function M.choose_action(view)
+	if view:to_play() ~= view:actor() then
+		return nil
+	end
+	if view:phase() == "MAIN_PHASE" then
+		return main_phase(view)
+	end
+	if view:phase() == "PLACE_PHASE" then
+		return place_phase(view)
+	end
+	return nil
+end
+
+return M
