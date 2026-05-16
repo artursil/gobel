@@ -79,9 +79,35 @@ function M.install_love_test_stubs()
 	end
 	love.event.quit = love.event.quit or function() end
 	love.graphics.newFont = love.graphics.newFont or function()
-		return { getHeight = function()
-			return 18
-		end }
+		return {
+			getHeight = function()
+				return 18
+			end,
+			getWidth = function(text)
+				return #(tostring(text or "")) * 8
+			end,
+			setBold = function()
+				return nil
+			end,
+			getWrap = function(a, b, c)
+				local text, width
+				if type(a) == "string" then
+					text, width = a, b
+				else
+					text, width = b, c
+				end
+				local chars = math.max(1, math.floor((width or 80) / 8))
+				local lines = {}
+				local body = tostring(text or "")
+				for i = 1, #body, chars do
+					lines[#lines + 1] = body:sub(i, i + chars - 1)
+				end
+				if #lines == 0 then
+					lines[1] = ""
+				end
+				return body, lines
+			end,
+		}
 	end
 	love.graphics.newImage = love.graphics.newImage or function()
 		return {
@@ -100,9 +126,7 @@ function M.install_love_test_stubs()
 	end
 	love.graphics.setFont = love.graphics.setFont or function() end
 	love.graphics.getFont = love.graphics.getFont or function()
-		return { getHeight = function()
-			return 18
-		end }
+		return love.graphics.newFont()
 	end
 	love.graphics.getDimensions = love.graphics.getDimensions or function()
 		return 1280, 720

@@ -8,22 +8,33 @@ local body
 local body_small
 local title
 local large
+local bold_cache = {}
+
+local REGULAR_PATH = "fonts/PixelOperator.ttf"
+local BOLD_PATH = "fonts/PixelOperator-Bold.ttf"
+
+--- @param path string
+--- @param px integer
+--- @return love.graphics.Font|nil
+local function load_ttf(path, px)
+	if not love.filesystem.getInfo(path) then
+		return nil
+	end
+	local ok, font = pcall(love.graphics.newFont, path, px)
+	if ok and font then
+		return font
+	end
+	return nil
+end
 
 --- Loads TTF from ``fonts/PixelOperator.ttf`` at multiple pixel sizes; falls back to ``love.graphics.newFont``.
 --- @return nil
 function M.init()
-	local path = "fonts/PixelOperator.ttf"
-	local info = love.filesystem.getInfo(path)
-	local ok, f16, f12, f20, f36
-	if info then
-		ok, f16 = pcall(love.graphics.newFont, path, 16)
-		if ok then
-			f12 = love.graphics.newFont(path, 12)
-			f20 = love.graphics.newFont(path, 20)
-			f36 = love.graphics.newFont(path, 36)
-		end
-	end
-	if not ok or not f16 then
+	local f16 = load_ttf(REGULAR_PATH, 16)
+	local f12 = load_ttf(REGULAR_PATH, 12)
+	local f20 = load_ttf(REGULAR_PATH, 20)
+	local f36 = load_ttf(REGULAR_PATH, 36)
+	if not f16 then
 		f16 = love.graphics.newFont(16)
 		f12 = love.graphics.newFont(12)
 		f20 = love.graphics.newFont(20)
@@ -65,6 +76,26 @@ function M.set(which)
 	love.graphics.setFont(M.get(w))
 end
 
+--- Bold variant of ``body`` or ``body_small`` (cached; ``fonts/PixelOperator-Bold.ttf``).
+--- @param which string|nil  ``"body"`` | ``"body_small"``
+--- @return love.graphics.Font
+function M.get_bold(which)
+	local key = which == "body_small" and "body_small" or "body"
+	if bold_cache[key] then
+		return bold_cache[key]
+	end
+	local px = key == "body_small" and 12 or 16
+	local f = load_ttf(BOLD_PATH, px) or load_ttf(REGULAR_PATH, px) or love.graphics.newFont(px)
+	bold_cache[key] = f
+	return f
+end
+
+--- @param which string|nil
+--- @return nil
+function M.set_bold(which)
+	love.graphics.setFont(M.get_bold(which))
+end
+
 local sized_cache = {}
 
 --- Pixel Operator at arbitrary pixel height (cached). Falls back to default ``newFont(px)``.
@@ -74,17 +105,7 @@ function M.get_pixel_operator(px)
 	if sized_cache[px] then
 		return sized_cache[px]
 	end
-	local path = "fonts/PixelOperator.ttf"
-	local f
-	if love.filesystem.getInfo(path) then
-		local ok, font = pcall(love.graphics.newFont, path, px)
-		if ok and font then
-			f = font
-		end
-	end
-	if not f then
-		f = love.graphics.newFont(px)
-	end
+	local f = load_ttf(REGULAR_PATH, px) or love.graphics.newFont(px)
 	sized_cache[px] = f
 	return f
 end

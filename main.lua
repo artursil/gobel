@@ -11,6 +11,7 @@ local render = require("render")
 local board = require("board")
 local content = require("content")
 local ui_fonts = require("ui.fonts")
+local stance_detail_popup = require("ui.stance_detail_popup")
 
 
 local screen
@@ -396,6 +397,10 @@ local function begin_stance_drag(x, y)
 		return true
 	end
 	if stance_ui.index and hit.kind == "none" then
+		local popup_rect = render.get_stance_detail_popup_rect(match, layout, stance_ui)
+		if stance_detail_popup.contains(popup_rect, x, y) then
+			return true
+		end
 		reset_stance_ui()
 		return false
 	end

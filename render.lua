@@ -12,6 +12,7 @@ local card_layout = require("ui.card_layout")
 local card_visual = require("ui.card_visual")
 local sprites = require("ui.sprites")
 local stance_card_draw = require("ui.stance_card_draw")
+local stance_detail_popup = require("ui.stance_detail_popup")
 local ui_animations = require("ui.animations")
 local score_display = require("ui.score_display")
 local number_format = require("ui.number_format")
@@ -282,17 +283,8 @@ local function get_stance_card_rects(box, stance_entries)
 	return cards
 end
 
-local function draw_stance_tile(rect, stance, variant)
-	local lg = love.graphics
+local function draw_stance_tile(rect, stance)
 	stance_card_draw.draw_portrait(rect, stance)
-	if variant == "back" then
-		local display_name = (stance and (stance.display_name or stance.name)) or ""
-		ui_fonts.set("body_small")
-		lg.setColor(0.08, 0.08, 0.1, 1)
-		lg.printf(display_name, rect.x + 6, rect.y + 8, rect.w - 12, "center")
-		lg.printf(stance and stance.description or "", rect.x + 8, rect.y + 34, rect.w - 16, "left")
-		ui_fonts.apply_default()
-	end
 	stance_card_draw.draw_frame(rect, stance)
 end
 
@@ -314,7 +306,7 @@ local function draw_stances(box, stance_entries, owner_key)
 		local stance = content.get_stance(stance_id)
 		if i ~= selected_index and i ~= dragging_index then
 			if not ui_animations.stance_shake_replaces_slot(owner_key, i) then
-				draw_stance_tile(cards[i], stance, "front")
+				draw_stance_tile(cards[i], stance)
 			end
 		end
 	end
@@ -324,7 +316,7 @@ local function draw_stances(box, stance_entries, owner_key)
 		local stance = content.get_stance(stance_id)
 		local focus = cards[selected_index]
 		if not ui_animations.stance_shake_replaces_slot(owner_key, selected_index) then
-			draw_stance_tile(focus, stance, "back")
+			draw_stance_tile(focus, stance)
 		end
 	end
 	if dragging_index and cards[dragging_index] and stance_entries[dragging_index] then
@@ -337,11 +329,57 @@ local function draw_stances(box, stance_entries, owner_key)
 			w = cards[dragging_index].w,
 			h = cards[dragging_index].h,
 		}
-		if selected_index == dragging_index then
-			draw_stance_tile(float_rect, stance, "back")
-		else
-			draw_stance_tile(float_rect, stance, "front")
-		end
+		draw_stance_tile(float_rect, stance)
+	end
+end
+
+local function stance_panel_for_owner(game, layout, owner_key)
+	local player = match_state.player_for_color(game, "black")
+	local opp = match_state.player_for_color(game, "white")
+	if owner_key == config.OWNER_BLACK then
+		return layout.player_stances_panel, stances.all_active_stances(player, game, config.OWNER_BLACK)
+	end
+	return layout.opponent_stances_panel, stances.all_active_stances(opp, game, config.OWNER_WHITE)
+end
+
+function M.get_stance_detail_popup_rect(game, layout, stance_ui_state)
+	if not stance_ui_state or not stance_ui_state.index or not stance_ui_state.owner_key then
+		return nil
+	end
+	if stance_ui_state.drag_active and stance_ui_state.moved then
+		return nil
+	end
+	local panel, entries = stance_panel_for_owner(game, layout, stance_ui_state.owner_key)
+	local cards = get_stance_card_rects(panel, entries)
+	local index = stance_ui_state.index
+	local anchor = cards[index]
+	if not anchor then
+		return nil
+	end
+	local entry = entries[index]
+	if not entry then
+		return nil
+	end
+	local stance_id = entry.id or entry
+	local stance = content.get_stance(stance_id)
+	if not stance then
+		return nil
+	end
+	local title, description = stance.display_name or stance.name or "", stance.description or ""
+	return stance_detail_popup.layout(
+		anchor,
+		title,
+		description,
+		love.graphics.getWidth(),
+		love.graphics.getHeight()
+	)
+end
+
+local function draw_stance_detail_popup(game, layout)
+	local stance_ui_state = M._stance_ui
+	local box = M.get_stance_detail_popup_rect(game, layout, stance_ui_state)
+	if box then
+		stance_detail_popup.draw(box)
 	end
 end
 
@@ -1053,6 +1091,7 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, sto
 		end
 	end
 	ui_animations.draw(game, layout)
+	draw_stance_detail_popup(game, layout)
 	lg.setColor(1, 1, 1, 1)
 end
 
