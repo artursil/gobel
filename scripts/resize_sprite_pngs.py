@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Trim transparent margins from PNGs, then scale onto fixed canvases.
+"""Trim transparent margins from PNGs, then resize onto fixed 2.5×3.5 canvases (1024×1435).
 
 - Stances: every ``*.png`` under ``STANCES_DIR`` (skips names ending with ``_r.png``).
 - Cards: only files matching ``background*.png`` under ``CARDS_DIR``.
@@ -8,10 +8,19 @@ Outputs sit next to sources as ``<stem>_r.png`` (originals are not modified).
 
 Requires Pillow: ``pip install pillow``
 
-Trimming uses the alpha channel: pixels with alpha above ``ALPHA_TRIM_THRESHOLD`` are
-considered content. ``EDGE_PADDING_PX`` expands the crop box so anti-aliased rounded
-corners are not clipped; uniform scale + centered paste on a transparent WxH canvas
-preserves aspect ratio and keeps outer corners transparent when aspect differs from the target.
+Edge trim (before resize), using alpha > ``ALPHA_TRIM_THRESHOLD`` as opaque:
+
+- **Left**: in the left half of the width, each row is scanned left→right; the
+  leftmost first-opaque column among rows is the crop line (everything left is
+  removed on all rows).
+- **Right**: in the right half, each row is scanned right→left; the rightmost
+  first-opaque column among rows is the crop line.
+- **Top**: in the top half of the height, each column is scanned top→bottom; the
+  topmost first-opaque row among columns is the crop line.
+- **Bottom**: in the bottom half, each column is scanned bottom→top; the
+  bottommost first-opaque row among columns is the crop line.
+
+The trimmed image is then scaled to the target width and height.
 """
 
 from __future__ import annotations
@@ -21,21 +30,16 @@ from pathlib import Path
 
 from PIL import Image
 
-# --- output canvas sizes (edit these) ---
 STANCE_WIDTH = 1024
 STANCE_HEIGHT = 1435
 CARD_WIDTH = 1024
 CARD_HEIGHT = 1435
 
-# --- layout relative to this file ---
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STANCES_DIR = REPO_ROOT / "sprites" / "stances"
 CARDS_DIR = REPO_ROOT / "sprites" / "cards"
 
-# --- trim: treat alpha <= threshold as empty (0 = only fully transparent) ---
 ALPHA_TRIM_THRESHOLD = 8
-# --- extra pixels around tight bbox (helps rounded corners / AA) ---
-EDGE_PADDING_PX = 2
 
 
 def _repo_relative(path: Path) -> str:
@@ -45,73 +49,78 @@ def _repo_relative(path: Path) -> str:
         return str(path)
 
 
-def _alpha_bbox_rgba(im: Image.Image) -> tuple[int, int, int, int] | None:
-    """Bounding box of pixels with alpha > ALPHA_TRIM_THRESHOLD."""
-    if im.mode != "RGBA":
-        im = im.convert("RGBA")
-    alpha = im.split()[3]
-    if ALPHA_TRIM_THRESHOLD <= 0:
-        bbox = alpha.getbbox()
-        return bbox
-    # Build mask: content where alpha > threshold
-    mask = alpha.point(lambda p: 255 if p > ALPHA_TRIM_THRESHOLD else 0)
-    return mask.getbbox()
+def _is_opaque(alpha: int) -> bool:
+    return alpha > ALPHA_TRIM_THRESHOLD
 
 
-def _expand_bbox(
-    bbox: tuple[int, int, int, int],
-    width: int,
-    height: int,
-    pad: int,
-) -> tuple[int, int, int, int]:
-    l, t, r, b = bbox
-    l = max(0, l - pad)
-    t = max(0, t - pad)
-    r = min(width, r + pad)
-    b = min(height, b + pad)
-    return l, t, r, b
-
-
-def _trim_and_fit_canvas(src: Image.Image, out_w: int, out_h: int) -> Image.Image:
-    """Crop empty transparency, then uniformly scale to fit inside out_w x out_h, centered on RGBA canvas."""
-    rgba = src.convert("RGBA")
-    bbox = _alpha_bbox_rgba(rgba)
-    if bbox is None:
-        raise ValueError("image has no visible pixels (fully transparent)")
+def _trim_edges(im: Image.Image) -> Image.Image:
+    """Trim transparent margins using half-image scans from each edge."""
+    rgba = im.convert("RGBA")
     w, h = rgba.size
-    l, t, r, b = _expand_bbox(bbox, w, h, EDGE_PADDING_PX)
-    cropped = rgba.crop((l, t, r, b))
-    cw, ch = cropped.size
-    if cw <= 0 or ch <= 0:
-        raise ValueError("degenerate crop")
+    if w <= 0 or h <= 0:
+        raise ValueError("empty image")
+    px = rgba.load()
+    mid_x = w // 2
+    mid_y = h // 2
 
-    scale = min(out_w / cw, out_h / ch)
-    nw = max(1, int(round(cw * scale)))
-    nh = max(1, int(round(ch * scale)))
-    resized = cropped.resize((nw, nh), Image.Resampling.LANCZOS)
+    crop_left = w
+    for y in range(h):
+        for x in range(mid_x):
+            if _is_opaque(px[x, y][3]):
+                crop_left = min(crop_left, x)
+                break
+    if crop_left == w:
+        crop_left = 0
 
-    canvas = Image.new("RGBA", (out_w, out_h), (0, 0, 0, 0))
-    x = (out_w - nw) // 2
-    y = (out_h - nh) // 2
-    canvas.paste(resized, (x, y), resized)
-    return canvas
+    crop_right = 0
+    for y in range(h):
+        for x in range(w - 1, mid_x - 1, -1):
+            if _is_opaque(px[x, y][3]):
+                crop_right = max(crop_right, x + 1)
+                break
+    if crop_right == 0:
+        crop_right = w
+
+    crop_top = h
+    for x in range(w):
+        for y in range(mid_y):
+            if _is_opaque(px[x, y][3]):
+                crop_top = min(crop_top, y)
+                break
+    if crop_top == h:
+        crop_top = 0
+
+    crop_bottom = 0
+    for x in range(w):
+        for y in range(h - 1, mid_y - 1, -1):
+            if _is_opaque(px[x, y][3]):
+                crop_bottom = max(crop_bottom, y + 1)
+                break
+    if crop_bottom == 0:
+        crop_bottom = h
+
+    if crop_right <= crop_left or crop_bottom <= crop_top:
+        raise ValueError("no visible pixels after edge trim")
+    return rgba.crop((crop_left, crop_top, crop_right, crop_bottom))
+
+
+def _resize_to_canvas(src: Image.Image, out_w: int, out_h: int) -> Image.Image:
+    trimmed = _trim_edges(src)
+    return trimmed.resize((out_w, out_h), Image.Resampling.LANCZOS)
 
 
 def _output_path(src: Path) -> Path:
     return src.with_name(f"{src.stem}_r{src.suffix}")
 
 
-def _process_one(src: Path, out_w: int, out_h: int, dry_run: bool) -> bool:
+def _process_one(src: Path, out_w: int, out_h: int) -> bool:
     out_path = _output_path(src)
     try:
         with Image.open(src) as im:
-            result = _trim_and_fit_canvas(im, out_w, out_h)
+            result = _resize_to_canvas(im, out_w, out_h)
     except Exception as e:
         print(f"SKIP {_repo_relative(src)}: {e}", file=sys.stderr)
         return False
-    if dry_run:
-        print(f"DRY-RUN would write {_repo_relative(out_path)}")
-        return True
     result.save(out_path, format="PNG", optimize=True)
     print(f"OK {_repo_relative(src)} -> {_repo_relative(out_path)}")
     return True
@@ -124,24 +133,24 @@ def _iter_pngs(directory: Path) -> list[Path]:
     return [p for p in paths if not p.stem.endswith("_r")]
 
 
-def process_stances(dry_run: bool) -> tuple[int, int]:
+def process_stances() -> tuple[int, int]:
     ok = skipped = 0
     for src in _iter_pngs(STANCES_DIR):
-        if _process_one(src, STANCE_WIDTH, STANCE_HEIGHT, dry_run):
+        if _process_one(src, STANCE_WIDTH, STANCE_HEIGHT):
             ok += 1
         else:
             skipped += 1
     return ok, skipped
 
 
-def process_card_backgrounds(dry_run: bool) -> tuple[int, int]:
+def process_card_backgrounds() -> tuple[int, int]:
     ok = skipped = 0
     if not CARDS_DIR.is_dir():
         return 0, 0
     for src in sorted(CARDS_DIR.glob("background*.png")):
         if src.stem.endswith("_r"):
             continue
-        if _process_one(src, CARD_WIDTH, CARD_HEIGHT, dry_run):
+        if _process_one(src, CARD_WIDTH, CARD_HEIGHT):
             ok += 1
         else:
             skipped += 1
@@ -149,9 +158,8 @@ def process_card_backgrounds(dry_run: bool) -> tuple[int, int]:
 
 
 def main() -> int:
-    dry_run = "--dry-run" in sys.argv
-    s_ok, s_bad = process_stances(dry_run)
-    c_ok, c_bad = process_card_backgrounds(dry_run)
+    s_ok, s_bad = process_stances()
+    c_ok, c_bad = process_card_backgrounds()
     print(
         f"Done. stances: {s_ok} ok, {s_bad} skipped | "
         f"card backgrounds: {c_ok} ok, {c_bad} skipped"
