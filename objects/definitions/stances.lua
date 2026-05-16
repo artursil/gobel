@@ -120,6 +120,12 @@ local M = {
 		name = "Persistent Flux",
 		display_name = "Persistent Flux",
 		description = "Run-persistent mult: +3 on special stone, -3 on wall stone.",
+		description_status = {
+			kind = "run_counter",
+			counter_key = "persistent_flux_mult",
+			label = "Currently",
+			signed = true,
+		},
 		rarity = "rare",
 		probability = 0.4,
 		cost = 0,

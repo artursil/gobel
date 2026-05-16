@@ -365,11 +365,11 @@ function M.get_stance_detail_popup_rect(game, layout, stance_ui_state)
 	if not stance then
 		return nil
 	end
-	local title, description = stance.display_name or stance.name or "", stance.description or ""
-	return stance_detail_popup.layout(
+	return stance_detail_popup.layout_for_def(
 		anchor,
-		title,
-		description,
+		stance,
+		game,
+		stance_ui_state.owner_key,
 		love.graphics.getWidth(),
 		love.graphics.getHeight()
 	)
