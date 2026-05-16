@@ -13,7 +13,7 @@
 
 local function V(overrides)
 	local v = {
-		background = "sprites/cards/background_1.png",
+		background = "sprites/cards/background_1_r.png",
 		graphic = "sprites/cards/graphic_default.png",
 		border_color = "#E6CDA4",
 		title_box_color = "#FFFFFF",

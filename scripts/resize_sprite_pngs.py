@@ -22,10 +22,10 @@ from pathlib import Path
 from PIL import Image
 
 # --- output canvas sizes (edit these) ---
-STANCE_WIDTH = 512
-STANCE_HEIGHT = 704
-CARD_WIDTH = 512
-CARD_HEIGHT = 704
+STANCE_WIDTH = 1024
+STANCE_HEIGHT = 1435
+CARD_WIDTH = 1024
+CARD_HEIGHT = 1435
 
 # --- layout relative to this file ---
 REPO_ROOT = Path(__file__).resolve().parent.parent

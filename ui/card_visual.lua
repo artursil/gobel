@@ -5,7 +5,7 @@ local M = {}
 
 --- @type table
 M.defaults = {
-	background = "sprites/cards/background_test2.png",
+	background = "sprites/cards/background_1_r.png",
 	graphic = "sprites/cards/graphic_default.png",
 	border_color = "#E6CDA4",
 	title_box_color = "#FFFFFF",

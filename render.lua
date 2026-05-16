@@ -7,7 +7,10 @@ local messages = require("messages")
 local stances = require("stances")
 local pouch = require("pouch")
 local ui_fonts = require("ui.fonts")
+local card_geometry = require("ui.card_geometry")
+local card_layout = require("ui.card_layout")
 local card_visual = require("ui.card_visual")
+local sprites = require("ui.sprites")
 local stance_card_draw = require("ui.stance_card_draw")
 local ui_animations = require("ui.animations")
 local score_display = require("ui.score_display")
@@ -17,7 +20,6 @@ local resolver = require("resolver")
 local M = {}
 local SCORE_ANIM_BASE_DURATION = 0.45
 local sprite_cache = {}
-local image_path_cache = {}
 M._score_anim = {
 	queue = {},
 	current = nil,
@@ -57,17 +59,6 @@ local function get_ui_sprite(name)
 	local ok, image = pcall(love.graphics.newImage, "sprites/" .. name .. ".png")
 	sprite_cache[name] = ok and image or false
 	return sprite_cache[name]
-end
-
---- @param path string
---- @return love.graphics.Image|false|nil
-local function get_image_at_path(path)
-	if image_path_cache[path] ~= nil then
-		return image_path_cache[path]
-	end
-	local ok, image = pcall(love.graphics.newImage, path)
-	image_path_cache[path] = ok and image or false
-	return image_path_cache[path]
 end
 
 local function draw_icon_or_fallback(name, rect)
@@ -145,7 +136,7 @@ local function draw_stone_chip(stone_id, rect, owner_side, highlighted)
 		end
 		sprite_path = stone.visual.sprite
 	end
-	local img = sprite_path and get_image_at_path(sprite_path)
+	local img = sprite_path and sprites.get_image(sprite_path)
 	local rr = math.min(rect.w, rect.h) * 0.42
 	if img and img ~= false then
 		lg.setColor(tint[1], tint[2], tint[3], 1)
@@ -269,7 +260,7 @@ local function get_stance_card_rects(box, stance_entries)
 	local title_h = 28
 	local card_w = math.floor((box.w - pad * 2 - gap_x) / cols)
 	card_w = math.max(72, card_w)
-	local card_h = math.max(82, math.floor(card_w * 1.4))
+	local card_h = math.ceil(card_geometry.height_for_width(card_w))
 	local rows = math.ceil(count / cols)
 	local usable_h = math.max(1, box.h - title_h - pad)
 	local total_h = rows * card_h + math.max(0, rows - 1) * gap_y
@@ -518,74 +509,73 @@ local function draw_selector(game, layout, popup_state)
 	end
 end
 
-local function draw_card_in_rect(slot, card, full_front, can_afford)
+local function draw_energy_badge(lg, x0, y0, regions, cost, circle_color)
+	local r = regions.energy_r
+	local cx = x0 + regions.energy_cx
+	local cy = y0 + regions.energy_cy
+	local cr, cg, cb, _ = card_visual.rgba_from_hex(circle_color)
+	lg.setColor(cr, cg, cb, 0.95)
+	lg.circle("fill", cx, cy, r)
+	local text = tostring(cost)
+	local font_px = math.max(12, math.floor(r * 1.35))
+	local font = ui_fonts.get_pixel_operator(font_px)
+	lg.setColor(0.96, 0.94, 0.9, 1)
+	if font and font.getWidth and font.getHeight then
+		lg.setFont(font)
+		local tw = font:getWidth(text)
+		local th = font:getHeight()
+		lg.print(text, cx - tw * 0.5, cy - th * 0.5)
+	else
+		ui_fonts.set("body_small")
+		lg.printf(text, cx - r, cy - r + 1, r * 2, "center")
+	end
+end
+
+local function draw_card_in_rect(slot, card, can_afford)
 	local lg = love.graphics
-	local w, h = slot.w, slot.h
+	local slot_bounds = { x = -slot.w * 0.5, y = -slot.h * 0.5, w = slot.w, h = slot.h }
+	local inner = card_geometry.aspect_rect_in_bounds(slot_bounds)
+	local x0, y0, w, h = inner.x, inner.y, inner.w, inner.h
 	local vis = card_visual.merged(card)
-	local hw, hh = w * 0.5, h * 0.5
-	local x0, y0 = -hw, -hh
-	local bg = get_image_at_path(vis.background)
+	local regions = card_layout.face_regions(w, h)
+	local bg = sprites.get_image(vis.background)
 	if can_afford then
 		lg.setColor(1, 1, 1, 1)
 	else
 		lg.setColor(0.62, 0.62, 0.66, 1)
 	end
 	if bg and bg ~= false then
-		lg.draw(bg, x0, y0, 0, w / bg:getWidth(), h / bg:getHeight())
+		local dx, dy, _, _, sx, sy = card_geometry.image_draw_dest_stretch(slot_bounds, bg:getWidth(), bg:getHeight())
+		lg.draw(bg, dx, dy, 0, sx, sy)
 	else
 		lg.setColor(0.55, 0.52, 0.48, 1)
 		lg.rectangle("fill", x0, y0, w, h, 8, 8)
 	end
 	lg.setColor(1, 1, 1, 1)
-	local br, bgc, bb, _ba = card_visual.rgba_from_hex(vis.border_color)
-	lg.setColor(br, bgc, bb, 1)
-	lg.setLineWidth(2)
-	lg.rectangle("line", x0 + 1, y0 + 1, w - 2, h - 2, 8, 8)
-	lg.setLineWidth(1)
-	local face_pad = 8
-	local face_h = full_front and math.floor(h * 0.46) or math.floor(h * 0.52)
-	local gfx = get_image_at_path(vis.graphic)
-	local gfx_y = y0 + face_pad
-	local gfx_h = face_h
-	local gfx_w = w - face_pad * 2
-	local gfx_x = x0 + face_pad
+	draw_energy_badge(lg, x0, y0, regions, card.energy_cost, vis.circle_color)
+	local gfx = sprites.get_image(vis.graphic)
 	if gfx and gfx ~= false then
 		lg.setColor(1, 1, 1, 1)
-		lg.draw(gfx, gfx_x, gfx_y, 0, gfx_w / gfx:getWidth(), gfx_h / gfx:getHeight())
+		local art_bounds = {
+			x = x0 + regions.art_x,
+			y = y0 + regions.art_y,
+			w = regions.art_w,
+			h = regions.art_h,
+		}
+		local gdx, gdy, _, _, gsx, gsy = card_geometry.image_draw_dest(art_bounds, gfx:getWidth(), gfx:getHeight())
+		lg.draw(gfx, gdx, gdy, 0, gsx, gsy)
 	end
-	local cr, cg2, cb2, _c2 = card_visual.rgba_from_hex(vis.circle_color)
-	lg.setColor(cr, cg2, cb2, 0.95)
-	lg.circle("fill", x0 + w - 18, y0 + 18, 7)
-	lg.setColor(0, 0, 0, 1)
-	lg.circle("line", x0 + w - 18, y0 + 18, 7)
+	local tr, tg3, tb3, _t3 = card_visual.rgba_from_hex(vis.title_box_color)
+	lg.setColor(tr, tg3, tb3, 1)
+	lg.rectangle("fill", x0 + regions.title_x, y0 + regions.title_y, regions.title_w, regions.title_h, 4, 4)
 	ui_fonts.set("body_small")
-	lg.setColor(0.12, 0.12, 0.14, 1)
-	lg.printf(tostring(card.energy_cost), x0 + 4, y0 + 2, 22, "center")
-	if full_front then
-		local title_h = 22
-		local desc_h = math.max(24, math.floor(h * 0.22))
-		local desc_y = y0 + h - desc_h - 6
-		local title_y = desc_y - title_h - 4
-		local tr, tg3, tb3, _t3 = card_visual.rgba_from_hex(vis.title_box_color)
-		lg.setColor(tr, tg3, tb3, 1)
-		lg.rectangle("fill", x0 + 6, title_y, w - 12, title_h, 4, 4)
-		lg.setColor(0, 0, 0, 1)
-		lg.rectangle("line", x0 + 6, title_y, w - 12, title_h, 4, 4)
-		ui_fonts.set("body_small")
-		lg.setColor(0.08, 0.08, 0.1, 1)
-		lg.printf(card.name or card.display_name or "", x0 + 8, title_y + 3, w - 16, "center")
-		local dr, dg4, db4, _d4 = card_visual.rgba_from_hex(vis.description_box_color)
-		lg.setColor(dr, dg4, db4, 1)
-		lg.rectangle("fill", x0 + 6, desc_y, w - 12, desc_h, 4, 4)
-		lg.setColor(0, 0, 0, 1)
-		lg.rectangle("line", x0 + 6, desc_y, w - 12, desc_h, 4, 4)
-		ui_fonts.set("body_small")
-		lg.printf(card.description or "", x0 + 10, desc_y + 4, w - 20, "left")
-	else
-		ui_fonts.set("body_small")
-		lg.setColor(0.1, 0.1, 0.12, 1)
-		lg.printf(card.name or card.display_name or "", x0 + face_pad, gfx_y + gfx_h * 0.5 - 8, w - face_pad * 2, "center")
-	end
+	lg.setColor(0.08, 0.08, 0.1, 1)
+	lg.printf(card.name or card.display_name or "", x0 + regions.title_x + 2, y0 + regions.title_y + 2, regions.title_w - 4, "center")
+	local dr, dg4, db4, _d4 = card_visual.rgba_from_hex(vis.description_box_color)
+	lg.setColor(dr, dg4, db4, 1)
+	lg.rectangle("fill", x0 + regions.desc_x, y0 + regions.desc_y, regions.desc_w, regions.desc_h, 4, 4)
+	ui_fonts.set("body_small")
+	lg.printf(card.description or "", x0 + regions.desc_x + 4, y0 + regions.desc_y + 3, regions.desc_w - 8, "left")
 	ui_fonts.apply_default()
 end
 
@@ -598,8 +588,11 @@ local function draw_hand(game, layout)
 	if M._card_ui and M._card_ui.drag_active and M._card_ui.moved then
 		dragging_index = M._card_ui.drag_index
 	end
+	local panel = layout.hand_panel
+	local protrude = layout.hand_card_protrude or 44
+	lg.setScissor(panel.x, panel.y, panel.w, panel.h + protrude)
 	local slots = layout_mod.hand_fan_slots(layout, #hand)
-	local function draw_card(slot, card_id, full_front)
+	local function draw_card(slot, card_id)
 		local card = content.get_card(card_id)
 		if not card then
 			return
@@ -611,24 +604,32 @@ local function draw_hand(game, layout)
 		lg.translate(cx, cy)
 		lg.rotate(slot.angle)
 		lg.setColor(1, 1, 1, 1)
-		draw_card_in_rect(slot, card, full_front, can_afford)
+		draw_card_in_rect(slot, card, can_afford)
 		lg.pop()
 	end
 	for i = 1, #slots do
 		if i ~= selected and i ~= dragging_index then
-			draw_card(slots[i], hand[i], false)
+			draw_card(slots[i], hand[i])
 		end
 	end
+	lg.setScissor()
 	if selected and slots[selected] and hand[selected] and selected ~= dragging_index then
 		local slot = slots[selected]
+		local focus_scale = 1.32
+		local focus_h = math.min(math.floor(slot.h * focus_scale), panel.y + panel.h + protrude - 24)
+		local focus_w = card_geometry.width_for_height(focus_h)
+		if focus_w > panel.w - 20 then
+			focus_w = panel.w - 20
+			focus_h = card_geometry.height_for_width(focus_w)
+		end
 		local focus = {
-			x = slot.x,
-			y = layout.hand_panel.y + 8,
-			w = slot.w,
-			h = math.min(slot.h, layout.hand_panel.h - 16),
+			x = slot.x + (slot.w - focus_w) * 0.5,
+			y = math.max(12, panel.y + panel.h + protrude - focus_h - 56),
+			w = focus_w,
+			h = focus_h,
 			angle = 0,
 		}
-		draw_card(focus, hand[selected], true)
+		draw_card(focus, hand[selected])
 		local use_button = layout_mod.card_use_button_rect(layout)
 		lg.setColor(0.26, 0.56, 0.32, 0.92)
 		lg.rectangle("fill", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
@@ -654,7 +655,7 @@ local function draw_hand(game, layout)
 			h = slot.h,
 			angle = 0,
 		}
-		draw_card(floating, hand[dragging_index], true)
+		draw_card(floating, hand[dragging_index])
 		local use_button = layout_mod.card_use_button_rect(layout)
 		lg.setColor(0.26, 0.56, 0.32, 0.92)
 		lg.rectangle("fill", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)

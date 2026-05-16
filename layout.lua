@@ -1,5 +1,6 @@
 --- Maps between window pixels and board + panelized UI interactions.
 
+local card_geometry = require("ui.card_geometry")
 local config = require("config")
 
 local M = {}
@@ -40,8 +41,9 @@ function M.from_window(window_w, window_h)
 	local selector_h = math.max(56, math.floor(bottom_h * 0.28))
 	local hand_y = bottom_y + selector_h + gap
 	local hand_h = bottom_h - selector_h - gap
-	local hand_w = math.floor(center_w * 0.72)
-	local hand_x = center_x + math.floor((center_w - hand_w) * 0.5)
+	local hand_w = center_w
+	local hand_x = center_x
+	local hand_card_protrude = math.max(44, math.floor(bottom_h * 0.24))
 	return {
 		cell = cell,
 		ox = ox,
@@ -86,6 +88,8 @@ function M.from_window(window_w, window_h)
 		},
 		stone_chip_gap = 8,
 		hand_card_gap = 8,
+		hand_card_protrude = hand_card_protrude,
+		center_column = { x = center_x, y = top_y, w = center_w, h = window_h - outer - top_y },
 	}
 end
 
@@ -175,20 +179,42 @@ function M.hand_index_at(layout, px, py, card_count)
 end
 
 function M.hand_fan_slots(layout, card_count)
+	if card_count == 0 then
+		return {}
+	end
 	local panel = layout.hand_panel
-	local slots = math.max(card_count, 1)
-	local card_w = math.min(138, math.max(96, math.floor(panel.w * 0.28)))
-	local card_h = math.min(188, math.max(142, math.floor(panel.h * 1.3)))
-	local overlap = math.floor(card_w * 0.42)
-	local step = card_w - overlap
-	local total_w = card_w + (slots - 1) * step
-	local x0 = panel.x + math.floor((panel.w - total_w) * 0.5)
-	local y = panel.y + panel.h - math.floor(card_h * 0.64)
-	local max_angle = 0.28
-	local mid = (slots + 1) * 0.5
+	local pad_x = 10
+	local protrude = layout.hand_card_protrude or 44
+	local usable_w = panel.w - pad_x * 2
+	local card_bottom = panel.y + panel.h + protrude
+	local top_y = panel.y + 4
+	local max_h = card_bottom - top_y
+	local card_w, card_h = card_geometry.fit_inside(math.min(usable_w, 148), max_h)
+	local min_strip = 8
+	local step = card_w
+	if card_count > 1 then
+		step = math.max(min_strip, math.floor(card_w * 0.74))
+		local total_needed = card_w + (card_count - 1) * step
+		if total_needed > usable_w then
+			step = math.max(2, math.floor((usable_w - card_w) / (card_count - 1)))
+		end
+		if card_w + (card_count - 1) * step > usable_w then
+			card_w = math.max(32, usable_w - (card_count - 1) * min_strip)
+			card_h = card_geometry.height_for_width(card_w)
+			step = math.max(2, math.floor((usable_w - card_w) / (card_count - 1)))
+		end
+	end
+	local total_w = card_count == 1 and card_w or (card_w + (card_count - 1) * step)
+	local x0 = panel.x + pad_x + math.floor((usable_w - total_w) * 0.5)
+	local min_x = panel.x + pad_x
+	local max_x = panel.x + panel.w - pad_x - total_w
+	x0 = math.max(min_x, math.min(max_x, x0))
+	local y = card_bottom - card_h
+	local max_angle = math.min(0.26, 0.4 / math.max(1, card_count - 1))
+	local mid = (card_count + 1) * 0.5
 	local out = {}
 	for i = 1, card_count do
-		local offset = (slots == 1) and 0 or ((i - mid) / (slots - 1))
+		local offset = (card_count == 1) and 0 or ((i - mid) / (card_count - 1))
 		out[i] = {
 			x = x0 + (i - 1) * step,
 			y = y,

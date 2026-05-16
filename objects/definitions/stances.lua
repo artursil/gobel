@@ -7,7 +7,7 @@
 --- 4. If the stance chains copy-right (Echo), ensure ``objects.effects_helpers`` skips the same ``id`` when scanning.
 --- @module objects.definitions.stances
 
-local FRAME = "sprites/stances/frame_1.png"
+local FRAME = "sprites/stances/frame_1_r.png"
 
 local M = {
 	stance_point = {
@@ -19,7 +19,7 @@ local M = {
 		rarity = "common",
 		probability = 1.0,
 		cost = 0,
-		visual = { graphic = "sprites/background_1.png", frame = FRAME },
+		visual = { graphic = "sprites/cards/background_1_r.png", frame = FRAME },
 		effects = {
 			{ effect_name = "add_points", phase = "points", value = 1, priority = 20 },
 		},
@@ -33,7 +33,7 @@ local M = {
 		rarity = "common",
 		probability = 1.0,
 		cost = 0,
-		visual = { graphic = "sprites/background_1.png", frame = FRAME },
+		visual = { graphic = "sprites/cards/background_1_r.png", frame = FRAME },
 		effects = {
 			{ effect_name = "add_mult", phase = "mult", value = 1, priority = 20 },
 		},
@@ -47,7 +47,7 @@ local M = {
 		rarity = "uncommon",
 		probability = 0.8,
 		cost = 0,
-		visual = { graphic = "sprites/background_1.png", frame = FRAME },
+		visual = { graphic = "sprites/cards/background_1_r.png", frame = FRAME },
 		effects = {
 			{ effect_name = "add_points", phase = "points", value = 2, priority = 20 },
 		},
@@ -61,7 +61,7 @@ local M = {
 		rarity = "rare",
 		probability = 0.6,
 		cost = 0,
-		visual = { graphic = "sprites/stances/gluttony.png", frame = FRAME },
+		visual = { graphic = "sprites/stances/gluttony_r.png", frame = FRAME },
 		effects = {
 			{
 				effect_name = "count_and_multiply_x_mult",
@@ -83,7 +83,7 @@ local M = {
 		rarity = "rare",
 		probability = 0,
 		cost = 0,
-		visual = { graphic = "sprites/background_1.png", frame = FRAME },
+		visual = { graphic = "sprites/cards/background_1_r.png", frame = FRAME },
 		effects = {
 			{
 				effect_name = "add_points",
@@ -106,7 +106,7 @@ local M = {
 		rarity = "rare",
 		probability = 0.4,
 		cost = 0,
-		visual = { graphic = "sprites/stances/echo.png", frame = FRAME },
+		visual = { graphic = "sprites/stances/echo_r.png", frame = FRAME },
 		effects = {
 			{ effect_name = "copy_right_effect", phase = "distance", priority = 5 },
 			{ effect_name = "copy_right_effect", phase = "territory", priority = 5 },
@@ -123,7 +123,7 @@ local M = {
 		rarity = "rare",
 		probability = 0.4,
 		cost = 0,
-		visual = { graphic = "sprites/background_2.png", frame = FRAME },
+		visual = { graphic = "sprites/cards/background_test2_r.png", frame = FRAME },
 		effects = {
 			{
 				effect_name = "adjust_run_persistent_counter",
