@@ -10,6 +10,7 @@
 --- | weak_boundary_cells | -0.3 | fragile frontier count |
 --- @module ai.board_analysis.evaluate
 
+local ai_scoring = require("ai.scoring")
 local board = require("board")
 local config = require("config")
 local features = require("ai.board_analysis.features")
@@ -57,10 +58,11 @@ end
 
 --- @param ai_score number
 --- @param opp_score number
+--- @param decision_mode "absolute"|"margin"|nil
 --- @return number normalized in [0, 1] for backprop
-function M.normalize_result(ai_score, opp_score)
-	local margin = ai_score - opp_score
-	return math.max(0, math.min(1, 0.5 + margin / 40))
+function M.normalize_result(ai_score, opp_score, decision_mode)
+	local value = ai_scoring.combine(ai_score, opp_score, decision_mode or "margin")
+	return math.max(0, math.min(1, 0.5 + value / 40))
 end
 
 --- Cheap static eval for MCTS rollouts (no ``compute_from_board``).
@@ -68,8 +70,9 @@ end
 --- @param stone_color integer
 --- @param owner_key "B"|"W"
 --- @param walls table|nil
+--- @param decision_mode "absolute"|"margin"|nil
 --- @return number
-function M.fast_evaluate_position(b, stone_color, owner_key, walls)
+function M.fast_evaluate_position(b, stone_color, owner_key, walls, decision_mode)
 	local n = config.BOARD_SIZE
 	local opp_color = stone_color == config.STONE_BLACK and config.STONE_WHITE or config.STONE_BLACK
 	local me_stones = 0
@@ -101,7 +104,11 @@ function M.fast_evaluate_position(b, stone_color, owner_key, walls)
 		end
 	end
 	local w = M.FAST_WEIGHTS
-	return w.stone_diff * (me_stones - opp_stones) + w.largest_enclosure * largest + w.wall_count * wall_count
+	local my_part = w.largest_enclosure * largest + w.wall_count * wall_count
+	if decision_mode == "absolute" then
+		return my_part + w.stone_diff * me_stones
+	end
+	return my_part + w.stone_diff * (me_stones - opp_stones)
 end
 
 return M

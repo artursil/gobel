@@ -17,6 +17,10 @@
 ---
 --- **planner.enabled**: MAIN uses turn script planner vs stone-only.
 --- **planner.max_scripts** (1–32): cap enumerated MAIN scripts per plan build.
+---
+--- **scoring.decision_mode**:
+--- - ``"absolute"``: maximize own-side heuristic only (placement deltas, eval for self).
+--- - ``"margin"``: maximize ``my_score - opp_score`` (same heuristics from each side).
 --- @module ai.config
 
 local M = {}
@@ -49,6 +53,10 @@ M.mcts = {
 M.planner = {
 	enabled = true,
 	max_scripts = 12,
+}
+
+M.scoring = {
+	decision_mode = "absolute",
 }
 
 M.profiles = {
@@ -84,6 +92,9 @@ M.profiles = {
 		planner = {
 			enabled = true,
 			max_scripts = 12,
+		},
+		scoring = {
+			decision_mode = "margin",
 		},
 	},
 	hard = {
@@ -139,6 +150,7 @@ local function resolved_from_profile(profile)
 		placement = merge_section(shallow_copy_table(M.placement), profile.placement),
 		mcts = merge_section(shallow_copy_table(M.mcts), profile.mcts),
 		planner = merge_section(shallow_copy_table(M.planner), profile.planner),
+		scoring = merge_section(shallow_copy_table(M.scoring), profile.scoring),
 	}
 end
 
@@ -154,6 +166,8 @@ function M.apply_profile(game, profile_name)
 	merge_section(game.ai_mcts, profile.mcts)
 	game.ai_placement = shallow_copy_table(M.placement)
 	merge_section(game.ai_placement, profile.placement)
+	game.ai_scoring = shallow_copy_table(M.scoring)
+	merge_section(game.ai_scoring, profile.scoring)
 end
 
 --- @param game table|nil
@@ -174,6 +188,9 @@ function M.for_game(game)
 		end
 		if game.ai_planner_max_scripts then
 			resolved.planner.max_scripts = game.ai_planner_max_scripts
+		end
+		if game.ai_scoring then
+			merge_section(resolved.scoring, game.ai_scoring)
 		end
 	end
 	return resolved

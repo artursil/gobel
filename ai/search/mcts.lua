@@ -4,6 +4,7 @@
 --- rollout (opponent greedy / AI sampled) → leaf ``evaluate_position`` → backprop value in [0,1].
 --- @module ai.search.mcts
 
+local ai_scoring = require("ai.scoring")
 local evaluate = require("ai.board_analysis.evaluate")
 local enclosure = require("single_game.resolver.enclosure")
 local features = require("ai.board_analysis.features")
@@ -175,9 +176,10 @@ local function rollout(view, board, ko, ai_actor, ai_stone, opts)
 	local opp_owner = match_view.for_actor(game, opp_actor):owner_key()
 	local ai_color = view:stone_color()
 	local opp_color = match_view.for_actor(game, opp_actor):stone_color()
-	local ai_eval = evaluate.fast_evaluate_position(board, ai_color, ai_owner, walls)
-	local opp_eval = evaluate.fast_evaluate_position(board, opp_color, opp_owner, walls)
-	return evaluate.normalize_result(ai_eval, opp_eval)
+	local decision_mode = ai_scoring.decision_mode(game)
+	local ai_eval = evaluate.fast_evaluate_position(board, ai_color, ai_owner, walls, decision_mode)
+	local opp_eval = evaluate.fast_evaluate_position(board, opp_color, opp_owner, walls, decision_mode)
+	return evaluate.normalize_result(ai_eval, opp_eval, decision_mode)
 end
 
 --- @param children table[]

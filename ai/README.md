@@ -16,6 +16,7 @@ ai_config.apply_profile(g, "hard")
 -- or per-match overrides after game.new:
 g.ai_placement = { prescore_enabled = false, full_eval_top_n = 12 }
 g.ai_mcts = { enabled = false }
+g.ai_scoring = { decision_mode = "margin" }
 ```
 
 ### Keys (`ai.config`)
@@ -34,6 +35,7 @@ g.ai_mcts = { enabled = false }
 | `mcts` | `max_decision_ms` | 0 (normal) | Time cap; hard uses 100 |
 | `planner` | `enabled` | true | MAIN script planner |
 | `planner` | `max_scripts` | 12 | Cap MAIN scripts per plan |
+| `scoring` | `decision_mode` | `"absolute"` | `"absolute"` = max own heuristic; `"margin"` = my − opp (normal profile uses `"margin"`) |
 
 ### Profiles
 
