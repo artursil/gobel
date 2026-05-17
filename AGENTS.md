@@ -17,7 +17,8 @@ This repo supports a **two-agent workflow** for bot AI work:
 
 Planner knowledge lives in:
 
-- `.cursor/skills/gobel-ai-planner/SKILL.md` — full conversation context and prompt-writing guide
+- **`docs/ai-planner-prompt.md`** — **complete copy-paste prompt** for a new Agent chat (start here)
+- `.cursor/skills/gobel-ai-planner/SKILL.md` — same context as a Cursor skill
 - `.cursor/rules/gobel-ai-planner.mdc` — same role constraints in Cursor rules
 - `docs/ai.md`, `ai/README.md` — canonical architecture (code writer should align with these)
 
