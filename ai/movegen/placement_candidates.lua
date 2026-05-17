@@ -1,6 +1,7 @@
 --- Legal placement move generation and top-K filtering.
 --- @module ai.movegen.placement_candidates
 
+local ai_config = require("ai.config")
 local board = require("board")
 local config = require("config")
 local enclosure = require("single_game.resolver.enclosure")
@@ -9,8 +10,6 @@ local rules = require("rules")
 local territory_analysis = require("ai.board_analysis.territory")
 
 local M = {}
-
-local DEFAULT_K = 81
 
 --- @param moves table[]
 --- @param row integer
@@ -135,7 +134,8 @@ end
 --- @param skip_territory_probe boolean|nil when true, omit ``changes_territory_owner`` filter (faster)
 --- @return table[] moves { row, col }
 function M.top_candidates(view, stone_id, k, territory_before, walls, skip_territory_probe)
-	k = k or DEFAULT_K
+	local placement_cfg = ai_config.for_game(view:raw_game()).placement
+	k = k or placement_cfg.candidate_k
 	local b = view:board()
 	local player = view:stone_color()
 	local ko = view:ko_ban()
@@ -165,6 +165,15 @@ function M.top_candidates(view, stone_id, k, territory_before, walls, skip_terri
 		for i = 1, #legal do
 			filtered[#filtered + 1] = { row = legal[i][1], col = legal[i][2] }
 		end
+	end
+
+	if not placement_cfg.prescore_enabled then
+		local out = {}
+		local n = math.min(k, #filtered)
+		for i = 1, n do
+			out[#out + 1] = { row = filtered[i].row, col = filtered[i].col }
+		end
+		return out
 	end
 
 	local scored = {}

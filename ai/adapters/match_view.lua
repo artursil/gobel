@@ -1,6 +1,7 @@
 --- Read-only facade over match state for AI strategies.
 --- @module ai.adapters.match_view
 
+local ai_config = require("ai.config")
 local config = require("config")
 local match_state = require("match_state")
 
@@ -107,14 +108,19 @@ function MatchView:ai_mcts()
 	return self._game.ai_mcts
 end
 
+--- @return table
+function MatchView:ai_settings()
+	return ai_config.for_game(self._game)
+end
+
 --- @return boolean
 function MatchView:planner_enabled()
-	return self._game.ai_planner_enabled == true
+	return self:ai_settings().planner.enabled
 end
 
 --- @return integer
 function MatchView:planner_max_scripts()
-	return self._game.ai_planner_max_scripts or 12
+	return self:ai_settings().planner.max_scripts
 end
 
 --- @return string|nil

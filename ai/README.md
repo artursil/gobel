@@ -1,63 +1,84 @@
 # AI package
 
-**AI implementation is complete** for the planned bot feature set (MAIN cards/targets/stone + PLACE). Placement and card **strength tuning are deferred**—the bot may play weakly on the board or miss synergies until weights are tuned.
+**AI implementation is complete** for the planned bot feature set (MAIN cards/targets/stone + PLACE). Placement and card **strength tuning are deferred**—edit weights in `ai/config.lua`, not scattered module constants.
 
-See [../docs/ai.md](../docs/ai.md) for architecture, MCTS flow, and placement scoring.
+See [../docs/ai.md](../docs/ai.md) for architecture and MCTS flow.
+
+## Tuning the bot
+
+**Single file:** [`ai/config.lua`](config.lua) — profiles, defaults, and field docs in the module header.
+
+Precedence: `game.ai_placement` / `game.ai_mcts` / `game.ai_planner_*` overrides → `game.ai_difficulty` profile → `M.*` defaults.
+
+```lua
+local ai_config = require("ai.config")
+ai_config.apply_profile(g, "hard")
+-- or per-match overrides after game.new:
+g.ai_placement = { prescore_enabled = false, full_eval_top_n = 12 }
+g.ai_mcts = { enabled = false }
+```
+
+### Keys (`ai.config`)
+
+| Section | Field | Default (normal) | Effect |
+|---------|-------|------------------|--------|
+| `placement` | `candidate_k` | 30 | Max filtered candidates from movegen |
+| `placement` | `full_eval_top_n` | 8 | Max `evaluate_move` calls when list is larger |
+| `placement` | `prescore_enabled` | true | Cheap prescore sort for movegen + placement pool |
+| `placement` | `weights` | see config | `evaluate_move` feature weights |
+| `mcts` | `enabled` | false (normal) | Placement MCTS on/off |
+| `mcts` | `iterations` | 0 (normal) | Root playouts per placement |
+| `mcts` | `max_rollout_depth` | 3 | Rollout plies |
+| `mcts` | `exploration_c` | 1.4 | UCT constant |
+| `mcts` | `fast_rollout` | true | Fast eval in rollouts (no territory assignment) |
+| `mcts` | `max_decision_ms` | 0 (normal) | Time cap; hard uses 100 |
+| `planner` | `enabled` | true | MAIN script planner |
+| `planner` | `max_scripts` | 12 | Cap MAIN scripts per plan |
+
+### Profiles
+
+| Profile | Placement | MCTS |
+|---------|-----------|------|
+| `easy` | k=24, top 6 evals, prescore on | off |
+| `normal` | k=30, top 8 evals, prescore on | off |
+| `hard` | k=30, top 8 evals, prescore on | on, 20 iters, 100ms cap |
+
+PVC `game.new` calls `ai_config.apply_profile(g, "normal")`.
+
+### `prescore_enabled = false`
+
+- **Movegen:** filtered moves in stable legal order, first `candidate_k` (no prescore sort).
+- **Placement:** `evaluate_move` on each candidate up to `full_eval_top_n` (safety cap); no `placement_cheap.top_by_cheap_score`.
+- To full-eval all filtered moves: set `prescore_enabled = false` and `full_eval_top_n >= candidate_k`.
+
+`ai/mcts_config.lua` remains a thin wrapper over `ai.config` for older `require` paths.
 
 ## Phase 3 — full turn pipeline
 
 ```mermaid
 stateDiagram-v2
-  [*] --> MAIN: bot turn, MAIN_PHASE
-  MAIN --> PlanBuild: ai_turn_plan empty
-  PlanBuild --> PopAction: planner.build_plan → game.ai_turn_plan
-  PopAction --> Resolver: pop one action / tick
-  Resolver --> PopAction: more MAIN steps
-  PopAction --> PLACE: finish_main
-  PLACE --> [*]: PLACE_STONE or PASS (plan cleared)
+  [*] --> MAIN: bot MAIN_PHASE
+  MAIN --> Build: plan empty
+  Build --> Pop: planner.build_plan
+  Pop --> Tick: one resolver action
+  Tick --> Pop: more steps
+  Pop --> PLACE: finish_main
+  PLACE --> [*]: PLACE_STONE / PASS
 ```
-
-| Resolver action | When |
-|-----------------|------|
-| `PLAY_CARD` | Planner chose a card script |
-| `SELECT_BOARD_TARGET` | Targeted card (before `PLAY_CARD`) |
-| `SELECT_STONE` | Plan step or stone-only MAIN |
-| `PLACE_STONE` | PLACE phase |
-| `PASS_TURN` | No legal placement |
-
-Plan queue: `game.ai_turn_plan`, built once at MAIN start when empty, one action per `tick_ai`. Cleared after successful `PLACE_STONE` or `PASS_TURN`.
-
-## Tunables
-
-| Field | Effect |
-|-------|--------|
-| `game.ai_planner_enabled` | `true` (PVC default): MAIN uses `ai/turn/planner.lua`. `false`: stone-only MAIN (Phase 1). |
-| `game.ai_planner_max_scripts` | Cap scripts enumerated per plan (default `12`). |
-| `game.ai_strategy` | `"heuristic"` (default) or `"random"`. `"mcts"` aliases heuristic; gates placement MCTS only. |
-| `game.ai_difficulty` | `"easy"` / `"normal"` / `"hard"` → `mcts_config.DIFFICULTY`. |
-| `game.ai_mcts` | Overrides preset. **Normal PVC: MCTS off**; placement = cheap prescore + ≤8 full `evaluate_move`. |
-| `game.ai_mcts.enabled` | `false` → no placement MCTS. |
-| `game.ai_mcts.iterations` | Playout budget when MCTS enabled (`hard` ~20, `max_decision_ms` cap). |
-
-PVC defaults (`game.new`): `ai_planner_enabled = true`, `ai_planner_max_scripts = 12`, `ai_difficulty = "normal"`, MCTS off.
 
 ## Disable features
 
 ```lua
--- No cards in MAIN (stone only)
 g.ai_planner_enabled = false
-
--- No placement MCTS
 g.ai_mcts = { enabled = false, iterations = 0 }
-g.ai_difficulty = "easy"
 ```
 
 ## Latency
 
-- Planner: no `compute_from_board`, no MCTS, no `resolve_round`.
-- PLACE: at most **8** full evals after cheap prescore (`placement.FULL_EVAL_TOP_N`).
-- MCTS rollouts (hard only): fast eval, time-budgeted.
+- Planner: no `compute_from_board`, no `resolve_round`.
+- PLACE (normal): prescore → ≤ `full_eval_top_n` full evals.
+- MCTS (hard): fast eval, `max_decision_ms` budget.
 
 ## Territory debug
 
-`config.TERRITORY_DEBUG = true` re-enables `[Territory]` prints. Default `false`.
+`config.TERRITORY_DEBUG = true` re-enables `[Territory]` prints.

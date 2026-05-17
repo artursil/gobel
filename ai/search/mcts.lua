@@ -8,7 +8,7 @@ local evaluate = require("ai.board_analysis.evaluate")
 local enclosure = require("single_game.resolver.enclosure")
 local features = require("ai.board_analysis.features")
 local match_view = require("ai.adapters.match_view")
-local mcts_config = require("ai.mcts_config")
+local ai_config = require("ai.config")
 local rules = require("rules")
 local snapshot = require("ai.board_analysis.snapshot")
 
@@ -235,9 +235,22 @@ end
 --- @param candidates table[] { row, col }
 --- @param opts table|nil merged ai_mcts + cached walls / territory_before
 --- @return table|nil { row, col }
-function M.choose_placement(view, candidates, opts)
-	opts = mcts_config.resolve(view:raw_game(), opts)
-	if not mcts_config.should_run(view:raw_game(), view:ai_strategy()) then
+function M.choose_placement(view, candidates, call_opts)
+	local merged = ai_config.for_game(view:raw_game()).mcts
+	local opts = {
+		enabled = merged.enabled,
+		iterations = merged.iterations,
+		max_rollout_depth = merged.max_rollout_depth,
+		exploration_c = merged.exploration_c,
+		fast_rollout = merged.fast_rollout,
+		max_decision_ms = merged.max_decision_ms,
+	}
+	if call_opts then
+		for k, v in pairs(call_opts) do
+			opts[k] = v
+		end
+	end
+	if not ai_config.mcts_should_run(view:raw_game(), view:ai_strategy()) then
 		return nil
 	end
 	if not candidates or #candidates == 0 then

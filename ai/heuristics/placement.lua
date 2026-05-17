@@ -1,6 +1,7 @@
 --- Scores a single placement candidate from board + trial features.
 --- @module ai.heuristics.placement
 
+local ai_config = require("ai.config")
 local features = require("ai.board_analysis.features")
 local goals = require("ai.heuristics.goals")
 local placement_cheap = require("ai.heuristics.placement_cheap")
@@ -10,19 +11,7 @@ local rules = require("rules")
 
 local M = {}
 
---- Tune placement behavior here (Phase 1 defaults).
-M.WEIGHTS = {
-	delta_territory_me = 4.0,
-	delta_captures = 12.0,
-	delta_enclosure_inside = 2.5,
-	closes_region = 3.0,
-	frontier = 2.0,
-	contested_pressure = 1.5,
-	weak_boundary_penalty = -1.0,
-	self_fill_penalty = -6.0,
-}
-
-M.FULL_EVAL_TOP_N = 81
+M.WEIGHTS = ai_config.placement.weights
 
 --- @param view table
 --- @param row integer
@@ -99,16 +88,16 @@ end
 --- @param territory_before table|nil
 --- @return table|nil best
 function M.best_candidate(view, candidates, stone_id, base_features, territory_before)
+	local game = view:raw_game()
+	local settings = ai_config.for_game(game)
+	local placement_cfg = settings.placement
 	local mcts = require("ai.search.mcts")
 	local mcts_opts = {
 		territory_before = territory_before,
 		walls = base_features and base_features._walls or nil,
 	}
-	local game = view:raw_game()
-	if game and game.ai_mcts then
-		for k, v in pairs(game.ai_mcts) do
-			mcts_opts[k] = v
-		end
+	for k, v in pairs(settings.mcts) do
+		mcts_opts[k] = v
 	end
 	local mcts_pick = mcts.choose_placement(view, candidates, mcts_opts)
 	if mcts_pick and mcts_pick.row and mcts_pick.col then
@@ -117,8 +106,14 @@ function M.best_candidate(view, candidates, stone_id, base_features, territory_b
 	end
 	local walls = base_features and base_features._walls or nil
 	local pool = candidates
-	if #candidates > M.FULL_EVAL_TOP_N then
-		pool = placement_cheap.top_by_cheap_score(view, candidates, stone_id, walls, M.FULL_EVAL_TOP_N)
+	local cap = placement_cfg.full_eval_top_n
+	if placement_cfg.prescore_enabled and #candidates > cap then
+		pool = placement_cheap.top_by_cheap_score(view, candidates, stone_id, walls, cap)
+	elseif not placement_cfg.prescore_enabled and #candidates > cap then
+		pool = {}
+		for i = 1, cap do
+			pool[i] = candidates[i]
+		end
 	end
 	local best = nil
 	for i = 1, #pool do

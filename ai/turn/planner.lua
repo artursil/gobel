@@ -1,6 +1,7 @@
 --- Builds one MAIN-phase action queue from cheap script scoring (no MCTS / resolve_round).
 --- @module ai.turn.planner
 
+local ai_config = require("ai.config")
 local enclosure = require("single_game.resolver.enclosure")
 local placement_cheap = require("ai.heuristics.placement_cheap")
 local registry = require("ai.heuristics.registry")
@@ -57,8 +58,7 @@ end
 --- @param view table
 --- @return table[] resolver-shaped actions
 function M.build_plan(view)
-	local game = view:raw_game()
-	local max_scripts = game.ai_planner_max_scripts or 12
+	local max_scripts = ai_config.for_game(view:raw_game()).planner.max_scripts
 	local candidates = scripts.enumerate(view, max_scripts)
 	local best = candidates[1]
 	local best_score = score_script(view, best)

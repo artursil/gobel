@@ -195,17 +195,13 @@ Root territory and walls can be passed in opts from `placement.best_candidate` t
 
 ## Configuration
 
+All bot tunables live in **`ai/config.lua`** (profiles `easy` / `normal` / `hard`, placement prescore, MCTS, planner). See [../ai/README.md](../ai/README.md).
+
 ### PVC defaults (`game.new`)
 
 ```lua
 g.ai_strategy = "heuristic"
-g.ai_difficulty = "normal"
-g.ai_mcts = {
-  enabled = true,
-  iterations = 80,
-  max_rollout_depth = 8,
-  exploration_c = 1.4,
-}
+ai_config.apply_profile(g, "normal")  -- planner on, MCTS off, candidate_k=30, full_eval_top_n=8
 ```
 
 ### `game.ai_mcts` fields
