@@ -22,7 +22,7 @@ M.WEIGHTS = {
 	self_fill_penalty = -6.0,
 }
 
-M.FULL_EVAL_TOP_N = 8
+M.FULL_EVAL_TOP_N = 81
 
 --- @param view table
 --- @param row integer

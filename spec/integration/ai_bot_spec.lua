@@ -74,7 +74,9 @@ describe("AI bot integration", function()
 				assert.is_true(
 					action.type == "SELECT_STONE"
 						or action.type == "PLACE_STONE"
-						or action.type == "PASS_TURN",
+						or action.type == "PASS_TURN"
+						or action.type == "PLAY_CARD"
+						or action.type == "SELECT_BOARD_TARGET",
 					action.type
 				)
 				local result = resolver.submit_action(g, action)
@@ -86,6 +88,46 @@ describe("AI bot integration", function()
 		end
 		assert.is_true(steps > 0)
 		assert.is_true(g.phase == "PLACE_PHASE" or g.to_play == "black" or g.ended)
+	end)
+
+	it("planner on: can emit PLAY_CARD and complete MAIN", function()
+		local g = new_pvc_bot_game()
+		g.ai_planner_enabled = true
+		g.phase = "MAIN_PHASE"
+		g.to_play = bot_actor()
+		g.players[bot_actor()].cards.hand.ids = { "card_point_tap" }
+		g.players[bot_actor()].resources.energy_current = 3
+		local saw_play = false
+		for _ = 1, 20 do
+			if g.phase ~= "MAIN_PHASE" or g.to_play ~= bot_actor() then
+				break
+			end
+			local action, signal = ai_controller.decide(g)
+			if signal == "finish_main" then
+				assert.is_true(resolver.finish_main_phase(g, g.to_play).ok)
+			elseif action then
+				if action.type == "PLAY_CARD" then
+					saw_play = true
+				end
+				assert.is_true(resolver.submit_action(g, action).ok, g.status)
+			else
+				break
+			end
+		end
+		assert.is_true(saw_play)
+		assert.is_true(g.phase == "PLACE_PHASE" or g.ended)
+	end)
+
+	it("planner off: stone-only MAIN regression", function()
+		local g = new_pvc_bot_game()
+		g.ai_planner_enabled = false
+		g.phase = "MAIN_PHASE"
+		g.to_play = bot_actor()
+		g.players[bot_actor()].cards.hand.ids = { "card_point_tap" }
+		g.players[bot_actor()].resources.energy_current = 3
+		local action = ai_controller.decide(g)
+		assert.is_not_nil(action)
+		assert.are.equal("SELECT_STONE", action.type)
 	end)
 
 	it("tick_ai advances bot turn when delay elapsed", function()

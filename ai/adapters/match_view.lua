@@ -107,6 +107,16 @@ function MatchView:ai_mcts()
 	return self._game.ai_mcts
 end
 
+--- @return boolean
+function MatchView:planner_enabled()
+	return self._game.ai_planner_enabled == true
+end
+
+--- @return integer
+function MatchView:planner_max_scripts()
+	return self._game.ai_planner_max_scripts or 12
+end
+
 --- @return string|nil
 function MatchView:territory_mode()
 	return self._game.territory_mode

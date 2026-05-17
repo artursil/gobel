@@ -1,6 +1,7 @@
 --- Fast placement prescore (no territory assignment). Used before full ``evaluate_move``.
 --- @module ai.heuristics.placement_cheap
 
+local enclosure = require("single_game.resolver.enclosure")
 local features = require("ai.board_analysis.features")
 local rules = require("rules")
 
@@ -51,6 +52,27 @@ function M.top_by_cheap_score(view, candidates, stone_id, walls, top_n)
 		out[#out + 1] = { row = scored[i].row, col = scored[i].col }
 	end
 	return out
+end
+
+--- Best cheap prescore on legal moves (no territory assignment).
+--- @param view table
+--- @param stone_id string
+--- @param walls table|nil
+--- @return number
+function M.best_placement_score(view, stone_id, walls)
+	local b = view:board()
+	local player = view:stone_color()
+	local legal = rules.all_legal_moves(b, player, view:ko_ban(), stone_id)
+	walls = walls or enclosure.extract_walls(b)
+	local best = 0
+	for i = 1, #legal do
+		local row, col = legal[i][1], legal[i][2]
+		local s = M.score(view, row, col, stone_id, walls)
+		if s and s > best then
+			best = s
+		end
+	end
+	return best * 0.01
 end
 
 return M

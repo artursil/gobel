@@ -1,6 +1,6 @@
 # Bot AI
 
-The bot drives **Player vs Computer (PVC)** matches. It does not run the full game resolver inside search: placement decisions use `rules.try_play`, territory analysis, and lightweight feature scoring. Card play, stance swaps, and joint MAIN+PLACE turn search are out of scope today.
+The bot drives **Player vs Computer (PVC)** matches. **Phase 3** adds a full MAIN pipeline (optional card + board target + stone) via a per-turn action plan; PLACE is unchanged. Search never calls `resolve_round`. Card/stance **strength tuning is deferred**—see [../ai/README.md](../ai/README.md).
 
 ## Entry points
 
@@ -8,7 +8,7 @@ The bot drives **Player vs Computer (PVC)** matches. It does not run the full ga
 |-------|--------|------|
 | Game loop | `game.tick_ai` | Waits for `ai_delay`, then calls the controller once per tick |
 | Controller | `ai.controller` | Picks strategy, builds a `MatchView` for the bot actor, returns one resolver action (or `finish_main`) |
-| Strategy | `ai.strategies.heuristic` | MAIN: select stone, skip cards; PLACE: top-K candidates + scoring (+ optional MCTS) |
+| Strategy | `ai.strategies.heuristic` | MAIN: planner queue or stone-only; PLACE: top-K + scoring (+ optional MCTS) |
 | Fallback | `ai.strategies.random` | Random legal placement (tests / debug) |
 
 Bot side is defined by `config.AI_COLOR` (PVC: white). `ai.controller.is_bot_turn(game)` is true when `game.versus_bot` and `game.to_play` matches that actor.
@@ -20,6 +20,10 @@ ai/
   controller.lua              # strategy dispatch
   mcts_config.lua               # defaults, difficulty presets, should_run
   adapters/match_view.lua       # read-only game facade (+ sim board for rollouts)
+  turn/
+    plan.lua                    # ai_turn_plan queue
+    scripts.lua                 # legal MAIN scripts
+    planner.lua                 # pick best script (cheap scores)
   strategies/
     heuristic.lua               # MAIN + PLACE pipeline
     random.lua

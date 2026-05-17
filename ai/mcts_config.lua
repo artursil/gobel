@@ -15,8 +15,8 @@ M.DEFAULT = {
 
 M.DIFFICULTY = {
 	easy = {
-		enabled = false,
-		iterations = 0,
+		enabled = true,
+		iterations = 20,
 		max_rollout_depth = 2,
 		exploration_c = 1.4,
 		fast_rollout = true,
@@ -24,11 +24,11 @@ M.DIFFICULTY = {
 	},
 	normal = {
 		enabled = false,
-		iterations = 0,
-		max_rollout_depth = 3,
+		iterations = 120,
+		max_rollout_depth = 8,
 		exploration_c = 1.4,
 		fast_rollout = true,
-		max_decision_ms = 0,
+		max_decision_ms = 100,
 	},
 	hard = {
 		enabled = true,

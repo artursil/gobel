@@ -1,4 +1,4 @@
---- Phase 1 bot: stone select + smart placement (no cards).
+--- Bot strategy: full MAIN plan (optional cards) + PLACE placement.
 --- @module ai.strategies.heuristic
 
 local enclosure = require("single_game.resolver.enclosure")
@@ -6,16 +6,29 @@ local features = require("ai.board_analysis.features")
 local goals = require("ai.heuristics.goals")
 local movegen = require("ai.movegen.placement_candidates")
 local placement = require("ai.heuristics.placement")
+local plan = require("ai.turn.plan")
+local planner = require("ai.turn.planner")
 local stone_select = require("ai.heuristics.stone_select")
 local territory_analysis = require("ai.board_analysis.territory")
 
 local M = {}
 
---- Phase 1 MAIN: skip PLAY_CARD; select stone then signal finish_main.
+--- @param view table
+--- @return boolean
+local function stone_selection_complete(view)
+	local playable = view:playable_stones()
+	if #playable == 0 then
+		return true
+	end
+	local idx = stone_select.choose_index(view)
+	local stone_id = playable[idx]
+	return view:selected_stone_index() == idx and view:selected_stone_id() == stone_id
+end
+
 --- @param view table
 --- @return table|nil action
 --- @return string|nil signal
-local function main_phase(view)
+local function main_phase_stone_only(view)
 	local playable = view:playable_stones()
 	if #playable == 0 then
 		return nil, "finish_main"
@@ -30,6 +43,39 @@ local function main_phase(view)
 		type = "SELECT_STONE",
 		payload = { stone_id = stone_id, stone_index = idx },
 	}
+end
+
+--- @param view table
+--- @return table|nil action
+--- @return string|nil signal
+local function main_phase_planner(view)
+	local game = view:raw_game()
+	if not plan.has_steps(game) then
+		plan.set(game, planner.build_plan(view))
+	end
+	local action = plan.pop_valid(view)
+	if action then
+		return action
+	end
+	if stone_selection_complete(view) then
+		return nil, "finish_main"
+	end
+	plan.set(game, planner.build_plan(view))
+	action = plan.pop_valid(view)
+	if action then
+		return action
+	end
+	return nil, "finish_main"
+end
+
+--- @param view table
+--- @return table|nil action
+--- @return string|nil signal
+local function main_phase(view)
+	if view:planner_enabled() then
+		return main_phase_planner(view)
+	end
+	return main_phase_stone_only(view)
 end
 
 --- @param view table

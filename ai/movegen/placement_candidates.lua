@@ -10,7 +10,7 @@ local territory_analysis = require("ai.board_analysis.territory")
 
 local M = {}
 
-local DEFAULT_K = 30
+local DEFAULT_K = 81
 
 --- @param moves table[]
 --- @param row integer

@@ -51,6 +51,8 @@ function M.new(match_kind, game_type_id, territory_mode)
 		g.ai_strategy = "heuristic"
 		g.ai_difficulty = "normal"
 		g.ai_mcts = mcts_config.for_difficulty("normal")
+		g.ai_planner_enabled = true
+		g.ai_planner_max_scripts = 12
 	end
 	return g
 end
@@ -156,6 +158,10 @@ function M.tick_ai(g, dt)
 	if not result.ok then
 		g.status = result.error
 		return
+	end
+	if action.type == "PLACE_STONE" or action.type == "PASS_TURN" then
+		local turn_plan = require("ai.turn.plan")
+		turn_plan.clear(g)
 	end
 	local bot = ai_controller.bot_actor()
 	if action.type == "PASS_TURN" then
