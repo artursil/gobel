@@ -6,7 +6,11 @@
 --- **placement.candidate_k** (1–81): max candidates returned by movegen after filtering.
 --- **placement.full_eval_top_n** (1–81): max ``evaluate_move`` calls in PLACE when the candidate list is larger.
 --- **placement.prescore_enabled**: when true, cheap prescore ranks movegen and placement pools; when false, stable legal/filter order and no ``placement_cheap.top_by_cheap_score``.
---- **placement.weights**: feature weights for ``placement.evaluate_move``.
+--- **placement.suggestion**: dual ranker pool for PLACE (``enabled``, ``stone_only_main``, ``n_heuristic``, ``n_score``, ``max_stones``, ``max_legal_per_stone``; 0 caps = unlimited).
+--- **placement.weights**: per-term multipliers for full eval (keys match term ids except ``goals_bonus``).
+--- **placement.heuristics**: full-tier term ids — ``delta_territory_me``, ``delta_captures``,
+--- ``delta_enclosure_inside``, ``closes_region``, ``frontier``, ``contested_pressure``,
+--- ``weak_boundary_penalty``, ``self_fill_penalty``, ``goals_bonus``.
 ---
 --- **mcts.enabled**: run shallow placement MCTS when strategy allows and ``game.ai_mcts`` exists.
 --- **mcts.iterations** (0–500): root playouts per placement decision.
@@ -25,10 +29,50 @@
 
 local M = {}
 
+local PLACEMENT_TERM_IDS = {
+	"delta_territory_me",
+	"delta_captures",
+	"delta_enclosure_inside",
+	"closes_region",
+	"frontier",
+	"contested_pressure",
+	"weak_boundary_penalty",
+	"self_fill_penalty",
+	"goals_bonus",
+}
+
+--- @return table[]
+local function default_placement_heuristics()
+	local list = {}
+	for i = 1, #PLACEMENT_TERM_IDS do
+		list[i] = { id = PLACEMENT_TERM_IDS[i], enabled = true }
+	end
+	return list
+end
+
+--- @param list table[]
+--- @return table[]
+local function copy_heuristics_list(list)
+	local out = {}
+	for i = 1, #list do
+		out[i] = { id = list[i].id, enabled = list[i].enabled }
+	end
+	return out
+end
+
 M.placement = {
 	candidate_k = 81,
 	full_eval_top_n = 81,
 	prescore_enabled = false,
+	suggestion = {
+		enabled = false,
+		stone_only_main = true,
+		n_heuristic = 8,
+		n_score = 8,
+		max_stones = 0,
+		max_legal_per_stone = 0,
+	},
+	heuristics = default_placement_heuristics(),
 	weights = {
 		delta_territory_me = 4.0,
 		delta_captures = 12.0,
@@ -84,10 +128,10 @@ M.profiles = {
 			prescore_enabled = false,
 		},
 		mcts = {
-			enabled = true,
-			iterations = 1800,
+			enabled = false,
+			iterations = 0,
 			max_rollout_depth = 5,
-			max_decision_ms = 10000,
+			max_decision_ms = 0,
 		},
 		planner = {
 			enabled = true,
@@ -124,13 +168,40 @@ local function merge_section(dst, src)
 		return dst
 	end
 	for k, v in pairs(src) do
-		if type(v) == "table" and type(dst[k]) == "table" and k ~= "weights" then
+		if k == "weights" then
+			merge_section(dst.weights, v)
+		elseif k == "heuristics" then
+			dst.heuristics = copy_heuristics_list(v)
+		elseif type(v) == "table" and type(dst[k]) == "table" then
 			merge_section(dst[k], v)
 		else
 			dst[k] = v
 		end
 	end
 	return dst
+end
+
+--- @param base table[]
+--- @param override table[]|nil
+--- @return table[]
+local function merge_heuristics_list(base, override)
+	if not override then
+		return copy_heuristics_list(base)
+	end
+	local enabled_map = {}
+	for i = 1, #override do
+		enabled_map[override[i].id] = override[i].enabled
+	end
+	local out = {}
+	for i = 1, #base do
+		local entry = base[i]
+		local enabled = entry.enabled
+		if enabled_map[entry.id] ~= nil then
+			enabled = enabled_map[entry.id]
+		end
+		out[#out + 1] = { id = entry.id, enabled = enabled }
+	end
+	return out
 end
 
 --- @param t table
@@ -146,8 +217,15 @@ end
 --- @param profile table
 --- @return table
 local function resolved_from_profile(profile)
+	local placement = shallow_copy_table(M.placement)
+	placement.weights = shallow_copy_table(M.placement.weights)
+	placement.heuristics = copy_heuristics_list(M.placement.heuristics)
+	merge_section(placement, profile.placement)
+	if not profile.placement or not profile.placement.heuristics then
+		placement.heuristics = copy_heuristics_list(M.placement.heuristics)
+	end
 	return {
-		placement = merge_section(shallow_copy_table(M.placement), profile.placement),
+		placement = placement,
 		mcts = merge_section(shallow_copy_table(M.mcts), profile.mcts),
 		planner = merge_section(shallow_copy_table(M.planner), profile.planner),
 		scoring = merge_section(shallow_copy_table(M.scoring), profile.scoring),
@@ -165,7 +243,12 @@ function M.apply_profile(game, profile_name)
 	game.ai_mcts = shallow_copy_table(M.mcts)
 	merge_section(game.ai_mcts, profile.mcts)
 	game.ai_placement = shallow_copy_table(M.placement)
+	game.ai_placement.weights = shallow_copy_table(M.placement.weights)
+	game.ai_placement.heuristics = copy_heuristics_list(M.placement.heuristics)
 	merge_section(game.ai_placement, profile.placement)
+	if not profile.placement or not profile.placement.heuristics then
+		game.ai_placement.heuristics = copy_heuristics_list(M.placement.heuristics)
+	end
 	game.ai_scoring = shallow_copy_table(M.scoring)
 	merge_section(game.ai_scoring, profile.scoring)
 end
@@ -178,7 +261,14 @@ function M.for_game(game)
 	local resolved = resolved_from_profile(profile)
 	if game then
 		if game.ai_placement then
-			merge_section(resolved.placement, game.ai_placement)
+			local saved_heuristics = game.ai_placement.heuristics
+			local placement_override = shallow_copy_table(game.ai_placement)
+			placement_override.heuristics = nil
+			merge_section(resolved.placement, placement_override)
+			if saved_heuristics then
+				resolved.placement.heuristics =
+					merge_heuristics_list(resolved.placement.heuristics, saved_heuristics)
+			end
 		end
 		if game.ai_mcts then
 			merge_section(resolved.mcts, game.ai_mcts)
@@ -201,7 +291,8 @@ end
 --- @return boolean
 function M.mcts_should_run(game, strategy)
 	local mcts = M.for_game(game).mcts
-	if strategy == "heuristic" then
+	local mode = strategy or "heuristic"
+	if mode == "heuristic" then
 		if game and game.ai_mcts and game.ai_mcts.enabled == false then
 			return false
 		end
@@ -210,7 +301,7 @@ function M.mcts_should_run(game, strategy)
 		end
 		return mcts.enabled == true and (mcts.iterations or 0) > 0
 	end
-	if strategy == "mcts" then
+	if mode == "mcts" then
 		return mcts.enabled ~= false and (mcts.iterations or 0) > 0
 	end
 	return mcts.enabled == true and (mcts.iterations or 0) > 0

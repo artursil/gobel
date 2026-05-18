@@ -15,6 +15,7 @@ describe("ai.config", function()
 		assert.are.equal(profile.placement.full_eval_top_n, g.ai_placement.full_eval_top_n)
 		assert.are.equal(profile.placement.prescore_enabled, g.ai_placement.prescore_enabled)
 		assert.are.equal("margin", g.ai_scoring.decision_mode)
+		assert.is_true(#g.ai_placement.heuristics >= 9)
 	end)
 
 	it("for_game merges per-match overrides on top of profile", function()

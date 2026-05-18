@@ -26,7 +26,8 @@ g.ai_scoring = { decision_mode = "margin" }
 | `placement` | `candidate_k` | 30 | Max filtered candidates from movegen |
 | `placement` | `full_eval_top_n` | 8 | Max `evaluate_move` calls when list is larger |
 | `placement` | `prescore_enabled` | true | Cheap prescore sort for movegen + placement pool |
-| `placement` | `weights` | see config | `evaluate_move` feature weights |
+| `placement` | `weights` | see config | Per-term multipliers for full eval |
+| `placement` | `heuristics` | all enabled | `{ id, enabled }` list for full-tier terms (see `ai/heuristics/placement_terms.lua`) |
 | `mcts` | `enabled` | false (normal) | Placement MCTS on/off |
 | `mcts` | `iterations` | 0 (normal) | Root playouts per placement |
 | `mcts` | `max_rollout_depth` | 3 | Rollout plies |
