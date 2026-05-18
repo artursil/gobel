@@ -26,6 +26,10 @@ g.ai_scoring = { decision_mode = "margin" }
 | `placement` | `candidate_k` | 30 | Max filtered candidates from movegen |
 | `placement` | `full_eval_top_n` | 8 | Max `evaluate_move` calls when list is larger |
 | `placement` | `prescore_enabled` | true | Cheap prescore sort for movegen + placement pool |
+| `placement.suggestion` | `enabled` | false | Dual ranker PLACE path (`dual_suggest`); PVC normal leaves off |
+| `placement.suggestion` | `stone_only_main` | true | When suggestion on, MAIN is stone select only (no card planner) |
+| `placement.suggestion` | `n_heuristic` / `n_score` | 8 / 8 | Top-K per ranker before merge; 0 = unlimited |
+| `placement.suggestion` | `max_stones` / `max_legal_per_stone` | 0 / 0 | Caps on stones and legal moves per stone; 0 = unlimited |
 | `placement` | `weights` | see config | Per-term multipliers for full eval |
 | `placement` | `heuristics` | all enabled | `{ id, enabled }` list for full-tier terms (see `ai/heuristics/placement_terms.lua`) |
 | `mcts` | `enabled` | false (normal) | Placement MCTS on/off |

@@ -1,7 +1,10 @@
 require("spec.test_helper")
 
+local board = require("board")
 local config = require("config")
+local dual_suggest = require("ai.candidates.dual_suggest")
 local game = require("game")
+local match_view = require("ai.adapters.match_view")
 local resolver = require("resolver")
 local ai_controller = require("ai.controller")
 local test_helper = require("spec.test_helper")
@@ -128,6 +131,66 @@ describe("AI bot integration", function()
 		local action = ai_controller.decide(g)
 		assert.is_not_nil(action)
 		assert.are.equal("SELECT_STONE", action.type)
+	end)
+
+	it("dual suggestion selects stone before place when needed", function()
+		local g = new_pvc_bot_game()
+		g.ai_placement = g.ai_placement or {}
+		g.ai_placement.suggestion = {
+			enabled = true,
+			stone_only_main = true,
+			n_heuristic = 8,
+			n_score = 8,
+			max_stones = 0,
+			max_legal_per_stone = 0,
+		}
+		g.ai_planner_enabled = true
+		g.phase = "MAIN_PHASE"
+		g.to_play = bot_actor()
+		g.players[bot_actor()].cards.hand.ids = { "card_point_tap" }
+		g.players[bot_actor()].resources.energy_current = 3
+		local main_steps = 0
+		while g.phase == "MAIN_PHASE" and g.to_play == bot_actor() and main_steps < 20 do
+			local action, signal = ai_controller.decide(g)
+			if signal == "finish_main" then
+				assert.is_true(resolver.finish_main_phase(g, g.to_play).ok)
+			elseif action then
+				assert.are_not.equal("PLAY_CARD", action.type)
+				assert.is_true(resolver.submit_action(g, action).ok, g.status)
+			else
+				break
+			end
+			main_steps = main_steps + 1
+		end
+		assert.are.equal("PLACE_PHASE", g.phase)
+		assert.are.equal(bot_actor(), g.to_play)
+
+		local actor = bot_actor()
+		local player = g.players[actor]
+		player.stones.playable_stones = { "stone_basic", "stone_power" }
+		g.board = board.new()
+		local view = match_view.for_bot(g)
+		local best, _merged = dual_suggest.choose_placement(view)
+		assert.is_not_nil(best)
+		local wrong_index = 1
+		if player.stones.playable_stones[1] == best.stone_id then
+			wrong_index = 2
+		end
+		player.stones.selected_stone = player.stones.playable_stones[wrong_index]
+		player.stones.selected_stone_index = wrong_index
+
+		local select_action = ai_controller.decide(g)
+		assert.is_not_nil(select_action)
+		assert.are.equal("SELECT_STONE", select_action.type)
+		assert.are.equal(best.stone_id, select_action.payload.stone_id)
+		assert.is_true(resolver.submit_action(g, select_action).ok, g.status)
+
+		local place_action = ai_controller.decide(g)
+		assert.is_not_nil(place_action)
+		assert.are.equal("PLACE_STONE", place_action.type)
+		assert.are.equal(best.row, place_action.payload.row)
+		assert.are.equal(best.col, place_action.payload.col)
+		assert.is_true(resolver.submit_action(g, place_action).ok, g.status)
 	end)
 
 	it("tick_ai advances bot turn when delay elapsed", function()

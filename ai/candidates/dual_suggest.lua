@@ -13,17 +13,7 @@ local territory_analysis = require("ai.board_analysis.territory")
 
 local M = {}
 
-local placement_match_score
-do
-	local ok, mod = pcall(require, "ai.scoring.placement_match_score")
-	placement_match_score = ok and mod
-		or {
-			--- @return nil
-			score_delta = function()
-				return nil
-			end,
-		}
-end
+local placement_match_score = require("ai.scoring.placement_match_score")
 
 --- @param stone_id string
 --- @param row integer

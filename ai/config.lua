@@ -204,6 +204,19 @@ local function merge_heuristics_list(base, override)
 	return out
 end
 
+--- @param src table
+--- @return table
+local function copy_suggestion(src)
+	return {
+		enabled = src.enabled,
+		stone_only_main = src.stone_only_main,
+		n_heuristic = src.n_heuristic,
+		n_score = src.n_score,
+		max_stones = src.max_stones,
+		max_legal_per_stone = src.max_legal_per_stone,
+	}
+end
+
 --- @param t table
 --- @return table
 local function shallow_copy_table(t)
@@ -220,6 +233,7 @@ local function resolved_from_profile(profile)
 	local placement = shallow_copy_table(M.placement)
 	placement.weights = shallow_copy_table(M.placement.weights)
 	placement.heuristics = copy_heuristics_list(M.placement.heuristics)
+	placement.suggestion = copy_suggestion(M.placement.suggestion)
 	merge_section(placement, profile.placement)
 	if not profile.placement or not profile.placement.heuristics then
 		placement.heuristics = copy_heuristics_list(M.placement.heuristics)
@@ -245,6 +259,7 @@ function M.apply_profile(game, profile_name)
 	game.ai_placement = shallow_copy_table(M.placement)
 	game.ai_placement.weights = shallow_copy_table(M.placement.weights)
 	game.ai_placement.heuristics = copy_heuristics_list(M.placement.heuristics)
+	game.ai_placement.suggestion = copy_suggestion(M.placement.suggestion)
 	merge_section(game.ai_placement, profile.placement)
 	if not profile.placement or not profile.placement.heuristics then
 		game.ai_placement.heuristics = copy_heuristics_list(M.placement.heuristics)
