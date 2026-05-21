@@ -67,7 +67,8 @@ function M.best_candidate(view, candidates, stone_id, base_features, territory_b
 	end
 	local mcts_pick = mcts.choose_placement(view, candidates, mcts_opts)
 	if mcts_pick and mcts_pick.row and mcts_pick.col then
-		local scored = M.evaluate_move(view, mcts_pick.row, mcts_pick.col, stone_id, base_features, territory_before)
+		local pick_stone = mcts_pick.stone_id or stone_id
+		local scored = M.evaluate_move(view, mcts_pick.row, mcts_pick.col, pick_stone, base_features, territory_before)
 		return scored or { row = mcts_pick.row, col = mcts_pick.col, score = 0 }
 	end
 	local walls = base_features and base_features._walls or nil

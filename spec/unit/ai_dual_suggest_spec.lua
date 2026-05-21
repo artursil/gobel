@@ -38,8 +38,11 @@ local function view_for_game(g)
 end
 
 describe("ai.candidates.dual_suggest", function()
+	local saved_mcts_module
+
 	after_each(function()
 		package.loaded["ai.scoring.placement_match_score"] = saved_match_score_module
+		package.loaded["ai.search.mcts"] = saved_mcts_module
 		package.loaded["ai.candidates.dual_suggest"] = nil
 	end)
 
@@ -107,6 +110,38 @@ describe("ai.candidates.dual_suggest", function()
 		assert.are.equal(1, #capped)
 		assert.are.equal(all_legal[1][1], capped[1].row)
 		assert.are.equal(all_legal[1][2], capped[1].col)
+	end)
+
+	it("choose_placement uses MCTS pick when enabled", function()
+		saved_mcts_module = package.loaded["ai.search.mcts"]
+		package.loaded["ai.search.mcts"] = {
+			choose_placement = function()
+				return { row = 1, col = 1, stone_id = "stone_focus" }
+			end,
+		}
+		package.loaded["ai.candidates.dual_suggest"] = nil
+		local suggest = require("ai.candidates.dual_suggest")
+		local g = match_state.new_match("pvc")
+		enable_suggestion(g, { n_heuristic = 4, n_score = 4 })
+		g.players.white.stones.playable_stones = { "stone_basic", "stone_focus" }
+		g.ai_mcts = { enabled = true, iterations = 8, placement_tree_depth = 1, max_rollout_depth = 2 }
+		g.board = spec_helper.parse_board_ascii({
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . W W W . . .",
+			". . . W B . . . .",
+			". . . W W . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local view = view_for_game(g)
+		local best = suggest.choose_placement(view)
+		assert.is_not_nil(best)
+		assert.are.equal(1, best.row)
+		assert.are.equal(1, best.col)
+		assert.are.equal("stone_focus", best.stone_id)
 	end)
 
 	it("choose_placement returns merged pool with expected fields", function()

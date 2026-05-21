@@ -2,6 +2,7 @@ require("spec.test_helper")
 
 local board = require("board")
 local config = require("config")
+local rules = require("rules")
 local evaluate = require("ai.board_analysis.evaluate")
 local match_state = require("match_state")
 local match_view = require("ai.adapters.match_view")
@@ -109,5 +110,58 @@ describe("ai.search.mcts", function()
 		assert.is_not_nil(b_pick)
 		assert.are.equal(a.row, b_pick.row)
 		assert.are.equal(a.col, b_pick.col)
+	end)
+
+	it("returns stone_id and prefers capture arm in merged pool", function()
+		local rows = {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . W W W . . .",
+			". . . W B . . . .",
+			". . . W W . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		}
+		local b = spec_helper.parse_board_ascii(rows)
+		local view = place_phase_view(9001)
+		local g = view:raw_game()
+		g.board = b
+		g.players.white.stones.playable_stones = { "stone_basic", "stone_focus" }
+		g.players.white.stones.selected_stone = "stone_focus"
+		local capture_row, capture_col
+		for r = 1, config.BOARD_SIZE do
+			for c = 1, config.BOARD_SIZE do
+				if board.is_empty(b[r][c]) then
+					local ok, _, _, captures = rules.try_play(b, r, c, config.STONE_WHITE, g.ko_ban, "stone_basic")
+					if ok and captures > 0 and not capture_row then
+						capture_row, capture_col = r, c
+					end
+				end
+			end
+		end
+		assert.is_not_nil(capture_row)
+		g.ai_scoring = { decision_mode = "absolute" }
+		local candidates = {
+			{ row = capture_row, col = capture_col, stone_id = "stone_basic" },
+			{ row = 8, col = 8, stone_id = "stone_focus" },
+		}
+		local mode = view:territory_mode()
+		local owner_key = view:owner_key()
+		local territory_before = territory_analysis.analyze(b, mode, owner_key)
+		local pick = mcts.choose_placement(view, candidates, {
+			territory_before = territory_before,
+			enabled = true,
+			iterations = 24,
+			max_rollout_depth = 0,
+			exploration_c = 0.5,
+			placement_tree_depth = 1,
+		})
+		assert.is_not_nil(pick)
+		assert.is_string(pick.stone_id)
+		assert.are.equal(capture_row, pick.row)
+		assert.are.equal(capture_col, pick.col)
+		assert.are.equal("stone_basic", pick.stone_id)
 	end)
 end)

@@ -208,12 +208,45 @@ local function rank_heuristic_and_score(view, suggestion, base, territory_before
 end
 
 --- @param view table
+--- @param suggestion table
+--- @return table[] merged
+--- @return table base
+--- @return table territory_before
+--- @return table walls
+--- @return table eval_cache
+local function build_pool_context(view, suggestion)
+	local b = view:board()
+	local mode = view:territory_mode()
+	local owner_key = view:owner_key()
+	local territory_before = territory_analysis.analyze(b, mode, owner_key)
+	local walls = enclosure.extract_walls(b)
+	local base = features.build(b, view:ko_ban(), owner_key, mode, view:stone_color(), territory_before, walls)
+	goals.refresh(view, base, territory_before)
+	local eval_cache = {}
+	local heuristic_top, score_top = rank_heuristic_and_score(view, suggestion, base, territory_before, eval_cache)
+	local merged = M.merge_ranked(heuristic_top, score_top)
+	return merged, base, territory_before, walls, eval_cache
+end
+
+--- @param view table
+--- @return table[] merged ranker pool (empty when suggestion off or no moves)
+function M.build_merged_pool(view)
+	local suggestion = ai_config.for_game(view:raw_game()).placement.suggestion
+	if not suggestion then
+		return {}
+	end
+	local merged = build_pool_context(view, suggestion)
+	return merged
+end
+
+--- @param view table
 --- @param merged table[]
 --- @param base table
 --- @param territory_before table
---- @param eval_cache table
---- @return table|nil
-local function pick_best_merged(view, merged, base, territory_before, eval_cache)
+--- @param eval_cache table|nil
+--- @return table|nil best { stone_id, row, col, score }
+function M.pick_best_merged(view, merged, base, territory_before, eval_cache)
+	eval_cache = eval_cache or {}
 	local best = nil
 	local ties = {}
 	for i = 1, #merged do
@@ -246,6 +279,26 @@ local function pick_best_merged(view, merged, base, territory_before, eval_cache
 end
 
 --- @param view table
+--- @param stone_id string
+--- @param row integer
+--- @param col integer
+--- @param base table
+--- @param territory_before table
+--- @return table|nil
+local function scored_pick(view, stone_id, row, col, base, territory_before)
+	local scored = placement.evaluate_move(view, row, col, stone_id, base, territory_before)
+	if not scored then
+		return nil
+	end
+	return {
+		stone_id = stone_id,
+		row = row,
+		col = col,
+		score = scored.score,
+	}
+end
+
+--- @param view table
 --- @return table|nil best { stone_id, row, col, score }
 --- @return table[] merged
 function M.choose_placement(view)
@@ -253,20 +306,34 @@ function M.choose_placement(view)
 	if not suggestion then
 		return nil, {}
 	end
-	local b = view:board()
-	local mode = view:territory_mode()
-	local owner_key = view:owner_key()
-	local territory_before = territory_analysis.analyze(b, mode, owner_key)
-	local walls = enclosure.extract_walls(b)
-	local base = features.build(b, view:ko_ban(), owner_key, mode, view:stone_color(), territory_before, walls)
-	goals.refresh(view, base, territory_before)
-	local eval_cache = {}
-	local heuristic_top, score_top = rank_heuristic_and_score(view, suggestion, base, territory_before, eval_cache)
-	local merged = M.merge_ranked(heuristic_top, score_top)
+	local merged, base, territory_before, walls, eval_cache = build_pool_context(view, suggestion)
 	if #merged == 0 then
 		return nil, merged
 	end
-	local best = pick_best_merged(view, merged, base, territory_before, eval_cache)
+	local game = view:raw_game()
+	if ai_config.mcts_should_run(game, view:ai_strategy()) then
+		local settings = ai_config.for_game(game)
+		local mcts_opts = {
+			walls = walls,
+			territory_before = territory_before,
+		}
+		for k, v in pairs(settings.mcts) do
+			mcts_opts[k] = v
+		end
+		if (mcts_opts.iterations or 0) > 0 then
+			local mcts = require("ai.search.mcts")
+			local pick = mcts.choose_placement(view, merged, mcts_opts)
+			if pick and pick.row and pick.col then
+				local stone_id = pick.stone_id or view:selected_stone_id()
+					or merged[1].stone_id
+				local best = scored_pick(view, stone_id, pick.row, pick.col, base, territory_before)
+				if best then
+					return best, merged
+				end
+			end
+		end
+	end
+	local best = M.pick_best_merged(view, merged, base, territory_before, eval_cache)
 	return best, merged
 end
 

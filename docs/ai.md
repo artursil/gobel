@@ -150,10 +150,14 @@ flowchart TD
 ```
 
 - **Selection:** UCT on root children; unvisited children are tried first.
-- **Expansion:** Implicit — each root child is one candidate applied with `rules.try_play` (same stone kind as the bot’s selected stone).
-- **Simulation:** Alternate opponent and AI placement plies up to `max_rollout_depth`.
+- **Expansion:** Implicit — each root child is one candidate applied with `rules.try_play`. Candidates may include `stone_id` (dual-suggest pool); otherwise the bot’s selected stone or first playable stone is used (legacy path).
+- **Simulation:** Alternate opponent and AI placement plies up to `max_rollout_depth` after the expanded node. AI rollout plies use the child arm’s `stone_id`.
 - **Backprop:** Leaf value = normalized margin `evaluate.normalize_result(ai_eval, opp_eval)` in `[0, 1]`.
-- **Final move:** Child with highest visit count (ties: first max in list order).
+- **Final move:** Child with highest visit count (ties: first max in list order). Returns `{ row, col, stone_id? }`.
+
+`placement_tree_depth` controls search expansion plies (default `1` = root arms only). `max_rollout_depth` is rollout length after each child. Values of `placement_tree_depth > 1` currently fall back to `1` (multi-ply expansion not implemented).
+
+Dual PLACE (`placement.suggestion.enabled`) runs MCTS on the merged dual-suggest pool via `dual_suggest.choose_placement`; legacy PLACE keeps movegen + `placement.best_candidate` unchanged when suggestion is off.
 
 All randomness uses `match_state.rng_next_int` (via `MatchView:rng_next_int`).
 
@@ -210,7 +214,8 @@ ai_config.apply_profile(g, "normal")  -- planner on, MCTS off, candidate_k=30, f
 |-------|------------------|-------------|
 | `enabled` | `true` | Master switch for placement MCTS |
 | `iterations` | `80` | Playouts per placement decision |
-| `max_rollout_depth` | `8` | Max alternate plies in each rollout |
+| `placement_tree_depth` | `1` | Tree expansion plies (1 = root arms only) |
+| `max_rollout_depth` | `8` | Rollout plies after expanded node |
 | `exploration_c` | `1.4` | UCT exploration constant |
 
 Resolution order: `mcts_config.DEFAULT` → `ai_difficulty` preset → per-field overrides on `game.ai_mcts` → optional per-call `opts` in `choose_placement`.

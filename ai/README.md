@@ -34,7 +34,8 @@ g.ai_scoring = { decision_mode = "margin" }
 | `placement` | `heuristics` | all enabled | `{ id, enabled }` list for full-tier terms (see `ai/heuristics/placement_terms.lua`) |
 | `mcts` | `enabled` | false (normal) | Placement MCTS on/off |
 | `mcts` | `iterations` | 0 (normal) | Root playouts per placement |
-| `mcts` | `max_rollout_depth` | 3 | Rollout plies |
+| `mcts` | `placement_tree_depth` | 1 | Tree expansion plies (1 = root arms only; >1 falls back to 1) |
+| `mcts` | `max_rollout_depth` | 3 | Rollout plies after expanded node |
 | `mcts` | `exploration_c` | 1.4 | UCT constant |
 | `mcts` | `fast_rollout` | true | Fast eval in rollouts (no territory assignment) |
 | `mcts` | `max_decision_ms` | 0 (normal) | Time cap; hard uses 100 |
@@ -51,6 +52,8 @@ g.ai_scoring = { decision_mode = "margin" }
 | `hard` | k=30, top 8 evals, prescore on | on, 20 iters, 100ms cap |
 
 PVC `game.new` calls `ai_config.apply_profile(g, "normal")`.
+
+When `placement.suggestion.enabled` is true, PLACE uses `dual_suggest.choose_placement`: merged heuristic + match-score pool, optional stone-aware MCTS on that pool, then full `evaluate_move` on the winner. Legacy PLACE (`suggestion.enabled = false`) still uses movegen + `placement.best_candidate` with MCTS on `{ row, col }` for the selected stone only.
 
 ### `prescore_enabled = false`
 

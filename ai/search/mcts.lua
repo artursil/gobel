@@ -206,42 +206,70 @@ local function pick_best_child(children, rng_next)
 end
 
 --- @param view table
---- @param candidates table[]
---- @param stone_id string
+--- @param move table
+--- @param default_stone_id string|nil
+--- @return string|nil
+local function candidate_stone_id(view, move, default_stone_id)
+	if move.stone_id then
+		return move.stone_id
+	end
+	return default_stone_id
+end
+
 --- @param opts table
---- @return table|nil
-local function build_children(view, candidates, stone_id, opts)
+--- @return integer effective depth (multi-ply expansion not implemented; >1 falls back to 1)
+local function effective_placement_tree_depth(opts)
+	local depth = opts.placement_tree_depth or 1
+	if depth > 1 then
+		return 1
+	end
+	if depth < 1 then
+		return 1
+	end
+	return depth
+end
+
+--- @param view table
+--- @param candidates table[]
+--- @param default_stone_id string|nil
+--- @return table[]
+local function build_children(view, candidates, default_stone_id)
 	local children = {}
 	local board = view:board()
 	local ko = view:ko_ban()
 	local player = view:stone_color()
 	for i = 1, #candidates do
 		local move = candidates[i]
-		local ok, trial, new_ko = rules.try_play(board, move.row, move.col, player, ko, stone_id)
-		if ok then
-			children[#children + 1] = {
-				row = move.row,
-				col = move.col,
-				board = trial,
-				ko = snapshot.clone_ko(new_ko),
-				visits = 0,
-				total_value = 0,
-			}
+		local stone_id = candidate_stone_id(view, move, default_stone_id)
+		if stone_id then
+			local ok, trial, new_ko = rules.try_play(board, move.row, move.col, player, ko, stone_id)
+			if ok then
+				children[#children + 1] = {
+					row = move.row,
+					col = move.col,
+					stone_id = stone_id,
+					board = trial,
+					ko = snapshot.clone_ko(new_ko),
+					visits = 0,
+					total_value = 0,
+				}
+			end
 		end
 	end
 	return children
 end
 
---- Shallow MCTS: one tree level (root candidates), UCT + rollout + backprop.
+--- Shallow MCTS: root candidate arms (``placement_tree_depth`` 1), UCT + rollout + backprop.
 --- @param view table AI match view at root
---- @param candidates table[] { row, col }
+--- @param candidates table[] { row, col, stone_id? }
 --- @param opts table|nil merged ai_mcts + cached walls / territory_before
---- @return table|nil { row, col }
+--- @return table|nil { row, col, stone_id? }
 function M.choose_placement(view, candidates, call_opts)
 	local merged = ai_config.for_game(view:raw_game()).mcts
 	local opts = {
 		enabled = merged.enabled,
 		iterations = merged.iterations,
+		placement_tree_depth = merged.placement_tree_depth,
 		max_rollout_depth = merged.max_rollout_depth,
 		exploration_c = merged.exploration_c,
 		fast_rollout = merged.fast_rollout,
@@ -262,15 +290,12 @@ function M.choose_placement(view, candidates, call_opts)
 		return nil
 	end
 
-	local stone_id = view:selected_stone_id() or stone_id_for_actor(view, view:actor())
-	if not stone_id then
-		return nil
-	end
-
+	local default_stone_id = view:selected_stone_id() or stone_id_for_actor(view, view:actor())
+	opts.placement_tree_depth = effective_placement_tree_depth(opts)
 	opts.walls = opts.walls or enclosure.extract_walls(view:board())
 	local game = view:raw_game()
 	local ai_actor = view:actor()
-	local children = build_children(view, candidates, stone_id, opts)
+	local children = build_children(view, candidates, default_stone_id)
 	if #children == 0 then
 		return nil
 	end
@@ -285,7 +310,7 @@ function M.choose_placement(view, candidates, call_opts)
 			break
 		end
 		local child = select_child(children, parent_visits, opts.exploration_c)
-		local value = rollout(view, child.board, child.ko, ai_actor, stone_id, opts)
+		local value = rollout(view, child.board, child.ko, ai_actor, child.stone_id, opts)
 		child.visits = child.visits + 1
 		child.total_value = child.total_value + value
 		parent_visits = parent_visits + 1
@@ -297,7 +322,7 @@ function M.choose_placement(view, candidates, call_opts)
 	local best = pick_best_child(children, function(max_value)
 		return view:rng_next_int(max_value)
 	end)
-	return { row = best.row, col = best.col }
+	return { row = best.row, col = best.col, stone_id = best.stone_id }
 end
 
 return M

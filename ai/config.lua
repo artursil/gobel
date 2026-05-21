@@ -14,7 +14,8 @@
 ---
 --- **mcts.enabled**: run shallow placement MCTS when strategy allows and ``game.ai_mcts`` exists.
 --- **mcts.iterations** (0–500): root playouts per placement decision.
---- **mcts.max_rollout_depth** (1–20): alternate plies per simulation.
+--- **mcts.placement_tree_depth** (1+): search tree expansion plies (1 = root arms only; >1 currently falls back to 1).
+--- **mcts.max_rollout_depth** (1–20): rollout plies after the expanded node.
 --- **mcts.exploration_c** (0.5–3): UCT exploration constant.
 --- **mcts.fast_rollout**: use fast static eval in rollouts (no per-cell territory assignment).
 --- **mcts.max_decision_ms** (0–500): wall-clock budget; 0 = no time cap.
@@ -88,6 +89,7 @@ M.placement = {
 M.mcts = {
 	enabled = false,
 	iterations = 0,
+	placement_tree_depth = 1,
 	max_rollout_depth = 3,
 	exploration_c = 1.4,
 	fast_rollout = true,
