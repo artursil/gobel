@@ -126,8 +126,11 @@ describe("AI bot integration", function()
 		g.ai_planner_enabled = false
 		g.phase = "MAIN_PHASE"
 		g.to_play = bot_actor()
-		g.players[bot_actor()].cards.hand.ids = { "card_point_tap" }
-		g.players[bot_actor()].resources.energy_current = 3
+		local bot = bot_actor()
+		g.players[bot].cards.hand.ids = { "card_point_tap" }
+		g.players[bot].resources.energy_current = 3
+		g.players[bot].stones.selected_stone = nil
+		g.players[bot].stones.selected_stone_index = nil
 		local action = ai_controller.decide(g)
 		assert.is_not_nil(action)
 		assert.are.equal("SELECT_STONE", action.type)

@@ -46,7 +46,15 @@ describe("ai.movegen.placement_candidates", function()
 			". . . . . . . . .",
 		}
 		local b = spec_helper.parse_board_ascii(rows)
-		local view = view_for_board(b, "stone_basic")
+		local g = match_state.new_match("pvc")
+		g.board = b
+		g.phase = "PLACE_PHASE"
+		g.to_play = "white"
+		g.players.white.stones.playable_stones = { "stone_basic" }
+		g.players.white.stones.selected_stone = "stone_basic"
+		g.players.white.stones.selected_stone_index = 1
+		g.ai_placement = { prescore_enabled = true }
+		local view = match_view.for_bot(g)
 		local legal = rules.all_legal_moves(b, config.STONE_WHITE, nil, "stone_basic")
 		local capture_moves = {}
 		for i = 1, #legal do

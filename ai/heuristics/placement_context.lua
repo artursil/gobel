@@ -21,8 +21,23 @@ local M = {}
 --- @param captures integer
 --- @param trial_board table
 --- @param ko table|nil
+--- @param territory_owner_changed boolean|nil
 --- @return table ctx
-local function make_ctx(view, before, after, b, row, col, player, owner_key, walls, captures, trial_board, ko)
+local function make_ctx(
+	view,
+	before,
+	after,
+	b,
+	row,
+	col,
+	player,
+	owner_key,
+	walls,
+	captures,
+	trial_board,
+	ko,
+	territory_owner_changed
+)
 	local delta_me = after.territory_owned_me - before.territory_owned_me
 	local delta_inside = after.largest_enclosure_inside_me - before.largest_enclosure_inside_me
 	local closes_region = delta_inside > 0 or (delta_me > 0 and after.territory_contested < before.territory_contested)
@@ -44,6 +59,7 @@ local function make_ctx(view, before, after, b, row, col, player, owner_key, wal
 		delta_me = delta_me,
 		delta_inside = delta_inside,
 		closes_region = closes_region,
+		territory_owner_changed = territory_owner_changed == true,
 	}
 end
 
@@ -76,7 +92,26 @@ function M.build(view, row, col, stone_id, base_features, territory_before)
 	local after_ko = snapshot.clone_ko(new_ko)
 	local after_counts = territory_analysis.analyze(trial_board, mode, owner_key)
 	local after = features.build(trial_board, after_ko, owner_key, mode, player, after_counts, before._walls)
-	local ctx = make_ctx(view, before, after, b, row, col, player, owner_key, before._walls, captures, trial_board, after_ko)
+	local territory_owner_changed = false
+	if counts_before then
+		territory_owner_changed = after_counts.owned_me ~= counts_before.owned_me
+			or after_counts.owned_opp ~= counts_before.owned_opp
+	end
+	local ctx = make_ctx(
+		view,
+		before,
+		after,
+		b,
+		row,
+		col,
+		player,
+		owner_key,
+		before._walls,
+		captures,
+		trial_board,
+		after_ko,
+		territory_owner_changed
+	)
 	ctx.stone_id = stone_id
 	return ctx
 end
@@ -114,7 +149,8 @@ function M.build_opponent(main_ctx)
 		main_ctx.walls,
 		0,
 		main_ctx.trial_board,
-		main_ctx.ko
+		main_ctx.ko,
+		false
 	)
 	ctx.stone_id = main_ctx.stone_id
 	return ctx

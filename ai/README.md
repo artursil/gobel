@@ -1,6 +1,6 @@
 # AI package
 
-**AI implementation is complete** for the planned bot feature set (MAIN cards/targets/stone + PLACE). Placement and card **strength tuning are deferred**—edit weights in `ai/config.lua`, not scattered module constants.
+**AI implementation is complete** for the planned bot feature set (MAIN cards/targets/stone + PLACE). Placement and card **strength tuning are deferred**—edit weights in `ai/config.lua`, not scattered module constants. Both weight tiers start from legacy placement weights: pre uses `weights_pre_selection`, selection uses `weights_selection`.
 
 See [../docs/ai.md](../docs/ai.md) for architecture and MCTS flow.
 
@@ -24,14 +24,17 @@ g.ai_scoring = { decision_mode = "margin" }
 | Section | Field | Default (normal) | Effect |
 |---------|-------|------------------|--------|
 | `placement` | `candidate_k` | 30 | Max filtered candidates from movegen |
-| `placement` | `full_eval_top_n` | 8 | Max `evaluate_move` calls when list is larger |
+| `placement` | `full_eval_top_n` | 8 | Max `evaluate_selection` calls when list is larger |
 | `placement` | `prescore_enabled` | true | Cheap prescore sort for movegen + placement pool |
 | `placement.suggestion` | `enabled` | false | Dual ranker PLACE path (`dual_suggest`); PVC normal leaves off |
 | `placement.suggestion` | `stone_only_main` | true | When suggestion on, MAIN is stone select only (no card planner) |
 | `placement.suggestion` | `n_heuristic` / `n_score` | 8 / 8 | Top-K per ranker before merge; 0 = unlimited |
 | `placement.suggestion` | `max_stones` / `max_legal_per_stone` | 0 / 0 | Caps on stones and legal moves per stone; 0 = unlimited |
-| `placement` | `weights` | see config | Per-term multipliers for full eval |
-| `placement` | `heuristics` | all enabled | `{ id, enabled }` list for full-tier terms (see `ai/heuristics/placement_terms.lua`) |
+| `placement` | `heuristics_pre_selection` | captures, frontier, territory | Fast ranker / prescore term ids |
+| `placement` | `heuristics_selection` | full tier + goals | Full eval + MCTS root-child signal |
+| `placement` | `weights_pre_selection` | legacy + `territory_owner_change` | Stage-1 prescore / heuristic ranker (same base weights as selection) |
+| `placement` | `weights_selection` | legacy placement weights | Stage-2 full eval + MCTS signal |
+| `placement` | `heuristics` | optional on game | Legacy `{ id, enabled }` filter for selection terms |
 | `mcts` | `enabled` | false (normal) | Placement MCTS on/off |
 | `mcts` | `iterations` | 0 (normal) | Root playouts per placement |
 | `mcts` | `placement_tree_depth` | 1 | Tree expansion plies (1 = root arms only; >1 falls back to 1) |
@@ -43,6 +46,8 @@ g.ai_scoring = { decision_mode = "margin" }
 | `planner` | `max_scripts` | 12 | Cap MAIN scripts per plan |
 | `scoring` | `decision_mode` | `"absolute"` | `"absolute"` = max own heuristic; `"margin"` = my − opp (normal profile uses `"margin"`) |
 
+Term definitions (what each id measures): `ai/heuristics/stone_heuristics_def.lua`.
+
 ### Profiles
 
 | Profile | Placement | MCTS |
@@ -53,12 +58,20 @@ g.ai_scoring = { decision_mode = "margin" }
 
 PVC `game.new` calls `ai_config.apply_profile(g, "normal")`.
 
-When `placement.suggestion.enabled` is true, PLACE uses `dual_suggest.choose_placement`: merged heuristic + match-score pool, optional stone-aware MCTS on that pool, then full `evaluate_move` on the winner. Legacy PLACE (`suggestion.enabled = false`) still uses movegen + `placement.best_candidate` with MCTS on `{ row, col }` for the selected stone only.
+### Dual suggest (Option A)
+
+When `placement.suggestion.enabled` is true, PLACE uses `dual_suggest.choose_placement`:
+
+1. **Heuristic ranker** — top `n_heuristic` by `sum_pre_selection` only (one `placement_context.build` per cell, cached).
+2. **Match-score ranker** — top `n_score` by `placement_match_score.score_delta` (unchanged; not folded into def).
+3. **Merge** → optional stone-aware MCTS on merged pool → `evaluate_selection` (match + selection heuristics) on winner.
+
+Legacy PLACE (`suggestion.enabled = false`) still uses movegen + `placement.best_candidate` with MCTS on `{ row, col }` for the selected stone only.
 
 ### `prescore_enabled = false`
 
 - **Movegen:** filtered moves in stable legal order, first `candidate_k` (no prescore sort).
-- **Placement:** `evaluate_move` on each candidate up to `full_eval_top_n` (safety cap); no `placement_cheap.top_by_cheap_score`.
+- **Placement:** `evaluate_selection` on each candidate up to `full_eval_top_n` (safety cap); no `placement_cheap.top_by_cheap_score`.
 - To full-eval all filtered moves: set `prescore_enabled = false` and `full_eval_top_n >= candidate_k`.
 
 `ai/mcts_config.lua` remains a thin wrapper over `ai.config` for older `require` paths.
@@ -87,7 +100,7 @@ g.ai_mcts = { enabled = false, iterations = 0 }
 
 - Planner: no `compute_from_board`, no `resolve_round`.
 - PLACE (normal): prescore → ≤ `full_eval_top_n` full evals.
-- MCTS (hard): fast eval, `max_decision_ms` budget.
+- MCTS (hard): fast eval + selection signal blend, `max_decision_ms` budget.
 
 ## Territory debug
 

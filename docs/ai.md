@@ -96,20 +96,15 @@ flowchart LR
 
 ## Heuristic placement scoring
 
-`placement.evaluate_move` applies `rules.try_play`, builds before/after features, and sums weighted deltas (`placement.WEIGHTS`):
+Definitions live in `ai/heuristics/stone_heuristics_def.lua`; weights only in `ai/config.lua`.
 
-| Feature | Weight | Meaning |
-|---------|--------|---------|
-| `delta_territory_me` | 4.0 | Empty cells gained for bot |
-| `delta_captures` | 12.0 | Stones captured |
-| `delta_enclosure_inside` | 2.5 | Growth inside largest enclosure |
-| `closes_region` | 3.0 | Enclosure grew or contested shrank with territory gain |
-| `frontier` | 2.0 | Move on placement frontier (wall-aware) |
-| `contested_pressure` | 1.5 | Contested before, territory gain after |
-| `weak_boundary_penalty` | −1.0 | Per new weak boundary cell |
-| `self_fill_penalty` | −6.0 | Interior fill with no capture, frontier, or territory gain |
+**Pre-selection** (`sum_pre_selection`): fast ranker / prescore — `delta_captures`, `frontier`, `territory_owner_change` (default weights 100 / 15 / 10).
 
-Plus `goals.candidate_bonus(view, candidate)` (see below).
+**Selection** (`sum_selection` + `goals_bonus`): full eval and MCTS root-child signal — territory, enclosure, penalties, goals (default weights in `weights_selection`; see config header).
+
+`placement.evaluate_selection` = `placement_match_score.score_delta` + selection heuristics (margin-aware). `evaluate_move` is the same combined score wrapped as a candidate.
+
+Legacy `placement.WEIGHTS` aliases `weights_selection`.
 
 ## Strategic goals
 
@@ -152,12 +147,12 @@ flowchart TD
 - **Selection:** UCT on root children; unvisited children are tried first.
 - **Expansion:** Implicit — each root child is one candidate applied with `rules.try_play`. Candidates may include `stone_id` (dual-suggest pool); otherwise the bot’s selected stone or first playable stone is used (legacy path).
 - **Simulation:** Alternate opponent and AI placement plies up to `max_rollout_depth` after the expanded node. AI rollout plies use the child arm’s `stone_id`.
-- **Backprop:** Leaf value = normalized margin `evaluate.normalize_result(ai_eval, opp_eval)` in `[0, 1]`.
+- **Backprop:** Per root child, `value = 0.5 * normalize_selection(match + selection heuristics) + 0.5 * rollout_fast_eval` (rollout leaf still uses `fast_evaluate_position` when `fast_rollout` is on).
 - **Final move:** Child with highest visit count (ties: first max in list order). Returns `{ row, col, stone_id? }`.
 
 `placement_tree_depth` controls search expansion plies (default `1` = root arms only). `max_rollout_depth` is rollout length after each child. Values of `placement_tree_depth > 1` currently fall back to `1` (multi-ply expansion not implemented).
 
-Dual PLACE (`placement.suggestion.enabled`) runs MCTS on the merged dual-suggest pool via `dual_suggest.choose_placement`; legacy PLACE keeps movegen + `placement.best_candidate` unchanged when suggestion is off.
+Dual PLACE (`placement.suggestion.enabled`, Option A): heuristic ranker uses **pre-selection only**; match-score ranker stays separate; merged pool → MCTS → `evaluate_selection` on winner. Legacy PLACE keeps movegen + `placement.best_candidate` when suggestion is off.
 
 All randomness uses `match_state.rng_next_int` (via `MatchView:rng_next_int`).
 
@@ -264,7 +259,9 @@ g.ai_mcts.exploration_c = 1.2
 |------|--------|
 | `spec/unit/ai_mcts_spec.lua` | Evaluator, MCTS determinism (fixed RNG seed), disabled → nil |
 | `spec/unit/ai_goals_spec.lua` | `refresh`, `candidate_bonus` |
+| `spec/unit/ai_stone_heuristics_def_spec.lua` | Term registry, pre/selection tiers |
 | `spec/unit/ai_placement_heuristic_spec.lua` | Capture vs fill scoring |
+| `spec/unit/ai_dual_suggest_spec.lua` | Dual ranker, pre-selection pool |
 | `spec/integration/ai_bot_spec.lua` | End-to-end PVC bot turn with MCTS |
 
 Integration tests lower `iterations` / `max_rollout_depth` for speed; production PVC uses normal presets from `game.new`.

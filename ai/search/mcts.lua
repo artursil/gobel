@@ -1,11 +1,15 @@
 --- Shallow MCTS over top-K placement candidates (root children only, rollout alternation).
 ---
 --- Flow: root (current board) → K child arms (one per candidate) → UCT select arm →
---- rollout (opponent greedy / AI sampled) → leaf ``evaluate_position`` → backprop value in [0,1].
+--- rollout (opponent greedy / AI sampled) → leaf fast eval → backprop blended value in [0,1].
+---
+--- Backprop value per root child: ``0.5 * normalize_selection(combined) + 0.5 * rollout_fast_eval``,
+--- where ``combined = match_score_delta + selection_heuristics`` from ``placement.evaluate_selection``.
 --- @module ai.search.mcts
 
 local ai_scoring = require("ai.scoring")
 local evaluate = require("ai.board_analysis.evaluate")
+local placement = require("ai.heuristics.placement")
 local enclosure = require("single_game.resolver.enclosure")
 local features = require("ai.board_analysis.features")
 local match_view = require("ai.adapters.match_view")
@@ -310,7 +314,20 @@ function M.choose_placement(view, candidates, call_opts)
 			break
 		end
 		local child = select_child(children, parent_visits, opts.exploration_c)
-		local value = rollout(view, child.board, child.ko, ai_actor, child.stone_id, opts)
+		local rollout_value = rollout(view, child.board, child.ko, ai_actor, child.stone_id, opts)
+		local selection_combined = placement.evaluate_selection(
+			view,
+			child.row,
+			child.col,
+			child.stone_id,
+			opts.base_features,
+			opts.territory_before
+		)
+		local selection_value = 0
+		if selection_combined then
+			selection_value = placement.normalize_selection_score(selection_combined)
+		end
+		local value = 0.5 * selection_value + 0.5 * rollout_value
 		child.visits = child.visits + 1
 		child.total_value = child.total_value + value
 		parent_visits = parent_visits + 1

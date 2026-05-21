@@ -144,6 +144,44 @@ describe("ai.candidates.dual_suggest", function()
 		assert.are.equal("stone_focus", best.stone_id)
 	end)
 
+	it("pre-selection ranker pool changes when delta_captures removed from pre-selection", function()
+		local g = match_state.new_match("pvc")
+		enable_suggestion(g, { n_heuristic = 4, n_score = 0 })
+		g.board = spec_helper.parse_board_ascii({
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . W W W . . .",
+			". . . W B . . . .",
+			". . . W W . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local view = view_for_game(g)
+		local merged_with = dual_suggest.build_merged_pool(view)
+		g.ai_placement.heuristics_pre_selection = { "frontier" }
+		package.loaded["ai.candidates.dual_suggest"] = nil
+		local suggest2 = require("ai.candidates.dual_suggest")
+		local view2 = view_for_game(g)
+		local merged_without = suggest2.build_merged_pool(view2)
+		assert.is_true(#merged_with >= 1)
+		assert.is_true(#merged_without >= 1)
+		local keys_with = {}
+		for i = 1, #merged_with do
+			local e = merged_with[i]
+			keys_with[dual_suggest.dedupe_key(e.stone_id, e.row, e.col)] = true
+		end
+		local overlap = 0
+		for i = 1, #merged_without do
+			local e = merged_without[i]
+			if keys_with[dual_suggest.dedupe_key(e.stone_id, e.row, e.col)] then
+				overlap = overlap + 1
+			end
+		end
+		assert.is_true(overlap < #merged_with or #merged_with ~= #merged_without)
+	end)
+
 	it("choose_placement returns merged pool with expected fields", function()
 		saved_match_score_module = package.loaded["ai.scoring.placement_match_score"]
 		package.loaded["ai.scoring.placement_match_score"] = {

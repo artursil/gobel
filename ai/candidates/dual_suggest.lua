@@ -8,7 +8,9 @@ local enclosure = require("single_game.resolver.enclosure")
 local features = require("ai.board_analysis.features")
 local goals = require("ai.heuristics.goals")
 local placement = require("ai.heuristics.placement")
+local placement_context = require("ai.heuristics.placement_context")
 local rules = require("rules")
+local stone_heuristics_def = require("ai.heuristics.stone_heuristics_def")
 local territory_analysis = require("ai.board_analysis.territory")
 
 local M = {}
@@ -163,6 +165,28 @@ local function cached_evaluate(view, cache, row, col, stone_id, base, territory_
 end
 
 --- @param view table
+--- @param ctx_cache table
+--- @param row integer
+--- @param col integer
+--- @param stone_id string
+--- @param base table
+--- @param territory_before table
+--- @param placement_cfg table
+--- @return number|nil
+local function cached_pre_selection(view, ctx_cache, row, col, stone_id, base, territory_before, placement_cfg)
+	local key = M.dedupe_key(stone_id, row, col)
+	if ctx_cache[key] then
+		return stone_heuristics_def.sum_pre_selection(ctx_cache[key], placement_cfg)
+	end
+	local ctx = placement_context.build(view, row, col, stone_id, base, territory_before)
+	if not ctx then
+		return nil
+	end
+	ctx_cache[key] = ctx
+	return stone_heuristics_def.sum_pre_selection(ctx, placement_cfg)
+end
+
+--- @param view table
 --- @param suggestion table
 --- @param base table
 --- @param territory_before table
@@ -170,6 +194,8 @@ end
 --- @return table[]
 --- @return table[]
 local function rank_heuristic_and_score(view, suggestion, base, territory_before, eval_cache)
+	local placement_cfg = ai_config.for_game(view:raw_game()).placement
+	local ctx_cache = {}
 	local stones = M.enumerate_stones(view, suggestion.max_stones or 0)
 	local heuristic_entries = {}
 	local score_entries = {}
@@ -178,13 +204,22 @@ local function rank_heuristic_and_score(view, suggestion, base, territory_before
 		local moves = M.enumerate_legal_moves(view, stone_id, suggestion.max_legal_per_stone or 0)
 		for mi = 1, #moves do
 			local row, col = moves[mi].row, moves[mi].col
-			local scored = cached_evaluate(view, eval_cache, row, col, stone_id, base, territory_before)
-			if scored then
+			local pre_score = cached_pre_selection(
+				view,
+				ctx_cache,
+				row,
+				col,
+				stone_id,
+				base,
+				territory_before,
+				placement_cfg
+			)
+			if pre_score ~= nil then
 				heuristic_entries[#heuristic_entries + 1] = {
 					stone_id = stone_id,
 					row = row,
 					col = col,
-					heuristic_score = scored.score,
+					heuristic_score = pre_score,
 				}
 			end
 			local delta = placement_match_score.score_delta(view, stone_id, row, col)
@@ -316,6 +351,7 @@ function M.choose_placement(view)
 		local mcts_opts = {
 			walls = walls,
 			territory_before = territory_before,
+			base_features = base,
 		}
 		for k, v in pairs(settings.mcts) do
 			mcts_opts[k] = v

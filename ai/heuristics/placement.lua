@@ -1,33 +1,67 @@
---- Placement candidate scoring orchestrator (config-driven terms + shared context).
+--- Placement candidate scoring orchestrator (pre-selection vs selection tiers + match-score).
 --- @module ai.heuristics.placement
 
 local ai_config = require("ai.config")
 local ai_scoring = require("ai.scoring")
+local evaluate = require("ai.board_analysis.evaluate")
 local placement_cheap = require("ai.heuristics.placement_cheap")
 local placement_context = require("ai.heuristics.placement_context")
-local placement_terms = require("ai.heuristics.placement_terms")
+local placement_match_score = require("ai.scoring.placement_match_score")
+local stone_heuristics_def = require("ai.heuristics.stone_heuristics_def")
 
 local M = {}
 
-M.WEIGHTS = ai_config.placement.weights
+M.WEIGHTS = ai_config.placement.weights_selection
+
+--- @param view table
+--- @param ctx table
+--- @param placement_cfg table
+--- @return number heuristic_part selection tier only (margin-aware)
+local function selection_heuristic_part(view, ctx, placement_cfg)
+	local my_score = stone_heuristics_def.sum_selection(ctx, placement_cfg)
+	local game = view:raw_game()
+	local mode_key = ai_scoring.decision_mode(game)
+	if mode_key == "margin" then
+		local opp_ctx = placement_context.build_opponent(ctx)
+		local opp_score = stone_heuristics_def.sum_selection(opp_ctx, placement_cfg)
+		return ai_scoring.combine(my_score, opp_score, mode_key)
+	end
+	return my_score
+end
 
 --- @param view table
 --- @param ctx table
 --- @param placement_cfg table
 --- @return number
-local function score_context(view, ctx, placement_cfg)
-	local my_score = placement_terms.sum_side(ctx, placement_cfg)
-	local game = view:raw_game()
-	local mode_key = ai_scoring.decision_mode(game)
-	local total = my_score
-	if mode_key == "margin" then
-		local opp_ctx = placement_context.build_opponent(ctx)
-		local opp_score = placement_terms.sum_side(opp_ctx, placement_cfg)
-		total = ai_scoring.combine(my_score, opp_score, mode_key)
+local function selection_with_goals(view, ctx, placement_cfg)
+	local heuristic_part = selection_heuristic_part(view, ctx, placement_cfg)
+	local candidate = placement_context.to_candidate(ctx, heuristic_part)
+	return heuristic_part + stone_heuristics_def.goals_bonus(ctx, placement_cfg, candidate)
+end
+
+--- @param view table
+--- @param row integer
+--- @param col integer
+--- @param stone_id string
+--- @param base_features table|nil
+--- @param territory_before table|nil cached ``territory_analysis.analyze`` for current board
+--- @return number|nil combined match_part + selection heuristics
+function M.evaluate_selection(view, row, col, stone_id, base_features, territory_before)
+	local ctx = placement_context.build(view, row, col, stone_id, base_features, territory_before)
+	if not ctx then
+		return nil
 	end
-	local candidate = placement_context.to_candidate(ctx, total)
-	total = total + placement_terms.goals_bonus(ctx, placement_cfg, candidate)
-	return total
+	local placement_cfg = ai_config.for_game(view:raw_game()).placement
+	local match_part = placement_match_score.score_delta(view, stone_id, row, col) or 0
+	local heuristic_part = selection_with_goals(view, ctx, placement_cfg)
+	return match_part + heuristic_part
+end
+
+--- Normalize combined selection score to [0, 1] for MCTS backprop (rollout fast_eval blended 50/50).
+--- @param combined number
+--- @return number
+function M.normalize_selection_score(combined)
+	return evaluate.normalize_result(combined, 0, "absolute")
 end
 
 --- @param view table
@@ -43,7 +77,8 @@ function M.evaluate_move(view, row, col, stone_id, base_features, territory_befo
 		return nil
 	end
 	local placement_cfg = ai_config.for_game(view:raw_game()).placement
-	local score = score_context(view, ctx, placement_cfg)
+	local match_part = placement_match_score.score_delta(view, stone_id, row, col) or 0
+	local score = match_part + selection_with_goals(view, ctx, placement_cfg)
 	return placement_context.to_candidate(ctx, score)
 end
 
@@ -60,6 +95,7 @@ function M.best_candidate(view, candidates, stone_id, base_features, territory_b
 	local mcts = require("ai.search.mcts")
 	local mcts_opts = {
 		territory_before = territory_before,
+		base_features = base_features,
 		walls = base_features and base_features._walls or nil,
 	}
 	for k, v in pairs(settings.mcts) do

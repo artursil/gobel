@@ -73,18 +73,19 @@ end
 --- @param walls table
 --- @param territory_before table
 --- @param mode string|nil
+--- @param weights_pre table
 --- @return number
-local function cheap_prescore(move, b, player, ko, stone_id, owner_key, walls, territory_before, mode)
+local function cheap_prescore(move, b, player, ko, stone_id, owner_key, walls, territory_before, mode, weights_pre)
 	local row, col = move.row, move.col
 	local score = 0
 	if is_capture(b, row, col, player, ko, stone_id) then
-		score = score + 100
+		score = score + (weights_pre.delta_captures or 0)
 	end
 	if features.is_placement_frontier(b, row, col, player, walls, owner_key) then
-		score = score + 20
+		score = score + (weights_pre.frontier or 0)
 	end
 	if changes_territory_owner(b, row, col, player, ko, stone_id, territory_before, mode, owner_key) then
-		score = score + 10
+		score = score + (weights_pre.territory_owner_change or 0)
 	end
 	return score
 end
@@ -100,8 +101,19 @@ end
 --- @param territory_before table
 --- @param mode string|nil
 --- @return number
-function M.cheap_prescore_move(row, col, b, player, ko, stone_id, owner_key, walls, territory_before, mode)
-	return cheap_prescore({ row = row, col = col }, b, player, ko, stone_id, owner_key, walls, territory_before, mode)
+function M.cheap_prescore_move(row, col, b, player, ko, stone_id, owner_key, walls, territory_before, mode, weights_pre)
+	return cheap_prescore(
+		{ row = row, col = col },
+		b,
+		player,
+		ko,
+		stone_id,
+		owner_key,
+		walls,
+		territory_before,
+		mode,
+		weights_pre or ai_config.placement.weights_pre_selection
+	)
 end
 
 --- @param scored table[]
@@ -176,13 +188,25 @@ function M.top_candidates(view, stone_id, k, territory_before, walls, skip_terri
 		return out
 	end
 
+	local weights_pre = placement_cfg.weights_pre_selection
 	local scored = {}
 	for i = 1, #filtered do
 		local move = filtered[i]
 		scored[#scored + 1] = {
 			row = move.row,
 			col = move.col,
-			prescore = cheap_prescore(move, b, player, ko, stone_id, owner_key, walls, territory_before, mode),
+			prescore = cheap_prescore(
+				move,
+				b,
+				player,
+				ko,
+				stone_id,
+				owner_key,
+				walls,
+				territory_before,
+				mode,
+				weights_pre
+			),
 		}
 	end
 	table.sort(scored, function(a, b_entry)

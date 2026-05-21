@@ -4,13 +4,15 @@
 --- ``game.ai_planner_enabled`` / ``game.ai_planner_max_scripts`` overrides → profile → ``M.*`` defaults.
 ---
 --- **placement.candidate_k** (1–81): max candidates returned by movegen after filtering.
---- **placement.full_eval_top_n** (1–81): max ``evaluate_move`` calls in PLACE when the candidate list is larger.
+--- **placement.full_eval_top_n** (1–81): max ``evaluate_selection`` calls in PLACE when the candidate list is larger.
 --- **placement.prescore_enabled**: when true, cheap prescore ranks movegen and placement pools; when false, stable legal/filter order and no ``placement_cheap.top_by_cheap_score``.
 --- **placement.suggestion**: dual ranker pool for PLACE (``enabled``, ``stone_only_main``, ``n_heuristic``, ``n_score``, ``max_stones``, ``max_legal_per_stone``; 0 caps = unlimited).
---- **placement.weights**: per-term multipliers for full eval (keys match term ids except ``goals_bonus``).
---- **placement.heuristics**: full-tier term ids — ``delta_territory_me``, ``delta_captures``,
---- ``delta_enclosure_inside``, ``closes_region``, ``frontier``, ``contested_pressure``,
---- ``weak_boundary_penalty``, ``self_fill_penalty``, ``goals_bonus``.
+---
+--- **placement.heuristics_pre_selection**: term ids for stage-1 fast prescore / dual-suggest heuristic ranker.
+--- **placement.heuristics_selection**: term ids for stage-2 full selection eval + MCTS root-child signal.
+--- **placement.weights_pre_selection** / **placement.weights_selection**: both tiers default to legacy placement weights; pre adds ``territory_owner_change`` (~10) for movegen prescore.
+---
+--- Legacy ``game.ai_placement.weights`` merges into **both** weight tiers. Legacy ``placement.heuristics`` (``{ id, enabled }``) still filters selection terms when set on the game.
 ---
 --- **mcts.enabled**: run shallow placement MCTS when strategy allows and ``game.ai_mcts`` exists.
 --- **mcts.iterations** (0–500): root playouts per placement decision.
@@ -42,15 +44,6 @@ local PLACEMENT_TERM_IDS = {
 	"goals_bonus",
 }
 
---- @return table[]
-local function default_placement_heuristics()
-	local list = {}
-	for i = 1, #PLACEMENT_TERM_IDS do
-		list[i] = { id = PLACEMENT_TERM_IDS[i], enabled = true }
-	end
-	return list
-end
-
 --- @param list table[]
 --- @return table[]
 local function copy_heuristics_list(list)
@@ -59,6 +52,41 @@ local function copy_heuristics_list(list)
 		out[i] = { id = list[i].id, enabled = list[i].enabled }
 	end
 	return out
+end
+
+--- @param t table
+--- @return table
+local function shallow_copy_table(t)
+	local out = {}
+	for k, v in pairs(t) do
+		out[k] = v
+	end
+	return out
+end
+
+local LEGACY_PLACEMENT_WEIGHTS = {
+	delta_territory_me = 4.0,
+	delta_captures = 12.0,
+	delta_enclosure_inside = 2.5,
+	closes_region = 3.0,
+	frontier = 2.0,
+	contested_pressure = 1.5,
+	weak_boundary_penalty = -1.0,
+	self_fill_penalty = -6.0,
+}
+
+--- @return table
+local function legacy_weights_copy()
+	return shallow_copy_table(LEGACY_PLACEMENT_WEIGHTS)
+end
+
+--- @return table[]
+local function default_legacy_heuristics_list()
+	local list = {}
+	for i = 1, #PLACEMENT_TERM_IDS do
+		list[i] = { id = PLACEMENT_TERM_IDS[i], enabled = true }
+	end
+	return list
 end
 
 M.placement = {
@@ -73,17 +101,24 @@ M.placement = {
 		max_stones = 0,
 		max_legal_per_stone = 0,
 	},
-	heuristics = default_placement_heuristics(),
-	weights = {
-		delta_territory_me = 4.0,
-		delta_captures = 12.0,
-		delta_enclosure_inside = 2.5,
-		closes_region = 3.0,
-		frontier = 2.0,
-		contested_pressure = 1.5,
-		weak_boundary_penalty = -1.0,
-		self_fill_penalty = -6.0,
+	heuristics_pre_selection = { "delta_captures", "frontier", "territory_owner_change" },
+	heuristics_selection = {
+		"delta_territory_me",
+		"delta_captures",
+		"delta_enclosure_inside",
+		"closes_region",
+		"frontier",
+		"contested_pressure",
+		"weak_boundary_penalty",
+		"self_fill_penalty",
+		"goals_bonus",
 	},
+	weights_pre_selection = (function()
+		local w = legacy_weights_copy()
+		w.territory_owner_change = 10
+		return w
+	end)(),
+	weights_selection = legacy_weights_copy(),
 }
 
 M.mcts = {
@@ -171,11 +206,18 @@ local function merge_section(dst, src)
 	end
 	for k, v in pairs(src) do
 		if k == "weights" then
-			merge_section(dst.weights, v)
+			merge_section(dst.weights_pre_selection, v)
+			merge_section(dst.weights_selection, v)
+		elseif k == "weights_selection" or k == "weights_pre_selection" then
+			merge_section(dst[k], v)
 		elseif k == "heuristics" then
 			dst.heuristics = copy_heuristics_list(v)
-		elseif type(v) == "table" and type(dst[k]) == "table" then
-			merge_section(dst[k], v)
+		elseif type(v) == "table" and type(dst[k]) == "table" and k ~= "suggestion" then
+			if k == "heuristics_pre_selection" or k == "heuristics_selection" then
+				dst[k] = v
+			else
+				merge_section(dst[k], v)
+			end
 		else
 			dst[k] = v
 		end
@@ -219,27 +261,32 @@ local function copy_suggestion(src)
 	}
 end
 
---- @param t table
+--- @param placement table
 --- @return table
-local function shallow_copy_table(t)
-	local out = {}
-	for k, v in pairs(t) do
-		out[k] = v
+local function copy_placement_defaults(placement)
+	local out = shallow_copy_table(placement)
+	out.weights_pre_selection = shallow_copy_table(placement.weights_pre_selection)
+	out.weights_selection = shallow_copy_table(placement.weights_selection)
+	if placement.heuristics then
+		out.heuristics = copy_heuristics_list(placement.heuristics)
 	end
+	out.heuristics_pre_selection = {}
+	for i = 1, #placement.heuristics_pre_selection do
+		out.heuristics_pre_selection[i] = placement.heuristics_pre_selection[i]
+	end
+	out.heuristics_selection = {}
+	for i = 1, #placement.heuristics_selection do
+		out.heuristics_selection[i] = placement.heuristics_selection[i]
+	end
+	out.suggestion = copy_suggestion(placement.suggestion)
 	return out
 end
 
 --- @param profile table
 --- @return table
 local function resolved_from_profile(profile)
-	local placement = shallow_copy_table(M.placement)
-	placement.weights = shallow_copy_table(M.placement.weights)
-	placement.heuristics = copy_heuristics_list(M.placement.heuristics)
-	placement.suggestion = copy_suggestion(M.placement.suggestion)
+	local placement = copy_placement_defaults(M.placement)
 	merge_section(placement, profile.placement)
-	if not profile.placement or not profile.placement.heuristics then
-		placement.heuristics = copy_heuristics_list(M.placement.heuristics)
-	end
 	return {
 		placement = placement,
 		mcts = merge_section(shallow_copy_table(M.mcts), profile.mcts),
@@ -258,14 +305,8 @@ function M.apply_profile(game, profile_name)
 	game.ai_planner_max_scripts = profile.planner and profile.planner.max_scripts or M.planner.max_scripts
 	game.ai_mcts = shallow_copy_table(M.mcts)
 	merge_section(game.ai_mcts, profile.mcts)
-	game.ai_placement = shallow_copy_table(M.placement)
-	game.ai_placement.weights = shallow_copy_table(M.placement.weights)
-	game.ai_placement.heuristics = copy_heuristics_list(M.placement.heuristics)
-	game.ai_placement.suggestion = copy_suggestion(M.placement.suggestion)
+	game.ai_placement = copy_placement_defaults(M.placement)
 	merge_section(game.ai_placement, profile.placement)
-	if not profile.placement or not profile.placement.heuristics then
-		game.ai_placement.heuristics = copy_heuristics_list(M.placement.heuristics)
-	end
 	game.ai_scoring = shallow_copy_table(M.scoring)
 	merge_section(game.ai_scoring, profile.scoring)
 end
@@ -283,8 +324,8 @@ function M.for_game(game)
 			placement_override.heuristics = nil
 			merge_section(resolved.placement, placement_override)
 			if saved_heuristics then
-				resolved.placement.heuristics =
-					merge_heuristics_list(resolved.placement.heuristics, saved_heuristics)
+				local base = resolved.placement.heuristics or default_legacy_heuristics_list()
+				resolved.placement.heuristics = merge_heuristics_list(base, saved_heuristics)
 			end
 		end
 		if game.ai_mcts then

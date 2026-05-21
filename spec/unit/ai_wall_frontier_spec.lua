@@ -26,6 +26,7 @@ describe("ai wall frontier", function()
 			{ owner = config.OWNER_WHITE, boundary_fields = { { 5, 4 } } },
 		}
 		local g = match_state.new_match("pvc")
+		g.ai_placement = { prescore_enabled = true }
 		g.board = b
 		g.phase = "PLACE_PHASE"
 		g.to_play = "white"
