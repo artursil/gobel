@@ -249,6 +249,130 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 			assert_player_x_mult(g, "black", 6, "adding a stone not completing the X does not change x_mult")
 			assert_player_x_mult_delta(g, "black", snap, 0, "x_mult unchanged without completed X")
 		end)
+		it("large 9-cell X: adding a stone completing 2 Xs, 3 times x2 is triggered", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "x_stone" })
+			set_x_mult(g, "black", 2)
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . B . X . .",
+				". . . B . B . . .",
+				". . B . X . . . .",
+				". . . B . B . . .",
+				". . B . . . B . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . B . B . X . .",
+				". . . B . B . . .",
+				". . B . X . . . .",
+				". . . B . B . . .",
+				". . B . . . B . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			assert_player_x_mult(g, "black", 16, "adding a stone completing 2 Xs, 3 times x2 is triggered")
+			assert_player_x_mult_delta(g, "black", snap, 14, "x_mult increases by 14 from 2 to 16")
+		end)
+		it("large 9-cell X: adding an x_stone completing 2 Xs, 5 times x2 is triggered", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "x_stone" })
+			set_x_mult(g, "black", 2)
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . B . X . .",
+				". . . B . B . . .",
+				". . B . X . . . .",
+				". . . B . B . . .",
+				". . B . . . B . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . X . B . X . .",
+				". . . B . B . . .",
+				". . B . X . . . .",
+				". . . B . B . . .",
+				". . B . . . B . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			assert_player_x_mult(g, "black", 64, "adding a stone completing 2 Xs, 5 times x2 is triggered")
+			assert_player_x_mult_delta(g, "black", snap, 62, "x_mult increases by 62 from 2 to 64")
+		end)
+		it("large 13-cell X: completing large X with 3 x_stones, black x_mult becomes 48", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "x_stone" })
+			set_x_mult(g, "black", 6)
+			set_board(g, {
+				". B . . . . . . .",
+				". . B . . . X . .",
+				". . . B . B . . .",
+				". . . . X . . . .",
+				". . . B . B . . .",
+				". . B . . . B . .",
+				". B . . . . . B .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". B . . . . . X .",
+				". . B . . . X . .",
+				". . . B . B . . .",
+				". . . . X . . . .",
+				". . . B . B . . .",
+				". . B . . . B . .",
+				". B . . . . . B .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+
+			assert_player_x_mult(g, "black", 48, "large 13-cell X completed with 3 x_stones, black x_mult becomes 48")
+			assert_player_x_mult_delta(g, "black", snap, 42, "x_mult increases by 42 from 6 to 48")
+		end)
+		it("large 17-cell X: completing large X with 3 x_stones, black x_mult becomes 384", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "x_stone" })
+			set_x_mult(g, "black", 48)
+			set_board(g, {
+				". . . . . . . . B",
+				". B . . . . . X .",
+				". . B . . . X . .",
+				". . . B . B . . .",
+				". . . . X . . . .",
+				". . . B . B . . .",
+				". . B . . . B . .",
+				". B . . . . . B .",
+				"B . . . . . . . B",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				"B . . . . . . . B",
+				". B . . . . . X .",
+				". . B . . . X . .",
+				". . . B . B . . .",
+				". . . . X . . . .",
+				". . . B . B . . .",
+				". . B . . . B . .",
+				". B . . . . . B .",
+				"B . . . . . . . B",
+			})
+
+			assert_player_x_mult(g, "black", 384, "large 17-cell X completed with 3 x_stones, black x_mult becomes 384")
+			assert_player_x_mult_delta(g, "black", snap, 336, "x_mult increases by 336 from 48 to 384")
+		end)
 	end)
 
 	-- 	it("basic stone completes X while x_stone already on an arm: x_mult still becomes 2", function()

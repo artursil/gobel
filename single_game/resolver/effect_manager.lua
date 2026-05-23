@@ -8,6 +8,8 @@ local dbg = require("debugger")
 local queries = require("single_game.resolver.state_queries")
 local scoring_phases = require("single_game.resolver.scoring_phases")
 local stance_order = require("single_game.resolver.stance_order")
+local shared_stones_effects = require("objects.definitions.shared_stones_effects")
+local objects_effects = require("objects.effects")
 
 local M = {}
 
@@ -208,6 +210,51 @@ local function append_board_stone_effects(state, active_macro, active_sub, terri
 	end
 end
 
+--- Pattern mult runs once per resolve (not per board cell).
+--- @param state table
+--- @param active_macro string
+--- @param active_sub string
+--- @param territory_step string|nil
+--- @param out table
+--- @return nil
+local function append_pattern_board_effects(state, active_macro, active_sub, territory_step, out)
+	if active_sub ~= "mult" then
+		return
+	end
+	local to_play = state.to_play
+	if not to_play or to_play == "none" then
+		return
+	end
+	local owner = to_play == "white" and config.OWNER_WHITE or config.OWNER_BLACK
+	local pattern_defs = {
+		shared_stones_effects.pattern_x_mult,
+		shared_stones_effects.pattern_plus_mult,
+	}
+	for i = 1, #pattern_defs do
+		local effect_def = pattern_defs[i]
+		if def_matches(effect_def, active_macro, active_sub, territory_step) then
+			local resolved = objects_effects.resolve(effect_def)
+			if resolved and resolved.apply then
+				table.insert(out, {
+					owner = owner,
+					phase = "mult",
+					sub = "mult",
+					macro = active_macro,
+					priority = resolved.priority or 12,
+					conditions = resolved.conditions,
+					apply = function(current_state)
+						resolved.apply(current_state, owner)
+					end,
+					meta = {
+						source_owner = owner,
+						source_object_type = "pattern",
+					},
+				})
+			end
+		end
+	end
+end
+
 --- @param state table
 --- @param active_macro string
 --- @param active_sub string
@@ -276,6 +323,7 @@ function M.collect_effects(state, active_macro, active_sub, territory_step)
 	append_card_effects(state, active_macro, active_sub, territory_step, effects)
 	append_stone_round_effects(state, active_macro, active_sub, territory_step, effects)
 	append_board_stone_effects(state, active_macro, active_sub, territory_step, effects)
+	append_pattern_board_effects(state, active_macro, active_sub, territory_step, effects)
 	append_timed_effects(state, active_macro, active_sub, territory_step, effects)
 	table.sort(effects, effect_priority)
 	dbg.log_stack("collected effects", {

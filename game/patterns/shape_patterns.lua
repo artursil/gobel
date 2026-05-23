@@ -8,7 +8,7 @@ local rules = require("rules")
 local M = {}
 
 M.pattern_scoring = {
-	x_tiers = { 5, 9, 27 },
+	x_tiers = { 5, 9, 13, 17, 21 },
 	plus_tiers = { 5, 9, 27 },
 	x_mult_per_tier = 2,
 	plus_mult_per_tier = 5,
@@ -256,6 +256,61 @@ function M.x_mult_factor_for_tier(tier)
 		factor = factor * M.pattern_scoring.x_mult_per_tier
 	end
 	return factor
+end
+
+--- @param pattern table
+--- @param b table
+--- @return integer
+function M.count_x_stones_in_pattern(b, pattern)
+	local n = 0
+	for i = 1, #pattern.cells do
+		local r, c = pattern.cells[i][1], pattern.cells[i][2]
+		local cell = b[r][c]
+		if cell and cell.kind == "x_stone" then
+			n = n + 1
+		end
+	end
+	return n
+end
+
+--- @param x_stone_count integer
+--- @return number product of ×2 per ``x_stone`` in the completed X
+function M.x_mult_factor_for_x_stone_count(x_stone_count)
+	local factor = 1
+	for _ = 1, x_stone_count do
+		factor = factor * M.pattern_scoring.x_mult_per_tier
+	end
+	return factor
+end
+
+--- @param patterns table[]
+--- @return table<string, integer>
+local function tier_by_center(patterns)
+	local map = {}
+	for i = 1, #patterns do
+		local p = patterns[i]
+		map[p.center_row .. ":" .. p.center_col] = p.tier
+	end
+	return map
+end
+
+--- X patterns whose tier increased after a placement (new completion or larger X: 5→9, …).
+--- @param b_before table board without the stone just played
+--- @param b_after table
+--- @param color integer
+--- @return table[] subset of ``detect_x_patterns`` results on ``b_after``
+function M.detect_newly_completed_x_patterns(b_before, b_after, color)
+	local before_tiers = tier_by_center(M.detect_x_patterns(b_before, color))
+	local after_patterns = M.detect_x_patterns(b_after, color)
+	local out = {}
+	for i = 1, #after_patterns do
+		local p = after_patterns[i]
+		local prev = before_tiers[p.center_row .. ":" .. p.center_col] or 0
+		if p.tier > prev then
+			out[#out + 1] = p
+		end
+	end
+	return out
 end
 
 --- @param tier integer

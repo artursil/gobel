@@ -502,7 +502,12 @@ function M.place_stone(g, board_rows, finish_animations)
 		for c = 1, config.BOARD_SIZE do
 			if board.is_empty(g.board[r][c]) and not board.is_empty(new_board[r][c]) then
 				local player = match_state.player_for_color(g, g.to_play)
-				player.stones.selected_stone = new_board[r][c].kind
+				local stone_kind = new_board[r][c].kind
+				player.stones.selected_stone = stone_kind
+				local idx = player.stones.selected_stone_index or 1
+				if player.stones.playable_stones[idx] then
+					player.stones.playable_stones[idx] = stone_kind
+				end
 				M.assert_legal_player_move(g, r, c, "place_stone at row " .. r .. " col " .. c)
 				if finish_animations then
 					M.finish_ui_animations_for_turn(g)

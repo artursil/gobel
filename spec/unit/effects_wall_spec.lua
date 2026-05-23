@@ -1,5 +1,6 @@
 require("spec.test_helper")
 
+local board = require("board")
 local config = require("config")
 local effects = require("objects.effects")
 local spec_helper = require("spec.spec_helper")
@@ -109,20 +110,22 @@ describe("wall stone effects", function()
 end)
 
 describe("pattern mult effects", function()
-	it("pattern_x_mult multiplies x_mult when X includes x_stone", function()
+	it("pattern_x_mult multiplies x_mult when placement completes an X with x_stone", function()
 		local st = state_with_board({
 			". . . . . . . . .",
 			". . . . . . . . .",
+			". . . B . B . . .",
 			". . . . . . . . .",
-			". . . X . X . . .",
-			". . . . X . . . .",
-			". . . X . X . . .",
+			". . . B . B . . .",
+			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		}, {
-			X = { color = config.STONE_BLACK, kind = "x_stone" },
+			B = { color = config.STONE_BLACK, kind = "stone_basic" },
 		})
+		st.board[4][5] = board.make_stone(config.STONE_BLACK, "x_stone")
+		st.last_opponent_move = { row = 4, col = 5, stone_id = "x_stone", actor = "black" }
 		st._pattern_apply_keys = {}
 		local resolved = effects.resolve({ effect_name = "pattern_x_mult", phase = "mult" })
 		resolved.apply(st, config.OWNER_BLACK)

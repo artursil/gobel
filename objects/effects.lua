@@ -398,7 +398,19 @@ local function pattern_key_seen(state, key)
 end
 
 
---- Applies tiered ``x_mult`` product (×2 per tier) for completed X patterns that include an ``x_stone``.
+--- @param state table
+--- @return table board copy with the last placed stone removed
+local function board_before_last_placement(state)
+	local move = state.last_opponent_move
+	if not move or not move.row or not move.col then
+		return state.board
+	end
+	local b = board.clone(state.board)
+	b[move.row][move.col] = config.STONE_NONE
+	return b
+end
+
+--- When a placement raises an X pattern tier, multiply ``x_mult`` by 2 once per ``x_stone`` in that X.
 --- @param effect table
 --- @return table
 function M.pattern_x_mult(effect)
@@ -411,14 +423,24 @@ function M.pattern_x_mult(effect)
 		conditions = effect.conditions,
 		apply = function(state, owner)
 			local color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
-			local patterns_found = shape_patterns.detect_x_patterns(state.board, color)
+			local board_after = state.board
+			local board_before = board_before_last_placement(state)
+			local newly_completed = shape_patterns.detect_newly_completed_x_patterns(board_before, board_after, color)
 			local place_r, place_c = placement_coords(state)
-			for i = 1, #patterns_found do
-				local pattern = patterns_found[i]
-				if pattern.has_x_stone then
-					local dedupe = "x:" .. pattern.center_row .. ":" .. pattern.center_col .. ":" .. owner
+			for i = 1, #newly_completed do
+				local pattern = newly_completed[i]
+				local x_count = shape_patterns.count_x_stones_in_pattern(board_after, pattern)
+				if x_count > 0 then
+					local dedupe = "x:"
+						.. pattern.center_row
+						.. ":"
+						.. pattern.center_col
+						.. ":"
+						.. pattern.tier
+						.. ":"
+						.. owner
 					if not pattern_key_seen(state, dedupe) then
-						local factor = shape_patterns.x_mult_factor_for_tier(pattern.tier)
+						local factor = shape_patterns.x_mult_factor_for_x_stone_count(x_count)
 						state.scores.x_mult[owner] = state.scores.x_mult[owner] * factor
 						local anchor_r = place_r or pattern.center_row
 						local anchor_c = place_c or pattern.center_col
@@ -693,7 +715,10 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active
 		end
 	end
 	for i = 1, #shared_stones_effects.all_stone_board_effects do
-		effect_defs[#effect_defs + 1] = shared_stones_effects.all_stone_board_effects[i]
+		local shared_def = shared_stones_effects.all_stone_board_effects[i]
+		if shared_def.effect_name ~= "pattern_x_mult" and shared_def.effect_name ~= "pattern_plus_mult" then
+			effect_defs[#effect_defs + 1] = shared_def
+		end
 	end
 
 	for _, effect_def in ipairs(effect_defs) do

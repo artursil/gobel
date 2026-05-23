@@ -143,7 +143,7 @@ M.x_stone = {
 	id = "x_stone",
 	type = "stone",
 	name = "X Stone",
-	description = "When part of a completed X on the board, multiplies ×Mult by 2 per pattern tier (needs an X stone in the X).",
+	description = "When a placement completes an X, multiplies ×Mult by 2 for each x_stone in that X.",
 	rarity = "rare",
 	probability = 0.5,
 	cost = 1,
@@ -154,7 +154,6 @@ M.x_stone = {
 		sprite = "sprites/stones/special.png",
 	},
 	effects = {
-		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
 	},
 }
 
