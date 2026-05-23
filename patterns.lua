@@ -10,6 +10,7 @@ M.detect_x_patterns = shape_patterns.detect_x_patterns
 M.detect_plus_patterns = shape_patterns.detect_plus_patterns
 M.group_connected = shape_patterns.group_connected
 M.group_has_wall_stone = shape_patterns.group_has_wall_stone
+M.wall_points_for_connected_group_size = shape_patterns.wall_points_for_connected_group_size
 M.x_mult_factor_for_tier = shape_patterns.x_mult_factor_for_tier
 M.x_mult_factor_for_x_stone_count = shape_patterns.x_mult_factor_for_x_stone_count
 M.count_x_stones_in_pattern = shape_patterns.count_x_stones_in_pattern

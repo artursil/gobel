@@ -44,7 +44,6 @@ local assert_player_plus_mult_delta = test_helper.assert_player_plus_mult_delta
 local assert_player_plus_mult_unchanged = test_helper.assert_player_plus_mult_unchanged
 local assert_player_points_delta = test_helper.assert_player_points_delta
 local assert_player_points_unchanged = test_helper.assert_player_points_unchanged
-local assert_board_stone_points_bonus = test_helper.assert_board_stone_points_bonus
 local assert_board_stone_modifier_absent = test_helper.assert_board_stone_modifier_absent
 
 describe("x_stone plus_stone wall scoring (visual ASCII)", function()
@@ -728,91 +727,197 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 
 			assert_player_x_mult(g, "black", 1, "lonely x_stone does not form an X pattern")
 			assert_player_x_mult_unchanged(g, "black", snap, "x_mult unchanged without completed X")
+			assert_player_points_unchanged(g, "black", snap, "points unchanged for x_stone placement")
 		end)
 	end)
 
-	-- describe("wall stone groups add +2 points on board stones", function()
-	-- 	it("basic stone placed beside two wall stones: only placed cell gets +2 modifier", function()
-	-- 		assert_pattern_stones_in_content()
-	-- 		set_hand(g, "black", { "stone_basic" })
-	-- 		set_board(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . W W . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
-	-- 		local snap = player_score_snapshot(g, "black")
+	describe("wall stone connected group points", function()
+		it("basic stone beside walls gets only basic +1, not wall bonus", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "stone_basic" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . W W . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
 
-	-- 		local row, col = place_stone(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . W W B . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . W W B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-	-- 		assert_board_stone_points_bonus(
-	-- 			g,
-	-- 			row,
-	-- 			col,
-	-- 			2,
-	-- 			"wall_stone_other grants +2 on placed non-wall only"
-	-- 		)
-	-- 		assert_board_stone_modifier_absent(
-	-- 			g,
-	-- 			3,
-	-- 			3,
-	-- 			"existing wall at 3,3 must not gain wall_stone_other bonus"
-	-- 		)
-	-- 		assert_board_stone_modifier_absent(
-	-- 			g,
-	-- 			3,
-	-- 			4,
-	-- 			"existing wall at 3,4 must not gain wall_stone_other bonus"
-	-- 		)
-	-- 		assert_player_points_delta(g, "black", snap, 2, "points increase by 2 on wall stone placement")
-	-- 	end)
-	-- end)
+			assert_player_points_delta(g, "black", snap, 1, "only basic stone +1, no wall bonus")
+			assert_board_stone_modifier_absent(g, 3, 3, "existing wall at 3,3 has no points bonus")
+			assert_board_stone_modifier_absent(g, 3, 4, "existing wall at 3,4 has no points bonus")
+		end)
 
-	-- 	it("wall placed to extend a pair: all three connected wall cells get +2 modifier", function()
-	-- 		assert_pattern_stones_in_content()
-	-- 		set_hand(g, "black", { "wall" })
-	-- 		set_board(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . W W . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
+		it("third wall in a row adds no bonus below 5 connected stones", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "wall" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . W W . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
 
-	-- 		place_stone(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . W W W . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . W W W . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-	-- 		assert_board_stone_points_bonus(g, 3, 3, 2, "wall_stone +2 on first wall of group")
-	-- 		assert_board_stone_points_bonus(g, 3, 4, 2, "wall_stone +2 on second wall of group")
-	-- 		assert_board_stone_points_bonus(g, 3, 5, 2, "wall_stone +2 on newly placed wall of group")
-	-- 	end)
-	-- end)
+			assert_player_points_unchanged(g, "black", snap, "3 connected walls grant no wall bonus")
+		end)
+
+		it("fifth wall in a row adds +5 for 5 connected stones", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "wall" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . W W W W . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . W W W W W . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+
+			assert_player_points_delta(g, "black", snap, 5, "5 connected walls grant +5")
+		end)
+
+		it("wall as 5th stone in mixed group adds +5", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "wall" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . B B B B .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . W B B B B .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+
+			assert_player_points_delta(g, "black", snap, 5, "wall joining 4 basics to 5 connected adds +5")
+		end)
+
+		it("tenth connected stone via wall placement adds +10", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "wall" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . B B . B B .",
+				". . . B B B B B .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . B B W B B .",
+				". . . B B B B B .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+
+			assert_player_points_delta(g, "black", snap, 10, "10 connected stones grant +10 on wall placement")
+		end)
+
+		it("sixth connected wall adds +5 not +10", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "wall" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . W W W W W . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . W W W W W W .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+
+			assert_player_points_delta(g, "black", snap, 5, "6 connected walls still grant only one +5 block")
+		end)
+	end)
 end)

@@ -57,6 +57,69 @@ M.basic_stones = {
 	white_energy_max = 3,
 }
 
+M.basic_x_stones = {
+	id = "basic_x_stones",
+	name = "Basic + X Stones",
+	description = "Basic stones mixed with x_stones for X pattern ×Mult scoring",
+	black_stones = {
+		stone_basic = 12,
+		x_stone = 8,
+	},
+	white_stones = {
+		stone_basic = 12,
+		x_stone = 8,
+	},
+	stone_hand_size = 6,
+	black_deck = {},
+	white_deck = {},
+	black_poses = { fixed = {}, swappable = {} },
+	white_poses = { fixed = {}, swappable = {} },
+	black_energy_max = 3,
+	white_energy_max = 3,
+}
+
+M.basic_plus_stones = {
+	id = "basic_plus_stones",
+	name = "Basic + Plus Stones",
+	description = "Basic stones mixed with plus_stones for + pattern Plus mult scoring",
+	black_stones = {
+		stone_basic = 12,
+		plus_stone = 8,
+	},
+	white_stones = {
+		stone_basic = 12,
+		plus_stone = 8,
+	},
+	stone_hand_size = 6,
+	black_deck = {},
+	white_deck = {},
+	black_poses = { fixed = {}, swappable = {} },
+	white_poses = { fixed = {}, swappable = {} },
+	black_energy_max = 3,
+	white_energy_max = 3,
+}
+
+M.basic_wall_stones = {
+	id = "basic_wall_stones",
+	name = "Basic + Wall Stones",
+	description = "Basic stones mixed with walls for orthogonal group +2 point bonuses",
+	black_stones = {
+		stone_basic = 12,
+		wall = 8,
+	},
+	white_stones = {
+		stone_basic = 12,
+		wall = 8,
+	},
+	stone_hand_size = 6,
+	black_deck = {},
+	white_deck = {},
+	black_poses = { fixed = {}, swappable = {} },
+	white_poses = { fixed = {}, swappable = {} },
+	black_energy_max = 3,
+	white_energy_max = 3,
+}
+
 M.all_towers = {
 	id = "all_towers",
 	name = "All Towers",
@@ -230,6 +293,9 @@ function M.get_all_types()
 	return {
 		{ id = "standard", name = M.standard.name },
 		{ id = "basic_stones", name = M.basic_stones.name },
+		{ id = "basic_x_stones", name = M.basic_x_stones.name },
+		{ id = "basic_plus_stones", name = M.basic_plus_stones.name },
+		{ id = "basic_wall_stones", name = M.basic_wall_stones.name },
 		{ id = "all_towers", name = M.all_towers.name },
 		{ id = "asymmetric", name = M.asymmetric.name },
 		{ id = "special_steel_showcase", name = M.special_steel_showcase.name },

@@ -96,10 +96,8 @@ describe("T-100 effects system", function()
 		assert.is_not_nil(effects.resolve({ effect_name = "pattern_plus_mult", phase = "mult" }))
 	end)
 
-	it("resolves wall_stone and wall_stone_other", function()
-		local other = effects.resolve({ effect_name = "wall_stone_other", phase = "points", value = 2 })
-		local wall = effects.resolve({ effect_name = "wall_stone", phase = "points", value = 2 })
-		assert.are.equal("WALL_STONE_OTHER", other.type)
+	it("resolves wall_stone", function()
+		local wall = effects.resolve({ effect_name = "wall_stone", phase = "points" })
 		assert.are.equal("WALL_STONE", wall.type)
 	end)
 

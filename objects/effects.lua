@@ -555,52 +555,7 @@ function M.pattern_plus_mult(effect)
 	}
 end
 
---- Non-wall placement joining an orthogonal group that contains a wall: +2 points on the placed cell only.
---- @param effect table
---- @return table
-function M.wall_stone_other(effect)
-	return {
-		type = "WALL_STONE_OTHER",
-		phase = effect.sub or "points",
-		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "points",
-		value = effect.value or 2,
-		priority = effect.priority or 14,
-		conditions = effect.conditions,
-		apply = function(state, owner, row, col)
-			if row == nil or col == nil then
-				return
-			end
-			local place_r, place_c = placement_coords(state)
-			if place_r and place_c and (place_r ~= row or place_c ~= col) then
-				return
-			end
-			local cell = state.board[row] and state.board[row][col]
-			if not cell or board.is_empty(cell) or cell.kind == "wall" then
-				return
-			end
-			local group = shape_patterns.group_connected(state.board, row, col)
-			if #group == 0 or not shape_patterns.group_has_wall_stone(state.board, group) then
-				return
-			end
-			local dedupe = "wall_other:" .. row .. ":" .. col
-			if pattern_key_seen(state, dedupe) then
-				return
-			end
-			helpers.add_cell_points_bonus(state, row, col, effect.value)
-			state.scores.points[owner] = state.scores.points[owner] + effect.value
-			animations.add_animation("wall_stone_bounce")(state, {
-				owner = owner,
-				cells = { { row, col } },
-				label = string.format("+%d", effect.value),
-				anchor_row = row,
-				anchor_col = col,
-			})
-		end,
-	}
-end
-
---- Wall placement: +2 points on every stone in the orthogonal connected group (including the wall).
+--- Wall placement: +5 Points per 5 stones in the orthogonal connected group (wall included).
 --- @param effect table
 --- @return table
 function M.wall_stone(effect)
@@ -609,7 +564,6 @@ function M.wall_stone(effect)
 		phase = effect.sub or "points",
 		macro = effect.macro or "playing_stones",
 		sub = effect.sub or "points",
-		value = effect.value or 2,
 		priority = effect.priority or 14,
 		conditions = effect.conditions,
 		apply = function(state, owner, row, col)
@@ -629,14 +583,15 @@ function M.wall_stone(effect)
 				return
 			end
 			local group = shape_patterns.group_connected(state.board, row, col)
-			for i = 1, #group do
-				local r, c = group[i][1], group[i][2]
-				helpers.add_cell_points_bonus(state, r, c, effect.value)
+			local bonus = shape_patterns.wall_points_for_connected_group_size(#group)
+			if bonus <= 0 then
+				return
 			end
+			state.scores.points[owner] = state.scores.points[owner] + bonus
 			animations.add_animation("wall_stone_bounce")(state, {
 				owner = owner,
 				cells = group,
-				label = string.format("+%d", effect.value),
+				label = string.format("+%d", bonus),
 				anchor_row = row,
 				anchor_col = col,
 			})
@@ -735,7 +690,7 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 		return nil
 	end
 	local base_apply = resolved.apply
-	if resolved.type == "WALL_STONE_OTHER" or resolved.type == "WALL_STONE" then
+	if resolved.type == "WALL_STONE" then
 		resolved.apply = function(current_state)
 			base_apply(current_state, owner, row, col)
 		end

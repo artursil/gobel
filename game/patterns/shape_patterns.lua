@@ -12,6 +12,8 @@ M.pattern_scoring = {
 	plus_tiers = { 5, 9, 13, 17, 21 },
 	x_mult_per_tier = 2,
 	plus_mult_per_tier = 5,
+	wall_stones_per_points_block = 5,
+	wall_points_per_block = 5,
 }
 
 local DIAG_DIRS = {
@@ -246,6 +248,14 @@ function M.group_has_wall_stone(b, group)
 		end
 	end
 	return false
+end
+
+--- @param connected_stone_count integer stones in the placed wall's orthogonal group (including the wall)
+--- @return integer points to add (+5 per full block of 5 connected stones)
+function M.wall_points_for_connected_group_size(connected_stone_count)
+	local block = M.pattern_scoring.wall_stones_per_points_block
+	local per_block = M.pattern_scoring.wall_points_per_block
+	return math.floor(connected_stone_count / block) * per_block
 end
 
 --- @param tier integer
