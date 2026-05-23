@@ -33,6 +33,7 @@ local function ensure_state_fields(state)
 	state.just_played = state.just_played or {}
 	state.played_cards = state.played_cards or {}
 	state.ui_animation_events = {}
+	state._pattern_apply_keys = {}
 	do
 		local n = config.BOARD_SIZE
 		state.territory_value = {}

@@ -19,6 +19,11 @@ end
 
 --- @param stone_def table
 --- @return table
+local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
+	add_points = true,
+	add_mult = true,
+}
+
 local function resolved_from_effect_defs(stone_def)
 	local out = {}
 	if not stone_def.effects then
@@ -26,7 +31,7 @@ local function resolved_from_effect_defs(stone_def)
 	end
 	for i = 1, #stone_def.effects do
 		local effect = stone_def.effects[i]
-		if effect.phase == "points" or effect.phase == "mult" then
+		if IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
 			local resolved = effect_registry.stones.resolve(effect)
 			if resolved then
 				out[#out + 1] = resolved

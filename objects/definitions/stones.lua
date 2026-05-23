@@ -7,6 +7,8 @@
 --- 4. Register pouch/deck counts in ``game_types`` / ``content.starters`` as needed.
 --- @module objects.definitions.stones
 
+local shared = require("objects.definitions.shared_stones_effects")
+
 local M = {}
 
 M.stone_basic = {
@@ -124,11 +126,49 @@ M.stone_special = {
 	effects = {},
 }
 
-M.stone_wall = {
-	id = "stone_wall",
+M.x_stone = {
+	id = "x_stone",
+	type = "stone",
+	name = "X Stone",
+	description = "When part of a completed X on the board, multiplies ×Mult by 2 per pattern tier (needs an X stone in the X).",
+	rarity = "rare",
+	probability = 0.5,
+	cost = 1,
+	depiction = "Diagonal cross mark",
+	graphic = { draw_key = "star" },
+	visual = {
+		color = { 0.75, 0.4, 0.45 },
+		sprite = "sprites/stones/special.png",
+	},
+	effects = {
+		{ effect_name = "add_points", phase = "points", value = 1, priority = 10 },
+	},
+}
+
+M.plus_stone = {
+	id = "plus_stone",
+	type = "stone",
+	name = "Plus Stone",
+	description = "When part of a completed + on the board, adds +5 Plus mult per pattern tier (needs a plus stone in the +).",
+	rarity = "rare",
+	probability = 0.5,
+	cost = 1,
+	depiction = "Orthogonal cross mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.4, 0.65, 0.75 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{ effect_name = "add_points", phase = "points", value = 1, priority = 10 },
+	},
+}
+
+M.wall = {
+	id = "wall",
 	type = "stone",
 	name = "Wall",
-	description = "A defensive wall stone used for tag-triggered effects.",
+	description = "Joins orthogonal groups; +2 points per stone in the group when a wall is placed, or +2 on a non-wall joining a wall group.",
 	rarity = "common",
 	probability = 1.0,
 	cost = 1,
@@ -139,7 +179,11 @@ M.stone_wall = {
 		color = { 0.42, 0.42, 0.46 },
 		sprite = "sprites/stones/wall.png",
 	},
-	effects = {},
+	effects = {
+		shared.wall_stone,
+	},
 }
+
+M.stone_wall = M.wall
 
 return M

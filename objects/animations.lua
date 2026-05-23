@@ -15,6 +15,9 @@ local definitions = require("objects.animations_definitions")
 
 local builders = {
 	steel_sync_mult = definitions.steel_sync_mult,
+	pattern_x_celebrate = definitions.pattern_x_celebrate,
+	pattern_plus_celebrate = definitions.pattern_plus_celebrate,
+	wall_stone_bounce = definitions.wall_stone_bounce,
 }
 
 local M = {}

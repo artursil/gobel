@@ -141,6 +141,22 @@ function H.stone_key(row, col)
 	return row * 100 + col
 end
 
+--- Adds permanent per-cell point bonus for board stone scoring.
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @param points integer
+--- @return nil
+function H.add_cell_points_bonus(state, row, col, points)
+	if points == 0 then
+		return
+	end
+	state.board_stone_modifiers = state.board_stone_modifiers or {}
+	local key = row .. ":" .. col
+	state.board_stone_modifiers[key] = state.board_stone_modifiers[key] or { points_bonus = 0 }
+	state.board_stone_modifiers[key].points_bonus = state.board_stone_modifiers[key].points_bonus + points
+end
+
 --- Apply distance bonus for a stone across all tiles.
 --- @param stone_def table
 --- @param current_state table

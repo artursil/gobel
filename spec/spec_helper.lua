@@ -4,7 +4,10 @@ local territory_resolver = require("single_game.resolver.territory")
 
 local M = {}
 
-M.DEBUG_INTEGRATION = os.getenv("INTEGRATION_DEBUG") == "1"
+--- @return boolean
+function M.integration_debug_enabled()
+	return os.getenv("INTEGRATION_DEBUG") == "1"
+end
 
 --- Scoring helpers (moved from scoring.lua) ---
 
@@ -216,7 +219,7 @@ end
 --- @param territory_grid table
 --- @return nil
 function M.debug_dump_territory(name, b, territory_grid)
-	if not M.DEBUG_INTEGRATION then
+	if not M.integration_debug_enabled() then
 		return
 	end
 	print("")
@@ -233,7 +236,7 @@ end
 --- @param tiles table
 --- @return nil
 function M.debug_dump_regions(name, b, regions, tiles)
-	if not M.DEBUG_INTEGRATION then
+	if not M.integration_debug_enabled() then
 		return
 	end
 	print("")

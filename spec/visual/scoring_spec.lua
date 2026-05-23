@@ -16,7 +16,7 @@ local LETTER_TO_STONE = {
 	L = { color = config.STONE_BLACK, kind = "stone_lieutenant" },
 	T = { color = config.STONE_BLACK, kind = "stone_tower" },
 	S = { color = config.STONE_BLACK, kind = "stone_special" },
-	X = { color = config.STONE_BLACK, kind = "stone_wall" },
+	X = { color = config.STONE_BLACK, kind = "wall" },
 }
 
 local STONE_TO_LETTER = {}
@@ -25,6 +25,8 @@ for letter, def in pairs(LETTER_TO_STONE) do
 		STONE_TO_LETTER[def.kind] = letter
 	end
 end
+
+test_helper.set_integration_debug_stone_letters(STONE_TO_LETTER)
 
 --- Base state shared by all tests. Each test gets a fresh copy via before_each.
 --- Uses "basic_stones" game type: empty poses, stone_basic only — fully deterministic scoring.
@@ -106,7 +108,7 @@ end
 --- @param g table
 --- @param hand_index integer
 local function play_card(g, hand_index)
-	assert.is_true(game.play_card(g, hand_index))
+	test_helper.assert_legal_play_card(g, hand_index, "play_card hand index " .. hand_index)
 end
 
 --- @param g table
@@ -128,7 +130,7 @@ local function place_stone(g, board_rows)
 			if board.is_empty(g.board[r][c]) and not board.is_empty(new_board[r][c]) then
 				local player = match_state.player_for_color(g, g.to_play)
 				player.stones.selected_stone = new_board[r][c].kind
-				assert.is_true(game.player_move(g, r, c))
+				test_helper.assert_legal_player_move(g, r, c, "place_stone at row " .. r .. " col " .. c)
 				test_helper.finish_ui_animations_for_turn(g)
 				return
 			end
@@ -145,114 +147,6 @@ local function play_card_and_stone(g, hand_index, board_rows)
 	place_stone(g, board_rows)
 end
 
---- Score snapshot ---
-
---- Captures a lightweight snapshot of both players' scores and resources.
---- @param g table
---- @return table
-local function snapshot(g)
-	local function snap_player(p)
-		return {
-			total = p.score.total,
-			points = p.score.points,
-			territory = p.score.territory,
-			plus_mult = p.score.plus_mult,
-			energy = p.resources.energy_current,
-			money = p.resources.money,
-		}
-	end
-	return {
-		black = snap_player(g.players.black),
-		white = snap_player(g.players.white),
-	}
-end
-
---- Territory value board rendering ---
-
---- Renders: # = stone, 1 = black-owned empty, 2 = white-owned empty, 0 = neutral.
---- @param g table
---- @return string
-local function territory_value_ascii(g)
-	local territory = g.territory or helper.territory_map(g.board, "regional")
-	local lines = {}
-	for r = 1, config.BOARD_SIZE do
-		local row = {}
-		for c = 1, config.BOARD_SIZE do
-			if not board.is_empty(g.board[r][c]) then
-				row[#row + 1] = "#"
-			elseif territory[r][c] == config.STONE_BLACK then
-				row[#row + 1] = "1"
-			elseif territory[r][c] == config.STONE_WHITE then
-				row[#row + 1] = "2"
-			else
-				row[#row + 1] = "0"
-			end
-		end
-		lines[#lines + 1] = table.concat(row, " ")
-	end
-	return table.concat(lines, "\n")
-end
-
---- Assert helpers ---
-
---- @param g table
---- @param color string
---- @param expected integer
-local function assert_energy(g, color, expected)
-	assert.are.equal(expected, match_state.player_for_color(g, color).resources.energy_current)
-end
-
---- @param g table
---- @param color string
---- @param expected integer
-local function assert_money(g, color, expected)
-	assert.are.equal(expected, match_state.player_for_color(g, color).resources.money)
-end
-
---- Asserts territory ownership grid against expected ASCII rows (B/W=stone, b/w=owned empty, .=neutral).
---- @param g table
---- @param expected_rows table
-local function assert_territory(g, expected_rows)
-	local territory = g.territory or helper.territory_map(g.board, "regional")
-	assert.are.equal(table.concat(expected_rows, "\n"), helper.territory_ascii(g.board, territory))
-end
-
---- Asserts territory value board against expected ASCII rows (#=stone, 1=black, 2=white, 0=neutral).
---- @param g table
---- @param expected_rows table
-local function assert_territory_values(g, expected_rows)
-	assert.are.equal(table.concat(expected_rows, "\n"), territory_value_ascii(g))
-end
-
---- Asserts both players' total scores.
---- @param g table
---- @param expected_black integer
---- @param expected_white integer
-local function assert_scores(g, expected_black, expected_white)
-	assert.are.equal(expected_black, g.players.black.score.total)
-	assert.are.equal(expected_white, g.players.white.score.total)
-end
-
---- Asserts how much each player's total score changed relative to a snapshot.
---- @param g table
---- @param snap table  result of snapshot(g) taken before the action
---- @param expected_delta_black integer
---- @param expected_delta_white integer
-local function assert_score_delta(g, snap, expected_delta_black, expected_delta_white)
-	assert.are.equal(expected_delta_black, g.players.black.score.total - snap.black.total)
-	assert.are.equal(expected_delta_white, g.players.white.score.total - snap.white.total)
-end
-
---- Asserts how much each player's plus_mult changed relative to a snapshot.
---- @param g table
---- @param snap table  result of snapshot(g) taken before the action
---- @param expected_delta_black integer
---- @param expected_delta_white integer
-local function assert_mult_delta(g, snap, expected_delta_black, expected_delta_white)
-	assert.are.equal(expected_delta_black, g.players.black.score.plus_mult - snap.black.plus_mult)
-	assert.are.equal(expected_delta_white, g.players.white.score.plus_mult - snap.white.plus_mult)
-end
-
 --- Tests ---
 
 describe("Scoring visual spec", function()
@@ -261,6 +155,10 @@ describe("Scoring visual spec", function()
 	before_each(function()
 		g = new_base_state()
 	end)
+
+	after_each(test_helper.visual_scoring_debug_after_each(function()
+		return g
+	end))
 
 	it("case_01: card + basic stone at center owns full board, scores correctly", function()
 		-- Setup
@@ -279,7 +177,7 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		local snap = snapshot(g)
+		local snap = test_helper.visual_score_snapshot(g)
 
 		-- Act: play card_point_tap (+2 pts, costs 1 energy), then place stone_basic at center
 		play_card_and_stone(g, 1, {
@@ -295,11 +193,11 @@ describe("Scoring visual spec", function()
 		})
 
 		-- card_point_tap costs 1 energy; started at 3
-		assert_energy(g, "black", 2)
-		assert_money(g, "black", 0)
+		test_helper.assert_player_energy(g, "black", 2, "card_point_tap spends 1 energy")
+		test_helper.assert_player_money(g, "black", 0, "black starts with no money")
 
 		-- single black stone at center claims all 80 empty cells
-		assert_territory(g, {
+		test_helper.assert_territory_ascii(g, {
 			"b b b b b b b b b",
 			"b b b b b b b b b",
 			"b b b b b b b b b",
@@ -309,10 +207,9 @@ describe("Scoring visual spec", function()
 			"b b b b b b b b b",
 			"b b b b b b b b b",
 			"b b b b b b b b b",
-		})
+		}, "center stone claims all empty cells for black")
 
-		-- no tower or doubled-territory effects, all owned empty cells count as 1
-		assert_territory_values(g, {
+		test_helper.assert_territory_values_ascii(g, {
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
@@ -322,13 +219,10 @@ describe("Scoring visual spec", function()
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
-		})
+		}, "each owned empty cell counts as territory value 1")
 
-		-- formula: turn_bonus * territory * points * plus_mult * x_mult
-		-- black: 1.1 (turn 1) * 80 (territory) * 4 (starting 1 + stone_basic=1 + card_point_tap=2) * 1 * 1 = 352
-		-- white: 1.1 * 0 * 1 * 1 * 1 = 0
-		assert_scores(g, 352, 0)
-		assert_score_delta(g, snap, 352, 0)
+		test_helper.assert_players_total_score(g, 352, 0, "turn 1 center stone full-board score")
+		test_helper.assert_players_total_score_delta(g, snap, 352, 0, "score change from match start")
 	end)
 
 	it("persistent_flux round 1 basic stone: counter applied in full as mult", function()
@@ -340,7 +234,7 @@ describe("Scoring visual spec", function()
 		set_hand(g, "black", { "stone_basic" })
 		set_round(g, 1)
 
-		local snap = snapshot(g)
+		local snap = test_helper.visual_score_snapshot(g)
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -354,7 +248,7 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_mult_delta(g, snap, 9, 0)
+		test_helper.assert_players_plus_mult_delta(g, snap, 9, 0, "persistent_flux round 1 basic stone")
 	end)
 
 	it("persistent_flux round 1 special stone: counter incremented then applied in full", function()
@@ -366,7 +260,7 @@ describe("Scoring visual spec", function()
 		set_hand(g, "black", { "stone_special" })
 		set_round(g, 1)
 
-		local snap = snapshot(g)
+		local snap = test_helper.visual_score_snapshot(g)
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -380,7 +274,7 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_mult_delta(g, snap, 12, 0)
+		test_helper.assert_players_plus_mult_delta(g, snap, 12, 0, "persistent_flux round 1 special stone")
 	end)
 
 	it("persistent_flux round 3 wall stone: pending delta applied (negative)", function()
@@ -392,7 +286,7 @@ describe("Scoring visual spec", function()
 		set_hand(g, "black", { "stone_wall" })
 		set_round(g, 3)
 
-		local snap = snapshot(g)
+		local snap = test_helper.visual_score_snapshot(g)
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -406,7 +300,7 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_mult_delta(g, snap, -3, 0)
+		test_helper.assert_players_plus_mult_delta(g, snap, -3, 0, "persistent_flux round 3 wall stone counter 9")
 	end)
 	it("persistent_flux round 3 wall stone: pending delta applied (negative)", function()
 		-- counter = 2, round 3, stone_wall (tag: wall) → pending_delta = -3
@@ -417,7 +311,7 @@ describe("Scoring visual spec", function()
 		set_hand(g, "black", { "stone_wall" })
 		set_round(g, 3)
 
-		local snap = snapshot(g)
+		local snap = test_helper.visual_score_snapshot(g)
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -431,7 +325,7 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_mult_delta(g, snap, -2, 0)
+		test_helper.assert_players_plus_mult_delta(g, snap, -2, 0, "persistent_flux round 3 wall stone counter 2")
 	end)
 
 	it("persistent_flux round 4 special stone: pending delta applied (positive)", function()
@@ -443,7 +337,7 @@ describe("Scoring visual spec", function()
 		set_hand(g, "black", { "stone_special" })
 		set_round(g, 4)
 
-		local snap = snapshot(g)
+		local snap = test_helper.visual_score_snapshot(g)
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -457,7 +351,7 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_mult_delta(g, snap, 3, 0)
+		test_helper.assert_players_plus_mult_delta(g, snap, 3, 0, "persistent_flux round 4 special stone")
 	end)
 
 	it("blueprint + persistent_flux round 4 special stone: pending delta applied twice", function()
@@ -474,7 +368,7 @@ describe("Scoring visual spec", function()
 		set_hand(g, "black", { "stone_special" })
 		set_round(g, 4)
 
-		local snap = snapshot(g)
+		local snap = test_helper.visual_score_snapshot(g)
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -488,7 +382,7 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_mult_delta(g, snap, 6, 0)
+		test_helper.assert_players_plus_mult_delta(g, snap, 6, 0, "echo + persistent_flux double pending")
 	end)
 	it("2 x blueprint + persistent_flux round 4 special stone: pending delta applied twice", function()
 		set_persistent_counter(g, "persistent_flux_mult", 9, 0)
@@ -496,7 +390,7 @@ describe("Scoring visual spec", function()
 		set_hand(g, "black", { "stone_special" })
 		set_round(g, 4)
 
-		local snap = snapshot(g)
+		local snap = test_helper.visual_score_snapshot(g)
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -510,6 +404,6 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_mult_delta(g, snap, 9, 0)
+		test_helper.assert_players_plus_mult_delta(g, snap, 9, 0, "two echo + persistent_flux triple pending")
 	end)
 end)

@@ -309,6 +309,10 @@ Things to consider:
 28. some stances/card should be able to retrigger cards/stones/stances
 
 
+IDEAS:
+- stance/relic to draw a card always first
+
+
 effects
 conditions
 discard pile

@@ -177,12 +177,12 @@ M.vertical_slice_test = {
 	description = "Blueprint + persistent mult + targeted cards + wall/special stones.",
 	black_stones = {
 		stone_special = 8,
-		stone_wall = 8,
+		wall = 8,
 		stone_basic = 6,
 	},
 	white_stones = {
 		stone_special = 6,
-		stone_wall = 6,
+		wall = 6,
 		stone_basic = 10,
 	},
 	stone_hand_size = 6,

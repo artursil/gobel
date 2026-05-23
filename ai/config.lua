@@ -42,6 +42,10 @@ local PLACEMENT_TERM_IDS = {
 	"weak_boundary_penalty",
 	"self_fill_penalty",
 	"goals_bonus",
+	"x_stone_near_complete",
+	"x_stone_block_opponent_x",
+	"plus_stone_near_complete",
+	"plus_stone_block_opponent_plus",
 }
 
 --- @param list table[]
@@ -73,6 +77,10 @@ local LEGACY_PLACEMENT_WEIGHTS = {
 	contested_pressure = 1.5,
 	weak_boundary_penalty = -1.0,
 	self_fill_penalty = -6.0,
+	x_stone_near_complete = 0,
+	x_stone_block_opponent_x = 0,
+	plus_stone_near_complete = 0,
+	plus_stone_block_opponent_plus = 0,
 }
 
 --- @return table

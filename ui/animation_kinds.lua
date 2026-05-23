@@ -29,6 +29,7 @@
 
 local M = {}
 
+local layout_mod = require("layout")
 local stance_card_draw = require("ui.stance_card_draw")
 
 local hand_float_font_cache = {}
@@ -246,9 +247,130 @@ local function make_display_update_kind(animation_id, field_name)
 	return kind
 end
 
+local board_stone_bounce = {}
+
+board_stone_bounce.defaults = {
+	duration_ms = 220,
+	start_delay_ms = 0,
+	bounce_px = 10,
+}
+
+--- @param intent table
+--- @param game table|nil
+--- @param layout table|nil
+--- @return table|nil
+function board_stone_bounce.spawn(intent, game, layout)
+	local m = merge_defaults(board_stone_bounce.defaults, intent)
+	if not m.owner or m.row == nil or m.col == nil then
+		return nil
+	end
+	return {
+		animation_id = "board_stone_bounce",
+		age = 0,
+		delay_start_s = (m.start_delay_ms or 0) / 1000,
+		dur_s = (m.duration_ms or board_stone_bounce.defaults.duration_ms) / 1000,
+		owner = m.owner,
+		row = m.row,
+		col = m.col,
+		bounce_px = m.bounce_px,
+	}
+end
+
+--- @param job table
+--- @param ui_index table
+--- @return nil
+function board_stone_bounce.draw(job, ui_index)
+	if job.age < job.delay_start_s then
+		return
+	end
+	local layout = ui_index.layout
+	if not layout then
+		return
+	end
+	local px, py = layout_mod.grid_to_pixel(layout, job.row, job.col)
+	local lg = love.graphics
+	local u = (job.age - job.delay_start_s) / math.max(0.0001, job.dur_s)
+	local offset = math.sin(u * math.pi) * job.bounce_px
+	local rad = layout.board_metrics.cell * (require("config").STONE_RADIUS_FACTOR or 0.42)
+	lg.setColor(0.96, 0.84, 0.22, 0.9)
+	lg.setLineWidth(3)
+	lg.circle("line", px, py - offset, rad * 0.95)
+	lg.setLineWidth(1)
+	lg.setColor(1, 1, 1, 1)
+end
+
+local board_stone_float_text = {}
+
+board_stone_float_text.defaults = {
+	duration_ms = 900,
+	start_delay_ms = 0,
+	rise_px = 48,
+	text_half_width = 70,
+	font_size_px = 28,
+	text_r = 0.95,
+	text_g = 0.86,
+	text_b = 0.25,
+}
+
+--- @param intent table
+--- @param game table|nil
+--- @param layout table|nil
+--- @return table|nil
+function board_stone_float_text.spawn(intent, game, layout)
+	local m = merge_defaults(board_stone_float_text.defaults, intent)
+	if not m.owner or m.row == nil or m.col == nil or m.text == nil or m.text == "" then
+		return nil
+	end
+	return {
+		animation_id = "board_stone_float_text",
+		age = 0,
+		delay_start_s = (m.start_delay_ms or 0) / 1000,
+		dur_s = (m.duration_ms or board_stone_float_text.defaults.duration_ms) / 1000,
+		owner = m.owner,
+		row = m.row,
+		col = m.col,
+		text = m.text,
+		rise_px = m.rise_px,
+		text_half_width = m.text_half_width,
+		font_size_px = m.font_size_px,
+		text_r = m.text_r,
+		text_g = m.text_g,
+		text_b = m.text_b,
+	}
+end
+
+--- @param job table
+--- @param ui_index table
+--- @return nil
+function board_stone_float_text.draw(job, ui_index)
+	if job.age < job.delay_start_s then
+		return
+	end
+	local layout = ui_index.layout
+	if not layout then
+		return
+	end
+	local px, py = layout_mod.grid_to_pixel(layout, job.row, job.col)
+	local lg = love.graphics
+	local u = (job.age - job.delay_start_s) / math.max(0.0001, job.dur_s)
+	local rise = job.rise_px * u
+	local alpha = 1 - u * u
+	lg.setColor(job.text_r, job.text_g, job.text_b, math.max(0, math.min(1, alpha)))
+	local float_font = cached_hand_float_font(job.font_size_px)
+	if float_font and lg.setFont then
+		lg.setFont(float_font)
+	end
+	lg.printf(job.text, px - job.text_half_width, py - rise - 18, job.text_half_width * 2, "center")
+	ui_fonts_mod = ui_fonts_mod or require("ui.fonts")
+	ui_fonts_mod.apply_default()
+	lg.setColor(1, 1, 1, 1)
+end
+
 M.by_id = {
 	stance_shake = stance_shake,
 	hand_card_float_text = hand_card_float_text,
+	board_stone_bounce = board_stone_bounce,
+	board_stone_float_text = board_stone_float_text,
 	display_update_territory = make_display_update_kind("display_update_territory", "territory"),
 	display_update_points = make_display_update_kind("display_update_points", "points"),
 	display_update_plus_mult = make_display_update_kind("display_update_plus_mult", "plus_mult"),

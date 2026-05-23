@@ -27,6 +27,18 @@ end
 --- @param state table
 --- @param owner string  ``config.OWNER_BLACK`` | ``config.OWNER_WHITE`` or loose ``"black"`` / ``"white"``
 --- @return integer
+--- Integer ms per board-stone bounce step in a celebrate sequence.
+--- @param cell_count integer
+--- @return integer
+function M.board_stone_bounce_step_duration_ms(cell_count)
+	local min_ms = animations_constants.BOARD_STONE_BOUNCE_STEP_MS
+	local n = cell_count
+	if type(n) ~= "number" or n < 1 then
+		return min_ms
+	end
+	return min_ms
+end
+
 function M.get_stance_index(state, owner)
 	local res = state.resolution
 	if not res then

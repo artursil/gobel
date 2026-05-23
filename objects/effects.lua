@@ -8,6 +8,8 @@ local board = require("board")
 local queries = require("single_game.resolver.state_queries")
 local helpers = require("objects.effects_helpers")
 local animations = require("objects.animations")
+local shape_patterns = require("game.patterns.shape_patterns")
+local shared_stones_effects = require("objects.definitions.shared_stones_effects")
 
 local M = {}
 
@@ -357,6 +359,187 @@ function M.add_permanent_points_to_selected_stone(effect)
 	}
 end
 
+--- @param state table
+--- @return table|nil
+local function placement_coords(state)
+	local move = state.last_opponent_move
+	if move and move.row and move.col then
+		return move.row, move.col
+	end
+	return nil, nil
+end
+
+--- @param state table
+--- @param key string
+--- @return boolean
+local function pattern_key_seen(state, key)
+	state._pattern_apply_keys = state._pattern_apply_keys or {}
+	if state._pattern_apply_keys[key] then
+		return true
+	end
+	state._pattern_apply_keys[key] = true
+	return false
+end
+
+
+--- Applies tiered ``x_mult`` product (×2 per tier) for completed X patterns that include an ``x_stone``.
+--- @param effect table
+--- @return table
+function M.pattern_x_mult(effect)
+	return {
+		type = "PATTERN_X_MULT",
+		phase = effect.phase or "mult",
+		priority = effect.priority or 12,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			local color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
+			local patterns_found = shape_patterns.detect_x_patterns(state.board, color)
+			local place_r, place_c = placement_coords(state)
+			for i = 1, #patterns_found do
+				local pattern = patterns_found[i]
+				if pattern.has_x_stone then
+					local dedupe = "x:" .. pattern.center_row .. ":" .. pattern.center_col .. ":" .. owner
+					if not pattern_key_seen(state, dedupe) then
+						local factor = shape_patterns.x_mult_factor_for_tier(pattern.tier)
+						state.scores.x_mult[owner] = state.scores.x_mult[owner] * factor
+						local anchor_r = place_r or pattern.center_row
+						local anchor_c = place_c or pattern.center_col
+						local label = string.format("×%d", factor)
+						animations.add_animation("pattern_x_celebrate")(state, {
+							owner = owner,
+							cells = pattern.cells,
+							label = label,
+							anchor_row = anchor_r,
+							anchor_col = anchor_c,
+						})
+					end
+				end
+			end
+		end,
+	}
+end
+
+--- Applies tiered ``plus_mult`` bonus (+5 per tier) for completed + patterns that include a ``plus_stone``.
+--- @param effect table
+--- @return table
+function M.pattern_plus_mult(effect)
+	return {
+		type = "PATTERN_PLUS_MULT",
+		phase = effect.phase or "mult",
+		priority = effect.priority or 12,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			local color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
+			local patterns_found = shape_patterns.detect_plus_patterns(state.board, color)
+			local place_r, place_c = placement_coords(state)
+			for i = 1, #patterns_found do
+				local pattern = patterns_found[i]
+				if pattern.has_plus_stone then
+					local dedupe = "plus:" .. pattern.center_row .. ":" .. pattern.center_col .. ":" .. owner
+					if not pattern_key_seen(state, dedupe) then
+						local bonus = shape_patterns.plus_mult_bonus_for_tier(pattern.tier)
+						state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + bonus
+						local anchor_r = place_r or pattern.center_row
+						local anchor_c = place_c or pattern.center_col
+						local label = string.format("+%d", bonus)
+						animations.add_animation("pattern_plus_celebrate")(state, {
+							owner = owner,
+							cells = pattern.cells,
+							label = label,
+							anchor_row = anchor_r,
+							anchor_col = anchor_c,
+						})
+					end
+				end
+			end
+		end,
+	}
+end
+
+--- Non-wall placement joining an orthogonal group that contains a wall: +2 points on the placed cell only.
+--- @param effect table
+--- @return table
+function M.wall_stone_other(effect)
+	return {
+		type = "WALL_STONE_OTHER",
+		phase = effect.phase or "points",
+		value = effect.value or 2,
+		priority = effect.priority or 14,
+		conditions = effect.conditions,
+		apply = function(state, owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			local place_r, place_c = placement_coords(state)
+			if place_r and place_c and (place_r ~= row or place_c ~= col) then
+				return
+			end
+			local cell = state.board[row] and state.board[row][col]
+			if not cell or board.is_empty(cell) or cell.kind == "wall" then
+				return
+			end
+			local group = shape_patterns.group_connected(state.board, row, col)
+			if #group == 0 or not shape_patterns.group_has_wall_stone(state.board, group) then
+				return
+			end
+			local dedupe = "wall_other:" .. row .. ":" .. col
+			if pattern_key_seen(state, dedupe) then
+				return
+			end
+			helpers.add_cell_points_bonus(state, row, col, effect.value)
+			animations.add_animation("wall_stone_bounce")(state, {
+				owner = owner,
+				cells = { { row, col } },
+				label = string.format("+%d", effect.value),
+				anchor_row = row,
+				anchor_col = col,
+			})
+		end,
+	}
+end
+
+--- Wall placement: +2 points on every stone in the orthogonal connected group (including the wall).
+--- @param effect table
+--- @return table
+function M.wall_stone(effect)
+	return {
+		type = "WALL_STONE",
+		phase = effect.phase or "points",
+		value = effect.value or 2,
+		priority = effect.priority or 14,
+		conditions = effect.conditions,
+		apply = function(state, owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			local place_r, place_c = placement_coords(state)
+			if place_r and place_c and (place_r ~= row or place_c ~= col) then
+				return
+			end
+			local cell = state.board[row] and state.board[row][col]
+			if not cell or board.is_empty(cell) or cell.kind ~= "wall" then
+				return
+			end
+			local dedupe = "wall:" .. row .. ":" .. col
+			if pattern_key_seen(state, dedupe) then
+				return
+			end
+			local group = shape_patterns.group_connected(state.board, row, col)
+			for i = 1, #group do
+				local r, c = group[i][1], group[i][2]
+				helpers.add_cell_points_bonus(state, r, c, effect.value)
+			end
+			animations.add_animation("wall_stone_bounce")(state, {
+				owner = owner,
+				cells = group,
+				label = string.format("+%d", effect.value),
+				anchor_row = row,
+				anchor_col = col,
+			})
+		end,
+	}
+end
+
 --- Double corner nearby territory effect: corner tower adds ``1`` to ``territory_value`` on every cell in the
 --- board-aligned ``3×3`` block anchored at that corner (excluding the tower cell). Stacks with prior cell values.
 --- @param row integer
@@ -428,36 +611,76 @@ local BOARD_EFFECT_BUILDERS = {
 --- @param col integer
 --- @param state table
 --- @return table array of effect entries
+--- @param effect_def table
+--- @param row integer
+--- @param col integer
+--- @param owner string
+--- @return table|nil
+local function resolve_board_effect_entry(effect_def, row, col, owner)
+	if effect_def.effect_name == "distance_bonus" then
+		return nil
+	end
+	local resolved = M.resolve(effect_def)
+	if not resolved then
+		return nil
+	end
+	local base_apply = resolved.apply
+	if resolved.type == "WALL_STONE_OTHER" or resolved.type == "WALL_STONE" then
+		resolved.apply = function(current_state)
+			base_apply(current_state, owner, row, col)
+		end
+	else
+		resolved.apply = function(current_state)
+			base_apply(current_state, owner)
+		end
+	end
+	return resolved
+end
+
 function M.resolve_board_stone(stone_cell, row, col, state)
 	local content = require("content")
 	local stone_def = content.get_stone(stone_cell.kind)
 	local key = helpers.stone_key(row, col)
 	local n = config.BOARD_SIZE
 	local out = {}
+	local effect_defs = {}
+	local owner = stone_cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
 
 	if stone_def and stone_def.effects then
-		for _, effect_def in ipairs(stone_def.effects) do
-			if effect_def.effect_name == "distance_bonus" then
-				out[#out + 1] = {
-					type = "DISTANCE_BONUS",
-					phase = "distance",
-					priority = effect_def.priority or 10,
-					conditions = effect_def.conditions,
-					apply = function(current_state)
-						helpers.apply_distance_bonus_for_stone(
-							stone_def,
-							current_state,
-							key,
-							n,
-							effect_def.value
-						)
-					end,
-				}
-			elseif effect_def.effect_name == "double_corner_nearby_territory" then
-				local builder = BOARD_EFFECT_BUILDERS[effect_def.effect_name]
-				if builder then
-					out[#out + 1] = builder(row, col, effect_def)
-				end
+		for i = 1, #stone_def.effects do
+			effect_defs[#effect_defs + 1] = stone_def.effects[i]
+		end
+	end
+	for i = 1, #shared_stones_effects.all_stone_board_effects do
+		effect_defs[#effect_defs + 1] = shared_stones_effects.all_stone_board_effects[i]
+	end
+
+	for _, effect_def in ipairs(effect_defs) do
+		if effect_def.effect_name == "distance_bonus" then
+			out[#out + 1] = {
+				type = "DISTANCE_BONUS",
+				phase = "distance",
+				priority = effect_def.priority or 10,
+				conditions = effect_def.conditions,
+				apply = function(current_state)
+					helpers.apply_distance_bonus_for_stone(
+						stone_def,
+						current_state,
+						key,
+						n,
+						effect_def.value
+					)
+				end,
+			}
+		elseif effect_def.effect_name == "double_corner_nearby_territory" then
+			local builder = BOARD_EFFECT_BUILDERS[effect_def.effect_name]
+			if builder then
+				out[#out + 1] = builder(row, col, effect_def)
+			end
+		else
+			local resolved = resolve_board_effect_entry(effect_def, row, col, owner)
+			if resolved then
+				out[#out + 1] = resolved
 			end
 		end
 	end

@@ -63,6 +63,12 @@ local function score_stone(view, stone_id)
 	if stone_id == "stone_focus" then
 		score = score + 1
 	end
+	if stone_id == "x_stone" or stone_id == "plus_stone" then
+		score = score + 1
+	end
+	if stone_id == "wall" then
+		score = score + 1
+	end
 	return score
 end
 

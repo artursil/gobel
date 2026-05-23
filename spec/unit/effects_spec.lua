@@ -90,6 +90,18 @@ describe("T-100 effects system", function()
 		assert.are.equal(4, state.scores.plus_mult.W)
 	end)
 
+	it("resolves pattern_x_mult and pattern_plus_mult", function()
+		assert.is_not_nil(effects.resolve({ effect_name = "pattern_x_mult", phase = "mult" }))
+		assert.is_not_nil(effects.resolve({ effect_name = "pattern_plus_mult", phase = "mult" }))
+	end)
+
+	it("resolves wall_stone and wall_stone_other", function()
+		local other = effects.resolve({ effect_name = "wall_stone_other", phase = "points", value = 2 })
+		local wall = effects.resolve({ effect_name = "wall_stone", phase = "points", value = 2 })
+		assert.are.equal("WALL_STONE_OTHER", other.type)
+		assert.are.equal("WALL_STONE", wall.type)
+	end)
+
 	it("preserves conditions in resolved effect", function()
 		local effect_def = {
 			effect_name = "add_points",

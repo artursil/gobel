@@ -118,6 +118,9 @@ M.starters = {
 --- @param stone_id string
 --- @return table|nil
 function M.get_stone(stone_id)
+	if stone_id == "stone_wall" then
+		stone_id = "wall"
+	end
 	return M.stones[stone_id]
 end
 

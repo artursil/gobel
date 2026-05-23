@@ -89,6 +89,11 @@ local function stone_placement_message(stone_def, resolved_effects)
 	return name .. " placed"
 end
 
+local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
+	add_points = true,
+	add_mult = true,
+}
+
 local function resolved_stone_effects_from_def(stone_def, state, actor)
 	if type(stone_def.behavior) == "function" then
 		return stone_def.behavior(state, actor)
@@ -97,8 +102,8 @@ local function resolved_stone_effects_from_def(stone_def, state, actor)
 	if stone_def.effects then
 		for i = 1, #stone_def.effects do
 			local effect = stone_def.effects[i]
-			if effect.phase == "points" or effect.phase == "mult" then
-				out[i] = Effects.stones.resolve(effect)
+			if IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
+				out[#out + 1] = Effects.stones.resolve(effect)
 			end
 		end
 	end

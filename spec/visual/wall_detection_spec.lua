@@ -49,7 +49,7 @@ local function biggest_wall(walls)
 end
 
 local function debug_dump_all_walls(name, b, walls)
-	if not helper.DEBUG_INTEGRATION then
+	if not helper.integration_debug_enabled() then
 		return
 	end
 	print("[INTEGRATION_DEBUG] " .. name .. " found walls: " .. tostring(#walls))

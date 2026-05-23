@@ -1,8 +1,10 @@
 --- Canonical stone-placement heuristic term definitions (``contribute(ctx)`` only; weights in ``ai.config``).
 --- @module ai.heuristics.stone_heuristics_def
 
+local config = require("config")
 local features = require("ai.board_analysis.features")
 local goals = require("ai.heuristics.goals")
+local pattern_proximity = require("ai.heuristics.pattern_proximity")
 
 local M = {}
 
@@ -146,6 +148,64 @@ TERMS.territory_owner_change = {
 	weight_key = "territory_owner_change",
 	contribute = function(ctx)
 		return ctx.territory_owner_changed and 1 or 0
+	end,
+}
+
+--- ``x_stone`` in hand and within 2 moves of completing an X for self.
+TERMS.x_stone_near_complete = {
+	id = "x_stone_near_complete",
+	weight_key = "x_stone_near_complete",
+	contribute = function(ctx)
+		if ctx.stone_id ~= "x_stone" then
+			return 0
+		end
+		local moves = pattern_proximity.moves_to_complete_x(ctx.b, ctx.player, 2)
+		if moves <= 2 then
+			return 3 - moves
+		end
+		return 0
+	end,
+}
+
+--- Blocking opponent X completion within 2 moves (any stone).
+TERMS.x_stone_block_opponent_x = {
+	id = "x_stone_block_opponent_x",
+	weight_key = "x_stone_block_opponent_x",
+	contribute = function(ctx)
+		local opp = ctx.player == config.STONE_BLACK and config.STONE_WHITE or config.STONE_BLACK
+		if pattern_proximity.is_blocking_cell(ctx.b, ctx.row, ctx.col, opp, "x", 2) then
+			return 1
+		end
+		return 0
+	end,
+}
+
+--- ``plus_stone`` in hand and within 2 moves of completing a + for self.
+TERMS.plus_stone_near_complete = {
+	id = "plus_stone_near_complete",
+	weight_key = "plus_stone_near_complete",
+	contribute = function(ctx)
+		if ctx.stone_id ~= "plus_stone" then
+			return 0
+		end
+		local moves = pattern_proximity.moves_to_complete_plus(ctx.b, ctx.player, 2)
+		if moves <= 2 then
+			return 3 - moves
+		end
+		return 0
+	end,
+}
+
+--- Blocking opponent + completion within 2 moves (any stone).
+TERMS.plus_stone_block_opponent_plus = {
+	id = "plus_stone_block_opponent_plus",
+	weight_key = "plus_stone_block_opponent_plus",
+	contribute = function(ctx)
+		local opp = ctx.player == config.STONE_BLACK and config.STONE_WHITE or config.STONE_BLACK
+		if pattern_proximity.is_blocking_cell(ctx.b, ctx.row, ctx.col, opp, "plus", 2) then
+			return 1
+		end
+		return 0
 	end,
 }
 

@@ -2,11 +2,55 @@
 --- factory wiring; gameplay uses ``add_animation(name)(state, args)``.
 --- @module objects.animations_definitions
 
+local animations_constants = require("objects.animations_constants")
 local animations_helper = require("objects.animations_helper")
 
 local STEEL_SYNC_DEF_ID = "stance_gluttony"
 
 local M = {}
+
+--- Sequential ``board_stone_bounce`` on pattern cells, then ``board_stone_float_text`` at anchor (placed stone if in pattern, else pattern center).
+--- **Args**: ``owner``, ``cells`` (``{ row, col }`` list), ``label``, ``anchor_row``, ``anchor_col``.
+--- @param state table
+--- @param args table
+--- @return nil
+local function enqueue_pattern_celebrate(state, args)
+	local owner = args.owner
+	local cells = args.cells
+	local label = args.label
+	local anchor_row = args.anchor_row
+	local anchor_col = args.anchor_col
+	if not owner or not cells or #cells == 0 or not label or label == "" then
+		return
+	end
+	state.ui_animation_events = state.ui_animation_events or {}
+	state.ui_animation_seq_counter = (state.ui_animation_seq_counter or 0) + 1
+	local seq_id = "pattern:" .. tostring(state.ui_animation_seq_counter)
+	local ev = state.ui_animation_events
+	local step_ms = animations_helper.board_stone_bounce_step_duration_ms(#cells)
+	for i = 1, #cells do
+		local cell = cells[i]
+		ev[#ev + 1] = {
+			type = "board_stone_bounce",
+			sequence_id = seq_id,
+			start_delay_ms = 0,
+			duration_ms = step_ms,
+			owner = owner,
+			row = cell[1],
+			col = cell[2],
+		}
+	end
+	ev[#ev + 1] = {
+		type = "board_stone_float_text",
+		sequence_id = seq_id,
+		start_delay_ms = 0,
+		duration_ms = animations_constants.BOARD_STONE_FLOAT_MS,
+		owner = owner,
+		row = anchor_row,
+		col = anchor_col,
+		text = label,
+	}
+end
 
 --- Steel sync: stance shake + sequential ``hand_card_float_text`` per steel card in hand.
 --- Each float carries ``presented_x_mult`` (post-step authoritative ``x_mult`` for that card); the UI applies it
@@ -64,6 +108,29 @@ function M.steel_sync_mult(state, args)
 			presented_x_mult = x_mult_steps[i],
 		}
 	end
+end
+
+--- @param state table
+--- @param args table
+--- @return nil
+function M.pattern_x_celebrate(state, args)
+	enqueue_pattern_celebrate(state, args)
+end
+
+--- @param state table
+--- @param args table
+--- @return nil
+function M.pattern_plus_celebrate(state, args)
+	enqueue_pattern_celebrate(state, args)
+end
+
+--- Wall placement: sequential bounce on group cells, ``+N`` float at anchor.
+--- **Args**: ``owner``, ``cells``, ``label``, ``anchor_row``, ``anchor_col``.
+--- @param state table
+--- @param args table
+--- @return nil
+function M.wall_stone_bounce(state, args)
+	enqueue_pattern_celebrate(state, args)
 end
 
 return M

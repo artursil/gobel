@@ -165,6 +165,7 @@ function M.build_ui_target_index(game, layout)
 	end
 
 	return {
+		layout = layout,
 		stance_card_rect = stance_card_rect,
 		stance_at_slot = stance_at_slot,
 		hand_slot_center = hand_slot_center,
