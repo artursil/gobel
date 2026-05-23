@@ -754,6 +754,36 @@ function M.assert_player_plus_mult_unchanged(g, side, snap, context)
 end
 
 --- @param g table
+--- @param side string
+--- @param expected number
+--- @param context string|nil
+function M.assert_player_points(g, side, expected, context)
+	local actual = match_state.player_for_color(g, side).score.points
+	local msg = context or ("player " .. side .. " points")
+	assert_equal_with_scoring_debug(g, expected, actual, msg)
+end
+
+--- @param g table
+--- @param side string
+--- @param snap table
+--- @param expected_delta number
+--- @param context string|nil
+function M.assert_player_points_delta(g, side, snap, expected_delta, context)
+	local actual = match_state.player_for_color(g, side).score.points
+	local delta = actual - snap.points
+	local msg = context or ("player " .. side .. " points delta")
+	assert_equal_with_scoring_debug(g, expected_delta, delta, msg)
+end
+
+--- @param g table
+--- @param side string
+--- @param snap table
+--- @param context string|nil
+function M.assert_player_points_unchanged(g, side, snap, context)
+	M.assert_player_points_delta(g, side, snap, 0, context)
+end
+
+--- @param g table
 --- @param row integer
 --- @param col integer
 --- @param expected number

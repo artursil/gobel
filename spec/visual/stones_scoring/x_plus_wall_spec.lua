@@ -42,6 +42,8 @@ local assert_player_x_mult_unchanged = test_helper.assert_player_x_mult_unchange
 local assert_player_plus_mult = test_helper.assert_player_plus_mult
 local assert_player_plus_mult_delta = test_helper.assert_player_plus_mult_delta
 local assert_player_plus_mult_unchanged = test_helper.assert_player_plus_mult_unchanged
+local assert_player_points_delta = test_helper.assert_player_points_delta
+local assert_player_points_unchanged = test_helper.assert_player_points_unchanged
 local assert_board_stone_points_bonus = test_helper.assert_board_stone_points_bonus
 local assert_board_stone_modifier_absent = test_helper.assert_board_stone_modifier_absent
 
@@ -375,205 +377,359 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 		end)
 	end)
 
-	-- 	it("basic stone completes X while x_stone already on an arm: x_mult still becomes 2", function()
-	-- 		assert_pattern_stones_in_content()
-	-- 		set_hand(g, "black", { "stone_basic" })
-	-- 		set_board(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . B . . . .",
-	-- 			". . B . . X . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . B . . B . . .",
-	-- 			". . . . B . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
-	-- 		local snap = player_score_snapshot(g, "black")
+	describe("plus_stone completes orthogonal plus and adds plus_mult", function()
+		it("minimal 5-cell plus: place plus_stone at center, black plus_mult becomes 6", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "plus_stone" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . B . B . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
 
-	-- 		place_stone(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . B . . . .",
-	-- 			". . B . . X . . .",
-	-- 			". . . . B . . . .",
-	-- 			". . B . . B . . .",
-	-- 			". . . . B . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . B P B . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-	-- 		assert_player_x_mult(g, "black", 2, "X with x_stone on board triggers ×2 even if last stone is basic")
-	-- 		assert_player_x_mult_delta(g, "black", snap, 1, "x_mult increases by 1 when X completes")
-	-- 	end)
+			assert_player_plus_mult(g, "black", 6, "minimal 5-cell plus adds +5 for one plus_stone")
+			assert_player_plus_mult_delta(g, "black", snap, 5, "plus_mult increases by 5 from base 1")
+		end)
+		it("minimal 5-cell plus: completing the plus with 3 plus_stones, black plus_mult becomes 16", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "plus_stone" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . P . . .",
+				". . . . P . B . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
 
-	-- 	it("isolated x_stone placement does not change x_mult", function()
-	-- 		assert_pattern_stones_in_content()
-	-- 		set_hand(g, "black", { "x_stone" })
-	-- 		set_board(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
-	-- 		local snap = player_score_snapshot(g, "black")
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . P . . .",
+				". . . . P P B . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-	-- 		place_stone(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . X . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
+			assert_player_plus_mult(g, "black", 16, "minimal 5-cell plus with 3 plus_stones adds +15")
+			assert_player_plus_mult_delta(g, "black", snap, 15, "plus_mult increases by 15 from 1 to 16")
+		end)
+	end)
+	describe("any stone completes orthogonal plus and adds plus_mult", function()
+		it("minimal 5-cell plus: basic stone completes plus with plus_stone on board, black plus_mult becomes 6", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "stone_basic" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . P . B . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
 
-	-- 		assert_player_x_mult(g, "black", 1, "lonely x_stone does not form an X pattern")
-	-- 		assert_player_x_mult_unchanged(g, "black", snap, "x_mult unchanged without completed X")
-	-- 	end)
-	-- end)
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . P B B . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-	-- describe("plus_stone completes orthogonal plus and adds plus_mult", function()
-	-- 	it("minimal 5-cell plus: place plus_stone at center, black plus_mult becomes 6", function()
-	-- 		assert_pattern_stones_in_content()
-	-- 		set_hand(g, "black", { "plus_stone" })
-	-- 		set_board(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . P P P . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
-	-- 		local snap = player_score_snapshot(g, "black")
+			assert_player_plus_mult(g, "black", 6, "basic stone completing plus adds +5 for one plus_stone on board")
+			assert_player_plus_mult_delta(g, "black", snap, 5, "plus_mult increases by 5 from base 1")
+		end)
 
-	-- 		place_stone(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . P P P . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
+		it("large 9-cell plus: place basic stone, black plus_mult becomes 11", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "stone_basic" })
+			set_mult(g, "black", 6)
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . B B P B . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
 
-	-- 		assert_player_plus_mult(g, "black", 6, "minimal 5-cell plus adds one +5 tier")
-	-- 		assert_player_plus_mult_delta(g, "black", snap, 5, "plus_mult increases by 5")
-	-- 	end)
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . B B P B B .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-	-- 	it("large 9-cell plus: place plus_stone at center, black plus_mult becomes 11", function()
-	-- 		assert_pattern_stones_in_content()
-	-- 		set_hand(g, "black", { "plus_stone" })
-	-- 		set_board(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . P P P . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
-	-- 		local snap = player_score_snapshot(g, "black")
+			assert_player_plus_mult(g, "black", 11, "9-cell plus adds +5 for one plus_stone")
+			assert_player_plus_mult_delta(g, "black", snap, 5, "plus_mult increases by 5 from 6 to 11")
+		end)
+		it("large 9-cell plus: complete large plus with plus_stone, black plus_mult becomes 16", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "plus_stone" })
+			set_mult(g, "black", 6)
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . B B P B . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
 
-	-- 		place_stone(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . P P P . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . B B P B P .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-	-- 		assert_player_plus_mult(g, "black", 11, "9-cell plus adds two +5 tiers")
-	-- 		assert_player_plus_mult_delta(g, "black", snap, 10, "plus_mult increases by 10 from 1 to 11")
-	-- 	end)
+			assert_player_plus_mult(g, "black", 16, "9-cell plus with two plus_stones adds +10")
+			assert_player_plus_mult_delta(g, "black", snap, 10, "plus_mult increases by 10 from 6 to 16")
+		end)
+		it("large 9-cell plus: adding a stone not completing the plus does not change plus_mult", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "stone_basic" })
+			set_mult(g, "black", 16)
+			set_board(g, {
+				". . . . . P . . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . B B P B B .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
 
-	-- 	it("basic stone completes plus while plus_stone on arm: plus_mult still becomes 6", function()
-	-- 		assert_pattern_stones_in_content()
-	-- 		set_hand(g, "black", { "stone_basic" })
-	-- 		set_board(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . P P P . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
-	-- 		local snap = player_score_snapshot(g, "black")
+			place_stone(g, {
+				". . . . . . B . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . B B P B B .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-	-- 		place_stone(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . P P P . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
+			assert_player_plus_mult(g, "black", 16, "adding a stone not completing the plus does not change plus_mult")
+			assert_player_plus_mult_delta(g, "black", snap, 0, "plus_mult unchanged without completed plus")
+		end)
+		it("large 9-cell plus: adding a stone completing 2 pluses, 3 times +5 is triggered", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "stone_basic" })
+			set_mult(g, "black", 1)
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . B P B . .",
+				". . . . . . . . .",
+				". . . . B P P . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
 
-	-- 		assert_player_plus_mult(
-	-- 			g,
-	-- 			"black",
-	-- 			6,
-	-- 			"plus with plus_stone on board triggers +5 even if last stone is basic"
-	-- 		)
-	-- 		assert_player_plus_mult_delta(g, "black", snap, 5, "plus_mult increases by 5 when plus completes")
-	-- 	end)
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . B P B . .",
+				". . . . . B . . .",
+				". . . . B P P . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-	-- 	it("isolated plus_stone placement does not change plus_mult", function()
-	-- 		assert_pattern_stones_in_content()
-	-- 		set_hand(g, "black", { "plus_stone" })
-	-- 		set_board(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
-	-- 		local snap = player_score_snapshot(g, "black")
+			assert_player_plus_mult(g, "black", 16, "completing 2 pluses with 3 plus_stones adds +10")
+			assert_player_plus_mult_delta(g, "black", snap, 15, "plus_mult increases by 15 from 1 to 16")
+		end)
+		it("large 9-cell plus: adding a plus_stone completing 2 pluses, 5 times +5 is triggered", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "plus_stone" })
+			set_mult(g, "black", 1)
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . B P B . .",
+				". . . . . . . . .",
+				". . . . B P P . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
 
-	-- 		place_stone(g, {
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . P . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 			". . . . . . . . .",
-	-- 		})
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . B P B . .",
+				". . . . . P . . .",
+				". . . . B P P . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-	-- 		assert_player_plus_mult(g, "black", 1, "lonely plus_stone does not form a plus pattern")
-	-- 		assert_player_plus_mult_unchanged(g, "black", snap, "plus_mult unchanged without completed plus")
-	-- 	end)
-	-- end)
+			assert_player_plus_mult(g, "black", 26, "completing 2 pluses with 4 plus_stones adds +35")
+			assert_player_plus_mult_delta(g, "black", snap, 25, "plus_mult increases by 25 from 1 to 26")
+		end)
+		it("creating 2 pluses one big one small", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "plus_stone" })
+			set_mult(g, "black", 6)
+			set_board(g, {
+				". . . . B . . . .",
+				". . . . B . . . .",
+				". . B B P B B . .",
+				". . . . B . . . .",
+				". . . B . B . . .",
+				". . . . B . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . B . . . .",
+				". . . . B . . . .",
+				". . B B P B B . .",
+				". . . . B . . . .",
+				". . . B P B . . .",
+				". . . . B . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+
+			assert_player_plus_mult(g, "black", 21, "creating 2 pluses one big one small with 3 plus_stones adds +15")
+			assert_player_plus_mult_delta(g, "black", snap, 15, "plus_mult increases by 15 from 6 to 21")
+		end)
+		it("large 9-cell plus: completing large plus with 3 plus_stones, black plus_mult becomes 16", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "plus_stone" })
+			set_mult(g, "black", 1)
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . P P B B . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . P P B B P .",
+				". . . . . B . . .",
+				". . . . . B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+
+			assert_player_plus_mult(g, "black", 16, "9-cell plus completed with 3 plus_stones adds +10")
+			assert_player_plus_mult_delta(g, "black", snap, 15, "plus_mult increases by 15 from 1 to 16")
+		end)
+		it("isolated x_stone placement does not change x_mult", function()
+			assert_pattern_stones_in_content()
+			set_hand(g, "black", { "x_stone" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . X . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+
+			assert_player_x_mult(g, "black", 1, "lonely x_stone does not form an X pattern")
+			assert_player_x_mult_unchanged(g, "black", snap, "x_mult unchanged without completed X")
+		end)
+	end)
 
 	-- describe("wall stone groups add +2 points on board stones", function()
 	-- 	it("basic stone placed beside two wall stones: only placed cell gets +2 modifier", function()
@@ -590,6 +746,7 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 	-- 			". . . . . . . . .",
 	-- 			". . . . . . . . .",
 	-- 		})
+	-- 		local snap = player_score_snapshot(g, "black")
 
 	-- 		local row, col = place_stone(g, {
 	-- 			". . . . . . . . .",
@@ -622,7 +779,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 	-- 			4,
 	-- 			"existing wall at 3,4 must not gain wall_stone_other bonus"
 	-- 		)
+	-- 		assert_player_points_delta(g, "black", snap, 2, "points increase by 2 on wall stone placement")
 	-- 	end)
+	-- end)
 
 	-- 	it("wall placed to extend a pair: all three connected wall cells get +2 modifier", function()
 	-- 		assert_pattern_stones_in_content()

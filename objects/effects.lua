@@ -459,7 +459,38 @@ function M.pattern_x_mult(effect)
 	}
 end
 
---- Applies tiered ``plus_mult`` bonus (+5 per tier) for completed + patterns that include a ``plus_stone``.
+--- @param state table
+--- @param board_after table
+--- @param patterns table[]
+--- @param owner string
+--- @param place_r integer|nil
+--- @param place_c integer|nil
+--- @param placed_plus boolean
+--- @return integer bonus applied
+local function plus_mult_bonus_for_newly_completed_patterns(state, board_after, patterns, owner, place_r, place_c, placed_plus)
+	state._pattern_plus_bonus_cells = state._pattern_plus_bonus_cells or {}
+	local bonus = 0
+	for pi = 1, #patterns do
+		local pattern = patterns[pi]
+		for ci = 1, #pattern.cells do
+			local r, c = pattern.cells[ci][1], pattern.cells[ci][2]
+			local cell = board_after[r][c]
+			if cell and cell.kind == "plus_stone" then
+				local is_placed = placed_plus and place_r == r and place_c == c
+				local cell_key = owner .. ":" .. r .. ":" .. c
+				if is_placed or not state._pattern_plus_bonus_cells[cell_key] then
+					if not is_placed then
+						state._pattern_plus_bonus_cells[cell_key] = true
+					end
+					bonus = bonus + shape_patterns.pattern_scoring.plus_mult_per_tier
+				end
+			end
+		end
+	end
+	return bonus
+end
+
+--- When a placement raises a + pattern tier, add +5 per ``plus_stone`` in that + (shared cells once; placed ``plus_stone`` counts per +).
 --- @param effect table
 --- @return table
 function M.pattern_plus_mult(effect)
@@ -472,27 +503,53 @@ function M.pattern_plus_mult(effect)
 		conditions = effect.conditions,
 		apply = function(state, owner)
 			local color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
-			local patterns_found = shape_patterns.detect_plus_patterns(state.board, color)
+			local board_after = state.board
+			local board_before = board_before_last_placement(state)
+			local newly_completed = shape_patterns.detect_newly_completed_plus_patterns(board_before, board_after, color)
 			local place_r, place_c = placement_coords(state)
-			for i = 1, #patterns_found do
-				local pattern = patterns_found[i]
-				if pattern.has_plus_stone then
-					local dedupe = "plus:" .. pattern.center_row .. ":" .. pattern.center_col .. ":" .. owner
-					if not pattern_key_seen(state, dedupe) then
-						local bonus = shape_patterns.plus_mult_bonus_for_tier(pattern.tier)
-						state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + bonus
-						local anchor_r = place_r or pattern.center_row
-						local anchor_c = place_c or pattern.center_col
-						local label = string.format("+%d", bonus)
-						animations.add_animation("pattern_plus_celebrate")(state, {
-							owner = owner,
-							cells = pattern.cells,
-							label = label,
-							anchor_row = anchor_r,
-							anchor_col = anchor_c,
-						})
-					end
+			local placed_plus = false
+			if place_r and place_c then
+				local placed = board_after[place_r][place_c]
+				placed_plus = placed and placed.kind == "plus_stone"
+			end
+			local to_score = {}
+			for i = 1, #newly_completed do
+				local pattern = newly_completed[i]
+				local dedupe = "plus:"
+					.. pattern.center_row
+					.. ":"
+					.. pattern.center_col
+					.. ":"
+					.. pattern.tier
+					.. ":"
+					.. owner
+				if not pattern_key_seen(state, dedupe) then
+					to_score[#to_score + 1] = pattern
 				end
+			end
+			local bonus = plus_mult_bonus_for_newly_completed_patterns(
+				state,
+				board_after,
+				to_score,
+				owner,
+				place_r,
+				place_c,
+				placed_plus
+			)
+			if bonus > 0 then
+				state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + bonus
+				local anchor_pattern = to_score[1]
+				local anchor_r = place_r or (anchor_pattern and anchor_pattern.center_row)
+				local anchor_c = place_c or (anchor_pattern and anchor_pattern.center_col)
+				local cells = anchor_pattern and anchor_pattern.cells or {}
+				local label = string.format("+%d", bonus)
+				animations.add_animation("pattern_plus_celebrate")(state, {
+					owner = owner,
+					cells = cells,
+					label = label,
+					anchor_row = anchor_r,
+					anchor_col = anchor_c,
+				})
 			end
 		end,
 	}
@@ -531,6 +588,7 @@ function M.wall_stone_other(effect)
 				return
 			end
 			helpers.add_cell_points_bonus(state, row, col, effect.value)
+			state.scores.points[owner] = state.scores.points[owner] + effect.value
 			animations.add_animation("wall_stone_bounce")(state, {
 				owner = owner,
 				cells = { { row, col } },

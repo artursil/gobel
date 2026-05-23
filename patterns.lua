@@ -15,6 +15,9 @@ M.x_mult_factor_for_x_stone_count = shape_patterns.x_mult_factor_for_x_stone_cou
 M.count_x_stones_in_pattern = shape_patterns.count_x_stones_in_pattern
 M.detect_newly_completed_x_patterns = shape_patterns.detect_newly_completed_x_patterns
 M.plus_mult_bonus_for_tier = shape_patterns.plus_mult_bonus_for_tier
+M.plus_mult_bonus_for_plus_stone_count = shape_patterns.plus_mult_bonus_for_plus_stone_count
+M.count_plus_stones_in_pattern = shape_patterns.count_plus_stones_in_pattern
+M.detect_newly_completed_plus_patterns = shape_patterns.detect_newly_completed_plus_patterns
 
 --- @deprecated use ``detect_x_patterns`` and check ``has_x_stone`` per pattern
 --- @param b table

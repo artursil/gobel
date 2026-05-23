@@ -31,6 +31,7 @@ local function ensure_state_fields(state)
 	state.played_cards = state.played_cards or {}
 	state.ui_animation_events = {}
 	state._pattern_apply_keys = {}
+	state._pattern_plus_bonus_cells = {}
 	do
 		local n = config.BOARD_SIZE
 		state.territory_value = {}

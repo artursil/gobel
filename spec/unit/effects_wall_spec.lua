@@ -138,15 +138,17 @@ describe("pattern mult effects", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . P . . . .",
-			". . . P P P . . .",
-			". . . . P . . . .",
+			". . . . . B . . .",
+			". . . . B . B . .",
+			". . . . . B . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		}, {
-			P = { color = config.STONE_WHITE, kind = "plus_stone" },
+			B = { color = config.STONE_WHITE, kind = "stone_basic" },
 		})
+		st.board[5][6] = board.make_stone(config.STONE_WHITE, "plus_stone")
+		st.last_opponent_move = { row = 5, col = 6, stone_id = "plus_stone", actor = "white" }
 		st._pattern_apply_keys = {}
 		local resolved = effects.resolve({ effect_name = "pattern_plus_mult", phase = "mult" })
 		resolved.apply(st, config.OWNER_WHITE)
