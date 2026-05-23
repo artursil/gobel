@@ -343,7 +343,11 @@ Registration rules:
 | Wall / pattern board effects | `playing_stones` | `points` or `mult` |
 | Stance passives | assign explicitly (e.g. `before_turn.points`, `playing_stones.mult`) |
 
-On-place `add_points` / `add_mult` must **not** register in board scan (`resolve_board_stone` skips them). Points/mult accumulate across card and stone resolves within the same turn; `before_turn` resets only the active player's baselines.
+On-place `add_points` / `add_mult` must **not** register in board scan (`resolve_board_stone` skips them).
+
+**Match-persistent score factors:** `points`, `plus_mult`, and `x_mult` live on `player.score` and only go up (or down when an effect explicitly subtracts). Each resolve hydrates `state.scores` from both players, applies additive/multiply effects, then `sync_player_scores` writes back. Pattern ×Mult / +Mult bonuses latch once per pattern (dedupe in `run_state.pattern_apply_keys`). **`territory` alone is recomputed from the board every resolve** (distance → assignment → count). `turn_bonus` updates for the active player on `before_turn` (`1 + 0.1 × turn_number`); it does not reset points or mult.
+
+Total score (unchanged): `turn_bonus × territory × points × plus_mult × x_mult`.
 
 IDEAS:
 - stance/relic to draw a card always first

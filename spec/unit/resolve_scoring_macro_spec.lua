@@ -66,4 +66,57 @@ describe("resolve scoring macro", function()
 		assert.are.equal(80, player.score.territory)
 		assert.are.equal(352, math.floor(player.score.total + 0.5))
 	end)
+
+	it("x_mult persists after opponent completes a turn", function()
+		local g = game.new("pvp", "basic_x_stones")
+		g.phase = "PLACE_PHASE"
+		g.to_play = "black"
+		local black = match_state.player_for_color(g, "black")
+		local white = match_state.player_for_color(g, "white")
+		black.stones.playable_stones = { "x_stone" }
+		black.stones.selected_stone = "x_stone"
+		black.stones.selected_stone_index = 1
+
+		local ok, board_after = require("rules").try_play(g.board, 5, 5, config.STONE_BLACK, nil, "x_stone")
+		assert.is_true(ok)
+		local diag = { { 4, 4 }, { 4, 6 }, { 6, 4 }, { 6, 6 } }
+		for i = 1, #diag do
+			local r, c = diag[i][1], diag[i][2]
+			board_after[r][c] = board.make_stone(config.STONE_BLACK, "stone_basic")
+		end
+		g.board = board_after
+		g.round_stone_effects = {
+			{
+				owner = "B",
+				stone_type = "x_stone",
+				effects = {},
+			},
+		}
+		g.last_opponent_move = { row = 5, col = 5, stone_id = "x_stone", actor = "black" }
+		resolve_round.resolve(g, { macro = "playing_stones" })
+		assert.are.equal(2, black.score.x_mult, "completing minimal X doubles x_mult")
+
+		g.to_play = "white"
+		white.stones.playable_stones = { "stone_basic" }
+		white.stones.selected_stone = "stone_basic"
+		white.stones.selected_stone_index = 1
+		g.phase = "PLACE_PHASE"
+		local white_ok, white_board = require("rules").try_play(g.board, 3, 3, config.STONE_WHITE, nil, "stone_basic")
+		assert.is_true(white_ok)
+		g.board = white_board
+		g.round_stone_effects = {
+			{
+				owner = "W",
+				stone_type = "stone_basic",
+				effects = {
+					{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
+				},
+			},
+		}
+		g.last_opponent_move = { row = 3, col = 3, stone_id = "stone_basic", actor = "white" }
+		resolve_round.resolve(g, { macro = "playing_stones" })
+		resolve_round.resolve(g, { macro = "end_of_turn" })
+		resolver.begin_turn(g, "black")
+		assert.are.equal(2, black.score.x_mult, "black x_mult unchanged after white stone and turn advance")
+	end)
 end)

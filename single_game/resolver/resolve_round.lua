@@ -1,8 +1,10 @@
 --- Per-action scoring resolve: macro lifecycle + sub passes (territory → points → mult).
 ---
---- Card effects read ``state.just_played`` for ``playing_cards`` macro only.
---- Stone on-place effects use ``round_stone_effects`` for ``playing_stones`` macro only.
---- Board scan never applies on-place add_points/add_mult (see ``resolve_board_stone``).
+--- ``points``, ``plus_mult``, and ``x_mult`` hydrate from ``player.score`` each resolve and persist
+--- across turns; only ``territory`` is recomputed from the board. Card effects read
+--- ``state.just_played`` for ``playing_cards`` macro only. Stone on-place effects use
+--- ``round_stone_effects`` for ``playing_stones`` macro only. Board scan never applies on-place
+--- add_points/add_mult (see ``resolve_board_stone``).
 --- @module resolver.resolve_round
 
 local config = require("config")
@@ -30,7 +32,6 @@ local function ensure_state_fields(state)
 	state.just_played = state.just_played or {}
 	state.played_cards = state.played_cards or {}
 	state.ui_animation_events = {}
-	state._pattern_apply_keys = {}
 	state._pattern_plus_bonus_cells = {}
 	do
 		local n = config.BOARD_SIZE
@@ -85,36 +86,56 @@ local function side_to_owner(side)
 	return config.OWNER_BLACK
 end
 
---- Turn bonus and territory reset each resolve; points/mult reset only at turn boundaries.
+--- @param state table
+--- @return nil
+local function hydrate_score_ledger_from_players(state)
+	local black = match_state.player_for_color(state, "black")
+	local white = match_state.player_for_color(state, "white")
+	state.scores = state.scores or {}
+	state.scores.points = {
+		B = black.score.points or 1,
+		W = white.score.points or 1,
+	}
+	state.scores.plus_mult = {
+		B = black.score.plus_mult or 1,
+		W = white.score.plus_mult or 1,
+	}
+	state.scores.x_mult = {
+		B = black.score.x_mult or 1,
+		W = white.score.x_mult or 1,
+	}
+	state.scores.turn_bonus = {
+		B = black.score.turn_bonus or 1,
+		W = white.score.turn_bonus or 1,
+	}
+end
+
+--- @param state table
+--- @return nil
+local function reset_territory_ledger(state)
+	state.scores.territory = { B = 0, W = 0 }
+end
+
+--- Hydrate persistent factors from ``player.score``, reset territory, optionally refresh active turn bonus.
 --- @param state table
 --- @param macro string
 --- @return nil
 local function prepare_score_baselines(state, macro)
 	local tn = state.turn_number or 1
 	local turn_bonus = 1 + (0.1 * tn)
-	state.scores.turn_bonus = state.scores.turn_bonus or { B = turn_bonus, W = turn_bonus }
-	state.scores.territory = { B = 0, W = 0 }
-	state.scores.plus_mult = state.scores.plus_mult or { B = 1, W = 1 }
-	state.scores.x_mult = state.scores.x_mult or { B = 1, W = 1 }
-	state.scores.points = state.scores.points or { B = 1, W = 1 }
 	if macro == "game_start" then
 		state.scores.turn_bonus = { B = turn_bonus, W = turn_bonus }
 		state.scores.plus_mult = { B = 1, W = 1 }
 		state.scores.x_mult = { B = 1, W = 1 }
 		state.scores.points = { B = 1, W = 1 }
-	elseif macro == "before_turn" then
+		state.scores.territory = { B = 0, W = 0 }
+		return
+	end
+	hydrate_score_ledger_from_players(state)
+	reset_territory_ledger(state)
+	if macro == "before_turn" then
 		local owner = side_to_owner(state.to_play)
-		local black = match_state.player_for_color(state, "black")
-		local white = match_state.player_for_color(state, "white")
-		state.scores.turn_bonus.B = black.score.turn_bonus
-		state.scores.turn_bonus.W = white.score.turn_bonus
 		state.scores.turn_bonus[owner] = turn_bonus
-		state.scores.plus_mult[owner] = 1
-		state.scores.x_mult[owner] = 1
-		state.scores.points[owner] = 1
-	else
-		state.scores.turn_bonus.B = turn_bonus
-		state.scores.turn_bonus.W = turn_bonus
 	end
 end
 

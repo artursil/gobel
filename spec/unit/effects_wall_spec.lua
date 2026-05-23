@@ -18,7 +18,7 @@ local function state_with_board(rows, letter_map)
 			x_mult = { B = 1, W = 1 },
 		},
 		board_stone_modifiers = {},
-		_pattern_apply_keys = {},
+		run_state = { pattern_apply_keys = {} },
 		last_opponent_move = nil,
 		ui_animation_events = {},
 	}
@@ -181,7 +181,7 @@ describe("pattern mult effects", function()
 		})
 		st.board[4][5] = board.make_stone(config.STONE_BLACK, "x_stone")
 		st.last_opponent_move = { row = 4, col = 5, stone_id = "x_stone", actor = "black" }
-		st._pattern_apply_keys = {}
+		st.run_state = { pattern_apply_keys = {} }
 		local resolved = effects.resolve({ effect_name = "pattern_x_mult", phase = "mult" })
 		resolved.apply(st, config.OWNER_BLACK)
 		assert.are.equal(2, st.scores.x_mult.B)
@@ -204,7 +204,7 @@ describe("pattern mult effects", function()
 		})
 		st.board[5][6] = board.make_stone(config.STONE_WHITE, "plus_stone")
 		st.last_opponent_move = { row = 5, col = 6, stone_id = "plus_stone", actor = "white" }
-		st._pattern_apply_keys = {}
+		st.run_state = { pattern_apply_keys = {} }
 		local resolved = effects.resolve({ effect_name = "pattern_plus_mult", phase = "mult" })
 		resolved.apply(st, config.OWNER_WHITE)
 		assert.are.equal(6, st.scores.plus_mult.W)

@@ -386,14 +386,23 @@ local function placement_coords(state)
 end
 
 --- @param state table
+--- @return table
+local function pattern_apply_keys(state)
+	state.run_state = state.run_state or {}
+	state.run_state.pattern_apply_keys = state.run_state.pattern_apply_keys or {}
+	return state.run_state.pattern_apply_keys
+end
+
+--- Match-lifetime dedupe for pattern and wall placement bonuses (not cleared each resolve).
+--- @param state table
 --- @param key string
---- @return boolean
+--- @return boolean already_seen
 local function pattern_key_seen(state, key)
-	state._pattern_apply_keys = state._pattern_apply_keys or {}
-	if state._pattern_apply_keys[key] then
+	local keys = pattern_apply_keys(state)
+	if keys[key] then
 		return true
 	end
-	state._pattern_apply_keys[key] = true
+	keys[key] = true
 	return false
 end
 
