@@ -40,7 +40,7 @@ local M = {
 		cost = 1,
 		energy_cost = 1,
 		visual = V(),
-		effects = { { effect_name = "add_points", phase = "points", value = 2, priority = 10 } },
+		effects = { { effect_name = "add_points", macro = "playing_cards", sub = "points", value = 2, priority = 10 } },
 	},
 	card_point_push = {
 		id = "card_point_push",
@@ -53,7 +53,7 @@ local M = {
 		cost = 2,
 		energy_cost = 2,
 		visual = V(),
-		effects = { { effect_name = "add_points", phase = "points", value = 4, priority = 10 } },
+		effects = { { effect_name = "add_points", macro = "playing_cards", sub = "points", value = 4, priority = 10 } },
 	},
 	card_small_mult = {
 		id = "card_small_mult",
@@ -66,7 +66,7 @@ local M = {
 		cost = 1,
 		energy_cost = 1,
 		visual = V(),
-		effects = { { effect_name = "add_mult", phase = "mult", value = 1, priority = 10 } },
+		effects = { { effect_name = "add_mult", macro = "playing_cards", sub = "mult", value = 1, priority = 10 } },
 	},
 	card_big_mult = {
 		id = "card_big_mult",
@@ -79,7 +79,7 @@ local M = {
 		cost = 2,
 		energy_cost = 2,
 		visual = V(),
-		effects = { { effect_name = "add_mult", phase = "mult", value = 2, priority = 10 } },
+		effects = { { effect_name = "add_mult", macro = "playing_cards", sub = "mult", value = 2, priority = 10 } },
 	},
 	card_balanced_boost = {
 		id = "card_balanced_boost",
@@ -93,8 +93,8 @@ local M = {
 		energy_cost = 2,
 		visual = V(),
 		effects = {
-			{ effect_name = "add_points", phase = "points", value = 2, priority = 10 },
-			{ effect_name = "add_mult", phase = "mult", value = 1, priority = 10 },
+			{ effect_name = "add_points", macro = "playing_cards", sub = "points", value = 2, priority = 10 },
+			{ effect_name = "add_mult", macro = "playing_cards", sub = "mult", value = 1, priority = 10 },
 		},
 	},
 	card_steel = {
@@ -124,7 +124,13 @@ local M = {
 		tags = {},
 		visual = V(),
 		effects = {
-			{ effect_name = "create_temporary_stance", phase = "points", value = { stance_id = "stance_focus_bonus", rounds = 3, points = 5 }, priority = 5 },
+			{
+			effect_name = "create_temporary_stance",
+			macro = "playing_cards",
+			sub = "points",
+			value = { stance_id = "stance_focus_bonus", rounds = 3, points = 5 },
+			priority = 5,
+		},
 		},
 	},
 	card_destroy_enemy_stone = {
@@ -142,7 +148,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "destroy_selected_enemy_stone",
-				phase = "points",
+				macro = "playing_cards",
+				sub = "points",
 				value = { chance_numerator = 1, chance_denominator = 4 },
 				priority = 10,
 				conditions = {
@@ -167,7 +174,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_permanent_points_to_selected_stone",
-				phase = "points",
+				macro = "playing_cards",
+				sub = "points",
 				value = { points = 10 },
 				priority = 10,
 				conditions = {

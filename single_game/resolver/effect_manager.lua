@@ -1,9 +1,4 @@
---- Coordinates stance, card, stone, and timed effects by phase; sorts by priority; applies and registers durations.
----
---- Transient `state.resolution` (see `state_queries.ensure_resolution`) is set per effect before conditions run:
---- - **effect_owner**: who receives score/application for this wrapped effect (`effect.owner`), same convention as registry wrap.
----   Stone round snippets set `effect.owner`; if absent, falls back to `meta.source_owner` so `queries.effect_owner` stays consistent.
---- - **source_owner** / **source_def_id** / **source_instance_id** / **source_stance_slot_index**: originating object (stance lane uses slot index within that owner's panel; ``source_stance_index`` indexes ``state._stance_effect_order``).
+--- Coordinates stance, card, stone, and timed effects by macro/sub phase; sorts by priority; applies.
 --- @module resolver.effect_manager
 
 local board = require("board")
@@ -11,33 +6,61 @@ local config = require("config")
 local effects_registry = require("effect_registry")
 local dbg = require("debugger")
 local queries = require("single_game.resolver.state_queries")
+local scoring_phases = require("single_game.resolver.scoring_phases")
 local stance_order = require("single_game.resolver.stance_order")
 
 local M = {}
 
 --- @param payload table
---- @return string  `"points"` or `"mult"`
-local function phase_from_payload(payload)
-	if payload.phase then
-		return payload.phase
+--- @return string|nil
+local function sub_from_payload(payload)
+	if payload.sub then
+		return payload.sub
 	end
-	if payload.type == "ADD_POINTS" then
+	if payload.phase == "distance" or payload.phase == "territory" then
+		return "territory"
+	end
+	if payload.phase == "points" then
 		return "points"
 	end
-	return "mult"
+	if payload.phase == "mult" then
+		return "mult"
+	end
+	return nil
+end
+
+--- @param effect_def table
+--- @param active_macro string
+--- @param active_sub string
+--- @param territory_step string|nil
+--- @return boolean
+local function def_matches(effect_def, active_macro, active_sub, territory_step)
+	return scoring_phases.matches(effect_def, active_macro, active_sub, territory_step)
 end
 
 --- @param state table
---- @param phase string
+--- @param active_macro string
+--- @param active_sub string
+--- @param territory_step string|nil
 --- @param out table
 --- @return nil
-local function append_stance_effects(state, phase, out)
+local function append_stance_effects(state, active_macro, active_sub, territory_step, out)
 	local rows = stance_order.flatten_stances_for_resolve(state)
 	for _, stance in ipairs(rows) do
 		local i = stance.index
 		local generated = effects_registry.stances.resolve(stance, state)
 		for _, e in ipairs(generated) do
-			if e.phase == phase then
+			local effect_def = e._effect_def
+			if effect_def and def_matches(effect_def, active_macro, active_sub, territory_step) then
+				e.meta = e.meta or {}
+				e.meta.source_owner = stance.owner
+				e.meta.source_object_type = "stance"
+				e.meta.source_stance_index = i
+				e.meta.source_stance_slot_index = stance.slot_index
+				e.meta.source_instance_id = stance.instance and stance.instance.instance_id or nil
+				e.meta.source_def_id = stance.type
+				table.insert(out, e)
+			elseif not effect_def and e.sub == active_sub and (e.macro == active_macro or (not e.macro and active_macro == "playing_stones")) then
 				e.meta = e.meta or {}
 				e.meta.source_owner = stance.owner
 				e.meta.source_object_type = "stance"
@@ -52,14 +75,27 @@ local function append_stance_effects(state, phase, out)
 end
 
 --- @param state table
---- @param phase string
+--- @param active_macro string
+--- @param active_sub string
+--- @param territory_step string|nil
 --- @param out table
 --- @return nil
-local function append_card_effects(state, phase, out)
+local function append_card_effects(state, active_macro, active_sub, territory_step, out)
+	if active_macro ~= "playing_cards" then
+		return
+	end
 	for _, card in ipairs(state.just_played or {}) do
 		local generated = effects_registry.cards.resolve(card, state)
 		for _, e in ipairs(generated) do
-			if e.phase == phase then
+			local effect_def = e._effect_def
+			if effect_def and def_matches(effect_def, active_macro, active_sub, territory_step) then
+				e.meta = e.meta or {}
+				e.meta.source_owner = card.owner
+				e.meta.source_object_type = "card"
+				e.meta.source_def_id = card.type
+				e.meta.selected_target = card.selected_target
+				table.insert(out, e)
+			elseif not effect_def and sub_from_payload(e) == active_sub and (e.macro == active_macro or active_macro == "playing_cards") then
 				e.meta = e.meta or {}
 				e.meta.source_owner = card.owner
 				e.meta.source_object_type = "card"
@@ -71,22 +107,27 @@ local function append_card_effects(state, phase, out)
 	end
 end
 
---- Resolves `round_stone_effects` from the registry and appends point/mult effects.
 --- @param state table
---- @param phase string
+--- @param active_macro string
+--- @param active_sub string
+--- @param territory_step string|nil
 --- @param out table
 --- @return nil
-local function append_stone_round_effects(state, phase, out)
+local function append_stone_round_effects(state, active_macro, active_sub, territory_step, out)
+	if active_macro ~= "playing_stones" or active_sub == "territory" then
+		return
+	end
 	for _, stone_event in ipairs(state.round_stone_effects or {}) do
 		for _, stone_effect in ipairs(stone_event.effects or {}) do
-			local resolved = effects_registry.stones.resolve(stone_effect)
-			if resolved then
-				local effect_phase = phase_from_payload(resolved)
-				if effect_phase == phase then
+			if def_matches(stone_effect, active_macro, active_sub, territory_step) then
+				local resolved = effects_registry.stones.resolve(stone_effect)
+				if resolved then
 					local owner = stone_event.owner
 					table.insert(out, {
 						owner = owner,
-						phase = effect_phase,
+						phase = resolved.sub or resolved.phase,
+						sub = resolved.sub or sub_from_payload(resolved),
+						macro = active_macro,
 						priority = resolved.priority or 10,
 						conditions = resolved.conditions,
 						apply = function(current_state)
@@ -105,10 +146,12 @@ local function append_stone_round_effects(state, phase, out)
 end
 
 --- @param state table
---- @param phase string
+--- @param active_macro string
+--- @param active_sub string
+--- @param territory_step string|nil
 --- @param out table
 --- @return nil
-local function append_board_stone_effects(state, phase, out)
+local function append_board_stone_effects(state, active_macro, active_sub, territory_step, out)
 	local owner_from_color = function(color)
 		if color == 1 then
 			return config.OWNER_BLACK
@@ -123,13 +166,19 @@ local function append_board_stone_effects(state, phase, out)
 		for c = 1, n do
 			local cell = state.board[r][c]
 			if not board.is_empty(cell) then
-				local generated = effects_registry.stones.resolve_board_stone(cell, r, c, state)
+				local generated = effects_registry.stones.resolve_board_stone(
+					cell,
+					r,
+					c,
+					state,
+					active_macro,
+					active_sub,
+					territory_step
+				)
 				for _, e in ipairs(generated) do
-					if e.phase == phase then
-						table.insert(out, e)
-					end
+					table.insert(out, e)
 				end
-				if phase == "points" then
+				if active_sub == "points" and active_macro == "playing_stones" and not territory_step then
 					local key = r .. ":" .. c
 					local mods = state.board_stone_modifiers and state.board_stone_modifiers[key]
 					local bonus = mods and mods.points_bonus or 0
@@ -139,6 +188,8 @@ local function append_board_stone_effects(state, phase, out)
 							table.insert(out, {
 								owner = owner,
 								phase = "points",
+								sub = "points",
+								macro = active_macro,
 								priority = 25,
 								conditions = nil,
 								apply = function(current_state)
@@ -158,13 +209,18 @@ local function append_board_stone_effects(state, phase, out)
 end
 
 --- @param state table
---- @param phase string
+--- @param active_macro string
+--- @param active_sub string
+--- @param territory_step string|nil
 --- @param out table
 --- @return nil
-local function append_timed_effects(state, phase, out)
+local function append_timed_effects(state, active_macro, active_sub, territory_step, out)
 	for _, active in ipairs(state.active_effects or {}) do
 		local effect = active.effect
-		if effect and effect.phase == phase then
+		local effect_def = effect and effect._effect_def
+		if effect_def and def_matches(effect_def, active_macro, active_sub, territory_step) then
+			table.insert(out, effect)
+		elseif effect and effect.sub == active_sub and effect.macro == active_macro then
 			table.insert(out, effect)
 		end
 	end
@@ -186,15 +242,18 @@ local function add_effect_duration(state, effect)
 	end
 end
 
---- Applies metadata of current effect into state.resolution.
 --- @param state table
---- @param phase string
+--- @param active_macro string
+--- @param active_sub string
 --- @param effect table
 --- @return nil
-local function set_resolution_for_effect(state, phase, effect)
+local function set_resolution_for_effect(state, active_macro, active_sub, effect)
 	local resolution = queries.ensure_resolution(state)
 	local meta = effect.meta or {}
-	resolution.phase = phase
+	resolution.macro = active_macro
+	resolution.sub = active_sub
+	resolution.phase = active_sub
+	resolution.territory_step = territory_step
 	resolution.trigger = "phase"
 	resolution.effect_owner = effect.owner ~= nil and effect.owner or meta.source_owner
 	resolution.source_owner = meta.source_owner
@@ -206,39 +265,60 @@ local function set_resolution_for_effect(state, phase, effect)
 	resolution.selected_target = meta.selected_target
 end
 
---- Gathers and sorts all effects for one phase.
 --- @param state table
---- @param phase string
+--- @param active_macro string
+--- @param active_sub string
+--- @param territory_step string|nil
 --- @return table
-function M.collect_effects(state, phase)
+function M.collect_effects(state, active_macro, active_sub, territory_step)
 	local effects = {}
-	append_stance_effects(state, phase, effects)
-	append_card_effects(state, phase, effects)
-	append_stone_round_effects(state, phase, effects)
-	append_board_stone_effects(state, phase, effects)
-	append_timed_effects(state, phase, effects)
+	append_stance_effects(state, active_macro, active_sub, territory_step, effects)
+	append_card_effects(state, active_macro, active_sub, territory_step, effects)
+	append_stone_round_effects(state, active_macro, active_sub, territory_step, effects)
+	append_board_stone_effects(state, active_macro, active_sub, territory_step, effects)
+	append_timed_effects(state, active_macro, active_sub, territory_step, effects)
 	table.sort(effects, effect_priority)
-	dbg.log_stack("collected effects", {phase = phase, effects = effects})
+	dbg.log_stack("collected effects", {
+		macro = active_macro,
+		sub = active_sub,
+		territory_step = territory_step,
+		effects = effects,
+	})
 	return effects
 end
 
---- Runs `apply` on every effect in order; registers effects with `duration` into `active_effects`.
---- Evaluates conditions before applying each effect.
 --- @param state table
---- @param phase string
+--- @param active_macro string
+--- @param active_sub string
+--- @param territory_step string|nil
 --- @return nil
-function M.apply_phase(state, phase)
+function M.apply_sub_phase(state, active_macro, active_sub, territory_step)
 	local conditions = require("objects.conditions")
-	local effects = M.collect_effects(state, phase)
+	local effects = M.collect_effects(state, active_macro, active_sub, territory_step)
 	queries.clear_resolution(state)
 	for _, effect in ipairs(effects) do
-		set_resolution_for_effect(state, phase, effect)
+		set_resolution_for_effect(state, active_macro, active_sub, effect)
 		if conditions.eval_all(effect.conditions, state) then
 			effect.apply(state)
 			add_effect_duration(state, effect)
 		end
 	end
 	queries.clear_resolution(state)
+end
+
+--- Back-compat for territory preview and tests.
+--- @param state table
+--- @param phase string legacy sub name
+--- @return nil
+function M.apply_phase(state, phase)
+	local macro = state._resolve_macro or "playing_stones"
+	if phase == "distance" then
+		M.apply_sub_phase(state, macro, "territory", scoring_phases.TERRITORY_STEP_DISTANCE)
+	elseif phase == "territory" then
+		M.apply_sub_phase(state, macro, "territory", scoring_phases.TERRITORY_STEP_VALUE)
+	else
+		M.apply_sub_phase(state, macro, phase, nil)
+	end
 end
 
 return M

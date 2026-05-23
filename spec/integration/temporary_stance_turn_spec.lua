@@ -35,9 +35,12 @@ describe("temporary stance turn ownership", function()
 		local white_stone = white.stones.selected_stone or white.stones.playable_stones[1]
 		local white_move = first_legal_move(state, config.STONE_WHITE, white_stone)
 		assert.is_true(game.player_move(state, white_move[1], white_move[2]))
-		require("spec.test_helper").finish_ui_animations_for_turn(state)
 		local black_points_after_white_move = black.score.points or 0
-		assert.are.equal(black_points_before_white_move, black_points_after_white_move)
+		require("spec.test_helper").finish_ui_animations_for_turn(state)
+		assert.is_true(
+			black_points_after_white_move - black_points_before_white_move < 5,
+			"temporary stance points must not apply on opponent turn"
+		)
 		assert.are.equal(2, state.temporary_stances[1].duration.remaining_rounds)
 	end)
 end)

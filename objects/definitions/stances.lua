@@ -1,10 +1,4 @@
 --- Unified stance definitions (gameplay + **visual**).
----
---- **Graphics-first checklist** for a new stance:
---- 1. Add ``id``, ``type = "stance"``, names, ``effects`` as usual.
---- 2. Set ``visual.graphic`` (main PNG) and ``visual.frame`` (overlay PNG). Render draws **graphic**, then **frame**.
---- 3. Wire effects in ``objects.effects`` / registry; reference this ``id`` in ``game_types`` / starters.
---- 4. If the stance chains copy-right (Echo), ensure ``objects.effects_helpers`` skips the same ``id`` when scanning.
 --- @module objects.definitions.stances
 
 local FRAME = "sprites/stances/frame_1_r.png"
@@ -21,7 +15,7 @@ local M = {
 		cost = 0,
 		visual = { graphic = "sprites/cards/background_1_r.png", frame = FRAME },
 		effects = {
-			{ effect_name = "add_points", phase = "points", value = 1, priority = 20 },
+			{ effect_name = "add_points", macro = "before_turn", sub = "points", value = 1, priority = 20 },
 		},
 	},
 	stance_mult = {
@@ -35,7 +29,7 @@ local M = {
 		cost = 0,
 		visual = { graphic = "sprites/cards/background_1_r.png", frame = FRAME },
 		effects = {
-			{ effect_name = "add_mult", phase = "mult", value = 1, priority = 20 },
+			{ effect_name = "add_mult", macro = "before_turn", sub = "mult", value = 1, priority = 20 },
 		},
 	},
 	stance_heavy_point = {
@@ -49,7 +43,7 @@ local M = {
 		cost = 0,
 		visual = { graphic = "sprites/cards/background_1_r.png", frame = FRAME },
 		effects = {
-			{ effect_name = "add_points", phase = "points", value = 2, priority = 20 },
+			{ effect_name = "add_points", macro = "before_turn", sub = "points", value = 2, priority = 20 },
 		},
 	},
 	stance_gluttony = {
@@ -65,7 +59,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "count_and_multiply_x_mult",
-				phase = "mult",
+				macro = "playing_stones",
+				sub = "mult",
 				value = 0.5,
 				priority = 15,
 				conditions = {
@@ -87,7 +82,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_points",
-				phase = "points",
+				macro = "playing_stones",
+				sub = "points",
 				value = 5,
 				priority = 20,
 				conditions = {
@@ -108,10 +104,22 @@ local M = {
 		cost = 0,
 		visual = { graphic = "sprites/stances/echo_r.png", frame = FRAME },
 		effects = {
-			{ effect_name = "copy_right_effect", phase = "distance", priority = 5 },
-			{ effect_name = "copy_right_effect", phase = "territory", priority = 5 },
-			{ effect_name = "copy_right_effect", phase = "points", priority = 5 },
-			{ effect_name = "copy_right_effect", phase = "mult", priority = 5 },
+			{
+				effect_name = "copy_right_effect",
+				macro = "playing_stones",
+				sub = "territory",
+				territory_step = "distance",
+				priority = 5,
+			},
+			{
+				effect_name = "copy_right_effect",
+				macro = "playing_stones",
+				sub = "territory",
+				territory_step = "value",
+				priority = 5,
+			},
+			{ effect_name = "copy_right_effect", macro = "playing_stones", sub = "points", priority = 5 },
+			{ effect_name = "copy_right_effect", macro = "playing_stones", sub = "mult", priority = 5 },
 		},
 	},
 	stance_persistent_flux = {
@@ -133,7 +141,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "adjust_run_persistent_counter",
-				phase = "mult",
+				macro = "playing_stones",
+				sub = "mult",
 				value = { counter_key = "persistent_flux_mult", delta = 3 },
 				priority = 10,
 				conditions = {
@@ -142,7 +151,8 @@ local M = {
 			},
 			{
 				effect_name = "adjust_run_persistent_counter",
-				phase = "mult",
+				macro = "playing_stones",
+				sub = "mult",
 				value = { counter_key = "persistent_flux_mult", delta = -3 },
 				priority = 10,
 				conditions = {
@@ -151,7 +161,8 @@ local M = {
 			},
 			{
 				effect_name = "apply_run_persistent_counter_as_mult",
-				phase = "mult",
+				macro = "playing_stones",
+				sub = "mult",
 				value = { counter_key = "persistent_flux_mult" },
 				priority = 20,
 				conditions = {
@@ -160,7 +171,8 @@ local M = {
 			},
 			{
 				effect_name = "apply_run_persistent_pending_delta_as_mult",
-				phase = "mult",
+				macro = "playing_stones",
+				sub = "mult",
 				value = { counter_key = "persistent_flux_mult" },
 				priority = 20,
 				conditions = {

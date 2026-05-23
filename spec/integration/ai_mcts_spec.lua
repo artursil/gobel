@@ -26,6 +26,10 @@ local function place_phase_view(seed)
 end
 
 describe("ai.board_analysis.evaluate", function()
+	if not spec_helper.require_integration() then
+		return
+	end
+
 	it("score increases when owner gains empty territory", function()
 		local rows_before = {
 			". . . . . . . . .",
@@ -60,6 +64,10 @@ describe("ai.board_analysis.evaluate", function()
 end)
 
 describe("ai.search.mcts", function()
+	if not spec_helper.require_integration() then
+		return
+	end
+
 	it("returns nil when MCTS disabled", function()
 		local g = match_state.new_match("pvc", nil, 99)
 		g.ai_strategy = "heuristic"

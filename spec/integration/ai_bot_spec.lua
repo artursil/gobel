@@ -7,6 +7,7 @@ local game = require("game")
 local match_view = require("ai.adapters.match_view")
 local resolver = require("resolver")
 local ai_controller = require("ai.controller")
+local spec_helper = require("spec.spec_helper")
 local test_helper = require("spec.test_helper")
 
 local function bot_actor()
@@ -24,6 +25,10 @@ local function new_pvc_bot_game()
 end
 
 describe("AI bot integration", function()
+	if not spec_helper.require_integration() then
+		return
+	end
+
 	it("PVC normal uses fast heuristic without MCTS", function()
 		local g = new_pvc_bot_game()
 		assert.is_not_nil(g.ai_mcts)

@@ -34,18 +34,18 @@ describe("state.resolution metadata wiring", function()
 			scores = minimal_scores(),
 		}
 		stance_order.flatten_stances_for_resolve(state)
-		local effects = effect_manager.collect_effects(state, "points")
+		local effects = effect_manager.collect_effects(state, "before_turn", "points", nil)
 		assert.are.equal(1, #effects)
 		assert.are.equal("run_inst_test", effects[1].meta.source_instance_id)
 	end)
 
-	it("during apply_phase, stance effects see resolution.source_instance_id from the stance row", function()
+	it("during apply_sub_phase, stance effects see resolution.source_instance_id from the stance row", function()
 		local em = effect_manager
 		local orig_collect = em.collect_effects
 		local seen_id
 
-		em.collect_effects = function(match_state, phase)
-			local list = orig_collect(match_state, phase)
+		em.collect_effects = function(match_state, macro, sub, territory_step)
+			local list = orig_collect(match_state, macro, sub, territory_step)
 			for _, e in ipairs(list) do
 				if e.meta and e.meta.source_object_type == "stance" then
 					local inner = e.apply
@@ -75,19 +75,19 @@ describe("state.resolution metadata wiring", function()
 		}
 		stance_order.flatten_stances_for_resolve(state)
 
-		em.apply_phase(state, "points")
+		em.apply_sub_phase(state, "before_turn", "points", nil)
 		em.collect_effects = orig_collect
 
 		assert.are.equal("phase_inst_stance", seen_id)
 	end)
 
-	it("during apply_phase, stone round effects see resolution.effect_owner as stone_event.owner", function()
+	it("during apply_sub_phase, stone round effects see resolution.effect_owner as stone_event.owner", function()
 		local em = effect_manager
 		local orig_collect = em.collect_effects
 		local seen_owner
 
-		em.collect_effects = function(match_state, phase)
-			local list = orig_collect(match_state, phase)
+		em.collect_effects = function(match_state, macro, sub, territory_step)
+			local list = orig_collect(match_state, macro, sub, territory_step)
 			for _, e in ipairs(list) do
 				if e.meta and e.meta.source_object_type == "stone" then
 					local inner = e.apply
@@ -113,14 +113,22 @@ describe("state.resolution metadata wiring", function()
 				{
 					owner = "W",
 					stone_type = "stone_basic",
-					effects = { { effect_name = "add_points", phase = "points", value = 2, priority = 10 } },
+					effects = {
+						{
+							effect_name = "add_points",
+							macro = "playing_stones",
+							sub = "points",
+							value = 2,
+							priority = 10,
+						},
+					},
 				},
 			},
 			active_effects = {},
 			scores = minimal_scores(),
 		}
 
-		em.apply_phase(state, "points")
+		em.apply_sub_phase(state, "playing_stones", "points", nil)
 		em.collect_effects = orig_collect
 
 		assert.are.equal("W", seen_owner)

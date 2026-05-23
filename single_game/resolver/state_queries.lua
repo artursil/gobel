@@ -32,6 +32,9 @@ end
 function M.clear_resolution(state)
 	local r = M.ensure_resolution(state)
 	r.phase = nil
+	r.macro = nil
+	r.sub = nil
+	r.territory_step = nil
 	r.effect_owner = nil
 	r.source_owner = nil
 	r.source_def_id = nil
@@ -134,7 +137,28 @@ end
 --- @return string|nil
 function M.resolution_phase(state)
 	local r = M.ensure_resolution(state)
-	return r.phase
+	return r.sub or r.phase
+end
+
+--- @param state table
+--- @return string|nil
+function M.resolution_macro(state)
+	local r = M.ensure_resolution(state)
+	return r.macro
+end
+
+--- @param state table
+--- @return string|nil
+function M.resolution_sub(state)
+	local r = M.ensure_resolution(state)
+	return r.sub or r.phase
+end
+
+--- @param state table
+--- @return string|nil
+function M.resolution_territory_step(state)
+	local r = M.ensure_resolution(state)
+	return r.territory_step
 end
 
 --- Returns whether selected target points to an occupied board stone.

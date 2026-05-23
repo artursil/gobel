@@ -73,14 +73,16 @@ function M.round_effect_defs(resolved_effects)
 		if r.type == "ADD_POINTS" then
 			round[i] = {
 				effect_name = "add_points",
-				phase = r.phase or "points",
+				macro = "playing_stones",
+				sub = "points",
 				value = r.value,
 				priority = r.priority or 10,
 			}
 		elseif r.type == "ADD_MULT" then
 			round[i] = {
 				effect_name = "add_mult",
-				phase = r.phase or "mult",
+				macro = "playing_stones",
+				sub = "mult",
 				value = r.value,
 				priority = r.priority or 10,
 			}

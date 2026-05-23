@@ -309,6 +309,42 @@ Things to consider:
 28. some stances/card should be able to retrigger cards/stones/stances
 
 
+## Scoring phases (macro × sub)
+
+Each effect definition uses two fields:
+
+- **macro** — when in the match lifecycle: `game_start`, `before_turn`, `playing_cards`, `playing_stones`, `end_of_turn`, `game_end`
+- **sub** — what kind of change: `territory`, `points`, `mult` (both `plus_mult` and `x_mult` in one pass, priority order)
+
+Optional **territory_step** on `sub = "territory"` only:
+
+- `distance` — distance modifiers before assignment
+- `value` — territory-value board effects (towers, etc.) before owner assignment
+
+Per-action resolve (`resolve_round.resolve(state, { macro = "…" })`) runs subs in order: **territory → points → mult**. Territory always runs (distance → begin assignment → value effects → finish assignment).
+
+| Macro | When |
+|-------|------|
+| `playing_cards` | After each `PLAY_CARD_COMMIT` |
+| `playing_stones` | After each stone `BOARD_APPLY`; clears `round_stone_effects` when this macro finishes |
+| `end_of_turn` | After each `PASS_TURN`, and after each successful `PLACE_STONE` (cleanup: tick temp stances, flush card memory) |
+| `before_turn` | Start of active player's turn |
+
+**Echo (`copy_right_effect`)**: copied stance children match on **sub** (and `territory_step` when `sub = "territory"`), not on the child's macro, so e.g. `before_turn.points` can apply during `playing_stones.points`.
+
+Registration rules:
+
+| Effect kind | Macro | Sub |
+|-------------|-------|-----|
+| Card `add_points` / `add_mult` | `playing_cards` | `points` / `mult` |
+| Stone on-place `add_points` / `add_mult` | `playing_stones` | `points` / `mult` (via `round_stone_effects` only) |
+| `distance_bonus` | `playing_stones` | `territory` + `territory_step = "distance"` |
+| Tower / territory-value | `playing_stones` | `territory` + `territory_step = "value"` |
+| Wall / pattern board effects | `playing_stones` | `points` or `mult` |
+| Stance passives | assign explicitly (e.g. `before_turn.points`, `playing_stones.mult`) |
+
+On-place `add_points` / `add_mult` must **not** register in board scan (`resolve_board_stone` skips them). Points/mult accumulate across card and stone resolves within the same turn; `before_turn` resets only the active player's baselines.
+
 IDEAS:
 - stance/relic to draw a card always first
 

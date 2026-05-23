@@ -1,11 +1,8 @@
---- One full scoring round: default fields, opponent sync, stances, pre/main phases, territory, player totals, timed tick.
+--- Per-action scoring resolve: macro lifecycle + sub passes (territory → points → mult).
 ---
---- Stance ownership is canonical under ``state.players.*.stances.fixed`` / ``swappable``. Effect collection
---- builds ``state._stance_effect_order`` via ``stance_order.flatten_stances_for_resolve`` (see ``stance_order``
---- module); there is no merged ``state.stances`` array on match state.
----
---- Card effects read **`state.just_played`** (filled by `PLAY_CARD_COMMIT` in the resolver), not hand contents.
---- After scoring, **`card_play_memory.flush_just_played_to_history`** appends to **`state.played_cards`** and clears `just_played`.
+--- Card effects read ``state.just_played`` for ``playing_cards`` macro only.
+--- Stone on-place effects use ``round_stone_effects`` for ``playing_stones`` macro only.
+--- Board scan never applies on-place add_points/add_mult (see ``resolve_board_stone``).
 --- @module resolver.resolve_round
 
 local config = require("config")
@@ -15,7 +12,7 @@ local effect_manager = require("single_game.resolver.effect_manager")
 local queries = require("single_game.resolver.state_queries")
 local territory = require("single_game.resolver.territory")
 local card_play_memory = require("single_game.resolver.card_play_memory")
-local dbg = require("debugger")
+local scoring_phases = require("single_game.resolver.scoring_phases")
 
 local M = {}
 
@@ -87,21 +84,39 @@ local function side_to_owner(side)
 	return config.OWNER_BLACK
 end
 
---- Resets point/mult baselines from player bonuses and board `overall_mult`.
+--- Turn bonus and territory reset each resolve; points/mult reset only at turn boundaries.
 --- @param state table
+--- @param macro string
 --- @return nil
-local function reset_base_scores(state)
+local function prepare_score_baselines(state, macro)
 	local tn = state.turn_number or 1
 	local turn_bonus = 1 + (0.1 * tn)
-
-	state.scores.turn_bonus = { B = turn_bonus, W = turn_bonus }
+	state.scores.turn_bonus = state.scores.turn_bonus or { B = turn_bonus, W = turn_bonus }
 	state.scores.territory = { B = 0, W = 0 }
 	state.scores.plus_mult = state.scores.plus_mult or { B = 1, W = 1 }
 	state.scores.x_mult = state.scores.x_mult or { B = 1, W = 1 }
 	state.scores.points = state.scores.points or { B = 1, W = 1 }
+	if macro == "game_start" then
+		state.scores.turn_bonus = { B = turn_bonus, W = turn_bonus }
+		state.scores.plus_mult = { B = 1, W = 1 }
+		state.scores.x_mult = { B = 1, W = 1 }
+		state.scores.points = { B = 1, W = 1 }
+	elseif macro == "before_turn" then
+		local owner = side_to_owner(state.to_play)
+		local black = match_state.player_for_color(state, "black")
+		local white = match_state.player_for_color(state, "white")
+		state.scores.turn_bonus.B = black.score.turn_bonus
+		state.scores.turn_bonus.W = white.score.turn_bonus
+		state.scores.turn_bonus[owner] = turn_bonus
+		state.scores.plus_mult[owner] = 1
+		state.scores.x_mult[owner] = 1
+		state.scores.points[owner] = 1
+	else
+		state.scores.turn_bonus.B = turn_bonus
+		state.scores.turn_bonus.W = turn_bonus
+	end
 end
 
---- Pushes `state.scores` into `match_state` player `score` tables and `total`.
 --- @param state table
 --- @return nil
 local function sync_player_scores(state)
@@ -141,7 +156,6 @@ local function sync_player_scores(state)
 	white.score.total = total_white
 end
 
---- Decrements `active_effects` remaining turns; drops expired entries.
 --- @param state table
 --- @return nil
 local function tick_timed_effects(state)
@@ -155,8 +169,6 @@ local function tick_timed_effects(state)
 	state.active_effects = kept
 end
 
---- Decrements temporary stance durations and removes expired ones.
---- Does not decrement stances created this turn (they expire after being used next turn).
 --- @param state table
 --- @return nil
 local function tick_temporary_stances(state)
@@ -175,36 +187,59 @@ local function tick_temporary_stances(state)
 	state.temporary_stances = kept
 end
 
---- Main entry: runs full PRE/MAIN pipeline including territory begin/finish and clears `round_stone_effects`.
+--- Territory sub: distance modifiers → territory-value effects → assign owners and count.
 --- @param state table
+--- @param macro string
 --- @return nil
-function M.resolve(state)
-	-- dbg.log_stack("resolve_round", state)
+local function apply_territory_sub(state, macro)
+	effect_manager.apply_sub_phase(state, macro, "territory", scoring_phases.TERRITORY_STEP_DISTANCE)
+	territory.begin_assignment(state)
+	effect_manager.apply_sub_phase(state, macro, "territory", scoring_phases.TERRITORY_STEP_VALUE)
+	territory.finish_assignment(state)
+end
+
+--- @param state table
+--- @param macro string
+--- @return nil
+local function run_sub_phases(state, macro)
+	for i = 1, #phases.SUB_ORDER do
+		local sub = phases.SUB_ORDER[i]
+		if sub == "territory" then
+			apply_territory_sub(state, macro)
+		else
+			effect_manager.apply_sub_phase(state, macro, sub, nil)
+		end
+	end
+end
+
+--- @param state table
+--- @param opts table|nil ``{ macro = string }``
+--- @return nil
+function M.resolve(state, opts)
+	opts = opts or {}
+	local macro = opts.macro or "playing_stones"
 	ensure_state_fields(state)
-	-- dbg.log_stack("ensure_state_fields", state)
 	sync_opponent_state(state)
-	reset_base_scores(state)
+	prepare_score_baselines(state, macro)
 	queries.clear_resolution(state)
-	for _, phase in ipairs(phases.PRE) do
-		effect_manager.apply_phase(state, phase)
-	end
-	for _, phase in ipairs(phases.MAIN) do
-		if phase == "territory" then
-			territory.begin_assignment(state)
-		end
-
-		effect_manager.apply_phase(state, phase)
-
-		if phase == "territory" then
-			territory.finish_assignment(state)
-		end
-	end
+	state._resolve_macro = macro
+	run_sub_phases(state, macro)
 	sync_player_scores(state)
-	card_play_memory.flush_just_played_to_history(state)
-	state.round_stone_effects = {}
-	tick_timed_effects(state)
-	tick_temporary_stances(state)
+	if macro == "playing_cards" then
+		card_play_memory.flush_just_played_to_history(state)
+		for _, stance in ipairs(state.temporary_stances or {}) do
+			stance.created_this_turn = nil
+		end
+	elseif macro == "playing_stones" then
+		state.round_stone_effects = {}
+	end
+	if macro == "end_of_turn" then
+		card_play_memory.flush_just_played_to_history(state)
+		tick_timed_effects(state)
+		tick_temporary_stances(state)
+	end
 	queries.clear_resolution(state)
+	state._resolve_macro = nil
 end
 
 return M

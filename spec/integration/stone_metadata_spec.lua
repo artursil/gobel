@@ -31,7 +31,7 @@ describe("T-050 stone metadata and behavior hooks", function()
 				local effect = stone.effects[i]
 				assert.is_true(type(effect) == "table")
 				assert.is_true(effect.effect_name ~= nil)
-				assert.is_true(effect.phase ~= nil)
+				assert.is_true(effect.macro ~= nil and effect.sub ~= nil)
 			end
 		end
 	end)

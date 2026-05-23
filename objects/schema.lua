@@ -1,26 +1,28 @@
 --- Schema validation for unified game objects.
---- Enforces consistent structure across stones, cards, and stances.
+--- Effect definitions use ``macro`` (lifecycle) and ``sub`` (territory | points | mult).
 --- @module objects.schema
 
 local M = {}
 
---- Valid object types
 local VALID_TYPES = { stone = true, card = true, stance = true }
 
---- Valid rarity tiers
 local VALID_RARITIES = { common = true, uncommon = true, rare = true, epic = true, legendary = true }
 
---- Valid effect phases
-local VALID_PHASES = {
-	distance = true,
+local VALID_MACROS = {
+	game_start = true,
+	before_turn = true,
+	playing_cards = true,
+	playing_stones = true,
+	end_of_turn = true,
+	game_end = true,
+}
+
+local VALID_SUBS = {
 	territory = true,
 	points = true,
 	mult = true,
-	hand = true,
-	discard = true,
 }
 
---- Valid effect scopes (optional)
 local VALID_SCOPES = {
 	self = true,
 	board = true,
@@ -29,7 +31,6 @@ local VALID_SCOPES = {
 	all = true,
 }
 
---- Helper: list valid values from a table
 local function list_valid(tbl)
 	local result = {}
 	for key in pairs(tbl) do
@@ -39,11 +40,10 @@ local function list_valid(tbl)
 	return table.concat(result, ", ")
 end
 
---- Validate a single effect entry against unified schema.
---- @param effect table: Effect definition to validate
---- @param object_id string: Object containing this effect (for error messages)
---- @return boolean: true if valid
---- @return string|nil: error message if invalid
+--- @param effect table
+--- @param object_id string
+--- @return boolean
+--- @return string|nil
 local function validate_effect(effect, object_id)
 	if type(effect) ~= "table" then
 		return false, string.format("Effect in %s is not a table: %s", object_id, type(effect))
@@ -53,18 +53,31 @@ local function validate_effect(effect, object_id)
 		return false, string.format("Effect in %s missing effect_name or not string", object_id)
 	end
 
-	if not effect.phase or type(effect.phase) ~= "string" then
-		return false, string.format("Effect '%s' in %s missing phase or not string", effect.effect_name, object_id)
-	end
-
-	if not VALID_PHASES[effect.phase] then
-		return false, string.format(
-			"Effect '%s' in %s has invalid phase '%s' (valid: %s)",
-			effect.effect_name,
-			object_id,
-			effect.phase,
-			list_valid(VALID_PHASES)
-		)
+	if effect.macro and effect.sub then
+		if not VALID_MACROS[effect.macro] then
+			return false,
+				string.format(
+					"Effect '%s' in %s has invalid macro '%s' (valid: %s)",
+					effect.effect_name,
+					object_id,
+					effect.macro,
+					list_valid(VALID_MACROS)
+				)
+		end
+		if not VALID_SUBS[effect.sub] then
+			return false,
+				string.format(
+					"Effect '%s' in %s has invalid sub '%s' (valid: %s)",
+					effect.effect_name,
+					object_id,
+					effect.sub,
+					list_valid(VALID_SUBS)
+				)
+		end
+	elseif effect.phase and type(effect.phase) == "string" then
+	else
+		return false,
+			string.format("Effect '%s' in %s missing macro/sub or legacy phase", effect.effect_name, object_id)
 	end
 
 	if effect.priority and type(effect.priority) ~= "number" then
@@ -101,11 +114,10 @@ local function validate_effect(effect, object_id)
 	return true
 end
 
---- Validate a complete object definition (stone, card, or stance).
---- @param object table: Object definition to validate
---- @param object_type string: "stone", "card", or "stance"
---- @return boolean: true if valid
---- @return string|nil: error message if invalid
+--- @param object table
+--- @param object_type string
+--- @return boolean
+--- @return string|nil
 function M.validate_object(object, object_type)
 	if type(object) ~= "table" then
 		return false, string.format("Object is not a table: %s", type(object))
@@ -160,19 +172,17 @@ function M.validate_object(object, object_type)
 	for i, effect in ipairs(object.effects) do
 		local valid, err = validate_effect(effect, object.id)
 		if not valid then
-			return false,
-				string.format("Object %s, effect #%d: %s", object.id, i, err)
+			return false, string.format("Object %s, effect #%d: %s", object.id, i, err)
 		end
 	end
 
 	return true
 end
 
---- Validate all objects in a definition table.
---- @param definitions table: Map of id -> object definitions
---- @param object_type string: "stone", "card", or "stance"
---- @return boolean: true if all valid
---- @return table: Array of error messages (empty if all valid)
+--- @param definitions table
+--- @param object_type string
+--- @return boolean
+--- @return table
 function M.validate_all(definitions, object_type)
 	local errors = {}
 
@@ -185,5 +195,8 @@ function M.validate_all(definitions, object_type)
 
 	return #errors == 0, errors
 end
+
+M.VALID_MACROS = VALID_MACROS
+M.VALID_SUBS = VALID_SUBS
 
 return M

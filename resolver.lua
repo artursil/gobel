@@ -42,10 +42,11 @@ local function owner_for_side(side)
 end
 
 --- @param state table
+--- @param macro string|nil active scoring macro (``playing_cards``, ``playing_stones``, ``end_of_turn``, …)
 --- @return nil
-local function recalc_all_scores(state)
+local function recalc_all_scores(state, macro)
 	local baseline = score_display.snapshot_scores(state)
-	resolve_round.resolve(state)
+	resolve_round.resolve(state, { macro = macro or "playing_stones" })
 	score_display.after_resolve(state, baseline, state.ui_animation_events)
 end
 
@@ -115,9 +116,21 @@ local function round_effects_from_resolved(resolved_effects)
 	for i = 1, #resolved_effects do
 		local r = resolved_effects[i]
 		if r.type == "ADD_POINTS" then
-			round[i] = { effect_name = "add_points", phase = r.phase or "points", value = r.value, priority = r.priority or 10 }
+			round[i] = {
+				effect_name = "add_points",
+				macro = "playing_stones",
+				sub = "points",
+				value = r.value,
+				priority = r.priority or 10,
+			}
 		elseif r.type == "ADD_MULT" then
-			round[i] = { effect_name = "add_mult", phase = r.phase or "mult", value = r.value, priority = r.priority or 10 }
+			round[i] = {
+				effect_name = "add_mult",
+				macro = "playing_stones",
+				sub = "mult",
+				value = r.value,
+				priority = r.priority or 10,
+			}
 		end
 	end
 	return round
@@ -238,6 +251,7 @@ local function on_turn_start(state, actor)
 	deck.draw_to_hand_target(actor_state.cards, function(max_value)
 		return match_state.rng_next_int(state, max_value)
 	end)
+	recalc_all_scores(state, "before_turn")
 	state.phase = "MAIN_PHASE"
 end
 
@@ -508,7 +522,7 @@ local function apply_non_effect_event(state, event)
 			type = event.card_id,
 			actor = event.actor,
 		}
-		recalc_all_scores(state)
+		recalc_all_scores(state, "playing_cards")
 		state.selected_card_target = nil
 		local cdef = content.get_card(event.card_id)
 		if cdef then
@@ -637,7 +651,12 @@ function M.submit_action(state, action)
 	end
 
 	state.phase = "RESOLVE_PHASE"
-	recalc_all_scores(state)
+	if action.type == "PASS_TURN" then
+		recalc_all_scores(state, "end_of_turn")
+	elseif action.type == "PLACE_STONE" then
+		recalc_all_scores(state, "playing_stones")
+		recalc_all_scores(state, "end_of_turn")
+	end
 	if action.type == "PLACE_STONE" then
 		push_score_delta_events(state, action.actor, actor_points_before, actor_mult_before)
 	end

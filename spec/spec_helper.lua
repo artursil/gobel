@@ -9,6 +9,34 @@ function M.integration_debug_enabled()
 	return os.getenv("INTEGRATION_DEBUG") == "1"
 end
 
+--- True when INTEGRATION=1 (slow / full integration specs).
+--- @return boolean
+function M.integration_enabled()
+	return os.getenv("INTEGRATION") == "1"
+end
+
+--- Call at top of a describe block; pending-skips entire file when INTEGRATION≠1.
+--- @return boolean  false when gated out (caller should return from describe)
+function M.require_integration()
+	if M.integration_enabled() then
+		return true
+	end
+	local message = "integration test — set INTEGRATION=1 to run"
+	local caller = debug.getinfo(2, "f")
+	if caller and caller.func then
+		local ok, compat = pcall(require, "busted.compatibility")
+		local getfenv_fn = ok and compat and compat.getfenv or getfenv
+		if getfenv_fn then
+			local env = getfenv_fn(caller.func)
+			if env and type(env.pending) == "function" then
+				env.pending(message)
+				return false
+			end
+		end
+	end
+	error(message, 2)
+end
+
 --- Scoring helpers (moved from scoring.lua) ---
 
 --- @param b table

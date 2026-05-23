@@ -8,6 +8,10 @@ local placement = require("ai.heuristics.placement")
 local spec_helper = require("spec.spec_helper")
 
 describe("ai.heuristics.placement", function()
+	if not spec_helper.require_integration() then
+		return
+	end
+
 	it("prefers capture over interior fill on crafted board", function()
 		local rows = {
 			". . . . . . . . .",

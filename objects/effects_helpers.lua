@@ -67,14 +67,35 @@ function H.get_copy_right_target(state)
 	return target, target_owner, target_def
 end
 
---- Scans ``target_def.effects`` for children that participate in the active scoring ``phase`` (from ``state.resolution``), skipping recursive ``copy_right_effect`` rows. Each matching definition is passed through ``resolve_effect`` (typically ``objects.effects.resolve``) before any ``apply`` runs. Every returned payload has ``phase`` set to ``phase`` so the resolved object matches the resolver's current phase even when a builder supplied a different default. Order follows the stance definition. Returns ``nil`` when there is nothing to run (missing inputs, empty list, or no child matches the phase).
+--- Whether a copied stance child runs in the active resolve sub (ignores the child's macro).
+--- @param effect_def table
+--- @param active_sub string
+--- @param territory_step string|nil
+--- @return boolean
+local function copied_child_matches_active_sub(effect_def, active_sub, territory_step)
+	local scoring_phases = require("single_game.resolver.scoring_phases")
+	local _, child_sub, child_step = scoring_phases.parse_effect_phase(effect_def)
+	if not child_sub or child_sub ~= active_sub then
+		return false
+	end
+	if active_sub == "territory" and territory_step and child_step ~= territory_step then
+		return false
+	end
+	if active_sub == "territory" and territory_step and not child_step then
+		return false
+	end
+	return true
+end
+
+--- Scans ``target_def.effects`` for children matching the active scoring sub (from ``state.resolution``), skipping recursive ``copy_right_effect`` rows. Copied children ignore their own macro so e.g. ``before_turn.points`` can apply during ``playing_stones.points``. Returns ``nil`` when there is nothing to run.
 --- @param state table
 --- @param target_def table Stance definition from ``objects.definitions.stances`` (expects an ``effects`` array).
 --- @param resolve_effect fun(effect_def: table): table|nil
 --- @return table|nil Sequential list of resolved runtime effect tables, each with ``apply``; or ``nil`` if none.
 function H.get_target_effects(state, target_def, resolve_effect)
-	local phase = queries.resolution_phase(state)
-	if not target_def or not target_def.effects or not phase then
+	local active_sub = queries.resolution_sub(state)
+	local territory_step = queries.resolution_territory_step(state)
+	if not target_def or not target_def.effects or not active_sub then
 		return nil
 	end
 	local resolved_effects = {}
@@ -82,8 +103,9 @@ function H.get_target_effects(state, target_def, resolve_effect)
 		local effect_def = target_def.effects[i]
 		if effect_def.effect_name ~= "copy_right_effect" then
 			local resolved = resolve_effect(effect_def)
-			if resolved and resolved.apply and resolved.phase == phase then
-				resolved.phase = phase
+			if resolved and resolved.apply and copied_child_matches_active_sub(effect_def, active_sub, territory_step) then
+				resolved.sub = active_sub
+				resolved.phase = active_sub
 				resolved_effects[#resolved_effects + 1] = resolved
 			end
 		end

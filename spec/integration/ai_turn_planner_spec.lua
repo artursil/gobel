@@ -3,8 +3,13 @@ require("spec.test_helper")
 local match_state = require("match_state")
 local match_view = require("ai.adapters.match_view")
 local planner = require("ai.turn.planner")
+local spec_helper = require("spec.spec_helper")
 
 describe("ai.turn.planner", function()
+	if not spec_helper.require_integration() then
+		return
+	end
+
 	it("prefers play_card when an affordable card outscores skip", function()
 		local g = match_state.new_match("pvc")
 		g.phase = "MAIN_PHASE"

@@ -38,6 +38,10 @@ local function view_for_game(g)
 end
 
 describe("ai.candidates.dual_suggest", function()
+	if not spec_helper.require_integration() then
+		return
+	end
+
 	local saved_mcts_module
 
 	after_each(function()

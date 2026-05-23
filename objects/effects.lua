@@ -17,9 +17,12 @@ local M = {}
 --- @param effect table: {effect_name, phase, value, priority, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
 function M.add_points(effect)
+	local sub = effect.sub or effect.phase or "points"
 	return {
 		type = "ADD_POINTS",
-		phase = effect.phase or "points",
+		phase = sub,
+		macro = effect.macro,
+		sub = sub,
 		value = effect.value,
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
@@ -33,9 +36,12 @@ end
 --- @param effect table: {effect_name, phase, value, priority, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
 function M.add_mult(effect)
+	local sub = effect.sub or effect.phase or "mult"
 	return {
 		type = "ADD_MULT",
-		phase = effect.phase or "mult",
+		phase = sub,
+		macro = effect.macro,
+		sub = sub,
 		value = effect.value,
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
@@ -51,7 +57,10 @@ end
 function M.distance_bonus(effect)
 	return {
 		type = "DISTANCE_BONUS",
-		phase = "distance",
+		phase = "territory",
+		macro = effect.macro or "playing_stones",
+		sub = "territory",
+		territory_step = effect.territory_step or "distance",
 		value = effect.value,
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
@@ -158,9 +167,16 @@ end
 --- @param effect table
 --- @return table
 function M.copy_right_effect(effect)
+	local sub = effect.sub or effect.phase
+	if sub == "distance" then
+		sub = "territory"
+	end
 	return {
 		type = "COPY_RIGHT_EFFECT",
-		phase = effect.phase,
+		phase = sub,
+		macro = effect.macro or "playing_stones",
+		sub = sub,
+		territory_step = effect.territory_step,
 		value = effect.value,
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
@@ -388,7 +404,9 @@ end
 function M.pattern_x_mult(effect)
 	return {
 		type = "PATTERN_X_MULT",
-		phase = effect.phase or "mult",
+		phase = effect.sub or "mult",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "mult",
 		priority = effect.priority or 12,
 		conditions = effect.conditions,
 		apply = function(state, owner)
@@ -425,7 +443,9 @@ end
 function M.pattern_plus_mult(effect)
 	return {
 		type = "PATTERN_PLUS_MULT",
-		phase = effect.phase or "mult",
+		phase = effect.sub or "mult",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "mult",
 		priority = effect.priority or 12,
 		conditions = effect.conditions,
 		apply = function(state, owner)
@@ -462,7 +482,9 @@ end
 function M.wall_stone_other(effect)
 	return {
 		type = "WALL_STONE_OTHER",
-		phase = effect.phase or "points",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
 		value = effect.value or 2,
 		priority = effect.priority or 14,
 		conditions = effect.conditions,
@@ -504,7 +526,9 @@ end
 function M.wall_stone(effect)
 	return {
 		type = "WALL_STONE",
-		phase = effect.phase or "points",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
 		value = effect.value or 2,
 		priority = effect.priority or 14,
 		conditions = effect.conditions,
@@ -550,6 +574,8 @@ function M.double_corner_nearby_territory(row, col, effect_def)
 	return {
 		type = "DOUBLE_CORNER_NEARBY_TERRITORY",
 		phase = "territory",
+		macro = effect_def.macro or "playing_stones",
+		sub = "territory",
 		priority = effect_def.priority or 10,
 		conditions = effect_def.conditions,
 		apply = function(state, owner)
@@ -594,7 +620,11 @@ function M.resolve(effect)
 	if not builder then
 		return nil
 	end
-	return builder(effect)
+	local resolved = builder(effect)
+	if resolved then
+		resolved._effect_def = effect
+	end
+	return resolved
 end
 
 --- Board effect builders registry.
@@ -637,7 +667,17 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 	return resolved
 end
 
-function M.resolve_board_stone(stone_cell, row, col, state)
+--- Board-scoped stone effects only (no on-place add_points/add_mult).
+--- @param stone_cell table
+--- @param row integer
+--- @param col integer
+--- @param state table
+--- @param active_macro string
+--- @param active_sub string
+--- @param territory_step string|nil
+--- @return table
+function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active_sub, territory_step)
+	local scoring_phases = require("single_game.resolver.scoring_phases")
 	local content = require("content")
 	local stone_def = content.get_stone(stone_cell.kind)
 	local key = helpers.stone_key(row, col)
@@ -645,6 +685,7 @@ function M.resolve_board_stone(stone_cell, row, col, state)
 	local out = {}
 	local effect_defs = {}
 	local owner = stone_cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
+	active_macro = active_macro or state._resolve_macro or "playing_stones"
 
 	if stone_def and stone_def.effects then
 		for i = 1, #stone_def.effects do
@@ -656,10 +697,14 @@ function M.resolve_board_stone(stone_cell, row, col, state)
 	end
 
 	for _, effect_def in ipairs(effect_defs) do
-		if effect_def.effect_name == "distance_bonus" then
+		if scoring_phases.is_placement_only_effect_name(effect_def.effect_name) then
+		elseif not scoring_phases.matches(effect_def, active_macro, active_sub, territory_step) then
+		elseif effect_def.effect_name == "distance_bonus" then
 			out[#out + 1] = {
 				type = "DISTANCE_BONUS",
-				phase = "distance",
+				phase = "territory",
+				sub = "territory",
+				macro = active_macro,
 				priority = effect_def.priority or 10,
 				conditions = effect_def.conditions,
 				apply = function(current_state)
@@ -680,6 +725,8 @@ function M.resolve_board_stone(stone_cell, row, col, state)
 		else
 			local resolved = resolve_board_effect_entry(effect_def, row, col, owner)
 			if resolved then
+				resolved.macro = active_macro
+				resolved.sub = active_sub
 				out[#out + 1] = resolved
 			end
 		end

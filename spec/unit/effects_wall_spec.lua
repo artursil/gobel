@@ -40,7 +40,7 @@ describe("wall stone effects", function()
 		})
 		st.last_opponent_move = { row = 3, col = 5, stone_id = "stone_basic", actor = "black" }
 		local cell = st.board[3][5]
-		local resolved_list = effects.resolve_board_stone(cell, 3, 5, st)
+		local resolved_list = effects.resolve_board_stone(cell, 3, 5, st, "playing_stones", "points", nil)
 		for i = 1, #resolved_list do
 			if resolved_list[i].type == "WALL_STONE_OTHER" then
 				resolved_list[i].apply(st)
@@ -68,7 +68,7 @@ describe("wall stone effects", function()
 		})
 		st.last_opponent_move = { row = 4, col = 4, stone_id = "wall", actor = "black" }
 		local cell = st.board[4][4]
-		local resolved_list = effects.resolve_board_stone(cell, 4, 4, st)
+		local resolved_list = effects.resolve_board_stone(cell, 4, 4, st, "playing_stones", "points", nil)
 		for i = 1, #resolved_list do
 			if resolved_list[i].type == "WALL_STONE" then
 				resolved_list[i].apply(st)
@@ -97,7 +97,7 @@ describe("wall stone effects", function()
 		})
 		st.last_opponent_move = { row = 3, col = 4, stone_id = "wall", actor = "black" }
 		local cell = st.board[3][4]
-		local generated = effects.resolve_board_stone(cell, 3, 4, st)
+		local generated = effects.resolve_board_stone(cell, 3, 4, st, "playing_stones", "points", nil)
 		local has_wall = false
 		for i = 1, #generated do
 			if generated[i].type == "WALL_STONE" then

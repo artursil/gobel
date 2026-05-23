@@ -26,7 +26,7 @@ M.stone_basic = {
 		sprite = "sprites/stones/basic.png",
 	},
 	effects = {
-		{ effect_name = "add_points", phase = "points", value = 1, priority = 10 },
+		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
 	},
 }
 
@@ -45,7 +45,7 @@ M.stone_power = {
 		sprite = "sprites/stones/power.png",
 	},
 	effects = {
-		{ effect_name = "add_points", phase = "points", value = 2, priority = 10 },
+		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 2, priority = 10 },
 	},
 }
 
@@ -64,7 +64,7 @@ M.stone_focus = {
 		sprite = "sprites/stones/focus.png",
 	},
 	effects = {
-		{ effect_name = "add_mult", phase = "mult", value = 1, priority = 10 },
+		{ effect_name = "add_mult", macro = "playing_stones", sub = "mult", value = 1, priority = 10 },
 	},
 }
 
@@ -83,8 +83,15 @@ M.stone_lieutenant = {
 		sprite = "sprites/stones/lieutenant.png",
 	},
 	effects = {
-		{ effect_name = "add_points", phase = "points", value = 1, priority = 10 },
-		{ effect_name = "distance_bonus", phase = "distance", value = 1, priority = 10 },
+		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
+		{
+			effect_name = "distance_bonus",
+			macro = "playing_stones",
+			sub = "territory",
+			territory_step = "distance",
+			value = 1,
+			priority = 10,
+		},
 	},
 }
 
@@ -103,8 +110,14 @@ M.stone_tower = {
 		sprite = "sprites/stones/tower.png",
 	},
 	effects = {
-		{ effect_name = "add_points", phase = "points", value = 1, priority = 10 },
-		{ effect_name = "double_corner_nearby_territory", phase = "territory", priority = 10 },
+		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
+		{
+			effect_name = "double_corner_nearby_territory",
+			macro = "playing_stones",
+			sub = "territory",
+			territory_step = "value",
+			priority = 10,
+		},
 	},
 }
 
@@ -141,7 +154,7 @@ M.x_stone = {
 		sprite = "sprites/stones/special.png",
 	},
 	effects = {
-		{ effect_name = "add_points", phase = "points", value = 1, priority = 10 },
+		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
 	},
 }
 
@@ -160,7 +173,7 @@ M.plus_stone = {
 		sprite = "sprites/stones/focus.png",
 	},
 	effects = {
-		{ effect_name = "add_points", phase = "points", value = 1, priority = 10 },
+		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
 	},
 }
 
@@ -183,7 +196,5 @@ M.wall = {
 		shared.wall_stone,
 	},
 }
-
-M.stone_wall = M.wall
 
 return M

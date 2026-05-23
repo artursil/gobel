@@ -10,6 +10,10 @@ local spec_helper = require("spec.spec_helper")
 local territory_analysis = require("ai.board_analysis.territory")
 
 describe("ai.search.mcts dual stone pool", function()
+	if not spec_helper.require_integration() then
+		return
+	end
+
 	it("picks capture stone over dame with distinct stone_id arms", function()
 		local rows = {
 			". . . . . . . . .",

@@ -185,8 +185,27 @@ local match_state = require("match_state")
 local spec_helper = require("spec.spec_helper")
 
 local debug_stone_to_letter = nil
+local visual_letter_to_stone = nil
 local scoring_debug_dump_pending = false
 local scoring_debug_already_dumped = false
+
+--- Registers ASCII letter maps for ``set_board`` / ``place_stone`` and optional INTEGRATION_DEBUG board dumps.
+--- @param letter_to_stone table
+--- @param stone_to_letter_for_debug table|nil
+function M.set_visual_board_letters(letter_to_stone, stone_to_letter_for_debug)
+	visual_letter_to_stone = letter_to_stone
+	if stone_to_letter_for_debug then
+		M.set_integration_debug_stone_letters(stone_to_letter_for_debug)
+	end
+end
+
+--- @return table
+local function require_visual_letter_map()
+	if not visual_letter_to_stone then
+		error("call set_visual_board_letters before set_board or place_stone")
+	end
+	return visual_letter_to_stone
+end
 
 --- Maps stone kinds to ASCII letters for INTEGRATION_DEBUG board dumps (e.g. scoring_spec).
 --- @param stone_to_letter table
@@ -351,15 +370,156 @@ local function side_to_owner(side)
 	return config.OWNER_BLACK
 end
 
---- Sets baseline score points on both ``players.*.score`` and ``state.scores.points`` before resolve.
 --- @param g table
---- @param side string "black"|"white"
+--- @param side string
+--- @param player_field string
+--- @param scores_field string
+--- @param amount number
+local function set_score_component(g, side, player_field, scores_field, amount)
+	match_state.player_for_color(g, side).score[player_field] = amount
+	g.scores = g.scores or {}
+	g.scores[scores_field] = g.scores[scores_field] or { B = 1, W = 1 }
+	g.scores[scores_field][side_to_owner(side)] = amount
+end
+
+--- @param game_type_id string|nil
+--- @return table
+function M.new_isolated_game(game_type_id)
+	local game = require("game")
+	local g = game.new("pvp", game_type_id or "basic_stones")
+	g.run_state = { counters = {} }
+	return g
+end
+
+--- @param g table
+--- @param side string
+--- @param stone_ids table
+function M.set_hand(g, side, stone_ids)
+	local player = match_state.player_for_color(g, side)
+	player.stones.playable_stones = stone_ids
+	player.stones.selected_stone = stone_ids[1]
+	player.stones.selected_stone_index = 1
+end
+
+--- @param g table
+--- @param side string
+--- @param amount number
+function M.set_energy(g, side, amount)
+	match_state.player_for_color(g, side).resources.energy_current = amount
+end
+
+--- @param g table
+--- @param side string
+--- @param amount number
+function M.set_money(g, side, amount)
+	match_state.player_for_color(g, side).resources.money = amount
+end
+
+--- @param g table
+--- @param side string
+--- @param card_ids table
+function M.set_cards(g, side, card_ids)
+	match_state.player_for_color(g, side).cards.hand.ids = card_ids
+end
+
+--- @param g table
+--- @param side string
+--- @param fixed table|nil
+--- @param swappable table|nil
+function M.set_stances(g, side, fixed, swappable)
+	local player = match_state.player_for_color(g, side)
+	player.stances.fixed = fixed or {}
+	player.stances.swappable = swappable or {}
+end
+
+--- @param g table
+--- @param round integer
+function M.set_round(g, round)
+	g.turn_number = round == 1 and 1 or (round - 1) * 2
+end
+
+--- @param g table
+--- @param key string
+--- @param black_value number|nil
+--- @param white_value number|nil
+function M.set_persistent_counter(g, key, black_value, white_value)
+	g.run_state.counters[key] = { B = black_value or 0, W = white_value or 0 }
+end
+
+--- @param g table
+--- @param side string
 --- @param amount number
 function M.set_points(g, side, amount)
-	match_state.player_for_color(g, side).score.points = amount
-	g.scores = g.scores or {}
-	g.scores.points = g.scores.points or { B = 1, W = 1 }
-	g.scores.points[side_to_owner(side)] = amount
+	set_score_component(g, side, "points", "points", amount)
+end
+
+--- @param g table
+--- @param side string
+--- @param amount number
+function M.set_mult(g, side, amount)
+	set_score_component(g, side, "plus_mult", "plus_mult", amount)
+end
+
+--- @param g table
+--- @param side string
+--- @param amount number
+function M.set_x_mult(g, side, amount)
+	set_score_component(g, side, "x_mult", "x_mult", amount)
+end
+
+--- @param g table
+--- @param rows table
+function M.set_board(g, rows)
+	g.board = spec_helper.parse_board_ascii_kinds(rows, require_visual_letter_map())
+end
+
+--- @param g table
+--- @param hand_index integer
+function M.play_card(g, hand_index)
+	M.assert_legal_play_card(g, hand_index, "play_card hand index " .. hand_index)
+end
+
+--- @param g table
+--- @param hand_indices table
+function M.play_cards(g, hand_indices)
+	for i = 1, #hand_indices do
+		M.play_card(g, hand_indices[i])
+	end
+end
+
+--- @param g table
+--- @param board_rows table
+--- @param finish_animations boolean|nil
+--- @return integer row
+--- @return integer col
+function M.place_stone(g, board_rows, finish_animations)
+	if finish_animations == nil then
+		finish_animations = true
+	end
+	local letter_map = require_visual_letter_map()
+	local new_board = spec_helper.parse_board_ascii_kinds(board_rows, letter_map)
+	for r = 1, config.BOARD_SIZE do
+		for c = 1, config.BOARD_SIZE do
+			if board.is_empty(g.board[r][c]) and not board.is_empty(new_board[r][c]) then
+				local player = match_state.player_for_color(g, g.to_play)
+				player.stones.selected_stone = new_board[r][c].kind
+				M.assert_legal_player_move(g, r, c, "place_stone at row " .. r .. " col " .. c)
+				if finish_animations then
+					M.finish_ui_animations_for_turn(g)
+				end
+				return r, c
+			end
+		end
+	end
+	error("place_stone: no new stone found in board_rows compared to the current board")
+end
+
+--- @param g table
+--- @param hand_index integer
+--- @param board_rows table
+function M.play_card_and_stone(g, hand_index, board_rows)
+	M.play_card(g, hand_index)
+	M.place_stone(g, board_rows)
 end
 
 --- @param g table
