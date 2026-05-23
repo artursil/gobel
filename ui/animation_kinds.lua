@@ -279,24 +279,7 @@ end
 --- @param job table
 --- @param ui_index table
 --- @return nil
-function board_stone_bounce.draw(job, ui_index)
-	if job.age < job.delay_start_s then
-		return
-	end
-	local layout = ui_index.layout
-	if not layout then
-		return
-	end
-	local px, py = layout_mod.grid_to_pixel(layout, job.row, job.col)
-	local lg = love.graphics
-	local u = (job.age - job.delay_start_s) / math.max(0.0001, job.dur_s)
-	local offset = math.sin(u * math.pi) * job.bounce_px
-	local rad = layout.board_metrics.cell * (require("config").STONE_RADIUS_FACTOR or 0.42)
-	lg.setColor(0.96, 0.84, 0.22, 0.9)
-	lg.setLineWidth(3)
-	lg.circle("line", px, py - offset, rad * 0.95)
-	lg.setLineWidth(1)
-	lg.setColor(1, 1, 1, 1)
+function board_stone_bounce.draw(_job, _ui_index)
 end
 
 local board_stone_float_text = {}

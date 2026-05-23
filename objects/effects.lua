@@ -438,30 +438,25 @@ function M.pattern_x_mult(effect)
 			local place_r, place_c = placement_coords(state)
 			for i = 1, #newly_completed do
 				local pattern = newly_completed[i]
-				local x_count = shape_patterns.count_x_stones_in_pattern(board_after, pattern)
-				if x_count > 0 then
-					local dedupe = "x:"
-						.. pattern.center_row
-						.. ":"
-						.. pattern.center_col
-						.. ":"
-						.. pattern.tier
-						.. ":"
-						.. owner
-					if not pattern_key_seen(state, dedupe) then
-						local factor = shape_patterns.x_mult_factor_for_x_stone_count(x_count)
+				local dedupe = "x:"
+					.. pattern.center_row
+					.. ":"
+					.. pattern.center_col
+					.. ":"
+					.. pattern.tier
+					.. ":"
+					.. owner
+				if not pattern_key_seen(state, dedupe) then
+					local x_count = shape_patterns.count_x_stones_in_pattern(board_after, pattern)
+					local factor = shape_patterns.x_mult_factor_for_x_stone_count(x_count)
+					if x_count > 0 then
 						state.scores.x_mult[owner] = state.scores.x_mult[owner] * factor
-						local anchor_r = place_r or pattern.center_row
-						local anchor_c = place_c or pattern.center_col
-						local label = string.format("×%d", factor)
-						animations.add_animation("pattern_x_celebrate")(state, {
-							owner = owner,
-							cells = pattern.cells,
-							label = label,
-							anchor_row = anchor_r,
-							anchor_col = anchor_c,
-						})
 					end
+					animations.add_animation("pattern_x_celebrate")(state, {
+						owner = owner,
+						cells = pattern.cells,
+						board_after = board_after,
+					})
 				end
 			end
 		end,
@@ -547,17 +542,13 @@ function M.pattern_plus_mult(effect)
 			)
 			if bonus > 0 then
 				state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + bonus
-				local anchor_pattern = to_score[1]
-				local anchor_r = place_r or (anchor_pattern and anchor_pattern.center_row)
-				local anchor_c = place_c or (anchor_pattern and anchor_pattern.center_col)
-				local cells = anchor_pattern and anchor_pattern.cells or {}
-				local label = string.format("+%d", bonus)
+			end
+			for pi = 1, #to_score do
+				local pattern = to_score[pi]
 				animations.add_animation("pattern_plus_celebrate")(state, {
 					owner = owner,
-					cells = cells,
-					label = label,
-					anchor_row = anchor_r,
-					anchor_col = anchor_c,
+					cells = pattern.cells,
+					board_after = board_after,
 				})
 			end
 		end,
@@ -600,7 +591,7 @@ function M.wall_stone(effect)
 			animations.add_animation("wall_stone_bounce")(state, {
 				owner = owner,
 				cells = group,
-				label = string.format("+%d", bonus),
+				bonus = bonus,
 				anchor_row = row,
 				anchor_col = col,
 			})

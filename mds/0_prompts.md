@@ -50,9 +50,9 @@ In nutshell those effects for x_stone, plus_stone, and wall_stone can be trigger
 5. shared_stones_effects - this one groups all the effects we use for all of the stones so we don't copy paste the same effects over and over
 
 Animations for those stones:
-1. Every time an X is created small or big (sometimes it can be created by none X stones)  all stones creatting an X are moved up and down one after another and then X2  mult over the placed stone
+1. Every time an X is created small or big (sometimes it can be created by none X stones)  all stones creatting an X are moved up and down one  after another and then X2 is displayed over every x_stone inside this X and this is repeated for all newly created Xs
 2. For plus_stones similar story
-3. For wall if we use wall_stone_other  effect then we move placed stone up and down and display +2 points over it, if it is however wall_stone effect we repeat this action (up and down and +2 point over it ) for every stone in the wall.
+3. For wall if we place wall_stone and the wall is bigger or equal 5 stones we move upon and down every stone connected to the wall_stone and then we display +5 x times depending on the size of the wall
 
 
 Cal them:

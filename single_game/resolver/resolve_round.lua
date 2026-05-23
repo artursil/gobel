@@ -31,7 +31,6 @@ local function ensure_state_fields(state)
 	state.temporary_stances = state.temporary_stances or {}
 	state.just_played = state.just_played or {}
 	state.played_cards = state.played_cards or {}
-	state.ui_animation_events = {}
 	state._pattern_plus_bonus_cells = {}
 	do
 		local n = config.BOARD_SIZE

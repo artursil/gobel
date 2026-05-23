@@ -52,6 +52,27 @@ function M.has_active_jobs()
 	return #active_jobs > 0
 end
 
+--- Vertical pixel offset for an in-flight board stone bounce at ``(row, col)``.
+--- @param row integer
+--- @param col integer
+--- @return number
+function M.board_stone_bounce_offset(row, col)
+	local best = 0
+	for j = 1, #active_jobs do
+		local job = active_jobs[j]
+		if job.animation_id == "board_stone_bounce" and job.row == row and job.col == col then
+			if job.age >= job.delay_start_s and job.age < job.delay_start_s + job.dur_s then
+				local u = (job.age - job.delay_start_s) / math.max(0.0001, job.dur_s)
+				local offset = math.sin(u * math.pi) * job.bounce_px
+				if math.abs(offset) > math.abs(best) then
+					best = offset
+				end
+			end
+		end
+	end
+	return best
+end
+
 --- Stance card layout aligned with ``render.draw_stances`` / hit testing.
 --- @param box table
 --- @param stance_count integer

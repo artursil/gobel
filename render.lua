@@ -748,8 +748,14 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 			local cell = game.board[r][c]
 			if not cells.is_empty(cell) then
 				local px, py = layout_mod.grid_to_pixel(layout, r, c)
+				local bounce_y = ui_animations.board_stone_bounce_offset(r, c)
 				local side = owner_side_from_stone_color(cell.color)
-				draw_stone_chip(cell.kind, { x = px - rad, y = py - rad, w = rad * 2, h = rad * 2 }, side, false)
+				draw_stone_chip(
+					cell.kind,
+					{ x = px - rad, y = py - rad - bounce_y, w = rad * 2, h = rad * 2 },
+					side,
+					false
+				)
 			end
 		end
 	end

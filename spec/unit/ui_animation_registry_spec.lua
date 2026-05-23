@@ -3,6 +3,9 @@ require("spec.test_helper")
 local config = require("config")
 local animation_kinds = require("ui.animation_kinds")
 local animations = require("ui.animations")
+local game = require("game")
+local object_animations = require("objects.animations")
+local resolve_round = require("single_game.resolver.resolve_round")
 
 describe("ui.animation_kinds registry", function()
 	it("spawn_job_from_intent merges defaults and intent overrides for stance_shake", function()
@@ -77,6 +80,114 @@ describe("ui.animation_kinds registry", function()
 		}
 		animations.drain_state_intents(game, layout)
 		assert.are.same({}, game.ui_animation_events)
+	end)
+
+	it("pattern_x_celebrate emits bounces then per-x_stone float labels", function()
+		local state = { ui_animation_events = {}, ui_animation_seq_counter = 0 }
+		local board_after = {
+			{},
+			{},
+			{ {}, {}, { kind = "x_stone" }, {}, { kind = "stone_basic" } },
+			{},
+			{ {}, {}, { kind = "stone_basic" }, {}, { kind = "x_stone" } },
+		}
+		object_animations.add_animation("pattern_x_celebrate")(state, {
+			owner = config.OWNER_BLACK,
+			cells = { { 3, 3 }, { 3, 5 }, { 5, 3 }, { 5, 5 } },
+			board_after = board_after,
+		})
+		assert.are.equal(6, #state.ui_animation_events)
+		for i = 1, 4 do
+			assert.are.equal("board_stone_bounce", state.ui_animation_events[i].type)
+		end
+		assert.are.equal("board_stone_float_text", state.ui_animation_events[5].type)
+		assert.are.equal("×2", state.ui_animation_events[5].text)
+		assert.are.equal(3, state.ui_animation_events[5].row)
+		assert.are.equal(3, state.ui_animation_events[5].col)
+		assert.are.equal("×2", state.ui_animation_events[6].text)
+		assert.are.equal(5, state.ui_animation_events[6].row)
+	end)
+
+	it("pattern_x_celebrate shows per-stone x2 not combined product", function()
+		local state = { ui_animation_events = {}, ui_animation_seq_counter = 0 }
+		local board_after = {
+			{},
+			{},
+			{ {}, {}, { kind = "x_stone" }, {}, { kind = "x_stone" } },
+			{},
+			{ {}, {}, { kind = "stone_basic" }, {}, { kind = "stone_basic" } },
+		}
+		object_animations.add_animation("pattern_x_celebrate")(state, {
+			owner = config.OWNER_BLACK,
+			cells = { { 3, 3 }, { 3, 5 }, { 5, 3 }, { 5, 5 } },
+			board_after = board_after,
+		})
+		assert.are.equal("×2", state.ui_animation_events[5].text)
+		assert.are.equal("×2", state.ui_animation_events[6].text)
+		assert.are.not_equal("×4", state.ui_animation_events[5].text)
+	end)
+
+	it("wall_stone_bounce emits one +5 float per five stones in group", function()
+		local state = { ui_animation_events = {}, ui_animation_seq_counter = 0 }
+		local cells = {}
+		for i = 1, 10 do
+			cells[i] = { 3, i }
+		end
+		object_animations.add_animation("wall_stone_bounce")(state, {
+			owner = config.OWNER_BLACK,
+			cells = cells,
+			anchor_row = 3,
+			anchor_col = 6,
+			bonus = 10,
+		})
+		local floats = 0
+		for i = 1, #state.ui_animation_events do
+			local it = state.ui_animation_events[i]
+			if it.type == "board_stone_float_text" then
+				floats = floats + 1
+				assert.are.equal("+5", it.text)
+			end
+		end
+		assert.are.equal(2, floats)
+	end)
+
+	it("resolve_round does not clear ui_animation_events at start", function()
+		local g = game.new("pvp", "basic_stones")
+		g.ui_animation_events = {
+			{ type = "board_stone_bounce", owner = config.OWNER_BLACK, row = 1, col = 1 },
+		}
+		resolve_round.resolve(g, { macro = "end_of_turn" })
+		assert.are.equal(1, #g.ui_animation_events)
+	end)
+
+	it("board_stone_bounce_offset follows active bounce job", function()
+		local layout = {
+			player_stances_panel = { x = 0, y = 0, w = 200, h = 300 },
+			opponent_stances_panel = { x = 600, y = 0, w = 200, h = 200 },
+			hand_panel = { x = 200, y = 400, w = 400, h = 200 },
+			board_metrics = { n = 9, x = 0, y = 0, w = 400, h = 400, cell = 40 },
+		}
+		local game = {
+			players = {
+				black = { stances = { fixed = {}, swappable = {} }, cards = { hand = { ids = {} } } },
+				white = { stances = { fixed = {}, swappable = {} }, cards = { hand = { ids = {} } } },
+			},
+			temporary_stances = {},
+			ui_animation_events = {
+				{
+					type = "board_stone_bounce",
+					owner = config.OWNER_BLACK,
+					row = 4,
+					col = 5,
+					duration_ms = 200,
+					start_delay_ms = 0,
+				},
+			},
+		}
+		animations.drain_state_intents(game, layout)
+		animations.update(0.1, game, layout)
+		local off = animations.board_stone_bounce_offset(4, 5)
+		assert.is_true(off > 0)
 	end)
 
 	it("tick_job_age removes job when elapsed past end", function()
