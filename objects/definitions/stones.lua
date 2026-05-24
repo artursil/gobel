@@ -2,9 +2,11 @@
 ---
 --- **Graphics-first checklist** for a new stone:
 --- 1. Add a row here with unique ``id``, ``type = "stone"``, name/description/cost/rarity, ``effects``.
---- 2. Set ``visual.color`` (RGB 0–1 tint for the body) and ``visual.sprite`` (PNG path under ``sprites/``).
---- 3. Keep ``graphic.draw_key`` only as a fallback when the sprite fails to load (optional; tests may assert it).
---- 4. Register pouch/deck counts in ``game_types`` / ``content.starters`` as needed.
+--- 2. Optional ``solidity`` (max health); omit to use ``objects.parameters.stones.default_solidity``.
+--- 3. Set ``visual.color`` (RGB 0–1 tint for the overlay) and ``visual.sprite`` (PNG path under ``sprites/``).
+--- 4. Keep ``graphic.draw_key`` only as a fallback when the sprite fails to load (optional; tests may assert it).
+--- 5. Board render uses ``sprites/stones/stones.png`` deterioration base + centered type overlay.
+--- 6. Register pouch/deck counts in ``game_types`` / ``content.starters`` as needed.
 --- @module objects.definitions.stones
 
 local shared = require("objects.definitions.shared_stones_effects")

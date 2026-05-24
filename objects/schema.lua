@@ -165,6 +165,13 @@ function M.validate_object(object, object_type)
 		end
 	end
 
+	if object_type == "stone" and object.solidity ~= nil then
+		if type(object.solidity) ~= "number" or object.solidity < 1 or object.solidity ~= math.floor(object.solidity) then
+			return false,
+				string.format("Object %s has invalid solidity (expected positive integer, got %s)", object.id, tostring(object.solidity))
+		end
+	end
+
 	if not object.effects or type(object.effects) ~= "table" then
 		return false, string.format("Object %s missing effects or effects not table", object.id)
 	end

@@ -158,7 +158,8 @@ function M.try_play(b, row, col, player, ko_ban, stone_kind)
 		return false, nil, nil, 0, "ko"
 	end
 	local trial = board.clone(b)
-	trial[row][col] = board.make_stone(player, stone_kind)
+	local stone_solidity = require("objects.stone_solidity")
+	trial[row][col] = board.make_stone(player, stone_kind, stone_solidity.stone_max_solidity(stone_kind))
 	local captures, ko_coord = M.remove_opponent_captures(trial, row, col, player)
 	local my_group = M.collect_group(trial, row, col)
 	if M.liberty_count(trial, my_group) == 0 then

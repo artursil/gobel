@@ -2,6 +2,9 @@
 --- @module objects.parameters.stones
 
 return {
+	default_solidity = 4,
+	solidity_frame_count = 4,
+
 	x_pattern_tiers = { 5, 9, 13, 17, 21 },
 	plus_pattern_tiers = { 5, 9, 13, 17, 21 },
 

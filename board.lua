@@ -20,10 +20,16 @@ end
 
 --- Allocates a stone value for placement on the board.
 --- @param color integer
---- @param kind integer
+--- @param kind string
+--- @param solidity integer|nil current health; nil = max for ``kind``
 --- @return table
-function M.make_stone(color, kind)
-	return { color = color, kind = kind }
+function M.make_stone(color, kind, solidity)
+	local stone_solidity = require("objects.stone_solidity")
+	local s = solidity
+	if s == nil then
+		s = stone_solidity.stone_max_solidity(kind)
+	end
+	return { color = color, kind = kind, solidity = s }
 end
 
 --- True if the cell holds no stone.
@@ -67,7 +73,7 @@ function M.clone(board)
 			if M.is_empty(cell) then
 				copy[r][c] = config.STONE_NONE
 			else
-				copy[r][c] = M.make_stone(cell.color, cell.kind)
+				copy[r][c] = M.make_stone(cell.color, cell.kind, cell.solidity)
 			end
 		end
 	end
@@ -88,6 +94,13 @@ function M.equal(a, b)
 				return false
 			elseif x.color ~= y.color or x.kind ~= y.kind then
 				return false
+			else
+				local stone_solidity = require("objects.stone_solidity")
+				local sx = x.solidity or stone_solidity.stone_max_solidity(x.kind)
+				local sy = y.solidity or stone_solidity.stone_max_solidity(y.kind)
+				if sx ~= sy then
+					return false
+				end
 			end
 		end
 	end

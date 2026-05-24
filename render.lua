@@ -11,6 +11,8 @@ local card_geometry = require("ui.card_geometry")
 local card_layout = require("ui.card_layout")
 local card_visual = require("ui.card_visual")
 local sprites = require("ui.sprites")
+local stone_solidity = require("objects.stone_solidity")
+local stone_solidity_atlas = require("ui.stone_solidity_atlas")
 local stance_card_draw = require("ui.stance_card_draw")
 local stance_detail_popup = require("ui.stance_detail_popup")
 local ui_animations = require("ui.animations")
@@ -118,10 +120,25 @@ local function draw_stone_graphic(draw_key, x, y, w, h, color)
 	end
 end
 
---- @param owner_side string  ``"black"`` | ``"white"`` — ring color (dark outline for black stones, light outline for white).
---- @param highlighted boolean
+--- @param rect table
+--- @param scale number
+--- @return table
+local function centered_sub_rect(rect, scale)
+	local w = rect.w * scale
+	local h = rect.h * scale
+	return {
+		x = rect.x + (rect.w - w) * 0.5,
+		y = rect.y + (rect.h - h) * 0.5,
+		w = w,
+		h = h,
+	}
+end
+
+--- Type tint + sprite or graphic (centered overlay; no owner ring).
+--- @param stone_id string
+--- @param rect table
 --- @return nil
-local function draw_stone_chip(stone_id, rect, owner_side, highlighted)
+local function draw_stone_type_overlay(stone_id, rect)
 	local lg = love.graphics
 	local stone = content.get_stone(stone_id)
 	if not stone then
@@ -147,6 +164,52 @@ local function draw_stone_chip(stone_id, rect, owner_side, highlighted)
 	else
 		local fill = { tint[1], tint[2], tint[3] }
 		draw_stone_graphic(stone.graphic and stone.graphic.draw_key or "solid", rect.x, rect.y, rect.w, rect.h, fill)
+	end
+end
+
+--- @param atlas_img love.graphics.Image
+--- @param atlas_quad love.graphics.Quad
+--- @param rect table
+--- @return boolean drew without error
+local function try_draw_solidity_base(atlas_img, atlas_quad, rect)
+	local lg = love.graphics
+	local ok = pcall(function()
+		lg.setColor(1, 1, 1, 1)
+		local _, _, qw, qh = atlas_quad:getViewport()
+		local scale_x = rect.w / math.max(1, qw)
+		local scale_y = rect.h / math.max(1, qh)
+		lg.draw(atlas_img, atlas_quad, rect.x, rect.y, 0, scale_x, scale_y)
+	end)
+	if not ok then
+		lg.setColor(1, 1, 1, 1)
+	end
+	return ok
+end
+
+--- @param stone_id string
+--- @param rect table
+--- @param owner_side string  ``"black"`` | ``"white"`` — ring color (dark outline for black stones, light outline for white).
+--- @param highlighted boolean
+--- @param solidity integer|nil current health; nil = max for ``stone_id``
+--- @return nil
+local function draw_stone_chip(stone_id, rect, owner_side, highlighted, solidity)
+	local lg = love.graphics
+	local stone = content.get_stone(stone_id)
+	if not stone then
+		return
+	end
+	local cx = rect.x + rect.w * 0.5
+	local cy = rect.y + rect.h * 0.5
+	local rr = math.min(rect.w, rect.h) * 0.42
+	local current = stone_solidity.resolve_solidity(stone_id, solidity)
+	local max_s = stone_solidity.stone_max_solidity(stone_id)
+	local tier = stone_solidity.solidity_tier(current, max_s)
+	local atlas_img, atlas_quad = stone_solidity_atlas.get_frame(owner_side, tier)
+	local drew_atlas = atlas_img and atlas_quad and try_draw_solidity_base(atlas_img, atlas_quad, rect)
+	if drew_atlas then
+		draw_stone_type_overlay(stone_id, centered_sub_rect(rect, 0.55))
+	else
+		draw_stone_type_overlay(stone_id, rect)
 	end
 	if owner_side == "black" then
 		lg.setColor(0.06, 0.06, 0.08, 1)
@@ -754,7 +817,8 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 					cell.kind,
 					{ x = px - rad, y = py - rad - bounce_y, w = rad * 2, h = rad * 2 },
 					side,
-					false
+					false,
+					cell.solidity
 				)
 			end
 		end

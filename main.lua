@@ -530,6 +530,7 @@ function love.load()
 	reset_stance_ui()
 	reset_influence_probe()
 	love.math.setRandomSeed(love.timer.getTime() * 1000000 + os.time())
+	require("ui.graphics_diagnostics").report_startup()
 end
 
 --- Resizes board layout when the window changes during play.
