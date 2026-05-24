@@ -2,6 +2,7 @@ local test_helper = require("spec.test_helper")
 test_helper.install_love_test_stubs()
 
 local config = require("config")
+local P = require("spec.parameters_helper")
 
 --- Stone letter mapping (B=black basic, W=white, special letters = special black kinds)
 local LETTER_TO_STONE = {
@@ -118,8 +119,9 @@ describe("Scoring visual spec", function()
 			"1 1 1 1 1 1 1 1 1",
 		}, "each owned empty cell counts as territory value 1")
 
-		assert_players_total_score(g, 264, 0, "turn 1 center stone full-board score")
-		assert_players_total_score_delta(g, snap, 264, 0, "score change from match start")
+		local case01_total = P.case01_black_total_after_card_and_stone("card_point_tap", "stone_basic", 1)
+		assert_players_total_score(g, case01_total, 0, "turn 1 center stone full-board score")
+		assert_players_total_score_delta(g, snap, case01_total, 0, "score change from match start")
 	end)
 
 	it("persistent_flux round 1 basic stone: counter applied in full as mult", function()
@@ -142,7 +144,7 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_players_plus_mult_delta(g, snap, 9, 0, "persistent_flux round 1 basic stone")
+		assert_players_plus_mult_delta(g, snap, P.persistent_flux_round1_plus_mult_delta(9), 0, "persistent_flux round 1 basic stone")
 	end)
 
 	it("persistent_flux round 1 special stone: counter incremented then applied in full", function()
@@ -165,7 +167,13 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_players_plus_mult_delta(g, snap, 12, 0, "persistent_flux round 1 special stone")
+		assert_players_plus_mult_delta(
+			g,
+			snap,
+			P.persistent_flux_round1_plus_mult_delta(P.persistent_flux_special_counter_after(9)),
+			0,
+			"persistent_flux round 1 special stone"
+		)
 	end)
 
 	it("persistent_flux round 3 wall stone: pending delta applied (negative)", function()
@@ -188,7 +196,13 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_players_plus_mult_delta(g, snap, -3, 0, "persistent_flux round 3 wall stone counter 9")
+		assert_players_plus_mult_delta(
+			g,
+			snap,
+			P.persistent_flux_wall_effective_delta(9),
+			0,
+			"persistent_flux round 3 wall stone counter 9"
+		)
 	end)
 	it("persistent_flux round 3 wall stone: pending delta applied (negative)", function()
 		set_persistent_counter(g, "persistent_flux_mult", 2, 0)
@@ -210,7 +224,13 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_players_plus_mult_delta(g, snap, -2, 0, "persistent_flux round 3 wall stone counter 2")
+		assert_players_plus_mult_delta(
+			g,
+			snap,
+			P.persistent_flux_wall_effective_delta(2),
+			0,
+			"persistent_flux round 3 wall stone counter 2"
+		)
 	end)
 
 	it("persistent_flux round 4 special stone: pending delta applied (positive)", function()
@@ -233,7 +253,7 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_players_plus_mult_delta(g, snap, 3, 0, "persistent_flux round 4 special stone")
+		assert_players_plus_mult_delta(g, snap, P.persistent_flux_special_pending_delta(), 0, "persistent_flux round 4 special stone")
 	end)
 
 	it("blueprint + persistent_flux round 4 special stone: pending delta applied twice", function()
@@ -256,7 +276,7 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_players_plus_mult_delta(g, snap, 6, 0, "echo + persistent_flux double pending")
+		assert_players_plus_mult_delta(g, snap, P.persistent_flux_echo_pending_delta(2), 0, "echo + persistent_flux double pending")
 	end)
 	it("2 x blueprint + persistent_flux round 4 special stone: pending delta applied twice", function()
 		set_persistent_counter(g, "persistent_flux_mult", 9, 0)
@@ -278,6 +298,6 @@ describe("Scoring visual spec", function()
 			". . . . . . . . .",
 		})
 
-		assert_players_plus_mult_delta(g, snap, 9, 0, "two echo + persistent_flux triple pending")
+		assert_players_plus_mult_delta(g, snap, P.persistent_flux_echo_pending_delta(3), 0, "two echo + persistent_flux triple pending")
 	end)
 end)

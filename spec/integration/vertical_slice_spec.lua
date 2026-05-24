@@ -18,6 +18,7 @@ local queries = require("single_game.resolver.state_queries")
 local resolve_round = require("single_game.resolver.resolve_round")
 local resolver = require("resolver")
 local stance_order = require("single_game.resolver.stance_order")
+local P = require("spec.parameters_helper")
 
 describe("vertical slice features", function()
 	it("blueprint copies immediate right stance effects", function()
@@ -47,7 +48,7 @@ describe("vertical slice features", function()
 		r.source_stance_index = 1
 		r.source_stance_slot_index = 1
 		copy_points.apply(state)
-		assert.are.equal(1, state.scores.points.B)
+		assert.are.equal(P.stance.stance_point_before_turn_points, state.scores.points.B)
 	end)
 
 	it("blueprint skips blueprint chains and no-ops without a target", function()
@@ -77,7 +78,7 @@ describe("vertical slice features", function()
 		r2.source_stance_index = 1
 		r2.source_stance_slot_index = 1
 		copy_mult.apply(chain_state)
-		assert.are.equal(2, chain_state.scores.plus_mult.B)
+		assert.are.equal(P.base_plus_mult() + P.stance.stance_mult_before_turn_plus_mult, chain_state.scores.plus_mult.B)
 
 		local empty_state = {
 			players = {
@@ -145,16 +146,16 @@ describe("vertical slice features", function()
 			{ owner = "B", stone_type = "stone_special", effects = {} },
 		}
 		resolve_round.resolve(state)
-		assert.are.equal(3, state.run_state.counters.persistent_flux_mult.B)
-		assert.are.equal(4, state.scores.plus_mult.B)
+		assert.are.equal(P.stance.stance_persistent_flux_special_delta, state.run_state.counters.persistent_flux_mult.B)
+		assert.are.equal(P.base_plus_mult() + P.stance.stance_persistent_flux_special_delta, state.scores.plus_mult.B)
 
 		state.turn_number = 2
 		state.round_stone_effects = {
 			{ owner = "B", stone_type = "stone_wall", effects = {} },
 		}
 		resolve_round.resolve(state)
-		assert.are.equal(0, state.run_state.counters.persistent_flux_mult.B)
-		assert.are.equal(1, state.scores.plus_mult.B)
+		assert.are.equal(P.stance.stance_persistent_flux_counter_floor, state.run_state.counters.persistent_flux_mult.B)
+		assert.are.equal(P.base_plus_mult(), state.scores.plus_mult.B)
 
 		local g1 = game.new("pvp", "vertical_slice_test")
 		g1.run_state.counters.persistent_flux_mult = { B = 9, W = 0 }
@@ -169,11 +170,11 @@ describe("vertical slice features", function()
 		state.players.black.resources.energy_current = 10
 		assert.is_true(game.select_board_target(state, 4, 4))
 		assert.is_true(game.play_card(state, 1))
-		assert.are.equal(10, state.board_stone_modifiers["4:4"].points_bonus)
+		assert.are.equal(P.card.card_forge_mark_points, state.board_stone_modifiers["4:4"].points_bonus)
 		local points_after_card = state.players.black.score.points
 		resolve_round.resolve(state)
 		assert.is_true(state.players.black.score.points >= points_after_card)
-		assert.are.equal(10, state.board_stone_modifiers["4:4"].points_bonus)
+		assert.are.equal(P.card.card_forge_mark_points, state.board_stone_modifiers["4:4"].points_bonus)
 	end)
 
 	it("integration: target selection payload is required for targeted cards", function()

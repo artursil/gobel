@@ -184,6 +184,8 @@ local content = require("content")
 local match_state = require("match_state")
 local spec_helper = require("spec.spec_helper")
 
+M.params = require("spec.parameters_helper")
+
 local debug_stone_to_letter = nil
 local visual_letter_to_stone = nil
 local scoring_debug_dump_pending = false

@@ -1,8 +1,15 @@
 local object_descriptions = require("ui.object_descriptions")
+local P = require("spec.parameters_helper")
 
 local function def_with_status()
+	local special = P.stance.stance_persistent_flux_special_delta
+	local wall = P.stance.stance_persistent_flux_wall_delta
 	return {
-		description = "Run-persistent mult: +3 on special stone, -3 on wall stone.",
+		description = string.format(
+			"Run-persistent mult: +%d on special stone, %d on wall stone.",
+			special,
+			wall
+		),
 		description_status = {
 			kind = "run_counter",
 			counter_key = "persistent_flux_mult",
@@ -22,7 +29,14 @@ describe("object_descriptions", function()
 			},
 		}
 		local lines = object_descriptions.get_lines(def_with_status(), state, "B")
-		assert.are.equal("Run-persistent mult: +3 on special stone, -3 on wall stone.", lines.static)
+		assert.are.equal(
+			string.format(
+				"Run-persistent mult: +%d on special stone, %d on wall stone.",
+				P.stance.stance_persistent_flux_special_delta,
+				P.stance.stance_persistent_flux_wall_delta
+			),
+			lines.static
+		)
 		assert.are.equal("Currently: +9", lines.status)
 	end)
 
@@ -60,13 +74,24 @@ describe("object_descriptions", function()
 		}
 		local text = object_descriptions.get_full_text(def_with_status(), state, "B")
 		assert.are.equal(
-			"Run-persistent mult: +3 on special stone, -3 on wall stone.\nCurrently: +9",
+			string.format(
+				"Run-persistent mult: +%d on special stone, %d on wall stone.\nCurrently: +9",
+				P.stance.stance_persistent_flux_special_delta,
+				P.stance.stance_persistent_flux_wall_delta
+			),
 			text
 		)
 	end)
 
 	it("get_full_text returns static only when status hidden", function()
 		local lines = object_descriptions.get_full_text(def_with_status(), nil, "B")
-		assert.are.equal("Run-persistent mult: +3 on special stone, -3 on wall stone.", lines)
+		assert.are.equal(
+			string.format(
+				"Run-persistent mult: +%d on special stone, %d on wall stone.",
+				P.stance.stance_persistent_flux_special_delta,
+				P.stance.stance_persistent_flux_wall_delta
+			),
+			lines
+		)
 	end)
 end)

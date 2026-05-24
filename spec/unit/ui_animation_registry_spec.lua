@@ -6,6 +6,7 @@ local animations = require("ui.animations")
 local game = require("game")
 local object_animations = require("objects.animations")
 local resolve_round = require("single_game.resolver.resolve_round")
+local P = require("spec.parameters_helper")
 
 describe("ui.animation_kinds registry", function()
 	it("spawn_job_from_intent merges defaults and intent overrides for stance_shake", function()
@@ -100,11 +101,12 @@ describe("ui.animation_kinds registry", function()
 		for i = 1, 4 do
 			assert.are.equal("board_stone_bounce", state.ui_animation_events[i].type)
 		end
+		local x_label = P.x_mult_animation_label()
 		assert.are.equal("board_stone_float_text", state.ui_animation_events[5].type)
-		assert.are.equal("×2", state.ui_animation_events[5].text)
+		assert.are.equal(x_label, state.ui_animation_events[5].text)
 		assert.are.equal(3, state.ui_animation_events[5].row)
 		assert.are.equal(3, state.ui_animation_events[5].col)
-		assert.are.equal("×2", state.ui_animation_events[6].text)
+		assert.are.equal(x_label, state.ui_animation_events[6].text)
 		assert.are.equal(5, state.ui_animation_events[6].row)
 	end)
 
@@ -122,33 +124,39 @@ describe("ui.animation_kinds registry", function()
 			cells = { { 3, 3 }, { 3, 5 }, { 5, 3 }, { 5, 5 } },
 			board_after = board_after,
 		})
-		assert.are.equal("×2", state.ui_animation_events[5].text)
-		assert.are.equal("×2", state.ui_animation_events[6].text)
-		assert.are.not_equal("×4", state.ui_animation_events[5].text)
+		local x_label = P.x_mult_animation_label()
+		assert.are.equal(x_label, state.ui_animation_events[5].text)
+		assert.are.equal(x_label, state.ui_animation_events[6].text)
+		assert.are.not_equal(
+			P.format_x_mult_animation_label(P.stone.x_stone_mult_factor * P.stone.x_stone_mult_factor),
+			state.ui_animation_events[5].text
+		)
 	end)
 
-	it("wall_stone_bounce emits one +5 float per five stones in group", function()
+	it("wall_stone_bounce emits one float per wall points block in group", function()
 		local state = { ui_animation_events = {}, ui_animation_seq_counter = 0 }
 		local cells = {}
 		for i = 1, 10 do
 			cells[i] = { 3, i }
 		end
+		local bonus = P.wall_points(10)
 		object_animations.add_animation("wall_stone_bounce")(state, {
 			owner = config.OWNER_BLACK,
 			cells = cells,
 			anchor_row = 3,
 			anchor_col = 6,
-			bonus = 10,
+			bonus = bonus,
 		})
 		local floats = 0
+		local wall_label = P.wall_points_float_label()
 		for i = 1, #state.ui_animation_events do
 			local it = state.ui_animation_events[i]
 			if it.type == "board_stone_float_text" then
 				floats = floats + 1
-				assert.are.equal("+5", it.text)
+				assert.are.equal(wall_label, it.text)
 			end
 		end
-		assert.are.equal(2, floats)
+		assert.are.equal(bonus / P.stone.wall_points_per_block, floats)
 	end)
 
 	it("resolve_round does not clear ui_animation_events at start", function()

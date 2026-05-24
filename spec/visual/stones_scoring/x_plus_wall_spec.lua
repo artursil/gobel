@@ -2,6 +2,7 @@ local test_helper = require("spec.test_helper")
 test_helper.install_love_test_stubs()
 
 local config = require("config")
+local P = require("spec.parameters_helper")
 
 local LETTER_TO_STONE = {
 	B = { color = config.STONE_BLACK, kind = "stone_basic" },
@@ -85,8 +86,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_x_mult(g, "black", 2, "minimal 5-cell X applies one ×2 step")
-			assert_player_x_mult_delta(g, "black", snap, 1, "x_mult increases by 1 after ×2 from base 1")
+			local expected_x_mult = P.x_mult_after(snap.x_mult, 1)
+			assert_player_x_mult(g, "black", expected_x_mult, "minimal 5-cell X applies one ×2 step")
+			assert_player_x_mult_delta(g, "black", snap, expected_x_mult - snap.x_mult, "x_mult increases after one X factor")
 		end)
 		it("minimal 5-cell X: completing the X with 3 x_stones, black x_mult becomes 8", function()
 			assert_pattern_stones_in_content()
@@ -116,8 +118,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_x_mult(g, "black", 8, "minimal 5-cell X completes with 3 x_stones, black x_mult becomes 8")
-			assert_player_x_mult_delta(g, "black", snap, 7, "x_mult increases by 7 from 1 to 8")
+			local expected_x_mult = P.x_mult_after(snap.x_mult, 3)
+			assert_player_x_mult(g, "black", expected_x_mult, "minimal 5-cell X completes with 3 x_stones")
+			assert_player_x_mult_delta(g, "black", snap, expected_x_mult - snap.x_mult, "x_mult increases from three X factors")
 		end)
 	end)
 	describe("any stone completes diagonal X and multiplies x_mult", function()
@@ -149,8 +152,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_x_mult(g, "black", 2, "minimal 5-cell X applies one ×2 step")
-			assert_player_x_mult_delta(g, "black", snap, 1, "x_mult increases by 1 after ×2 from base 1")
+			local expected_x_mult = P.x_mult_after(snap.x_mult, 1)
+			assert_player_x_mult(g, "black", expected_x_mult, "minimal 5-cell X applies one ×2 step")
+			assert_player_x_mult_delta(g, "black", snap, expected_x_mult - snap.x_mult, "x_mult increases after one X factor")
 		end)
 
 
@@ -183,8 +187,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_x_mult(g, "black", 4, "9-cell X applies two ×2 steps (cumulative ×4)")
-			assert_player_x_mult_delta(g, "black", snap, 2, "x_mult increases by 2 from 2 to 4")
+			local expected_x_mult = P.x_mult_after(snap.x_mult, 1)
+			assert_player_x_mult(g, "black", expected_x_mult, "9-cell X applies one X factor from current x_mult")
+			assert_player_x_mult_delta(g, "black", snap, expected_x_mult - snap.x_mult, "x_mult delta after 9-cell X")
 		end)
 		it("large 9-cell X: complete large X with x_stone, black x_mult becomes 4", function()
 			assert_pattern_stones_in_content()
@@ -215,8 +220,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_x_mult(g, "black", 8, "9-cell X applies two ×2 steps twice (cumulative ×8)")
-			assert_player_x_mult_delta(g, "black", snap, 6, "x_mult increases by 6 from 6 to 8")
+			local expected_x_mult = P.x_mult_after(snap.x_mult, 2)
+			assert_player_x_mult(g, "black", expected_x_mult, "9-cell X applies two X factors from current x_mult")
+			assert_player_x_mult_delta(g, "black", snap, expected_x_mult - snap.x_mult, "x_mult delta after large X with two x_stones")
 		end)
 		it("large 9-cell X: adding a stone not completing the X does not change x_mult", function()
 			assert_pattern_stones_in_content()
@@ -277,8 +283,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_player_x_mult(g, "black", 16, "adding a stone completing 2 Xs, 3 times x2 is triggered")
-			assert_player_x_mult_delta(g, "black", snap, 14, "x_mult increases by 14 from 2 to 16")
+			local expected_x_mult = P.x_mult_after(snap.x_mult, 3)
+			assert_player_x_mult(g, "black", expected_x_mult, "adding a stone completing 2 Xs with three x_stone factors")
+			assert_player_x_mult_delta(g, "black", snap, expected_x_mult - snap.x_mult, "x_mult delta after dual X completion")
 		end)
 		it("large 9-cell X: adding an x_stone completing 2 Xs, 5 times x2 is triggered", function()
 			assert_pattern_stones_in_content()
@@ -307,8 +314,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_player_x_mult(g, "black", 64, "adding a stone completing 2 Xs, 5 times x2 is triggered")
-			assert_player_x_mult_delta(g, "black", snap, 62, "x_mult increases by 62 from 2 to 64")
+			local expected_x_mult = P.x_mult_after(snap.x_mult, 5)
+			assert_player_x_mult(g, "black", expected_x_mult, "adding a stone completing 2 Xs with five x_stone factors")
+			assert_player_x_mult_delta(g, "black", snap, expected_x_mult - snap.x_mult, "x_mult delta after dual X with five factors")
 		end)
 		it("large 13-cell X: completing large X with 3 x_stones, black x_mult becomes 48", function()
 			assert_pattern_stones_in_content()
@@ -339,8 +347,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_x_mult(g, "black", 48, "large 13-cell X completed with 3 x_stones, black x_mult becomes 48")
-			assert_player_x_mult_delta(g, "black", snap, 42, "x_mult increases by 42 from 6 to 48")
+			local expected_x_mult = P.x_mult_after(snap.x_mult, 3)
+			assert_player_x_mult(g, "black", expected_x_mult, "large 13-cell X completed with 3 x_stones")
+			assert_player_x_mult_delta(g, "black", snap, expected_x_mult - snap.x_mult, "x_mult delta after 13-cell X")
 		end)
 		it("large 17-cell X: completing large X with 3 x_stones, black x_mult becomes 384", function()
 			assert_pattern_stones_in_content()
@@ -371,8 +380,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				"B . . . . . . . B",
 			})
 
-			assert_player_x_mult(g, "black", 384, "large 17-cell X completed with 3 x_stones, black x_mult becomes 384")
-			assert_player_x_mult_delta(g, "black", snap, 336, "x_mult increases by 336 from 48 to 384")
+			local expected_x_mult = P.x_mult_after(snap.x_mult, 3)
+			assert_player_x_mult(g, "black", expected_x_mult, "large 17-cell X completed with 3 x_stones")
+			assert_player_x_mult_delta(g, "black", snap, expected_x_mult - snap.x_mult, "x_mult delta after 17-cell X")
 		end)
 	end)
 
@@ -405,8 +415,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_plus_mult(g, "black", 6, "minimal 5-cell plus adds +5 for one plus_stone")
-			assert_player_plus_mult_delta(g, "black", snap, 5, "plus_mult increases by 5 from base 1")
+			local expected_plus_mult = P.plus_mult_after(snap.plus_mult, 1)
+			assert_player_plus_mult(g, "black", expected_plus_mult, "minimal 5-cell plus adds bonus for one plus_stone")
+			assert_player_plus_mult_delta(g, "black", snap, expected_plus_mult - snap.plus_mult, "plus_mult delta after minimal plus")
 		end)
 		it("minimal 5-cell plus: completing the plus with 3 plus_stones, black plus_mult becomes 16", function()
 			assert_pattern_stones_in_content()
@@ -436,8 +447,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_plus_mult(g, "black", 16, "minimal 5-cell plus with 3 plus_stones adds +15")
-			assert_player_plus_mult_delta(g, "black", snap, 15, "plus_mult increases by 15 from 1 to 16")
+			local expected_plus_mult = P.plus_mult_after(snap.plus_mult, 3)
+			assert_player_plus_mult(g, "black", expected_plus_mult, "minimal 5-cell plus with 3 plus_stones")
+			assert_player_plus_mult_delta(g, "black", snap, expected_plus_mult - snap.plus_mult, "plus_mult delta after 3 plus_stones")
 		end)
 	end)
 	describe("any stone completes orthogonal plus and adds plus_mult", function()
@@ -469,8 +481,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_plus_mult(g, "black", 6, "basic stone completing plus adds +5 for one plus_stone on board")
-			assert_player_plus_mult_delta(g, "black", snap, 5, "plus_mult increases by 5 from base 1")
+			local expected_plus_mult = P.plus_mult_after(snap.plus_mult, 1)
+			assert_player_plus_mult(g, "black", expected_plus_mult, "basic stone completing plus adds bonus for one plus_stone on board")
+			assert_player_plus_mult_delta(g, "black", snap, expected_plus_mult - snap.plus_mult, "plus_mult delta from basic completing plus")
 		end)
 
 		it("large 9-cell plus: place basic stone, black plus_mult becomes 11", function()
@@ -502,8 +515,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_plus_mult(g, "black", 11, "9-cell plus adds +5 for one plus_stone")
-			assert_player_plus_mult_delta(g, "black", snap, 5, "plus_mult increases by 5 from 6 to 11")
+			local expected_plus_mult = P.plus_mult_after(snap.plus_mult, 1)
+			assert_player_plus_mult(g, "black", expected_plus_mult, "9-cell plus adds bonus for one plus_stone")
+			assert_player_plus_mult_delta(g, "black", snap, expected_plus_mult - snap.plus_mult, "plus_mult delta after 9-cell plus")
 		end)
 		it("large 9-cell plus: complete large plus with plus_stone, black plus_mult becomes 16", function()
 			assert_pattern_stones_in_content()
@@ -534,8 +548,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_plus_mult(g, "black", 16, "9-cell plus with two plus_stones adds +10")
-			assert_player_plus_mult_delta(g, "black", snap, 10, "plus_mult increases by 10 from 6 to 16")
+			local expected_plus_mult = P.plus_mult_after(snap.plus_mult, 2)
+			assert_player_plus_mult(g, "black", expected_plus_mult, "9-cell plus with two plus_stones")
+			assert_player_plus_mult_delta(g, "black", snap, expected_plus_mult - snap.plus_mult, "plus_mult delta after 9-cell plus with two plus_stones")
 		end)
 		it("large 9-cell plus: adding a stone not completing the plus does not change plus_mult", function()
 			assert_pattern_stones_in_content()
@@ -566,7 +581,7 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_plus_mult(g, "black", 16, "adding a stone not completing the plus does not change plus_mult")
+			assert_player_plus_mult(g, "black", snap.plus_mult, "adding a stone not completing the plus does not change plus_mult")
 			assert_player_plus_mult_delta(g, "black", snap, 0, "plus_mult unchanged without completed plus")
 		end)
 		it("large 9-cell plus: adding a stone completing 2 pluses, 3 times +5 is triggered", function()
@@ -598,8 +613,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_plus_mult(g, "black", 16, "completing 2 pluses with 3 plus_stones adds +10")
-			assert_player_plus_mult_delta(g, "black", snap, 15, "plus_mult increases by 15 from 1 to 16")
+			local expected_plus_mult = P.plus_mult_after(snap.plus_mult, 3)
+			assert_player_plus_mult(g, "black", expected_plus_mult, "completing 2 pluses with 3 plus_stones")
+			assert_player_plus_mult_delta(g, "black", snap, expected_plus_mult - snap.plus_mult, "plus_mult delta after dual plus with 3 plus_stones")
 		end)
 		it("large 9-cell plus: adding a plus_stone completing 2 pluses, 5 times +5 is triggered", function()
 			assert_pattern_stones_in_content()
@@ -630,8 +646,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_plus_mult(g, "black", 26, "completing 2 pluses with 4 plus_stones adds +35")
-			assert_player_plus_mult_delta(g, "black", snap, 25, "plus_mult increases by 25 from 1 to 26")
+			local expected_plus_mult = P.plus_mult_after(snap.plus_mult, 5)
+			assert_player_plus_mult(g, "black", expected_plus_mult, "completing 2 pluses with 5 plus_stone bonuses")
+			assert_player_plus_mult_delta(g, "black", snap, expected_plus_mult - snap.plus_mult, "plus_mult delta after dual plus with five bonuses")
 		end)
 		it("creating 2 pluses one big one small", function()
 			assert_pattern_stones_in_content()
@@ -662,8 +679,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_plus_mult(g, "black", 21, "creating 2 pluses one big one small with 3 plus_stones adds +15")
-			assert_player_plus_mult_delta(g, "black", snap, 15, "plus_mult increases by 15 from 6 to 21")
+			local expected_plus_mult = P.plus_mult_after(snap.plus_mult, 3)
+			assert_player_plus_mult(g, "black", expected_plus_mult, "creating 2 pluses with 3 plus_stones")
+			assert_player_plus_mult_delta(g, "black", snap, expected_plus_mult - snap.plus_mult, "plus_mult delta after mixed plus sizes")
 		end)
 		it("large 9-cell plus: completing large plus with 3 plus_stones, black plus_mult becomes 16", function()
 			assert_pattern_stones_in_content()
@@ -694,8 +712,9 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_plus_mult(g, "black", 16, "9-cell plus completed with 3 plus_stones adds +10")
-			assert_player_plus_mult_delta(g, "black", snap, 15, "plus_mult increases by 15 from 1 to 16")
+			local expected_plus_mult = P.plus_mult_after(snap.plus_mult, 3)
+			assert_player_plus_mult(g, "black", expected_plus_mult, "9-cell plus completed with 3 plus_stones")
+			assert_player_plus_mult_delta(g, "black", snap, expected_plus_mult - snap.plus_mult, "plus_mult delta after completing large plus")
 		end)
 		it("isolated x_stone placement does not change x_mult", function()
 			assert_pattern_stones_in_content()
@@ -725,7 +744,7 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_x_mult(g, "black", 1, "lonely x_stone does not form an X pattern")
+			assert_player_x_mult(g, "black", P.base_x_mult(), "lonely x_stone does not form an X pattern")
 			assert_player_x_mult_unchanged(g, "black", snap, "x_mult unchanged without completed X")
 			assert_player_points_unchanged(g, "black", snap, "points unchanged for x_stone placement")
 		end)
@@ -824,7 +843,7 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_delta(g, "black", snap, 5, "5 connected walls grant +5")
+			assert_player_points_delta(g, "black", snap, P.wall_points(5), "5 connected walls grant wall block bonus")
 		end)
 
 		it("wall as 5th stone in mixed group adds +5", function()
@@ -855,7 +874,7 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_delta(g, "black", snap, 5, "wall joining 4 basics to 5 connected adds +5")
+			assert_player_points_delta(g, "black", snap, P.wall_points(5), "wall joining 4 basics to 5 connected")
 		end)
 
 		it("tenth connected stone via wall placement adds +10", function()
@@ -886,7 +905,7 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_delta(g, "black", snap, 10, "10 connected stones grant +10 on wall placement")
+			assert_player_points_delta(g, "black", snap, P.wall_points(10), "10 connected stones grant wall bonus on placement")
 		end)
 
 		it("sixth connected wall adds +5 not +10", function()
@@ -917,7 +936,7 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_delta(g, "black", snap, 5, "6 connected walls still grant only one +5 block")
+			assert_player_points_delta(g, "black", snap, P.wall_points(6), "6 connected walls still grant only one wall block")
 		end)
 	end)
 end)

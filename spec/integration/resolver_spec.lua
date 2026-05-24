@@ -4,6 +4,8 @@ local resolver = require("resolver")
 local rules = require("rules")
 require("spec.test_helper")
 
+local P = require("spec.parameters_helper")
+
 local function new_started_state(seed)
 	local state = match_state.new_match("pvp", seed or 1)
 	state.players.black.stances.fixed = {}
@@ -34,8 +36,8 @@ describe("T-050 resolver and core system correctness", function()
 		assert.are.equal(0, black.resources.energy_current)
 		assert.are.same({}, black.cards.hand.ids)
 		assert.are.same({ "card_point_tap" }, black.cards.discard.ids)
-		assert.are.equal(3, black.score.points)
-		assert.are.equal("Point Tap: +2 points", state.messages.recent[#state.messages.recent])
+		assert.are.equal(P.starting_points() + P.card_points("card_point_tap"), black.score.points)
+		assert.are.equal(P.card_play_message("card_point_tap"), state.messages.recent[#state.messages.recent])
 	end)
 
 	it("rejects card play with insufficient energy without partial mutation", function()
@@ -56,7 +58,7 @@ describe("T-050 resolver and core system correctness", function()
 		assert.are.same({ "card_point_push" }, black.cards.hand.ids)
 		assert.are.same({}, black.cards.discard.ids)
 		assert.are.equal(1, black.resources.energy_current)
-		assert.are.equal(1, black.score.points)
+		assert.are.equal(P.starting_points(), black.score.points)
 	end)
 
 	it("rejects invalid hand index without state mutation", function()
@@ -93,11 +95,11 @@ describe("T-050 resolver and core system correctness", function()
 		})
 
 		assert.is_true(result.ok)
-		assert.are.equal("Basic Stone placed", state.messages.recent[#state.messages.recent])
+		assert.are.equal(P.stone_placement_message("stone_basic"), state.messages.recent[#state.messages.recent])
 		require("spec.test_helper").finish_ui_animations_for_turn(state)
 		assert.are.equal("white", state.to_play)
 		assert.are.equal("MAIN_PHASE", state.phase)
-		assert.are.equal(1, black.score.points)
+		assert.are.equal(P.starting_points(), black.score.points)
 		assert.is_true(#black.stones.playable_stones >= 0)
 		if black.stones.selected_stone then
 			local selected_exists = false

@@ -5,6 +5,7 @@ local config = require("config")
 local effects = require("objects.effects")
 local shape_patterns = require("game.patterns.shape_patterns")
 local spec_helper = require("spec.spec_helper")
+local P = require("spec.parameters_helper")
 
 local function state_with_board(rows, letter_map)
 	local b = spec_helper.parse_board_ascii_kinds(rows, letter_map)
@@ -13,7 +14,7 @@ local function state_with_board(rows, letter_map)
 		scores = {
 			turn_bonus = { B = 1, W = 1 },
 			territory = { B = 0, W = 0 },
-			points = { B = 1, W = 1 },
+			points = { B = P.starting_points(), W = P.starting_points() },
 			plus_mult = { B = 1, W = 1 },
 			x_mult = { B = 1, W = 1 },
 		},
@@ -72,7 +73,7 @@ describe("wall stone effects", function()
 				resolved_list[i].apply(st)
 			end
 		end
-		assert.are.equal(6, st.scores.points.B)
+		assert.are.equal(P.points_after_wall_bonus(P.starting_points(), 5), st.scores.points.B)
 		assert.is_true(#st.ui_animation_events >= 1)
 	end)
 
@@ -102,7 +103,7 @@ describe("wall stone effects", function()
 				resolved_list[i].apply(st)
 			end
 		end
-		assert.are.equal(11, st.scores.points.B)
+		assert.are.equal(P.points_after_wall_bonus(P.starting_points(), 10), st.scores.points.B)
 	end)
 
 	it("wall_stone adds nothing when group has fewer than 5 stones", function()
@@ -127,7 +128,7 @@ describe("wall stone effects", function()
 				resolved_list[i].apply(st)
 			end
 		end
-		assert.are.equal(1, st.scores.points.B)
+		assert.are.equal(P.starting_points(), st.scores.points.B)
 	end)
 
 	it("resolve_board_stone on wall cell includes wall_stone effect", function()
@@ -157,10 +158,12 @@ describe("wall stone effects", function()
 	end)
 
 	it("wall_points_for_connected_group_size", function()
-		assert.are.equal(0, shape_patterns.wall_points_for_connected_group_size(4))
-		assert.are.equal(5, shape_patterns.wall_points_for_connected_group_size(5))
-		assert.are.equal(5, shape_patterns.wall_points_for_connected_group_size(9))
-		assert.are.equal(10, shape_patterns.wall_points_for_connected_group_size(10))
+		local block = P.stone.wall_stones_per_block
+		local per_block = P.stone.wall_points_per_block
+		assert.are.equal(0, shape_patterns.wall_points_for_connected_group_size(block - 1))
+		assert.are.equal(per_block, shape_patterns.wall_points_for_connected_group_size(block))
+		assert.are.equal(per_block, shape_patterns.wall_points_for_connected_group_size(block + block - 1))
+		assert.are.equal(per_block * 2, shape_patterns.wall_points_for_connected_group_size(block * 2))
 	end)
 end)
 
@@ -184,7 +187,7 @@ describe("pattern mult effects", function()
 		st.run_state = { pattern_apply_keys = {} }
 		local resolved = effects.resolve({ effect_name = "pattern_x_mult", phase = "mult" })
 		resolved.apply(st, config.OWNER_BLACK)
-		assert.are.equal(2, st.scores.x_mult.B)
+		assert.are.equal(P.x_mult_after(P.base_x_mult(), 1), st.scores.x_mult.B)
 		assert.is_true(#st.ui_animation_events > 0)
 	end)
 
@@ -207,6 +210,6 @@ describe("pattern mult effects", function()
 		st.run_state = { pattern_apply_keys = {} }
 		local resolved = effects.resolve({ effect_name = "pattern_plus_mult", phase = "mult" })
 		resolved.apply(st, config.OWNER_WHITE)
-		assert.are.equal(6, st.scores.plus_mult.W)
+		assert.are.equal(P.plus_mult_after(P.base_plus_mult(), 1), st.scores.plus_mult.W)
 	end)
 end)

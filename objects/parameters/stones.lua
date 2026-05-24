@@ -5,8 +5,8 @@ return {
 	x_pattern_tiers = { 5, 9, 13, 17, 21 },
 	plus_pattern_tiers = { 5, 9, 13, 17, 21 },
 
-	x_stone_mult_factor = 2,
-	plus_stone_mult_add = 5,
+	x_stone_mult_factor = 1.5,
+	plus_stone_mult_add = 4,
 	wall_stones_per_block = 5,
 	wall_points_per_block = 5,
 	wall_celebrate_min_group = 5,

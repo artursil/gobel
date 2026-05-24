@@ -7,6 +7,7 @@ local match_state = require("match_state")
 local resolve_round = require("single_game.resolver.resolve_round")
 local resolver = require("resolver")
 local spec_helper = require("spec.spec_helper")
+local P = require("spec.parameters_helper")
 
 describe("resolve scoring macro", function()
 	it("playing_stones resolve counts center stone territory and placement points once", function()
@@ -21,18 +22,25 @@ describe("resolve scoring macro", function()
 		local ok, new_board = require("rules").try_play(g.board, 5, 5, config.STONE_BLACK, nil, "stone_basic")
 		assert.is_true(ok)
 		g.board = new_board
+		local injected_points = 1
 		g.round_stone_effects = {
 			{
 				owner = "B",
 				stone_type = "stone_basic",
 				effects = {
-					{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
+					{
+						effect_name = "add_points",
+						macro = "playing_stones",
+						sub = "points",
+						value = injected_points,
+						priority = P.stone.default_effect_priority,
+					},
 				},
 			},
 		}
 		resolve_round.resolve(g, { macro = "playing_stones" })
-		assert.are.equal(80, g.scores.territory.B)
-		assert.are.equal(2, g.scores.points.B)
+		assert.are.equal(P.territory_after_single_center_stone(), g.scores.territory.B)
+		assert.are.equal(P.starting_points() + injected_points, g.scores.points.B)
 	end)
 
 	it("card then stone macro path matches case_01 factors", function()
@@ -52,8 +60,9 @@ describe("resolve scoring macro", function()
 			payload = { hand_index = 1 },
 		})
 		assert.is_true(played.ok)
-		assert.are.equal(3, player.score.points, "after card")
-		assert.are.equal(3, g.scores.points.B, "state after card")
+		local points_after_card = P.starting_points() + P.card_points("card_point_tap")
+		assert.are.equal(points_after_card, player.score.points, "after card")
+		assert.are.equal(points_after_card, g.scores.points.B, "state after card")
 		g.phase = "PLACE_PHASE"
 		local placed = resolver.submit_action(g, {
 			actor = "black",
@@ -61,10 +70,14 @@ describe("resolve scoring macro", function()
 			payload = { row = 5, col = 5 },
 		})
 		assert.is_true(placed.ok)
-		assert.are.equal(3, g.scores.points.B, "state after stone")
-		assert.are.equal(3, player.score.points)
-		assert.are.equal(80, player.score.territory)
-		assert.are.equal(264, math.floor(player.score.total + 0.5))
+		local points_after_stone = points_after_card + P.stone_points("stone_basic")
+		assert.are.equal(points_after_stone, g.scores.points.B, "state after stone")
+		assert.are.equal(points_after_stone, player.score.points)
+		assert.are.equal(P.territory_after_single_center_stone(), player.score.territory)
+		assert.are.equal(
+			P.case01_black_total_after_card_and_stone("card_point_tap", "stone_basic", 1),
+			math.floor(player.score.total + 0.5)
+		)
 	end)
 
 	it("x_mult persists after opponent completes a turn", function()
@@ -94,7 +107,7 @@ describe("resolve scoring macro", function()
 		}
 		g.last_opponent_move = { row = 5, col = 5, stone_id = "x_stone", actor = "black" }
 		resolve_round.resolve(g, { macro = "playing_stones" })
-		assert.are.equal(2, black.score.x_mult, "completing minimal X doubles x_mult")
+		assert.are.equal(P.x_mult_after(P.base_x_mult(), 1), black.score.x_mult, "completing minimal X doubles x_mult")
 
 		g.to_play = "white"
 		white.stones.playable_stones = { "stone_basic" }
@@ -117,6 +130,6 @@ describe("resolve scoring macro", function()
 		resolve_round.resolve(g, { macro = "playing_stones" })
 		resolve_round.resolve(g, { macro = "end_of_turn" })
 		resolver.begin_turn(g, "black")
-		assert.are.equal(2, black.score.x_mult, "black x_mult unchanged after white stone and turn advance")
+		assert.are.equal(P.x_mult_after(P.base_x_mult(), 1), black.score.x_mult, "black x_mult unchanged after white stone and turn advance")
 	end)
 end)

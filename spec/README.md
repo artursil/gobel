@@ -47,6 +47,16 @@ INTEGRATION_DEBUG=1 busted spec/integration/...
 
 See `spec_helper.integration_debug_enabled()` in `spec/spec_helper.lua`.
 
+## Parameter-driven expectations
+
+Gameplay numbers live in `objects/parameters/`. Specs should use `spec/parameters_helper.lua` (also exposed as `test_helper.params`) instead of hardcoding tuned values like wall +5, card +2, or pattern ×2.
+
+```lua
+local P = require("spec.parameters_helper")
+assert.are.equal(P.card_points("card_point_tap"), added_points)
+assert.are.equal(P.wall_points(5), bonus)
+```
+
 ## CI
 
 No GitHub workflow is configured yet. When CI is added, run the fast command by default; use a nightly or manual job with `INTEGRATION=1` for the full suite.

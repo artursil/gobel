@@ -5,6 +5,7 @@ local config = require("config")
 local patterns = require("patterns")
 local shape_patterns = require("game.patterns.shape_patterns")
 local spec_helper = require("spec.spec_helper")
+local P = require("spec.parameters_helper")
 
 local X_MAP = {
 	X = { color = config.STONE_BLACK, kind = "x_stone" },
@@ -32,7 +33,7 @@ describe("patterns X and + detection", function()
 		assert.are.equal(1, #found)
 		assert.is_true(found[1].has_x_stone)
 		assert.are.equal(1, found[1].tier)
-		assert.are.equal(5, found[1].stone_count)
+		assert.are.equal(P.stone.x_pattern_tiers[1], found[1].stone_count)
 	end)
 
 	it("detects tier 2 X when arms extend", function()
@@ -55,7 +56,7 @@ describe("patterns X and + detection", function()
 		local found = patterns.detect_x_patterns(b, config.STONE_BLACK)
 		assert.are.equal(1, #found)
 		assert.are.equal(2, found[1].tier)
-		assert.is_true(found[1].stone_count >= 9)
+		assert.is_true(found[1].stone_count >= P.stone.x_pattern_tiers[2])
 	end)
 
 	it("detects plus pattern with has_plus_stone", function()
@@ -76,16 +77,16 @@ describe("patterns X and + detection", function()
 		assert.are.equal(1, found[1].tier)
 	end)
 
-	it("x_mult_factor_for_tier matches ×2/×4/×8 product semantics", function()
-		assert.are.equal(2, shape_patterns.x_mult_factor_for_tier(1))
-		assert.are.equal(4, shape_patterns.x_mult_factor_for_tier(2))
-		assert.are.equal(8, shape_patterns.x_mult_factor_for_tier(3))
+	it("x_mult_factor_for_tier matches configured factor raised to tier", function()
+		for tier = 1, 3 do
+			assert.are.equal(P.x_mult_tier_product(tier), shape_patterns.x_mult_factor_for_tier(tier))
+		end
 	end)
 
-	it("plus_mult_bonus_for_tier adds +5 per tier", function()
-		assert.are.equal(5, shape_patterns.plus_mult_bonus_for_tier(1))
-		assert.are.equal(10, shape_patterns.plus_mult_bonus_for_tier(2))
-		assert.are.equal(15, shape_patterns.plus_mult_bonus_for_tier(3))
+	it("plus_mult_bonus_for_tier adds configured bonus per tier", function()
+		for tier = 1, 3 do
+			assert.are.equal(P.stone.plus_stone_mult_add * tier, shape_patterns.plus_mult_bonus_for_tier(tier))
+		end
 	end)
 
 	it("count_x_stones_in_diagonal_patterns counts x_stone cells in qualifying X", function()
@@ -100,6 +101,6 @@ describe("patterns X and + detection", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		}, X_MAP)
-		assert.are.equal(5, patterns.count_x_stones_in_diagonal_patterns(b, config.STONE_BLACK))
+		assert.are.equal(P.stone.x_pattern_tiers[1], patterns.count_x_stones_in_diagonal_patterns(b, config.STONE_BLACK))
 	end)
 end)
