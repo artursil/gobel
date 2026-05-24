@@ -61,10 +61,10 @@ describe("resolve scoring macro", function()
 			payload = { row = 5, col = 5 },
 		})
 		assert.is_true(placed.ok)
-		assert.are.equal(4, g.scores.points.B, "state after stone")
-		assert.are.equal(4, player.score.points)
+		assert.are.equal(3, g.scores.points.B, "state after stone")
+		assert.are.equal(3, player.score.points)
 		assert.are.equal(80, player.score.territory)
-		assert.are.equal(352, math.floor(player.score.total + 0.5))
+		assert.are.equal(264, math.floor(player.score.total + 0.5))
 	end)
 
 	it("x_mult persists after opponent completes a turn", function()

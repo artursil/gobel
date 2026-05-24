@@ -732,7 +732,7 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 	end)
 
 	describe("wall stone connected group points", function()
-		it("basic stone beside walls gets only basic +1, not wall bonus", function()
+		it("basic stone beside walls gets no placement points and no wall bonus", function()
 			assert_pattern_stones_in_content()
 			set_hand(g, "black", { "stone_basic" })
 			set_board(g, {
@@ -760,7 +760,7 @@ describe("x_stone plus_stone wall scoring (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_delta(g, "black", snap, 1, "only basic stone +1, no wall bonus")
+			assert_player_points_unchanged(g, "black", snap, "basic stone placement adds no points")
 			assert_board_stone_modifier_absent(g, 3, 3, "existing wall at 3,3 has no points bonus")
 			assert_board_stone_modifier_absent(g, 3, 4, "existing wall at 3,4 has no points bonus")
 		end)

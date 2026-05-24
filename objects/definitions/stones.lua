@@ -25,9 +25,7 @@ M.stone_basic = {
 		color = { 0.72, 0.7, 0.68 },
 		sprite = "sprites/stones/basic.png",
 	},
-	effects = {
-		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
-	},
+	effects = {},
 }
 
 M.stone_power = {
@@ -83,7 +81,6 @@ M.stone_lieutenant = {
 		sprite = "sprites/stones/lieutenant.png",
 	},
 	effects = {
-		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
 		{
 			effect_name = "distance_bonus",
 			macro = "playing_stones",
@@ -110,7 +107,6 @@ M.stone_tower = {
 		sprite = "sprites/stones/tower.png",
 	},
 	effects = {
-		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
 		{
 			effect_name = "double_corner_nearby_territory",
 			macro = "playing_stones",
@@ -172,7 +168,6 @@ M.plus_stone = {
 		sprite = "sprites/stones/focus.png",
 	},
 	effects = {
-		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
 	},
 }
 

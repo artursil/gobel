@@ -93,6 +93,6 @@ describe("T-050 stone metadata and behavior hooks", function()
 		})
 
 		assert.is_true(result.ok)
-		assert.are.equal("Basic Stone placement: +1 points", state.messages.recent[#state.messages.recent])
+		assert.are.equal("Basic Stone placed", state.messages.recent[#state.messages.recent])
 	end)
 end)

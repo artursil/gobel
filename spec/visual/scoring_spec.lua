@@ -118,8 +118,8 @@ describe("Scoring visual spec", function()
 			"1 1 1 1 1 1 1 1 1",
 		}, "each owned empty cell counts as territory value 1")
 
-		assert_players_total_score(g, 352, 0, "turn 1 center stone full-board score")
-		assert_players_total_score_delta(g, snap, 352, 0, "score change from match start")
+		assert_players_total_score(g, 264, 0, "turn 1 center stone full-board score")
+		assert_players_total_score_delta(g, snap, 264, 0, "score change from match start")
 	end)
 
 	it("persistent_flux round 1 basic stone: counter applied in full as mult", function()
