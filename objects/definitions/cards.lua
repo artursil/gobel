@@ -11,6 +11,8 @@
 --- **Graphics-first checklist** for a new card: set ``id``, gameplay fields, then ``visual.graphic`` (and optional overrides).
 --- @module objects.definitions.cards
 
+local C = require("objects.parameters.cards")
+
 local function V(overrides)
 	local v = {
 		background = "sprites/cards/background_1_r.png",
@@ -40,7 +42,15 @@ local M = {
 		cost = 1,
 		energy_cost = 1,
 		visual = V(),
-		effects = { { effect_name = "add_points", macro = "playing_cards", sub = "points", value = 2, priority = 10 } },
+		effects = {
+			{
+				effect_name = "add_points",
+				macro = "playing_cards",
+				sub = "points",
+				value = C.card_point_tap_points,
+				priority = C.default_effect_priority,
+			},
+		},
 	},
 	card_point_push = {
 		id = "card_point_push",
@@ -53,7 +63,15 @@ local M = {
 		cost = 2,
 		energy_cost = 2,
 		visual = V(),
-		effects = { { effect_name = "add_points", macro = "playing_cards", sub = "points", value = 4, priority = 10 } },
+		effects = {
+			{
+				effect_name = "add_points",
+				macro = "playing_cards",
+				sub = "points",
+				value = C.card_point_push_points,
+				priority = C.default_effect_priority,
+			},
+		},
 	},
 	card_small_mult = {
 		id = "card_small_mult",
@@ -66,7 +84,15 @@ local M = {
 		cost = 1,
 		energy_cost = 1,
 		visual = V(),
-		effects = { { effect_name = "add_mult", macro = "playing_cards", sub = "mult", value = 1, priority = 10 } },
+		effects = {
+			{
+				effect_name = "add_mult",
+				macro = "playing_cards",
+				sub = "mult",
+				value = C.card_small_mult_plus_mult,
+				priority = C.default_effect_priority,
+			},
+		},
 	},
 	card_big_mult = {
 		id = "card_big_mult",
@@ -79,7 +105,15 @@ local M = {
 		cost = 2,
 		energy_cost = 2,
 		visual = V(),
-		effects = { { effect_name = "add_mult", macro = "playing_cards", sub = "mult", value = 2, priority = 10 } },
+		effects = {
+			{
+				effect_name = "add_mult",
+				macro = "playing_cards",
+				sub = "mult",
+				value = C.card_big_mult_plus_mult,
+				priority = C.default_effect_priority,
+			},
+		},
 	},
 	card_balanced_boost = {
 		id = "card_balanced_boost",
@@ -93,8 +127,20 @@ local M = {
 		energy_cost = 2,
 		visual = V(),
 		effects = {
-			{ effect_name = "add_points", macro = "playing_cards", sub = "points", value = 2, priority = 10 },
-			{ effect_name = "add_mult", macro = "playing_cards", sub = "mult", value = 1, priority = 10 },
+			{
+				effect_name = "add_points",
+				macro = "playing_cards",
+				sub = "points",
+				value = C.card_balanced_boost_points,
+				priority = C.default_effect_priority,
+			},
+			{
+				effect_name = "add_mult",
+				macro = "playing_cards",
+				sub = "mult",
+				value = C.card_balanced_boost_plus_mult,
+				priority = C.default_effect_priority,
+			},
 		},
 	},
 	card_steel = {
@@ -125,12 +171,16 @@ local M = {
 		visual = V(),
 		effects = {
 			{
-			effect_name = "create_temporary_stance",
-			macro = "playing_cards",
-			sub = "points",
-			value = { stance_id = "stance_focus_bonus", rounds = 3, points = 5 },
-			priority = 5,
-		},
+				effect_name = "create_temporary_stance",
+				macro = "playing_cards",
+				sub = "points",
+				value = {
+					stance_id = "stance_focus_bonus",
+					rounds = C.card_focus_stance_rounds,
+					points = C.card_focus_stance_points,
+				},
+				priority = C.card_focus_stance_effect_priority,
+			},
 		},
 	},
 	card_destroy_enemy_stone = {
@@ -150,8 +200,11 @@ local M = {
 				effect_name = "destroy_selected_enemy_stone",
 				macro = "playing_cards",
 				sub = "points",
-				value = { chance_numerator = 1, chance_denominator = 4 },
-				priority = 10,
+				value = {
+					chance_numerator = C.card_destroy_chance_numerator,
+					chance_denominator = C.card_destroy_chance_denominator,
+				},
+				priority = C.default_effect_priority,
 				conditions = {
 					{ condition_name = "selected_target_exists" },
 					{ condition_name = "selected_target_is_enemy_stone" },
@@ -176,8 +229,8 @@ local M = {
 				effect_name = "add_permanent_points_to_selected_stone",
 				macro = "playing_cards",
 				sub = "points",
-				value = { points = 10 },
-				priority = 10,
+				value = { points = C.card_forge_mark_points },
+				priority = C.default_effect_priority,
 				conditions = {
 					{ condition_name = "selected_target_exists" },
 					{ condition_name = "selected_target_is_friendly_stone" },

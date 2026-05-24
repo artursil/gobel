@@ -4,16 +4,17 @@
 local board = require("board")
 local config = require("config")
 local rules = require("rules")
+local stone_params = require("objects.parameters.stones")
 
 local M = {}
 
 M.pattern_scoring = {
-	x_tiers = { 5, 9, 13, 17, 21 },
-	plus_tiers = { 5, 9, 13, 17, 21 },
-	x_mult_per_tier = 2,
-	plus_mult_per_tier = 5,
-	wall_stones_per_points_block = 5,
-	wall_points_per_block = 5,
+	x_tiers = stone_params.x_pattern_tiers,
+	plus_tiers = stone_params.plus_pattern_tiers,
+	x_mult_per_tier = stone_params.x_stone_mult_factor,
+	plus_mult_per_tier = stone_params.plus_stone_mult_add,
+	wall_stones_per_points_block = stone_params.wall_stones_per_block,
+	wall_points_per_block = stone_params.wall_points_per_block,
 }
 
 local DIAG_DIRS = {

@@ -2,6 +2,7 @@
 --- @module objects.definitions.stances
 
 local FRAME = "sprites/stances/frame_1_r.png"
+local S = require("objects.parameters.stances")
 
 local M = {
 	stance_point = {
@@ -15,7 +16,13 @@ local M = {
 		cost = 0,
 		visual = { graphic = "sprites/cards/background_1_r.png", frame = FRAME },
 		effects = {
-			{ effect_name = "add_points", macro = "before_turn", sub = "points", value = 1, priority = 20 },
+			{
+				effect_name = "add_points",
+				macro = "before_turn",
+				sub = "points",
+				value = S.stance_point_before_turn_points,
+				priority = S.stance_turn_bonus_priority,
+			},
 		},
 	},
 	stance_mult = {
@@ -29,7 +36,13 @@ local M = {
 		cost = 0,
 		visual = { graphic = "sprites/cards/background_1_r.png", frame = FRAME },
 		effects = {
-			{ effect_name = "add_mult", macro = "before_turn", sub = "mult", value = 1, priority = 20 },
+			{
+				effect_name = "add_mult",
+				macro = "before_turn",
+				sub = "mult",
+				value = S.stance_mult_before_turn_plus_mult,
+				priority = S.stance_turn_bonus_priority,
+			},
 		},
 	},
 	stance_heavy_point = {
@@ -43,7 +56,13 @@ local M = {
 		cost = 0,
 		visual = { graphic = "sprites/cards/background_1_r.png", frame = FRAME },
 		effects = {
-			{ effect_name = "add_points", macro = "before_turn", sub = "points", value = 2, priority = 20 },
+			{
+				effect_name = "add_points",
+				macro = "before_turn",
+				sub = "points",
+				value = S.stance_heavy_point_before_turn_points,
+				priority = S.stance_turn_bonus_priority,
+			},
 		},
 	},
 	stance_gluttony = {
@@ -61,8 +80,8 @@ local M = {
 				effect_name = "count_and_multiply_x_mult",
 				macro = "playing_stones",
 				sub = "mult",
-				value = 0.5,
-				priority = 15,
+				value = S.stance_gluttony_x_mult_per_steel,
+				priority = S.stance_gluttony_priority,
 				conditions = {
 					{ condition_name = "stone_tag_just_added", tag = "special" },
 				},
@@ -84,8 +103,8 @@ local M = {
 				effect_name = "add_points",
 				macro = "playing_stones",
 				sub = "points",
-				value = 5,
-				priority = 20,
+				value = S.stance_focus_bonus_points_per_round,
+				priority = S.stance_turn_bonus_priority,
 				conditions = {
 					{ condition_name = "temporary_stance_active" },
 					{ condition_name = "stance_owner_is_current_turn" },
@@ -109,17 +128,17 @@ local M = {
 				macro = "playing_stones",
 				sub = "territory",
 				territory_step = "distance",
-				priority = 5,
+				priority = S.stance_echo_priority,
 			},
 			{
 				effect_name = "copy_right_effect",
 				macro = "playing_stones",
 				sub = "territory",
 				territory_step = "value",
-				priority = 5,
+				priority = S.stance_echo_priority,
 			},
-			{ effect_name = "copy_right_effect", macro = "playing_stones", sub = "points", priority = 5 },
-			{ effect_name = "copy_right_effect", macro = "playing_stones", sub = "mult", priority = 5 },
+			{ effect_name = "copy_right_effect", macro = "playing_stones", sub = "points", priority = S.stance_echo_priority },
+			{ effect_name = "copy_right_effect", macro = "playing_stones", sub = "mult", priority = S.stance_echo_priority },
 		},
 	},
 	stance_persistent_flux = {
@@ -143,8 +162,8 @@ local M = {
 				effect_name = "adjust_run_persistent_counter",
 				macro = "playing_stones",
 				sub = "mult",
-				value = { counter_key = "persistent_flux_mult", delta = 3 },
-				priority = 10,
+				value = { counter_key = "persistent_flux_mult", delta = S.stance_persistent_flux_special_delta },
+				priority = S.stance_persistent_flux_priority,
 				conditions = {
 					{ condition_name = "stone_tag_just_added", tag = "special" },
 				},
@@ -153,8 +172,8 @@ local M = {
 				effect_name = "adjust_run_persistent_counter",
 				macro = "playing_stones",
 				sub = "mult",
-				value = { counter_key = "persistent_flux_mult", delta = -3 },
-				priority = 10,
+				value = { counter_key = "persistent_flux_mult", delta = S.stance_persistent_flux_wall_delta },
+				priority = S.stance_persistent_flux_priority,
 				conditions = {
 					{ condition_name = "stone_tag_just_added", tag = "wall" },
 				},
@@ -164,7 +183,7 @@ local M = {
 				macro = "playing_stones",
 				sub = "mult",
 				value = { counter_key = "persistent_flux_mult" },
-				priority = 20,
+				priority = S.stance_turn_bonus_priority,
 				conditions = {
 					{ condition_name = "round_number_exactly", value = 1 },
 				},
@@ -174,7 +193,7 @@ local M = {
 				macro = "playing_stones",
 				sub = "mult",
 				value = { counter_key = "persistent_flux_mult" },
-				priority = 20,
+				priority = S.stance_turn_bonus_priority,
 				conditions = {
 					{ condition_name = "round_number_at_least", value = 2 },
 				},

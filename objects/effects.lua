@@ -10,6 +10,9 @@ local helpers = require("objects.effects_helpers")
 local animations = require("objects.animations")
 local shape_patterns = require("game.patterns.shape_patterns")
 local shared_stones_effects = require("objects.definitions.shared_stones_effects")
+local stone_params = require("objects.parameters.stones")
+local stance_params = require("objects.parameters.stances")
+local card_params = require("objects.parameters.cards")
 
 local M = {}
 
@@ -232,7 +235,7 @@ function M.adjust_run_persistent_counter(effect)
 			state.run_state.counters[counter_key] = state.run_state.counters[counter_key] or { B = 0, W = 0 }
 			local delta = effect.value.delta or 0
 			local old = state.run_state.counters[counter_key][owner]
-			local new_val = math.max(0, old + delta)
+			local new_val = math.max(stance_params.stance_persistent_flux_counter_floor, old + delta)
 			local effective = new_val - old
 			state.run_state.counters[counter_key][owner] = new_val
 			state.run_state.pending_counter_mult_delta = state.run_state.pending_counter_mult_delta or {}
@@ -323,8 +326,8 @@ function M.destroy_selected_enemy_stone(effect)
 				return
 			end
 
-			local chance_num = effect.value.chance_numerator or 1
-			local chance_den = effect.value.chance_denominator or 4
+			local chance_num = effect.value.chance_numerator or card_params.destroy_chance_numerator_default
+			local chance_den = effect.value.chance_denominator or card_params.destroy_chance_denominator_default
 			if chance_den <= 0 then
 				return
 			end
@@ -370,7 +373,8 @@ function M.add_permanent_points_to_selected_stone(effect)
 			state.board_stone_modifiers = state.board_stone_modifiers or {}
 			local key = row .. ":" .. col
 			state.board_stone_modifiers[key] = state.board_stone_modifiers[key] or { points_bonus = 0 }
-			state.board_stone_modifiers[key].points_bonus = state.board_stone_modifiers[key].points_bonus + (effect.value.points or 10)
+			state.board_stone_modifiers[key].points_bonus = state.board_stone_modifiers[key].points_bonus
+				+ (effect.value.points or card_params.forge_mark_points_default)
 		end,
 	}
 end
@@ -428,7 +432,7 @@ function M.pattern_x_mult(effect)
 		phase = effect.sub or "mult",
 		macro = effect.macro or "playing_stones",
 		sub = effect.sub or "mult",
-		priority = effect.priority or 12,
+		priority = effect.priority or stone_params.pattern_effect_priority,
 		conditions = effect.conditions,
 		apply = function(state, owner)
 			local color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
@@ -486,7 +490,7 @@ local function plus_mult_bonus_for_newly_completed_patterns(state, board_after, 
 					if not is_placed then
 						state._pattern_plus_bonus_cells[cell_key] = true
 					end
-					bonus = bonus + shape_patterns.pattern_scoring.plus_mult_per_tier
+					bonus = bonus + stone_params.plus_stone_mult_add
 				end
 			end
 		end
@@ -503,7 +507,7 @@ function M.pattern_plus_mult(effect)
 		phase = effect.sub or "mult",
 		macro = effect.macro or "playing_stones",
 		sub = effect.sub or "mult",
-		priority = effect.priority or 12,
+		priority = effect.priority or stone_params.pattern_effect_priority,
 		conditions = effect.conditions,
 		apply = function(state, owner)
 			local color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
@@ -564,7 +568,7 @@ function M.wall_stone(effect)
 		phase = effect.sub or "points",
 		macro = effect.macro or "playing_stones",
 		sub = effect.sub or "points",
-		priority = effect.priority or 14,
+		priority = effect.priority or stone_params.wall_effect_priority,
 		conditions = effect.conditions,
 		apply = function(state, owner, row, col)
 			if row == nil or col == nil then
@@ -635,7 +639,7 @@ function M.double_corner_nearby_territory(row, col, effect_def)
 				for tc = c0, c1 do
 					if tr ~= row or tc ~= col then
 						local cur = state.territory_value[tr][tc] or 1
-						state.territory_value[tr][tc] = cur + 1
+						state.territory_value[tr][tc] = cur + stone_params.stone_tower_corner_territory_add
 					end
 				end
 			end

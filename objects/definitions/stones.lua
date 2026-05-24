@@ -8,7 +8,9 @@
 --- @module objects.definitions.stones
 
 local shared = require("objects.definitions.shared_stones_effects")
+local stone_params = require("objects.parameters.stones")
 
+local P = stone_params
 local M = {}
 
 M.stone_basic = {
@@ -43,7 +45,13 @@ M.stone_power = {
 		sprite = "sprites/stones/power.png",
 	},
 	effects = {
-		{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 2, priority = 10 },
+		{
+			effect_name = "add_points",
+			macro = "playing_stones",
+			sub = "points",
+			value = P.stone_power_placement_points,
+			priority = P.default_effect_priority,
+		},
 	},
 }
 
@@ -62,7 +70,13 @@ M.stone_focus = {
 		sprite = "sprites/stones/focus.png",
 	},
 	effects = {
-		{ effect_name = "add_mult", macro = "playing_stones", sub = "mult", value = 1, priority = 10 },
+		{
+			effect_name = "add_mult",
+			macro = "playing_stones",
+			sub = "mult",
+			value = P.stone_focus_placement_plus_mult,
+			priority = P.default_effect_priority,
+		},
 	},
 }
 
@@ -86,8 +100,8 @@ M.stone_lieutenant = {
 			macro = "playing_stones",
 			sub = "territory",
 			territory_step = "distance",
-			value = 1,
-			priority = 10,
+			value = P.stone_lieutenant_distance_bonus,
+			priority = P.default_effect_priority,
 		},
 	},
 }
@@ -112,7 +126,7 @@ M.stone_tower = {
 			macro = "playing_stones",
 			sub = "territory",
 			territory_step = "value",
-			priority = 10,
+			priority = P.default_effect_priority,
 		},
 	},
 }
@@ -139,7 +153,9 @@ M.x_stone = {
 	id = "x_stone",
 	type = "stone",
 	name = "X Stone",
-	description = "When a placement completes an X, multiplies ×Mult by 2 for each x_stone in that X.",
+	description = "When a placement completes an X, multiplies ×Mult by "
+		.. tostring(P.x_stone_mult_factor)
+		.. " for each x_stone in that X.",
 	rarity = "rare",
 	probability = 0.5,
 	cost = 1,
@@ -157,7 +173,9 @@ M.plus_stone = {
 	id = "plus_stone",
 	type = "stone",
 	name = "Plus Stone",
-	description = "When part of a completed + on the board, adds +5 Plus mult per pattern tier (needs a plus stone in the +).",
+	description = "When part of a completed + on the board, adds +"
+		.. tostring(P.plus_stone_mult_add)
+		.. " Plus mult per plus_stone in that +.",
 	rarity = "rare",
 	probability = 0.5,
 	cost = 1,
@@ -175,7 +193,11 @@ M.wall = {
 	id = "wall",
 	type = "stone",
 	name = "Wall",
-	description = "When placed, adds +5 Points for every 5 stones in its orthogonal connected group (including the wall).",
+	description = "When placed, adds +"
+		.. tostring(P.wall_points_per_block)
+		.. " Points for every "
+		.. tostring(P.wall_stones_per_block)
+		.. " stones in its orthogonal connected group (including the wall).",
 	rarity = "common",
 	probability = 1.0,
 	cost = 1,

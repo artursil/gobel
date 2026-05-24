@@ -4,7 +4,7 @@
 
 local animations_constants = require("objects.animations_constants")
 local animations_helper = require("objects.animations_helper")
-local shape_patterns = require("game.patterns.shape_patterns")
+local stone_params = require("objects.parameters.stones")
 
 local STEEL_SYNC_DEF_ID = "stance_gluttony"
 
@@ -94,8 +94,7 @@ local function enqueue_pattern_x_celebrate(state, args)
 	local step_ms = animations_helper.board_stone_bounce_step_duration_ms(#cells)
 	append_bounce_steps(ev, seq_id, owner, cells, step_ms)
 	local x_cells = marker_cells_for_kind(board_after, cells, "x_stone")
-	local per_stone = shape_patterns.pattern_scoring.x_mult_per_tier
-	local label = string.format("×%d", per_stone)
+	local label = string.format("×%d", stone_params.x_stone_mult_factor)
 	local markers = {}
 	for i = 1, #x_cells do
 		markers[i] = { row = x_cells[i].row, col = x_cells[i].col, text = label }
@@ -103,7 +102,7 @@ local function enqueue_pattern_x_celebrate(state, args)
 	append_marker_floats(ev, seq_id, owner, markers)
 end
 
---- + completed: bounce every cell, then ``+N`` over each ``plus_stone`` (``N`` = ``plus_mult_per_tier``).
+--- + completed: bounce every cell, then ``+N`` over each ``plus_stone`` (``N`` = ``plus_stone_mult_add``).
 --- **Args**: ``owner``, ``cells``, ``board_after``.
 --- @param state table
 --- @param args table
@@ -120,8 +119,7 @@ local function enqueue_pattern_plus_celebrate(state, args)
 	local step_ms = animations_helper.board_stone_bounce_step_duration_ms(#cells)
 	append_bounce_steps(ev, seq_id, owner, cells, step_ms)
 	local p_cells = marker_cells_for_kind(board_after, cells, "plus_stone")
-	local per_stone = shape_patterns.pattern_scoring.plus_mult_per_tier
-	local plus_label = string.format("+%d", per_stone)
+	local plus_label = string.format("+%d", stone_params.plus_stone_mult_add)
 	local markers = {}
 	for i = 1, #p_cells do
 		markers[i] = { row = p_cells[i].row, col = p_cells[i].col, text = plus_label }
@@ -140,15 +138,23 @@ local function enqueue_wall_stone_bounce(state, args)
 	local anchor_row = args.anchor_row
 	local anchor_col = args.anchor_col
 	local bonus = args.bonus
-	if not owner or not cells or #cells < 5 or not anchor_row or not anchor_col or type(bonus) ~= "number" or bonus <= 0 then
+	if
+		not owner
+		or not cells
+		or #cells < stone_params.wall_celebrate_min_group
+		or not anchor_row
+		or not anchor_col
+		or type(bonus) ~= "number"
+		or bonus <= 0
+	then
 		return
 	end
 	local seq_id = next_sequence_id(state)
 	local ev = state.ui_animation_events
 	local step_ms = animations_helper.board_stone_bounce_step_duration_ms(#cells)
 	append_bounce_steps(ev, seq_id, owner, cells, step_ms)
-	local blocks = math.floor(bonus / shape_patterns.pattern_scoring.wall_points_per_block)
-	local wall_label = string.format("+%d", shape_patterns.pattern_scoring.wall_points_per_block)
+	local blocks = math.floor(bonus / stone_params.wall_points_per_block)
+	local wall_label = string.format("+%d", stone_params.wall_points_per_block)
 	local markers = {}
 	for _ = 1, blocks do
 		markers[#markers + 1] = { row = anchor_row, col = anchor_col, text = wall_label }
