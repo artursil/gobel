@@ -155,7 +155,10 @@ end
 
 --- @return string
 function M.format_x_mult_animation_label(factor)
-	return string.format("×%d", factor)
+	if factor == math.floor(factor) then
+		return string.format("×%d", factor)
+	end
+	return string.format("×%.1f", factor)
 end
 
 --- Matches ``objects.animations_definitions`` pattern_x_celebrate float text.

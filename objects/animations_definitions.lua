@@ -94,7 +94,8 @@ local function enqueue_pattern_x_celebrate(state, args)
 	local step_ms = animations_helper.board_stone_bounce_step_duration_ms(#cells)
 	append_bounce_steps(ev, seq_id, owner, cells, step_ms)
 	local x_cells = marker_cells_for_kind(board_after, cells, "x_stone")
-	local label = string.format("×%d", stone_params.x_stone_mult_factor)
+	local factor = stone_params.x_stone_mult_factor
+	local label = factor == math.floor(factor) and string.format("×%d", factor) or string.format("×%.1f", factor)
 	local markers = {}
 	for i = 1, #x_cells do
 		markers[i] = { row = x_cells[i].row, col = x_cells[i].col, text = label }

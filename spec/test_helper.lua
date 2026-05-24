@@ -303,7 +303,7 @@ function M.debug_dump_game_state(g, label, opts)
 		print(opts.expected_territory_values)
 	end
 	print("actual territory values:")
-	print(M.territory_value_ascii(g))
+	print(M.territory_weight_ascii(g))
 	M.debug_print_scoring_values(g, name)
 	print(string.format(
 		"  totals — black=%s white=%s",
@@ -529,10 +529,11 @@ function M.play_card_and_stone(g, hand_index, board_rows)
 	M.place_stone(g, board_rows)
 end
 
+--- Empty-cell ownership grid: ``1`` black, ``2`` white, ``0`` neutral, ``#`` stone.
 --- @param g table
 --- @param territory_mode string|nil
 --- @return string
-function M.territory_value_ascii(g, territory_mode)
+function M.territory_ownership_ascii(g, territory_mode)
 	local territory = g.territory or spec_helper.territory_map(g.board, territory_mode or "regional")
 	local lines = {}
 	for r = 1, config.BOARD_SIZE do
@@ -551,6 +552,50 @@ function M.territory_value_ascii(g, territory_mode)
 		lines[#lines + 1] = table.concat(row, " ")
 	end
 	return table.concat(lines, "\n")
+end
+
+--- Per-empty-cell ``territory_value`` multipliers; ``#`` on stones.
+--- @param g table
+--- @return string
+function M.territory_weight_ascii(g)
+	local territory_value = g.territory_value
+	if not territory_value then
+		local _, _, computed = spec_helper.territory_map(g.board, g.territory_mode or "regional")
+		territory_value = computed
+	end
+	local lines = {}
+	for r = 1, config.BOARD_SIZE do
+		local row = {}
+		for c = 1, config.BOARD_SIZE do
+			if not board.is_empty(g.board[r][c]) then
+				row[#row + 1] = "#"
+			else
+				local v = (territory_value[r] and territory_value[r][c]) or 1
+				row[#row + 1] = tostring(v)
+			end
+		end
+		lines[#lines + 1] = table.concat(row, " ")
+	end
+	return table.concat(lines, "\n")
+end
+
+--- @param g table
+--- @param side string ``"black"`` | ``"white"``
+--- @return integer
+function M.player_territory_score(g, side)
+	local color = side == "white" and config.STONE_WHITE or config.STONE_BLACK
+	assert.is_not_nil(g.territory, "player_territory_score requires state.territory from resolve")
+	local n = config.BOARD_SIZE
+	local sum = 0
+	for r = 1, n do
+		for c = 1, n do
+			if board.is_empty(g.board[r][c]) and g.territory[r][c] == color then
+				local w = (g.territory_value[r] and g.territory_value[r][c]) or 1
+				sum = sum + w
+			end
+		end
+	end
+	return sum
 end
 
 --- @param g table
@@ -666,7 +711,7 @@ end
 --- @param context string|nil
 function M.assert_territory_values_ascii(g, expected_rows, context)
 	local expected = table.concat(expected_rows, "\n")
-	local actual = M.territory_value_ascii(g)
+	local actual = M.territory_weight_ascii(g)
 	local msg = context or "territory value grid"
 	if expected ~= actual then
 		M.debug_dump_game_state(g, msg, { expected_territory_values = expected })

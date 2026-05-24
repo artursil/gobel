@@ -294,7 +294,7 @@ end
 --- @param active_sub string
 --- @param effect table
 --- @return nil
-local function set_resolution_for_effect(state, active_macro, active_sub, effect)
+local function set_resolution_for_effect(state, active_macro, active_sub, territory_step, effect)
 	local resolution = queries.ensure_resolution(state)
 	local meta = effect.meta or {}
 	resolution.macro = active_macro
@@ -345,7 +345,7 @@ function M.apply_sub_phase(state, active_macro, active_sub, territory_step)
 	local effects = M.collect_effects(state, active_macro, active_sub, territory_step)
 	queries.clear_resolution(state)
 	for _, effect in ipairs(effects) do
-		set_resolution_for_effect(state, active_macro, active_sub, effect)
+		set_resolution_for_effect(state, active_macro, active_sub, territory_step, effect)
 		if conditions.eval_all(effect.conditions, state) then
 			effect.apply(state)
 			add_effect_duration(state, effect)

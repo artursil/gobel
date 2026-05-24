@@ -23,6 +23,24 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	add_mult = true,
 }
 
+M.BOARD_TERRITORY_EFFECT_NAMES = {
+	distance_bonus = true,
+	double_corner_nearby_territory = true,
+}
+
+--- Board stones reapply these on every territory recalc; ``macro`` on the def is ignored.
+--- @param effect_def table|nil
+--- @return boolean
+function M.is_board_territory_effect(effect_def)
+	if not effect_def then
+		return false
+	end
+	if effect_def.territory_scope == "board" then
+		return true
+	end
+	return M.BOARD_TERRITORY_EFFECT_NAMES[effect_def.effect_name] == true
+end
+
 --- @param macro string|nil
 --- @return boolean
 function M.is_valid_macro(macro)
@@ -81,7 +99,19 @@ function M.matches(effect_def, active_macro, active_sub, territory_step)
 	if not macro or not sub then
 		return false
 	end
-	if macro ~= active_macro or sub ~= active_sub then
+	if sub ~= active_sub then
+		return false
+	end
+	if active_sub == "territory" and M.is_board_territory_effect(effect_def) then
+		if territory_step and step and step ~= territory_step then
+			return false
+		end
+		if territory_step and not step then
+			return false
+		end
+		return true
+	end
+	if macro ~= active_macro then
 		return false
 	end
 	if active_sub == "territory" and territory_step and step and step ~= territory_step then

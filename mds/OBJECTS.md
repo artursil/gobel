@@ -338,12 +338,14 @@ Registration rules:
 |-------------|-------|-----|
 | Card `add_points` / `add_mult` | `playing_cards` | `points` / `mult` |
 | Stone on-place `add_points` / `add_mult` | `playing_stones` | `points` / `mult` (via `round_stone_effects` only) |
-| `distance_bonus` | `playing_stones` | `territory` + `territory_step = "distance"` |
-| Tower / territory-value | `playing_stones` | `territory` + `territory_step = "value"` |
+| `distance_bonus` | `territory_scope = "board"` (macro ignored) | `territory` + `territory_step = "distance"` |
+| Tower / `double_corner_nearby_territory` | `territory_scope = "board"` (macro ignored) | `territory` + `territory_step = "value"` |
 | Wall / pattern board effects | `playing_stones` | `points` or `mult` |
 | Stance passives | assign explicitly (e.g. `before_turn.points`, `playing_stones.mult`) |
 
 On-place `add_points` / `add_mult` must **not** register in board scan (`resolve_board_stone` skips them).
+
+**Board territory effects** (`territory_scope = "board"` or `distance_bonus` / `double_corner_nearby_territory`): collected during every territory sub-pass on every resolve macro. `ensure_state_fields` resets `territory_value` to `1` each resolve; board scan reapplies lieutenant distance and tower weights before `finish_assignment`. Territory score is the weighted sum of `territory_value` on owned empty cells (`count_controlled`).
 
 **Match-persistent score factors:** `points`, `plus_mult`, and `x_mult` live on `player.score` and only go up (or down when an effect explicitly subtracts). Each resolve hydrates `state.scores` from both players, applies additive/multiply effects, then `sync_player_scores` writes back. Pattern ×Mult / +Mult bonuses latch once per pattern (dedupe in `run_state.pattern_apply_keys`). **`territory` alone is recomputed from the board every resolve** (distance → assignment → count). `turn_bonus` updates for the active player on `before_turn` (`1 + 0.1 × turn_number`); it does not reset points or mult.
 
