@@ -2,33 +2,34 @@ STONES:
 1. Basic stone
 2. Scoring points stone 1-3 (upgradable)
 3. Influence stone 1-3 (upgradable)
-4. Tower stone - if placed in the corner territory around more valuable
+4. Tower stone - if placed in the corner territory (8 fields around the tower stone)  more valuable
 5. Energy stone - gives more energy
 6. X stone - if is a part of an X on the board gives x_mult
 7. Plus stone - if is a part of + on the board gives plus_mult
-8. Diagonal stone
-9. Line stone
+8. Diagonal stone - not sure how it should be implemented surprise me
+9. Line stone - again I don't have a good idea yet.
 10. Kamikaze stone - if placed in spot inside opponent territory without liberties becomes a prisoner but gives +15 points
-11. Enclosure stone - if placed inside enclosed territory doubles the value of a field (upgradable)
-12. Control stone - liberties always belong to the owner of this stone(upgradable)
+11. Enclosure stone - if placed inside enclosed territory doubles the value of a fields in the enclosure
+12. Control stone - liberties always belong to the owner of this stone
 13. Blockade stone - no one can place stones where the liberties of this stone are
-14. Defence stone - double the defence
+14. Defence stone - double the defence (do not implement yet)
 15. Money field - generates money if placed in the enclosed territory
-16. Anit caputre stone - this stone and all connected to it stones cannot be captured
+16. Anti caputre stone - this stone and all connected to it stones cannot be captured
 17. Mult 3 rounds stone - if stone is place in a territory that is controlled for more than 2 rounds gets mult
-18. Points 3 round stone -
-19. Capture stone - if a stone has less than 2 liberties it is getting captured, if there are mulitple to select from only random one is getting captured
+18. Points 3 round stone - not sure how exactly to implement this, maybe you know.
+19. Capture stone - if an opponent stone has less than 2 liberties it is getting captured and we place capture next to it it's getting captured, if there are mulitple to select from only random one is getting captured
 20. Tax stone - each enemy stone in enclosed territory if tax stone is a part of enclosure generates money/points/energy
 21. Will be destroyed stone - gives points but will be destroyed in X rounds
 22. Converts controlled territory into points
 23. Converts controlled territory into multiplier
 24. Each round more points - if captured all points to the enemy
 25. Each round more money
-26. Wall stones - depending on how many wall stones are connected then that many mult
-27. Unlimited upgrades
-28. Final blow - if it is the last round X
-29. Loses money but extra powerful
+26. Wall stones - depending on big is the wall then that many points
+27. Unlimited upgrades (do not implement yet)
+28. Final blow - if it is the last round X, do something
+29. Loses money but extra powerful, details to be come up with
 30. Copper stones - do nothing but can be triggered by stances and the more you have them the more mult you get
+31. Retrigger stone - any effect that is triggered is triggered twice.
 
 
 STONES MODIFIERS:
@@ -165,7 +166,6 @@ CARDS:
 59. predict next opponents stone get points - IMPORTANT
 60. -10 points now 20 points next game
 61. Consumes the value of the card
-
 
 
 
