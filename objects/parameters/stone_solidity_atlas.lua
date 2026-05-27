@@ -1,27 +1,34 @@
 --- Pixel quads for ``sprites/stones/stones.png`` deterioration frames.
 ---
---- **Layout**: row 1 = white stones, row 2 = black stones; left → right = perfect (tier 0) → worst (tier 3).
---- Frames have uneven padding — update ``x,y,w,h`` when the atlas art changes (measure in an image editor).
+--- **Manual** (preferred): set ``frames.white`` / ``frames.black`` — one ``{ x, y, w, h }`` per tier
+--- (tier 0 = leftmost / perfect, tier 3 = rightmost / worst). Measure in an image editor.
 ---
---- **Calibration** (placeholder bounds; replace with measured values from the shipped PNG):
---- - White row: ``y ≈ 6``, frame tops aligned; black row: ``y ≈ 206``.
---- - Frame widths differ slightly (~172–180px); gaps ~22px between frames.
+--- **Grid fallback**: when ``frames`` is omitted, ``ui.stone_solidity_atlas`` splits the PNG into a
+--- 2×``cols`` grid using image width/height and ``inset``. Per-tier manual rects that fall outside
+--- the image also fall back to the grid for that tier only.
+---
 --- @module objects.parameters.stone_solidity_atlas
 
 return {
 	path = "sprites/stones/stones.png",
+
 	frames = {
 		white = {
-			{ x = 8, y = 6, w = 180, h = 180 },
-			{ x = 210, y = 6, w = 175, h = 180 },
-			{ x = 408, y = 6, w = 178, h = 180 },
-			{ x = 610, y = 6, w = 172, h = 180 },
+			{ x = 40, y = 112, w = 308, h = 318 },
+			{ x = 400, y = 112, w = 308, h = 318 },
+			{ x = 765, y = 112, w = 308, h = 318 },
+			{ x = 1132, y = 112, w = 308, h = 318 },
 		},
 		black = {
-			{ x = 8, y = 206, w = 180, h = 180 },
-			{ x = 210, y = 206, w = 175, h = 180 },
-			{ x = 408, y = 206, w = 178, h = 180 },
-			{ x = 610, y = 206, w = 172, h = 180 },
+			{ x = 40, y = 526, w = 308, h = 318 },
+			{ x = 400, y = 526, w = 308, h = 318 },
+			{ x = 765, y = 526, w = 308, h = 318 },
+			{ x = 1132, y = 526, w = 308, h = 318 },
 		},
 	},
+
+	cols = 4,
+	row_white = 0,
+	row_black = 1,
+	inset = 2,
 }

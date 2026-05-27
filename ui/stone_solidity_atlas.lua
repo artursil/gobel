@@ -8,21 +8,76 @@ local M = {}
 
 local built = false
 local image = false
-local warned_quad = false
 local quads = {
 	white = {},
 	black = {},
 }
 
+--- @return boolean
+local function manual_frames_configured()
+	local frames = atlas_params.frames
+	if not frames or not frames.white or not frames.black then
+		return false
+	end
+	return #frames.white >= 4 and #frames.black >= 4
+end
+
+--- @param iw number
+--- @param ih number
+--- @return number
+local function default_inset(iw, ih)
+	local cols = atlas_params.cols or 4
+	local rows = 2
+	local cell = math.min(iw / cols, ih / rows)
+	return math.max(2, math.floor(cell * 0.02))
+end
+
 --- @param rect table
 --- @param iw number
 --- @param ih number
 --- @return boolean
-local function rect_fits_image(rect, iw, ih)
+function M.rect_fits_image(rect, iw, ih)
 	if not rect or rect.w <= 0 or rect.h <= 0 then
 		return false
 	end
 	return rect.x >= 0 and rect.y >= 0 and rect.x + rect.w <= iw + 0.5 and rect.y + rect.h <= ih + 0.5
+end
+
+--- One cell in the 2×4 grid (tier = column index).
+--- @param iw number
+--- @param ih number
+--- @param row integer 0 = top row, 1 = bottom row
+--- @param col integer 0..3
+--- @return table
+function M.grid_frame_rect(iw, ih, row, col)
+	local cols = atlas_params.cols or 4
+	local inset = atlas_params.inset or default_inset(iw, ih)
+	local cell_w = iw / cols
+	local cell_h = ih / 2
+	return {
+		x = col * cell_w + inset,
+		y = row * cell_h + inset,
+		w = cell_w - 2 * inset,
+		h = cell_h - 2 * inset,
+	}
+end
+
+--- Rect used for a tier: manual from params when set and in-bounds, else grid cell.
+--- @param owner_side string ``"black"`` | ``"white"``
+--- @param tier integer 0..3
+--- @param iw number
+--- @param ih number
+--- @return table
+function M.frame_rect(owner_side, tier, iw, ih)
+	local row_key = owner_side == "white" and "white" or "black"
+	if manual_frames_configured() then
+		local manual = atlas_params.frames[row_key][tier + 1]
+		if manual and M.rect_fits_image(manual, iw, ih) then
+			return manual
+		end
+	end
+	local row = row_key == "white" and (atlas_params.row_white or 0) or (atlas_params.row_black or 1)
+	return M.grid_frame_rect(iw, ih, row, tier)
 end
 
 --- @param row_key string
@@ -58,21 +113,12 @@ local function ensure_built()
 	local iw = img:getWidth()
 	local ih = img:getHeight()
 	for tier = 0, 3 do
-		local wrect = atlas_params.frames.white[tier + 1]
-		local brect = atlas_params.frames.black[tier + 1]
-		if wrect and rect_fits_image(wrect, iw, ih) then
+		local wrect = M.frame_rect("white", tier, iw, ih)
+		local brect = M.frame_rect("black", tier, iw, ih)
+		if M.rect_fits_image(wrect, iw, ih) then
 			make_quad("white", tier, wrect, iw, ih)
-		elseif wrect and not warned_quad then
-			warned_quad = true
-			print(
-				string.format(
-					"[gobel] Solidity atlas quad out of bounds (image %dx%d); fix objects/parameters/stone_solidity_atlas.lua",
-					iw,
-					ih
-				)
-			)
 		end
-		if brect and rect_fits_image(brect, iw, ih) then
+		if M.rect_fits_image(brect, iw, ih) then
 			make_quad("black", tier, brect, iw, ih)
 		end
 	end

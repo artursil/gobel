@@ -188,7 +188,7 @@ end
 
 --- @param stone_id string
 --- @param rect table
---- @param owner_side string  ``"black"`` | ``"white"`` — ring color (dark outline for black stones, light outline for white).
+--- @param owner_side string  ``"black"`` | ``"white"`` — atlas row (deterioration art).
 --- @param highlighted boolean
 --- @param solidity integer|nil current health; nil = max for ``stone_id``
 --- @return nil
@@ -198,9 +198,6 @@ local function draw_stone_chip(stone_id, rect, owner_side, highlighted, solidity
 	if not stone then
 		return
 	end
-	local cx = rect.x + rect.w * 0.5
-	local cy = rect.y + rect.h * 0.5
-	local rr = math.min(rect.w, rect.h) * 0.42
 	local current = stone_solidity.resolve_solidity(stone_id, solidity)
 	local max_s = stone_solidity.stone_max_solidity(stone_id)
 	local tier = stone_solidity.solidity_tier(current, max_s)
@@ -211,18 +208,12 @@ local function draw_stone_chip(stone_id, rect, owner_side, highlighted, solidity
 	else
 		draw_stone_type_overlay(stone_id, rect)
 	end
-	if owner_side == "black" then
-		lg.setColor(0.06, 0.06, 0.08, 1)
-	else
-		lg.setColor(0.98, 0.98, 1, 1)
-	end
-	lg.setLineWidth(2)
-	lg.circle("line", cx, cy, rr)
-	lg.setLineWidth(1)
-	lg.setColor(1, 1, 1, 1)
 	if not highlighted then
 		return
 	end
+	local cx = rect.x + rect.w * 0.5
+	local cy = rect.y + rect.h * 0.5
+	local rr = math.min(rect.w, rect.h) * 0.42
 	lg.setColor(0.55, 0.82, 0.96, 0.95)
 	lg.setLineWidth(2)
 	lg.circle("line", cx, cy, rr + 3)

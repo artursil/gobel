@@ -312,9 +312,9 @@ Things to consider:
 ## Solidity (stone health)
 
 - **Parameters**: `objects/parameters/stones.lua` — `default_solidity` (4), `solidity_frame_count` (4).
-- **Atlas quads**: `objects/parameters/stone_solidity_atlas.lua` — explicit pixel rects for `sprites/stones/stones.png` (white row, black row; tier 0 = perfect, left → right).
+- **Atlas quads**: `objects/parameters/stone_solidity_atlas.lua` — manual `{ x, y, w, h }` per tier in `frames.white` / `frames.black` (preferred). Omit `frames` or use out-of-bounds rects to fall back to a 2×4 grid derived from image size (`ui/stone_solidity_atlas.lua`).
 - **Board cell**: `{ color, kind, solidity }` via `board.make_stone`; new placements start at max (`rules.try_play`).
-- **Render**: `ui/stone_solidity_atlas.lua` + `render.draw_stone_chip` — deterioration base, centered type tint/sprite overlay (~55%), owner ring on top. Hand/selector use full health (`solidity` nil).
+- **Render**: `ui/stone_solidity_atlas.lua` + `render.draw_stone_chip` — deterioration base, centered type tint/sprite overlay (~55%). Hand/selector use full health (`solidity` nil). Selection uses a highlight ring only.
 - **Tier**: `objects/stone_solidity.solidity_tier(current, max)` — 100–75% → 0, 75–50% → 1, 50–25% → 2, ≤25% → 3. With default max 4: current 4→0, 3→1, 2→2, 1→3.
 - **Fallback**: if the atlas PNG is missing, rendering uses the legacy circle + type graphic only.
 

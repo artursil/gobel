@@ -2,7 +2,6 @@ local helper = require("spec.test_helper")
 
 helper.install_love_test_stubs()
 
-local config = require("config")
 local layout_mod = require("layout")
 local match_state = require("match_state")
 local atlas_params = require("objects.parameters.stone_solidity_atlas")
@@ -11,52 +10,6 @@ local resolver = require("resolver")
 local sprites = require("ui.sprites")
 
 describe("T-050 stone graphics-driven rendering path", function()
-	it("draws owner ring outlines for board stones", function()
-		local line_circle_calls = 0
-		local original_circle = love.graphics.circle
-		love.graphics.circle = function(mode, ...)
-			if mode == "line" then
-				line_circle_calls = line_circle_calls + 1
-			end
-			return original_circle(mode, ...)
-		end
-
-	local state = match_state.new_match("pvp", 300)
-	state.players.black.stances.fixed = {}
-	state.players.black.stances.swappable = {}
-	state.players.white.stances.fixed = {}
-	state.players.white.stances.swappable = {}
-	assert.is_true(resolver.begin_turn(state, "black").ok)
-		state.phase = "PLACE_PHASE"
-		state.players.black.stones.playable_stones = { "stone_power" }
-		state.players.black.stones.selected_stone_index = 1
-		state.players.black.stones.selected_stone = "stone_power"
-		assert.is_true(resolver.submit_action(state, {
-			actor = "black",
-			type = "PLACE_STONE",
-			payload = { row = 1, col = 1 },
-		}).ok)
-
-		state.phase = "PLACE_PHASE"
-		state.to_play = "black"
-		state.players.black.stones.playable_stones = { "stone_focus" }
-		state.players.black.stones.selected_stone_index = 1
-		state.players.black.stones.selected_stone = "stone_focus"
-		assert.is_true(resolver.submit_action(state, {
-			actor = "black",
-			type = "PLACE_STONE",
-			payload = { row = 1, col = 2 },
-		}).ok)
-
-		local layout = layout_mod.from_window(1280, 720)
-		require("ui.fonts").init()
-		render.draw(state, layout, nil, nil, false, { mode = "none" }, { active = false })
-
-		love.graphics.circle = original_circle
-
-		assert.is_true(line_circle_calls >= 2)
-	end)
-
 	it("draws deterioration atlas quad when sheet is loaded", function()
 		local quad_draws = 0
 		local original_draw = love.graphics.draw

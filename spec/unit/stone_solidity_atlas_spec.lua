@@ -20,15 +20,17 @@ describe("ui.stone_solidity_atlas", function()
 		sprites.get_image = original_get_image
 		love.graphics.newQuad = original_new_quad
 		package.loaded["ui.stone_solidity_atlas"] = nil
+		package.loaded["objects.parameters.stone_solidity_atlas"] = nil
+		require("objects.parameters.stone_solidity_atlas")
 	end)
 
-	it("returns quad for black and white at each tier when atlas loads", function()
+	local function stub_atlas(iw, ih)
 		local fake_image = {
 			getWidth = function()
-				return 800
+				return iw
 			end,
 			getHeight = function()
-				return 400
+				return ih
 			end,
 		}
 		sprites.get_image = function(path)
@@ -37,7 +39,7 @@ describe("ui.stone_solidity_atlas", function()
 			end
 			return false
 		end
-		love.graphics.newQuad = function(x, y, w, h, iw, ih)
+		love.graphics.newQuad = function(x, y, w, h, img_w, img_h)
 			return {
 				getViewport = function()
 					return x, y, w, h
@@ -46,25 +48,55 @@ describe("ui.stone_solidity_atlas", function()
 				_y = y,
 				_w = w,
 				_h = h,
-				_iw = iw,
-				_ih = ih,
+				_iw = img_w,
+				_ih = img_h,
 			}
 		end
+		return fake_image
+	end
 
+	it("uses manual frames from parameters when they fit the image", function()
+		stub_atlas(800, 400)
 		local atlas = require("ui.stone_solidity_atlas")
 		for _, side in ipairs({ "black", "white" }) do
 			for tier = 0, 3 do
-				local img, quad = atlas.get_frame(side, tier)
-				assert.are.equal(fake_image, img)
-				assert.is_not_nil(quad)
-				local rect = atlas_params.frames[side][tier + 1]
+				local _, quad = atlas.get_frame(side, tier)
+				local expected = atlas_params.frames[side][tier + 1]
 				local qx, qy, qw, qh = quad:getViewport()
-				assert.are.equal(rect.x, qx)
-				assert.are.equal(rect.y, qy)
-				assert.are.equal(rect.w, qw)
-				assert.are.equal(rect.h, qh)
+				assert.are.equal(expected.x, qx)
+				assert.are.equal(expected.y, qy)
+				assert.are.equal(expected.w, qw)
+				assert.are.equal(expected.h, qh)
 			end
 		end
+	end)
+
+	it("grid fallback places black row below white on tall sheets when frames omitted", function()
+		package.loaded["objects.parameters.stone_solidity_atlas"] = {
+			path = atlas_params.path,
+			cols = 4,
+			row_white = 0,
+			row_black = 1,
+			inset = 2,
+		}
+		package.loaded["ui.stone_solidity_atlas"] = nil
+		stub_atlas(800, 800)
+		local atlas = require("ui.stone_solidity_atlas")
+		local _, white_quad = atlas.get_frame("white", 0)
+		local _, black_quad = atlas.get_frame("black", 0)
+		local _, wy, _, wh = white_quad:getViewport()
+		local _, by = black_quad:getViewport()
+		assert.is_true(by >= wy + wh - 1, "black row must start below the white row")
+	end)
+
+	it("falls back to grid for a tier when manual rect is out of bounds", function()
+		local atlas = require("ui.stone_solidity_atlas")
+		local manual_white = atlas.frame_rect("white", 0, 800, 200)
+		local grid_black = atlas.frame_rect("black", 0, 800, 200)
+		assert.are.equal(atlas_params.frames.white[1].x, manual_white.x)
+		local expected_black = atlas.grid_frame_rect(800, 200, atlas_params.row_black or 1, 0)
+		assert.are.equal(expected_black.x, grid_black.x)
+		assert.are.equal(expected_black.y, grid_black.y)
 	end)
 
 	it("returns nil when image missing", function()
