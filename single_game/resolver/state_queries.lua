@@ -43,6 +43,7 @@ function M.clear_resolution(state)
 	r.source_stance_index = nil
 	r.source_stance_slot_index = nil
 	r.selected_target = nil
+	r.selected_targets = nil
 	r.trigger = nil
 end
 
@@ -87,7 +88,24 @@ end
 --- @return table|nil
 function M.selected_target(state)
 	local r = M.ensure_resolution(state)
+	if r.selected_target == nil and type(r.selected_targets) == "table" then
+		return r.selected_targets[1]
+	end
 	return r.selected_target
+end
+
+--- Returns selected targets from transient resolution metadata.
+--- @param state table
+--- @return table[]
+function M.selected_targets(state)
+	local r = M.ensure_resolution(state)
+	if type(r.selected_targets) == "table" then
+		return r.selected_targets
+	end
+	if r.selected_target ~= nil then
+		return { r.selected_target }
+	end
+	return {}
 end
 
 --- Returns effect owner token from transient resolution metadata.

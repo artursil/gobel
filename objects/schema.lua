@@ -31,6 +31,39 @@ local VALID_SCOPES = {
 	all = true,
 }
 
+local VALID_PLAY_MODES = {
+	instant = true,
+	target_single = true,
+	target_multi = true,
+}
+
+local VALID_TARGET_OBJECT_TYPES = {
+	stone = true,
+	card = true,
+	stance = true,
+}
+
+local VALID_TARGET_OWNERS = {
+	self = true,
+	opponent = true,
+	any = true,
+}
+
+local function validate_string_list(value, field_name, object_id)
+	if value == nil then
+		return true, nil
+	end
+	if type(value) ~= "table" then
+		return false, string.format("Object %s field %s must be an array", object_id, field_name)
+	end
+	for i = 1, #value do
+		if type(value[i]) ~= "string" then
+			return false, string.format("Object %s field %s[%d] must be string", object_id, field_name, i)
+		end
+	end
+	return true, nil
+end
+
 local function list_valid(tbl)
 	local result = {}
 	for key in pairs(tbl) do
@@ -174,6 +207,41 @@ function M.validate_object(object, object_type)
 
 	if not object.effects or type(object.effects) ~= "table" then
 		return false, string.format("Object %s missing effects or effects not table", object.id)
+	end
+
+	if object_type == "card" then
+		local play_mode = object.play_mode or "instant"
+		if not VALID_PLAY_MODES[play_mode] then
+			return false, string.format("Object %s has invalid play_mode '%s'", object.id, tostring(play_mode))
+		end
+		if play_mode ~= "instant" then
+			if not VALID_TARGET_OBJECT_TYPES[object.target_object_type] then
+				return false,
+					string.format("Object %s has invalid target_object_type '%s'", object.id, tostring(object.target_object_type))
+			end
+			local target_owner = object.target_owner or "any"
+			if not VALID_TARGET_OWNERS[target_owner] then
+				return false, string.format("Object %s has invalid target_owner '%s'", object.id, tostring(target_owner))
+			end
+		end
+		local ok_list, list_err = validate_string_list(object.required_tags_all, "required_tags_all", object.id)
+		if not ok_list then
+			return false, list_err
+		end
+		ok_list, list_err = validate_string_list(object.required_tags_any, "required_tags_any", object.id)
+		if not ok_list then
+			return false, list_err
+		end
+		ok_list, list_err = validate_string_list(object.excluded_tags, "excluded_tags", object.id)
+		if not ok_list then
+			return false, list_err
+		end
+		if object.min_targets ~= nil and (type(object.min_targets) ~= "number" or object.min_targets < 0) then
+			return false, string.format("Object %s has invalid min_targets", object.id)
+		end
+		if object.max_targets ~= nil and (type(object.max_targets) ~= "number" or object.max_targets < 0) then
+			return false, string.format("Object %s has invalid max_targets", object.id)
+		end
 	end
 
 	for i, effect in ipairs(object.effects) do

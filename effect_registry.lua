@@ -29,7 +29,7 @@ local function wrap_effect_with_owner(effect_payload, owner)
 	return effect_payload
 end
 
-local function append_wrapped_effects(out, effects, owner, selected_target)
+local function append_wrapped_effects(out, effects, owner, selected_target, selected_targets)
 	for i = 1, #effects do
 		local wrapped = wrap_effect_with_owner(effects[i], owner)
 		wrapped._effect_def = effects[i]._effect_def
@@ -37,6 +37,7 @@ local function append_wrapped_effects(out, effects, owner, selected_target)
 		wrapped.sub = effects[i].sub
 		wrapped.meta = wrapped.meta or {}
 		wrapped.meta.selected_target = selected_target
+		wrapped.meta.selected_targets = selected_targets
 		out[#out + 1] = wrapped
 	end
 end
@@ -47,7 +48,7 @@ function M.stances.resolve(stance, state)
 	local owner = normalize_owner(stance.owner)
 	local out = {}
 	local resolved = objects_effects.resolve_stance_definition_effects(stance.type)
-	append_wrapped_effects(out, resolved, owner, nil)
+	append_wrapped_effects(out, resolved, owner, nil, nil)
 	return out
 end
 
@@ -57,7 +58,7 @@ function M.cards.resolve(card, state)
 	local owner = normalize_owner(card.owner)
 	local out = {}
 	local resolved = objects_effects.resolve_card_effects(card)
-	append_wrapped_effects(out, resolved, owner, card.selected_target)
+	append_wrapped_effects(out, resolved, owner, card.selected_target, card.selected_targets)
 	return out
 end
 

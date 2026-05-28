@@ -98,6 +98,41 @@ local function draw_game_background()
 	lg.clear(config.COLOR_BOARD[1], config.COLOR_BOARD[2], config.COLOR_BOARD[3])
 end
 
+local function draw_card_target_arrow(from_x, from_y, to_x, to_y, is_valid)
+	local lg = love.graphics
+	local dx = to_x - from_x
+	local dy = to_y - from_y
+	local len = math.sqrt(dx * dx + dy * dy)
+	if len < 1 then
+		return
+	end
+	local ux = dx / len
+	local uy = dy / len
+	if is_valid then
+		lg.setColor(0.95, 0.84, 0.22, 0.96)
+	else
+		lg.setColor(0.55, 0.55, 0.57, 0.9)
+	end
+	lg.setLineWidth(3)
+	lg.line(from_x, from_y, to_x, to_y)
+	local head = 12
+	local wing = 6
+	local bx = to_x - ux * head
+	local by = to_y - uy * head
+	local px = -uy
+	local py = ux
+	lg.polygon(
+		"fill",
+		to_x,
+		to_y,
+		bx + px * wing,
+		by + py * wing,
+		bx - px * wing,
+		by - py * wing
+	)
+	lg.setLineWidth(1)
+end
+
 local function draw_stone_graphic(draw_key, x, y, w, h, color)
 	local lg = love.graphics
 	local cx = x + w * 0.5
@@ -198,9 +233,7 @@ local function draw_stone_chip(stone_id, rect, owner_side, highlighted, solidity
 	if not stone then
 		return
 	end
-	local current = stone_solidity.resolve_solidity(stone_id, solidity)
-	local max_s = stone_solidity.stone_max_solidity(stone_id)
-	local tier = stone_solidity.solidity_tier(current, max_s)
+	local tier = M.stone_visual_tier(stone_id, solidity)
 	local atlas_img, atlas_quad = stone_solidity_atlas.get_frame(owner_side, tier)
 	local drew_atlas = atlas_img and atlas_quad and try_draw_solidity_base(atlas_img, atlas_quad, rect)
 	if drew_atlas then
@@ -219,6 +252,15 @@ local function draw_stone_chip(stone_id, rect, owner_side, highlighted, solidity
 	lg.circle("line", cx, cy, rr + 3)
 	lg.setLineWidth(1)
 	lg.setColor(1, 1, 1, 1)
+end
+
+--- @param stone_id string
+--- @param solidity integer|nil
+--- @return integer
+function M.stone_visual_tier(stone_id, solidity)
+	local current = stone_solidity.resolve_solidity(stone_id, solidity)
+	local max_s = stone_solidity.stone_max_solidity(stone_id)
+	return stone_solidity.solidity_tier(current, max_s)
 end
 
 local function draw_score_box_simple(game, box, side, title)
@@ -676,6 +718,16 @@ local function draw_hand(game, layout)
 	local player = match_state.player_for_color(game, game.to_play)
 	local hand = player.cards.hand.ids
 	local selected = (M._card_ui and M._card_ui.selected_index) or nil
+	local card_ui_state = M._card_ui or {}
+	local selected_targets = card_ui_state.selected_targets or {}
+	local selected_target_cards = {}
+	local invalid_target = card_ui_state.invalid_target_feedback
+	for i = 1, #selected_targets do
+		local ref = selected_targets[i]
+		if ref.object_type == "card" and ref.owner == game.to_play then
+			selected_target_cards[ref.hand_index] = true
+		end
+	end
 	local dragging_index = nil
 	if M._card_ui and M._card_ui.drag_active and M._card_ui.moved then
 		dragging_index = M._card_ui.drag_index
@@ -697,9 +749,22 @@ local function draw_hand(game, layout)
 		lg.rotate(slot.angle)
 		lg.setColor(1, 1, 1, 1)
 		draw_card_in_rect(slot, card, can_afford)
+		if selected_target_cards[slot._index] then
+			lg.setColor(0.95, 0.84, 0.22, 0.95)
+			lg.setLineWidth(3)
+			lg.rectangle("line", -slot.w * 0.5 + 2, -slot.h * 0.5 + 2, slot.w - 4, slot.h - 4, 8, 8)
+			lg.setLineWidth(1)
+		end
+		if invalid_target and invalid_target.object_type == "card" and invalid_target.hand_index == slot._index then
+			lg.setColor(0.94, 0.22, 0.22, 0.95)
+			lg.setLineWidth(4)
+			lg.rectangle("line", -slot.w * 0.5 + 3, -slot.h * 0.5 + 3, slot.w - 6, slot.h - 6, 8, 8)
+			lg.setLineWidth(1)
+		end
 		lg.pop()
 	end
 	for i = 1, #slots do
+		slots[i]._index = i
 		if i ~= selected and i ~= dragging_index then
 			draw_card(slots[i], hand[i])
 		end
@@ -723,13 +788,44 @@ local function draw_hand(game, layout)
 		}
 		draw_card(focus, hand[selected])
 		local use_button = layout_mod.card_use_button_rect(layout)
-		lg.setColor(0.26, 0.56, 0.32, 0.92)
+		if card_ui_state.can_use then
+			lg.setColor(0.26, 0.56, 0.32, 0.92)
+		else
+			lg.setColor(0.38, 0.38, 0.4, 0.82)
+		end
 		lg.rectangle("fill", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
 		lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
 		lg.rectangle("line", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
 		ui_fonts.set("body")
 		lg.setColor(0.96, 0.96, 0.96, 1)
 		lg.printf("Use", use_button.x, use_button.y + 10, use_button.w, "center")
+		ui_fonts.set("body_small")
+		local req = card_ui_state.requirement_text or ""
+		if req ~= "" then
+			lg.setColor(0.92, 0.92, 0.92, 0.95)
+			lg.printf(req, use_button.x - 120, use_button.y + use_button.h + 2, use_button.w + 120, "right")
+		end
+		local reason = card_ui_state.validation_reason or card_ui_state.status_text or ""
+		if reason ~= "" and not card_ui_state.can_use then
+			lg.setColor(0.94, 0.44, 0.44, 0.95)
+			lg.printf(reason, use_button.x - 220, use_button.y + use_button.h + 20, use_button.w + 220, "right")
+		elseif (card_ui_state.status_text or "") ~= "" then
+			lg.setColor(0.94, 0.44, 0.44, 0.95)
+			lg.printf(card_ui_state.status_text, use_button.x - 220, use_button.y + use_button.h + 20, use_button.w + 220, "right")
+		end
+		local chip_rects = card_ui_state.target_chip_rects or {}
+		local labels = card_ui_state.selected_target_labels or {}
+		for i = 1, #chip_rects do
+			local chip = chip_rects[i]
+			lg.setColor(0.19, 0.21, 0.24, 0.92)
+			lg.rectangle("fill", chip.x, chip.y, chip.w, chip.h, 6, 6)
+			lg.setColor(0.42, 0.45, 0.5, 1)
+			lg.rectangle("line", chip.x, chip.y, chip.w, chip.h, 6, 6)
+			lg.setColor(0.96, 0.96, 0.96, 1)
+			lg.printf(labels[i] or "Target", chip.x + 8, chip.y + 4, chip.w - 28, "left")
+			lg.setColor(0.94, 0.44, 0.44, 1)
+			lg.printf("×", chip.x + chip.w - 18, chip.y + 4, 12, "center")
+		end
 	end
 	if dragging_index and hand[dragging_index] then
 		local drag = M._card_ui
@@ -749,7 +845,11 @@ local function draw_hand(game, layout)
 		}
 		draw_card(floating, hand[dragging_index])
 		local use_button = layout_mod.card_use_button_rect(layout)
-		lg.setColor(0.26, 0.56, 0.32, 0.92)
+		if card_ui_state.can_use then
+			lg.setColor(0.26, 0.56, 0.32, 0.92)
+		else
+			lg.setColor(0.38, 0.38, 0.4, 0.82)
+		end
 		lg.rectangle("fill", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
 		lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
 		lg.rectangle("line", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
@@ -814,14 +914,31 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 			end
 		end
 	end
+	local selected_targets = game.selected_card_targets or {}
+	local invalid = M._card_ui and M._card_ui.invalid_target_feedback or nil
+	for i = 1, #selected_targets do
+		local target = selected_targets[i]
+		if target.object_type == "stone" and target.row and target.col then
+			local px, py = layout_mod.grid_to_pixel(layout, target.row, target.col)
+			lg.setColor(0.96, 0.84, 0.22, 0.95)
+			lg.setLineWidth(3)
+			lg.circle("line", px, py, rad * 0.92)
+		end
+	end
+	if invalid and invalid.object_type == "stone" and invalid.row and invalid.col then
+		local px, py = layout_mod.grid_to_pixel(layout, invalid.row, invalid.col)
+		lg.setColor(0.94, 0.22, 0.22, 0.95)
+		lg.setLineWidth(4)
+		lg.circle("line", px, py, rad * 0.98)
+	end
 	local selected_target = game.selected_card_target
 	if selected_target and selected_target.row and selected_target.col then
 		local px, py = layout_mod.grid_to_pixel(layout, selected_target.row, selected_target.col)
 		lg.setColor(0.96, 0.84, 0.22, 0.95)
 		lg.setLineWidth(3)
 		lg.circle("line", px, py, rad * 0.92)
-		lg.setLineWidth(1)
 	end
+	lg.setLineWidth(1)
 	local probe = M._influence_probe
 	if probe and probe.contributors then
 		local marked = {}
@@ -1112,6 +1229,21 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, sto
 	draw_selector(game, layout, popup_state)
 	draw_hand(game, layout)
 	draw_board(game, layout, hover_row, hover_col, show_hover, popup_state)
+	local card_ui_state = M._card_ui or nil
+	if
+		card_ui_state
+		and card_ui_state.drag_active
+		and card_ui_state.drag_targeting
+		and card_ui_state.moved
+	then
+		draw_card_target_arrow(
+			card_ui_state.drag_arrow_from_x,
+			card_ui_state.drag_arrow_from_y,
+			card_ui_state.drag_arrow_to_x,
+			card_ui_state.drag_arrow_to_y,
+			card_ui_state.drag_target_valid
+		)
+	end
 	draw_popup(layout, popup_state)
 	if stone_drag and stone_drag.active and stone_drag.moved and stone_drag.stone_id then
 		local d = layout_mod.board_stone_outer_diameter(layout)

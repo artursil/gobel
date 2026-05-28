@@ -18,6 +18,23 @@ describe("stone solidity", function()
 		assert.are.equal(3, stone_solidity.solidity_tier(0, 4))
 	end)
 
+	it("solidity_tier transitions correctly on degrade and recovery", function()
+		local down = {
+			stone_solidity.solidity_tier(4, 4),
+			stone_solidity.solidity_tier(3, 4),
+			stone_solidity.solidity_tier(2, 4),
+			stone_solidity.solidity_tier(1, 4),
+		}
+		assert.are.same({ 0, 1, 2, 3 }, down)
+		local up = {
+			stone_solidity.solidity_tier(1, 4),
+			stone_solidity.solidity_tier(2, 4),
+			stone_solidity.solidity_tier(3, 4),
+			stone_solidity.solidity_tier(4, 4),
+		}
+		assert.are.same({ 3, 2, 1, 0 }, up)
+	end)
+
 	it("stone_max_solidity uses parameter default", function()
 		assert.are.equal(stone_params.default_solidity, stone_solidity.stone_max_solidity("stone_basic"))
 	end)

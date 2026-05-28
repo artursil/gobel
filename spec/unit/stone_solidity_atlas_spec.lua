@@ -56,7 +56,7 @@ describe("ui.stone_solidity_atlas", function()
 	end
 
 	it("uses manual frames from parameters when they fit the image", function()
-		stub_atlas(800, 400)
+		stub_atlas(1600, 900)
 		local atlas = require("ui.stone_solidity_atlas")
 		for _, side in ipairs({ "black", "white" }) do
 			for tier = 0, 3 do
@@ -91,10 +91,10 @@ describe("ui.stone_solidity_atlas", function()
 
 	it("falls back to grid for a tier when manual rect is out of bounds", function()
 		local atlas = require("ui.stone_solidity_atlas")
-		local manual_white = atlas.frame_rect("white", 0, 800, 200)
-		local grid_black = atlas.frame_rect("black", 0, 800, 200)
+		local manual_white = atlas.frame_rect("white", 0, 1600, 900)
+		local grid_black = atlas.frame_rect("black", 0, 1600, 200)
 		assert.are.equal(atlas_params.frames.white[1].x, manual_white.x)
-		local expected_black = atlas.grid_frame_rect(800, 200, atlas_params.row_black or 1, 0)
+		local expected_black = atlas.grid_frame_rect(1600, 200, atlas_params.row_black or 1, 0)
 		assert.are.equal(expected_black.x, grid_black.x)
 		assert.are.equal(expected_black.y, grid_black.y)
 	end)

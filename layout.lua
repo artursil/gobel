@@ -238,6 +238,28 @@ function M.card_use_button_rect(layout)
 	}
 end
 
+--- @param layout table
+--- @param count integer
+--- @return table[]
+function M.card_target_chip_rects(layout, count)
+	local use = M.card_use_button_rect(layout)
+	local chip_h = 24
+	local gap = 6
+	local max_w = 220
+	local x = math.max(layout.hand_panel.x + 12, use.x - max_w - 12)
+	local y0 = use.y + use.h + 24
+	local out = {}
+	for i = 1, count do
+		out[i] = {
+			x = x,
+			y = y0 + (i - 1) * (chip_h + gap),
+			w = max_w,
+			h = chip_h,
+		}
+	end
+	return out
+end
+
 function M.stone_chip_rects(layout, stone_count)
 	local panel = layout.stone_selector_panel
 	local pad = 10

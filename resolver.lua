@@ -14,6 +14,12 @@ local rules = require("rules")
 
 local M = {}
 
+local VALID_CARD_PLAY_MODES = {
+	instant = true,
+	target_single = true,
+	target_multi = true,
+}
+
 --- @param color string
 --- @return integer
 local function color_to_stone(color)
@@ -32,6 +38,13 @@ local function opponent_color(color)
 	return "black"
 end
 
+local function owner_for_color(color)
+	if color == "white" then
+		return config.OWNER_WHITE
+	end
+	return config.OWNER_BLACK
+end
+
 --- @param side string
 --- @return string
 local function owner_for_side(side)
@@ -39,6 +52,291 @@ local function owner_for_side(side)
 		return config.OWNER_WHITE
 	end
 	return config.OWNER_BLACK
+end
+
+local function normalize_selected_targets(payload, state)
+	local function normalize_ref(ref)
+		if type(ref) ~= "table" then
+			return ref
+		end
+		if ref.object_type then
+			return ref
+		end
+		if ref.row and ref.col then
+			return {
+				object_type = "stone",
+				row = ref.row,
+				col = ref.col,
+			}
+		end
+		return ref
+	end
+	if payload and type(payload.selected_targets) == "table" then
+		local out = {}
+		for i = 1, #payload.selected_targets do
+			out[#out + 1] = normalize_ref(payload.selected_targets[i])
+		end
+		return out
+	end
+	if payload and payload.selected_target then
+		return { normalize_ref(payload.selected_target) }
+	end
+	if state and state.selected_card_target then
+		return { normalize_ref(state.selected_card_target) }
+	end
+	return {}
+end
+
+local function target_has_all(tags, required)
+	for i = 1, #required do
+		if not tags[required[i]] then
+			return false
+		end
+	end
+	return true
+end
+
+local function target_has_any(tags, required)
+	if not required or #required == 0 then
+		return true
+	end
+	for i = 1, #required do
+		if tags[required[i]] then
+			return true
+		end
+	end
+	return false
+end
+
+local function target_has_excluded(tags, excluded)
+	if not excluded then
+		return false
+	end
+	for i = 1, #excluded do
+		if tags[excluded[i]] then
+			return true
+		end
+	end
+	return false
+end
+
+local function target_key(ref)
+	if ref.object_type == "stone" then
+		return table.concat({ "stone", tostring(ref.row), tostring(ref.col) }, ":")
+	end
+	if ref.object_type == "card" then
+		return table.concat({ "card", tostring(ref.owner), tostring(ref.hand_index) }, ":")
+	end
+	if ref.object_type == "stance" then
+		return table.concat({ "stance", tostring(ref.owner), tostring(ref.lane), tostring(ref.slot_index) }, ":")
+	end
+	return nil
+end
+
+local function adjusted_hand_index_after_removals(hand_index, selected_targets, actor)
+	local shift = 0
+	for i = 1, #selected_targets do
+		local ref = selected_targets[i]
+		if ref.object_type == "card" and (ref.owner == actor or ref.owner == nil) and type(ref.hand_index) == "number" then
+			if ref.hand_index < hand_index then
+				shift = shift + 1
+			end
+		end
+	end
+	return hand_index - shift
+end
+
+--- Source of truth for runtime target tags.
+--- @param target_ref table
+--- @param actor string|nil
+--- @param state table
+--- @return string[]
+function M.resolve_target_tags(target_ref, actor, state)
+	local tags = {}
+	if state == nil and type(actor) == "table" then
+		state = actor
+		actor = nil
+	end
+	if type(target_ref) ~= "table" then
+		return tags
+	end
+	local acting_side = actor or state.to_play
+	local owner = owner_for_color(acting_side)
+	if target_ref.object_type == "stone" then
+		local row = target_ref.row
+		local col = target_ref.col
+		local cell = state.board and state.board[row] and state.board[row][col]
+		if not cell or board.is_empty(cell) then
+			return tags
+		end
+		local cell_owner = cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
+		tags[#tags + 1] = "targetable"
+		if cell_owner == owner then
+			tags[#tags + 1] = "owner_self"
+		else
+			tags[#tags + 1] = "owner_opponent"
+		end
+		local stone_def = content.get_stone(cell.kind)
+		if stone_def and stone_def.tags then
+			for i = 1, #stone_def.tags do
+				tags[#tags + 1] = stone_def.tags[i]
+			end
+		end
+		local stone_solidity = require("objects.stone_solidity")
+		local current = cell.solidity or stone_solidity.stone_max_solidity(cell.kind)
+		local max_s = stone_solidity.stone_max_solidity(cell.kind)
+		if current < max_s then
+			tags[#tags + 1] = "damaged"
+		end
+		if current > 0 then
+			tags[#tags + 1] = "upgradable"
+		end
+		if cell.untargetable == true then
+			tags[#tags + 1] = "untargetable"
+		end
+	elseif target_ref.object_type == "card" then
+		local side = target_ref.owner or state.to_play
+		local player = match_state.player_for_color(state, side)
+		local index = target_ref.hand_index
+		local card_id = player and player.cards and player.cards.hand and player.cards.hand.ids and player.cards.hand.ids[index]
+		if not card_id then
+			return tags
+		end
+		local card_owner = owner_for_color(side)
+		tags[#tags + 1] = "targetable"
+		if card_owner == owner then
+			tags[#tags + 1] = "owner_self"
+		else
+			tags[#tags + 1] = "owner_opponent"
+		end
+		tags[#tags + 1] = "in_hand"
+		local card_def = content.get_card(card_id)
+		if card_def and card_def.tags then
+			for i = 1, #card_def.tags do
+				tags[#tags + 1] = card_def.tags[i]
+			end
+		end
+	elseif target_ref.object_type == "stance" then
+		local side = target_ref.owner or state.to_play
+		local player = match_state.player_for_color(state, side)
+		local lane = target_ref.lane
+		local index = target_ref.slot_index
+		local stance_id = player
+			and player.stances
+			and player.stances[lane]
+			and index
+			and player.stances[lane][index]
+		if not stance_id then
+			return tags
+		end
+		local stance_owner = owner_for_color(side)
+		tags[#tags + 1] = "targetable"
+		if stance_owner == owner then
+			tags[#tags + 1] = "owner_self"
+		else
+			tags[#tags + 1] = "owner_opponent"
+		end
+		local stance_def = content.get_stance(stance_id)
+		if stance_def and stance_def.tags then
+			for i = 1, #stance_def.tags do
+				tags[#tags + 1] = stance_def.tags[i]
+			end
+		end
+	end
+	return tags
+end
+
+--- @param card_def table
+--- @param selected_targets table[]
+--- @param state table
+--- @param actor string
+--- @return table
+function M.validate_card_targets(card_def, selected_targets, state, actor)
+	local mode = card_def.play_mode or "instant"
+	if not VALID_CARD_PLAY_MODES[mode] then
+		return { ok = false, error = "Card has invalid play mode" }
+	end
+	local targets = selected_targets or {}
+	if mode == "instant" then
+		if #targets > 0 then
+			return { ok = false, error = "Card does not accept targets" }
+		end
+		return { ok = true, error = nil, normalized_targets = {} }
+	end
+	if mode == "target_single" and #targets ~= 1 then
+		return { ok = false, error = "Card requires exactly one target" }
+	end
+	local min_targets = card_def.min_targets or (mode == "target_single" and 1 or 0)
+	local max_targets = card_def.max_targets or (mode == "target_single" and 1 or #targets)
+	if #targets < min_targets then
+		return { ok = false, error = "Not enough selected targets" }
+	end
+	if #targets > max_targets then
+		return { ok = false, error = "Too many selected targets" }
+	end
+	local expected_type = card_def.target_object_type
+	local normalized = {}
+	local seen = {}
+	for i = 1, #targets do
+		local ref = targets[i]
+		if type(ref) ~= "table" then
+			return { ok = false, error = "Target ref must be an object" }
+		end
+		if expected_type and ref.object_type ~= expected_type then
+			return { ok = false, error = "Target object type mismatch" }
+		end
+		local key = target_key(ref)
+		if key and seen[key] then
+			return { ok = false, error = "Duplicate target selected" }
+		end
+		if key then
+			seen[key] = true
+		end
+		local tags_arr = M.resolve_target_tags(ref, actor, state)
+		local tag_set = {}
+		for t = 1, #tags_arr do
+			tag_set[tags_arr[t]] = true
+		end
+		if card_def.target_owner == "self" and not tag_set.owner_self then
+			return { ok = false, error = "Target owner mismatch" }
+		end
+		if card_def.target_owner == "opponent" and not tag_set.owner_opponent then
+			return { ok = false, error = "Target owner mismatch" }
+		end
+		local required_all = card_def.required_tags_all or {}
+		if not target_has_all(tag_set, required_all) then
+			return { ok = false, error = "Target missing required tags" }
+		end
+		if not target_has_any(tag_set, card_def.required_tags_any) then
+			return { ok = false, error = "Target missing one of required tags" }
+		end
+		if target_has_excluded(tag_set, card_def.excluded_tags) then
+			return { ok = false, error = "Target has excluded tag" }
+		end
+		normalized[#normalized + 1] = ref
+	end
+	return { ok = true, error = nil, normalized_targets = normalized }
+end
+
+--- @param card_def table
+--- @param selected_targets table[]
+--- @param candidate table
+--- @param state table
+--- @param actor string
+--- @return table
+function M.validate_card_target_candidate(card_def, selected_targets, candidate, state, actor)
+	local combined = {}
+	local targets = selected_targets or {}
+	for i = 1, #targets do
+		combined[#combined + 1] = targets[i]
+	end
+	combined[#combined + 1] = candidate
+	local probe_def = {}
+	for k, v in pairs(card_def) do
+		probe_def[k] = v
+	end
+	probe_def.min_targets = 0
+	return M.validate_card_targets(probe_def, combined, state, actor)
 end
 
 --- @param state table
@@ -344,20 +642,26 @@ local function compile_play_card_events(state, action)
 	if not energy.can_spend(actor_state.resources, card_def.energy_cost) then
 		return nil, "Insufficient energy"
 	end
-	local selected_target = state.selected_card_target
-	if card_def.targeting and card_def.targeting.kind == "board_stone" then
-		if not selected_target or not selected_target.row or not selected_target.col then
-			return nil, "Card requires selected board target"
+	local selected_targets = normalize_selected_targets(action.payload, state)
+	for i = 1, #selected_targets do
+		local ref = selected_targets[i]
+		if ref.object_type == "card" and (ref.owner == action.actor or ref.owner == nil) and ref.hand_index == hand_index then
+			return nil, "Played card cannot target itself"
 		end
+	end
+	local target_validation = M.validate_card_targets(card_def, selected_targets, state, action.actor)
+	if not target_validation.ok then
+		return nil, target_validation.error
 	end
 	local events = {
 		{
 			kind = "PLAY_CARD_COMMIT",
 			actor = action.actor,
 			hand_index = hand_index,
+			adjusted_hand_index = adjusted_hand_index_after_removals(hand_index, target_validation.normalized_targets, action.actor),
 			energy_cost = card_def.energy_cost,
 			card_id = card_id,
-			selected_target = selected_target,
+			selected_targets = target_validation.normalized_targets,
 		},
 	}
 	return events, nil
@@ -501,21 +805,63 @@ local function append_reactive_pose_events(state, actor, events)
 	return state, actor, events
 end
 
+local function remove_hand_card_at_index(cards_state, hand_index)
+	if hand_index < 1 or hand_index > #cards_state.hand.ids then
+		return false
+	end
+	local card_id = table.remove(cards_state.hand.ids, hand_index)
+	cards_state.discard.ids[#cards_state.discard.ids + 1] = card_id
+	return true
+end
+
+local function discard_selected_card_targets(state, selected_targets)
+	local card_refs = {}
+	for i = 1, #selected_targets do
+		if selected_targets[i].object_type == "card" then
+			card_refs[#card_refs + 1] = selected_targets[i]
+		end
+	end
+	table.sort(card_refs, function(a, b)
+		local ao = tostring(a.owner or "")
+		local bo = tostring(b.owner or "")
+		if ao ~= bo then
+			return ao < bo
+		end
+		return (a.hand_index or 0) > (b.hand_index or 0)
+	end)
+	for i = 1, #card_refs do
+		local ref = card_refs[i]
+		local side = ref.owner or state.to_play
+		local player = match_state.player_for_color(state, side)
+		if not player or not player.cards then
+			return false
+		end
+		if not remove_hand_card_at_index(player.cards, ref.hand_index) then
+			return false
+		end
+	end
+	return true
+end
+
 local function apply_non_effect_event(state, event)
 	if event.kind == "PLAY_CARD_COMMIT" then
 		local actor_state = match_state.player_for_color(state, event.actor)
+		if not discard_selected_card_targets(state, event.selected_targets or {}) then
+			return false, "Failed to discard selected targets"
+		end
 		local spent = energy.spend(actor_state.resources, event.energy_cost)
 		if not spent then
 			return false, "Insufficient energy"
 		end
-		local played = deck.play_from_hand(actor_state.cards, event.hand_index)
+		local played = deck.play_from_hand(actor_state.cards, event.adjusted_hand_index or event.hand_index)
 		if not played then
 			return false, "Invalid hand index"
 		end
 		card_play_memory.record_just_played_card(state, {
 			type = event.card_id,
 			owner = owner_for_side(event.actor),
-			selected_target = event.selected_target,
+			selected_target = event.selected_targets and event.selected_targets[1] or nil,
+			selected_targets = event.selected_targets,
 		})
 		state.last_opponent_modifiers = state.last_opponent_modifiers or {}
 		state.last_opponent_modifiers[#state.last_opponent_modifiers + 1] = {

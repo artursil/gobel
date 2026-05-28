@@ -158,6 +158,7 @@ function M.new_match(match_kind, territory_mode, seed)
 			source_stance_index = nil,
 			source_stance_slot_index = nil,
 			selected_target = nil,
+			selected_targets = nil,
 			trigger = nil,
 		},
 		selected_card_target = nil,

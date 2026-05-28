@@ -27,7 +27,7 @@ describe("card play memory (just_played / played_cards)", function()
 
 	it("after resolve, played_cards gains forge play and just_played is empty", function()
 		local g = game.new("pvp", "vertical_slice_test")
-		g.board[4][4] = board.make_stone(config.STONE_WHITE, "stone_basic")
+		g.board[4][4] = board.make_stone(config.STONE_BLACK, "stone_basic")
 		assert.is_true(game.select_board_target(g, 4, 4))
 		assert.is_true(game.play_card(g, 2))
 		assert.are.equal(0, #g.just_played)

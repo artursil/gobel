@@ -2,6 +2,7 @@
 --- @module game_types.resolver
 
 local config = require("config")
+local board = require("board")
 local pouch = require("pouch")
 local deck = require("deck")
 local definitions = require("game_types.definitions")
@@ -106,6 +107,18 @@ function M.apply_game_type(state, game_type_id)
 	if game_type.white_energy_max then
 		white.resources.energy_max = game_type.white_energy_max
 		white.resources.energy_current = game_type.white_energy_max
+	end
+
+	if game_type.initial_board then
+		for i = 1, #game_type.initial_board do
+			local cell = game_type.initial_board[i]
+			local row = cell.row
+			local col = cell.col
+			if state.board[row] and state.board[row][col] then
+				local color = cell.color == "white" and config.STONE_WHITE or config.STONE_BLACK
+				state.board[row][col] = board.make_stone(color, cell.kind or "stone_basic", cell.solidity)
+			end
+		end
 	end
 
 	return true

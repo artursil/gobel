@@ -131,7 +131,7 @@ describe("vertical slice features", function()
 		state_invalid.players.black.resources.energy_current = 10
 		assert.is_true(game.select_board_target(state_invalid, 4, 4))
 		state_invalid.board[4][4] = config.STONE_NONE
-		assert.is_true(game.play_card(state_invalid, 1))
+		assert.is_false(game.play_card(state_invalid, 1))
 	end)
 
 	it("persistent mult stance accumulates by tags and persists across new games in one run", function()
@@ -187,6 +187,6 @@ describe("vertical slice features", function()
 			payload = { hand_index = 1 },
 		})
 		assert.is_false(fail_result.ok)
-		assert.are.equal("Card requires selected board target", fail_result.error)
+		assert.are.equal("Card requires exactly one target", fail_result.error)
 	end)
 end)

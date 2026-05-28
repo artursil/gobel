@@ -96,6 +96,7 @@ local function append_card_effects(state, active_macro, active_sub, territory_st
 				e.meta.source_object_type = "card"
 				e.meta.source_def_id = card.type
 				e.meta.selected_target = card.selected_target
+				e.meta.selected_targets = card.selected_targets
 				table.insert(out, e)
 			elseif not effect_def and sub_from_payload(e) == active_sub and (e.macro == active_macro or active_macro == "playing_cards") then
 				e.meta = e.meta or {}
@@ -103,6 +104,7 @@ local function append_card_effects(state, active_macro, active_sub, territory_st
 				e.meta.source_object_type = "card"
 				e.meta.source_def_id = card.type
 				e.meta.selected_target = card.selected_target
+				e.meta.selected_targets = card.selected_targets
 				table.insert(out, e)
 			end
 		end
@@ -309,7 +311,8 @@ local function set_resolution_for_effect(state, active_macro, active_sub, territ
 	resolution.source_object_type = meta.source_object_type
 	resolution.source_stance_index = meta.source_stance_index
 	resolution.source_stance_slot_index = meta.source_stance_slot_index
-	resolution.selected_target = meta.selected_target
+	resolution.selected_target = meta.selected_target or (meta.selected_targets and meta.selected_targets[1]) or nil
+	resolution.selected_targets = meta.selected_targets
 end
 
 --- @param state table

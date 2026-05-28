@@ -181,14 +181,14 @@ function M.tick_ai(g, dt)
 	end
 end
 
-function M.play_card(g, hand_index)
+function M.play_card(g, hand_index, selected_targets)
 	if not M.is_human_turn(g) then
 		return false
 	end
 	local result = resolver.submit_action(g, {
 		actor = g.to_play,
 		type = "PLAY_CARD",
-		payload = { hand_index = hand_index },
+		payload = { hand_index = hand_index, selected_targets = selected_targets },
 	})
 	return set_status_from_result(g, result, "Card resolved.")
 end

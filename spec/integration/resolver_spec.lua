@@ -141,4 +141,60 @@ describe("T-050 resolver and core system correctness", function()
 		assert.is_true(place_result.ok)
 		assert.are.equal(0, black.resources.money)
 	end)
+
+	it("rejects invalid selected targets in resolver card play", function()
+		local state = new_started_state(16)
+		local black = state.players.black
+		black.cards.hand.ids = { "card_attack_1" }
+		black.cards.discard.ids = {}
+		black.resources.energy_current = 3
+		state.board[4][4] = require("board").make_stone(config.STONE_BLACK, "stone_basic", 4)
+
+		local result = resolver.submit_action(state, {
+			actor = "black",
+			type = "PLAY_CARD",
+			payload = {
+				hand_index = 1,
+				selected_targets = {
+					{ object_type = "stone", row = 4, col = 4 },
+				},
+			},
+		})
+
+		assert.is_false(result.ok)
+		assert.are.equal("Target owner mismatch", result.error)
+		assert.are.same({ "card_attack_1" }, black.cards.hand.ids)
+		assert.are.same({}, black.cards.discard.ids)
+	end)
+
+	it("plays card_money_discard_2, discards selected cards, and gains money", function()
+		local state = new_started_state(17)
+		local black = state.players.black
+		black.cards.hand.ids = { "card_money_discard_2", "card_point_tap", "card_small_mult", "card_big_mult" }
+		black.cards.discard.ids = {}
+		black.resources.energy_current = 3
+		black.resources.money = 0
+
+		local result = resolver.submit_action(state, {
+			actor = "black",
+			type = "PLAY_CARD",
+			payload = {
+				hand_index = 1,
+				selected_targets = {
+					{ object_type = "card", owner = "black", hand_index = 3 },
+					{ object_type = "card", owner = "black", hand_index = 4 },
+				},
+			},
+		})
+
+		assert.is_true(result.ok)
+		assert.are.equal(1, black.resources.money)
+		assert.are.equal(1, #black.cards.hand.ids)
+		assert.are.equal("card_point_tap", black.cards.hand.ids[1])
+		assert.are.equal(3, #black.cards.discard.ids)
+		assert.are.same(
+			{ "card_big_mult", "card_small_mult", "card_money_discard_2" },
+			black.cards.discard.ids
+		)
+	end)
 end)

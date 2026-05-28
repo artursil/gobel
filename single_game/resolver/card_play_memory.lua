@@ -3,11 +3,11 @@
 --- **state.just_played** (array, game state on the match): entries that trigger card effects
 --- for the *current* `resolve_round.resolve` pass only. Populated in `PLAY_CARD_COMMIT` after
 --- energy spend and hand→discard. Cleared at the end of each full resolve after being copied
---- to history. Shapes like legacy modifier rows: `{ type = card_id, owner, selected_target? }`
+--- to history. Shapes like legacy modifier rows: `{ type = card_id, owner, selected_target?, selected_targets? }`
 --- so `effect_registry.cards.resolve` and `objects.effects.resolve_card_effects` stay unchanged.
 ---
 --- **state.played_cards** (array, same state): append-only audit trail `{ owner, card_id,
---- selected_target?, turn_number? }`. Not consulted when collecting effects unless a future
+--- selected_target?, selected_targets?, turn_number? }`. Not consulted when collecting effects unless a future
 --- effect definition explicitly reads this list.
 --- @module resolver.card_play_memory
 
@@ -35,6 +35,7 @@ function M.flush_just_played_to_history(state)
 			owner = e.owner,
 			card_id = e.type,
 			selected_target = e.selected_target,
+			selected_targets = e.selected_targets,
 			turn_number = turn,
 		}
 	end

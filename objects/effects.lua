@@ -379,6 +379,103 @@ function M.add_permanent_points_to_selected_stone(effect)
 	}
 end
 
+local function first_target(state)
+	local targets = queries.selected_targets(state)
+	if not targets or #targets == 0 then
+		return nil
+	end
+	return targets[1]
+end
+
+local function selected_stone_cell(state)
+	local target = first_target(state) or queries.selected_target(state)
+	if not target or target.object_type ~= "stone" then
+		return nil, nil, nil
+	end
+	local row = target.row
+	local col = target.col
+	local row_cells = state.board and state.board[row]
+	if not row_cells then
+		return nil, nil, nil
+	end
+	local cell = row_cells[col]
+	if board.is_empty(cell) then
+		return nil, nil, nil
+	end
+	return row, col, cell
+end
+
+--- Damages selected stone by ``value.amount`` (default 1), removing it at 0 solidity.
+--- @param effect table
+--- @return table
+function M.damage_selected_stone(effect)
+	return {
+		type = "DAMAGE_SELECTED_STONE",
+		phase = effect.phase or "points",
+		value = effect.value or {},
+		priority = effect.priority or 10,
+		conditions = effect.conditions,
+		apply = function(state)
+			local row, col, cell = selected_stone_cell(state)
+			if not cell then
+				return
+			end
+			local stone_solidity = require("objects.stone_solidity")
+			local amount = effect.value.amount or 1
+			local current = cell.solidity or stone_solidity.stone_max_solidity(cell.kind)
+			local next_value = math.max(0, current - amount)
+			if next_value <= 0 then
+				state.board[row][col] = config.STONE_NONE
+				return
+			end
+			cell.solidity = next_value
+		end,
+	}
+end
+
+--- Heals selected stone by ``value.amount`` (default 1), capped at max solidity.
+--- @param effect table
+--- @return table
+function M.heal_selected_stone(effect)
+	return {
+		type = "HEAL_SELECTED_STONE",
+		phase = effect.phase or "points",
+		value = effect.value or {},
+		priority = effect.priority or 10,
+		conditions = effect.conditions,
+		apply = function(state)
+			local _, _, cell = selected_stone_cell(state)
+			if not cell then
+				return
+			end
+			local stone_solidity = require("objects.stone_solidity")
+			local amount = effect.value.amount or 1
+			local current = cell.solidity or stone_solidity.stone_max_solidity(cell.kind)
+			local max_s = stone_solidity.stone_max_solidity(cell.kind)
+			cell.solidity = math.min(max_s, current + amount)
+		end,
+	}
+end
+
+--- Adds money after selecting the required cards.
+--- @param effect table
+--- @return table
+function M.add_money(effect)
+	return {
+		type = "ADD_MONEY",
+		phase = effect.phase or "points",
+		value = effect.value or {},
+		priority = effect.priority or 10,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			local amount = effect.value.amount or 0
+			local side = owner == config.OWNER_BLACK and "black" or "white"
+			local player = require("match_state").player_for_color(state, side)
+			player.resources.money = (player.resources.money or 0) + amount
+		end,
+	}
+end
+
 --- @param state table
 --- @return table|nil
 local function placement_coords(state)

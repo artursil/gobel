@@ -63,3 +63,21 @@ x_stone, plus_stone, wall
 
 Cal them:
 x_stone, plus_stone, wall
+
+
+
+Ok those are all the things I want to be implemented, please divide those into PRs and prompts for writers.
+
+I want to implement following changes:
+1. Firstly we need to focus on playing cards, playing cards should have different playing types, so some we just use, but for some we use them on an object and this has to be clear from the visual standpoint.
+2. The types I can think of right now is card that works on an opponent stone, that works on an upgradable our stone or any stone of ours, on other playing cards etc. I think the easiest way is to have it defined by tags, if an object has a tag then we can do it.
+3. Then we need clear UI for this, so if the card can be just used (eg. it gives us just points), when we select the card the use button is green.
+4. When however we need to firstly select some other cards to use this one it should stay grey.
+5. We should have an option to select multiply cards, so whenever we click on card it should pop up and we should be able to do it for multiple cards.
+6. When we have a playing card that attacks when we start dragging the card the arrow should appear same as in slay the spire and the arrow should be grey if we are over wrong stone and gold if we are on the right one.
+7. To test all of this I would add 3 new cards: attack, heal and get money card. Attack card deals 1 damage on selected enemy, heal card give one solidity back for our attacked stone, money card gives you 1$ when you discard 2 other cards, so basically we firstly need to select 2 other cards to use this one
+8. For testing it we need a new game type will all of those card types
+9. We need to add an option to scroll through the game types
+10. When stone is dealt damage the graphic for it should change depending on the % of the solidity left
+
+

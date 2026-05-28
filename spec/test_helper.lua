@@ -66,6 +66,7 @@ function M.install_love_test_stubs()
 	love.timer = love.timer or {}
 	love.event = love.event or {}
 	love.graphics = love.graphics or {}
+	love.mouse = love.mouse or {}
 	love.math.random = love.math.random
 		or function(min_value, max_value)
 			if max_value then
@@ -151,6 +152,9 @@ function M.install_love_test_stubs()
 	love.graphics.translate = love.graphics.translate or function() end
 	love.graphics.rotate = love.graphics.rotate or function() end
 	love.graphics.setScissor = love.graphics.setScissor or function(...) end
+	love.mouse.getPosition = love.mouse.getPosition or function()
+		return 0, 0
+	end
 end
 
 function M.reset_module(name)

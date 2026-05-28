@@ -13,6 +13,9 @@ return {
 	card_destroy_chance_numerator = 1,
 	card_destroy_chance_denominator = 4,
 	card_forge_mark_points = 10,
+	card_attack_1_damage = 1,
+	card_heal_1_amount = 1,
+	card_money_discard_2_gain = 1,
 
 	default_effect_priority = 10,
 	card_focus_stance_effect_priority = 5,

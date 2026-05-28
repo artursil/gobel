@@ -10,6 +10,7 @@ local match_state = require("match_state")
 local render = require("render")
 local board = require("board")
 local content = require("content")
+local resolver = require("resolver")
 local ui_fonts = require("ui.fonts")
 local stance_detail_popup = require("ui.stance_detail_popup")
 
@@ -26,11 +27,26 @@ local stance_ui
 local influence_probe
 local menu_step
 local dropdown_open
+local dropdown_page
 local selected_game_type
+
+local function target_key(ref)
+	if ref.object_type == "stone" then
+		return table.concat({ "stone", tostring(ref.row), tostring(ref.col) }, ":")
+	end
+	if ref.object_type == "card" then
+		return table.concat({ "card", tostring(ref.owner), tostring(ref.hand_index) }, ":")
+	end
+	if ref.object_type == "stance" then
+		return table.concat({ "stance", tostring(ref.owner), tostring(ref.lane), tostring(ref.slot_index) }, ":")
+	end
+	return ""
+end
 
 local function reset_menu_state()
 	menu_step = "game_type"
 	dropdown_open = false
+	dropdown_page = 1
 	selected_game_type = "standard"
 end
 
@@ -271,14 +287,263 @@ end
 local function reset_card_ui()
 	card_ui = {
 		selected_index = nil,
+		selected_targets = {},
+		can_use = false,
+		validation_error = nil,
+		validation_reason = "",
+		requirement_text = "",
+		status_text = "",
+		selected_target_labels = {},
+		target_chip_rects = {},
+		invalid_target_feedback = nil,
+		card_target_hint_indices = {},
 		drag_active = false,
+		drag_targeting = false,
 		drag_index = nil,
 		start_x = 0,
 		start_y = 0,
 		current_x = 0,
 		current_y = 0,
+		drag_arrow_from_x = 0,
+		drag_arrow_from_y = 0,
+		drag_arrow_to_x = 0,
+		drag_arrow_to_y = 0,
+		drag_target_ref = nil,
+		drag_target_valid = false,
+		drag_target_error = nil,
 		moved = false,
 	}
+end
+
+local function map_validation_reason(error_text)
+	if error_text == "Target missing required tags" or error_text == "Target missing one of required tags" then
+		return "Invalid target: missing required tags"
+	end
+	if error_text == "Target owner mismatch" then
+		return "Invalid target: wrong owner"
+	end
+	if error_text == "Target object type mismatch" then
+		return "Invalid target: wrong target type"
+	end
+	if error_text == "Target has excluded tag" then
+		return "Invalid target: excluded target"
+	end
+	if error_text == "Too many selected targets" then
+		return "Target limit reached"
+	end
+	if error_text and error_text ~= "" then
+		return "Invalid target: " .. error_text
+	end
+	return ""
+end
+
+local function target_display_label(ref)
+	if ref.object_type == "stone" then
+		return string.format("Stone (%d,%d)", ref.row or -1, ref.col or -1)
+	end
+	if ref.object_type == "card" then
+		return string.format("Card #%d", ref.hand_index or -1)
+	end
+	if ref.object_type == "stance" then
+		return string.format("Stance %s #%d", tostring(ref.lane), ref.slot_index or -1)
+	end
+	return "Target"
+end
+
+local function current_selected_card(active)
+	local idx = card_ui.selected_index
+	local card_id = idx and active.cards.hand.ids[idx] or nil
+	if not card_id then
+		return nil, nil
+	end
+	return content.get_card(card_id), card_id
+end
+
+local function refresh_card_selection_state()
+	local active = match and match_state.player_for_color(match, match.to_play) or nil
+	if not active then
+		return
+	end
+	match.selected_card_targets = {}
+	match.card_target_hint_cells = {}
+	card_ui.card_target_hint_indices = {}
+	if not card_ui.selected_index then
+		card_ui.can_use = false
+		card_ui.validation_error = nil
+		card_ui.validation_reason = ""
+		card_ui.status_text = ""
+		card_ui.requirement_text = ""
+		card_ui.selected_target_labels = {}
+		card_ui.target_chip_rects = {}
+		return
+	end
+	local card_def = current_selected_card(active)
+	if not card_def then
+		card_ui.selected_index = nil
+		card_ui.selected_targets = {}
+		card_ui.can_use = false
+		card_ui.validation_error = nil
+		card_ui.validation_reason = ""
+		card_ui.status_text = ""
+		card_ui.requirement_text = ""
+		card_ui.selected_target_labels = {}
+		card_ui.target_chip_rects = {}
+		return
+	end
+	local validation = resolver.validate_card_targets(card_def, card_ui.selected_targets, match, match.to_play)
+	card_ui.can_use = validation.ok
+	card_ui.validation_error = validation.error
+	card_ui.validation_reason = validation.ok and "" or map_validation_reason(validation.error)
+	local min_targets = card_def.min_targets or (card_def.play_mode == "target_single" and 1 or 0)
+	local max_targets = card_def.max_targets or min_targets
+	if card_def.play_mode == "instant" or card_def.play_mode == nil then
+		card_ui.requirement_text = "No target required"
+	else
+		local requirement_suffix = ""
+		if min_targets == max_targets then
+			requirement_suffix = string.format(" (need exactly %d)", max_targets)
+		elseif min_targets > 0 then
+			requirement_suffix = string.format(" (min %d)", min_targets)
+		end
+		card_ui.requirement_text = string.format("Targets: %d/%d%s", #card_ui.selected_targets, max_targets, requirement_suffix)
+	end
+	card_ui.selected_target_labels = {}
+	for i = 1, #card_ui.selected_targets do
+		card_ui.selected_target_labels[i] = target_display_label(card_ui.selected_targets[i])
+	end
+	card_ui.target_chip_rects = layout_mod.card_target_chip_rects(layout, #card_ui.selected_targets)
+	match.selected_card_targets = card_ui.selected_targets
+	for i = 1, #card_ui.selected_targets do
+		local ref = card_ui.selected_targets[i]
+		if ref.object_type == "stone" then
+			match.card_target_hint_cells[target_key(ref)] = true
+		elseif ref.object_type == "card" and ref.owner == match.to_play then
+			card_ui.card_target_hint_indices[ref.hand_index] = true
+		end
+	end
+end
+
+local function flash_invalid_target(ref, message)
+	card_ui.status_text = message or ""
+	card_ui.invalid_target_feedback = {
+		key = target_key(ref),
+		object_type = ref.object_type,
+		row = ref.row,
+		col = ref.col,
+		hand_index = ref.hand_index,
+		remaining = 0.55,
+	}
+end
+
+local function toggle_selected_target(ref)
+	local key = target_key(ref)
+	for i = 1, #card_ui.selected_targets do
+		if target_key(card_ui.selected_targets[i]) == key then
+			table.remove(card_ui.selected_targets, i)
+			card_ui.status_text = ""
+			refresh_card_selection_state()
+			return
+		end
+	end
+	local active = match_state.player_for_color(match, match.to_play)
+	local card_def = current_selected_card(active)
+	if not card_def then
+		return
+	end
+	local candidate_validation =
+		resolver.validate_card_target_candidate(card_def, card_ui.selected_targets, ref, match, match.to_play)
+	if not candidate_validation.ok then
+		flash_invalid_target(ref, map_validation_reason(candidate_validation.error))
+		refresh_card_selection_state()
+		return
+	end
+	card_ui.selected_targets[#card_ui.selected_targets + 1] = ref
+	card_ui.status_text = ""
+	refresh_card_selection_state()
+end
+
+local function card_is_targetable(card_def)
+	return card_def and card_def.play_mode and card_def.play_mode ~= "instant" and card_def.target_object_type ~= nil
+end
+
+local function copy_targets(targets)
+	local out = {}
+	for i = 1, #targets do
+		out[i] = targets[i]
+	end
+	return out
+end
+
+local function build_drag_candidate_target(x, y, active, card_def)
+	if not card_def then
+		return nil, x, y
+	end
+	if card_def.target_object_type == "stone" then
+		local row, col = layout_mod.pixel_to_grid(layout, x, y)
+		if not row or not col then
+			return nil, x, y
+		end
+		local cell = match.board[row] and match.board[row][col]
+		if not cell or board.is_empty(cell) then
+			return nil, x, y
+		end
+		local cx, cy = layout_mod.grid_to_pixel(layout, row, col)
+		return { object_type = "stone", row = row, col = col }, cx, cy
+	end
+	if card_def.target_object_type == "card" then
+		local hand_count = #active.cards.hand.ids
+		local hand_index = layout_mod.hand_index_at(layout, x, y, hand_count)
+		if not hand_index then
+			return nil, x, y
+		end
+		local slots = layout_mod.hand_fan_slots(layout, hand_count)
+		local slot = slots[hand_index]
+		local cx = slot and (slot.x + slot.w * 0.5) or x
+		local cy = slot and (slot.y + slot.h * 0.5) or y
+		return { object_type = "card", owner = match.to_play, hand_index = hand_index }, cx, cy
+	end
+	return nil, x, y
+end
+
+local function update_card_drag_targeting(x, y, active)
+	if not card_ui.drag_active or not card_ui.drag_targeting then
+		return
+	end
+	local slots = layout_mod.hand_fan_slots(layout, #active.cards.hand.ids)
+	local drag_slot = slots[card_ui.drag_index]
+	if drag_slot then
+		card_ui.drag_arrow_from_x = drag_slot.x + drag_slot.w * 0.5
+		card_ui.drag_arrow_from_y = drag_slot.y + drag_slot.h * 0.5
+	else
+		card_ui.drag_arrow_from_x = card_ui.start_x
+		card_ui.drag_arrow_from_y = card_ui.start_y
+	end
+	local card_def = current_selected_card(active)
+	local candidate, tx, ty = build_drag_candidate_target(x, y, active, card_def)
+	card_ui.drag_arrow_to_x = tx
+	card_ui.drag_arrow_to_y = ty
+	card_ui.drag_target_ref = nil
+	card_ui.drag_target_valid = false
+	card_ui.drag_target_error = nil
+	if not candidate then
+		return
+	end
+	local candidate_targets = copy_targets(card_ui.selected_targets)
+	local already_selected = false
+	local candidate_key = target_key(candidate)
+	for i = 1, #candidate_targets do
+		if target_key(candidate_targets[i]) == candidate_key then
+			already_selected = true
+			break
+		end
+	end
+	if not already_selected then
+		candidate_targets[#candidate_targets + 1] = candidate
+	end
+	local validation = resolver.validate_card_targets(card_def, candidate_targets, match, match.to_play)
+	card_ui.drag_target_ref = candidate
+	card_ui.drag_target_valid = validation.ok
+	card_ui.drag_target_error = validation.error
 end
 
 local function reset_stance_ui()
@@ -447,28 +712,81 @@ local function handle_card_press(x, y, active)
 	end
 	local hand_index = layout_mod.hand_index_at(layout, x, y, hand_count)
 	if hand_index then
+		local selected_card_def = current_selected_card(active)
+		if
+			card_ui.selected_index
+			and selected_card_def
+			and selected_card_def.target_object_type == "card"
+			and hand_index ~= card_ui.selected_index
+		then
+			toggle_selected_target({
+				object_type = "card",
+				owner = match.to_play,
+				hand_index = hand_index,
+			})
+			return true
+		end
 		card_ui.selected_index = hand_index
+		card_ui.selected_targets = {}
 		card_ui.drag_active = true
+		card_ui.drag_targeting = false
 		card_ui.drag_index = hand_index
 		card_ui.start_x = x
 		card_ui.start_y = y
 		card_ui.current_x = x
 		card_ui.current_y = y
+		card_ui.drag_arrow_from_x = x
+		card_ui.drag_arrow_from_y = y
+		card_ui.drag_arrow_to_x = x
+		card_ui.drag_arrow_to_y = y
+		card_ui.drag_target_ref = nil
+		card_ui.drag_target_valid = false
+		card_ui.drag_target_error = nil
 		card_ui.moved = false
+		refresh_card_selection_state()
+		local card_def = current_selected_card(active)
+		if card_def and (card_def.play_mode == "instant" or card_def.play_mode == nil) and card_ui.can_use then
+			local ok = game.play_card(match, card_ui.selected_index, card_ui.selected_targets)
+			if ok then
+				card_ui.selected_index = nil
+				card_ui.selected_targets = {}
+				refresh_card_selection_state()
+			end
+		end
 		return true
 	end
 	if not card_ui.selected_index then
 		return false
 	end
+	for i = 1, #card_ui.target_chip_rects do
+		local chip = card_ui.target_chip_rects[i]
+		if x >= chip.x and x <= chip.x + chip.w and y >= chip.y and y <= chip.y + chip.h then
+			table.remove(card_ui.selected_targets, i)
+			card_ui.status_text = ""
+			refresh_card_selection_state()
+			return true
+		end
+	end
 	local use = layout_mod.card_use_button_rect(layout)
 	if x >= use.x and x <= use.x + use.w and y >= use.y and y <= use.y + use.h then
-		local ok = game.play_card(match, card_ui.selected_index)
+		if not card_ui.can_use then
+			return true
+		end
+		local ok = game.play_card(match, card_ui.selected_index, card_ui.selected_targets)
 		if ok then
 			card_ui.selected_index = nil
+			card_ui.selected_targets = {}
+			refresh_card_selection_state()
 		end
 		return true
 	end
+	local selected_card_def = current_selected_card(active)
+	if selected_card_def and selected_card_def.target_object_type == "stone" then
+		return false
+	end
 	card_ui.selected_index = nil
+	card_ui.selected_targets = {}
+	refresh_card_selection_state()
 	return true
 end
 
@@ -492,8 +810,12 @@ local function handle_board_press(x, y)
 		local selected_index = card_ui.selected_index
 		local card_id = selected_index and active.cards.hand.ids[selected_index] or nil
 		local card_def = card_id and content.get_card(card_id) or nil
-		if card_def and card_def.targeting and card_def.targeting.kind == "board_stone" then
-			game.select_board_target(match, row, col)
+		if card_def and card_def.target_object_type == "stone" then
+			toggle_selected_target({
+				object_type = "stone",
+				row = row,
+				col = col,
+			})
 		end
 		open_board_stone_popup(row, col)
 		return
@@ -546,6 +868,12 @@ end
 --- @param dt number
 function love.update(dt)
 	if screen == "play" and match then
+		if card_ui and card_ui.invalid_target_feedback then
+			card_ui.invalid_target_feedback.remaining = card_ui.invalid_target_feedback.remaining - dt
+			if card_ui.invalid_target_feedback.remaining <= 0 then
+				card_ui.invalid_target_feedback = nil
+			end
+		end
 		update_influence_probe(dt)
 		render.update(dt, match, layout)
 		if not render.is_score_animating() then
@@ -559,7 +887,7 @@ function love.draw()
 	local w, h = love.graphics.getDimensions()
 	if screen == "menu" then
 		if menu_step == "game_type" then
-			home.draw_game_type_menu(w, h, dropdown_open, selected_game_type)
+			home.draw_game_type_menu(w, h, dropdown_open, selected_game_type, dropdown_page)
 		else
 			home.draw_match_menu(w, h, selected_game_type)
 		end
@@ -590,16 +918,27 @@ function love.mousepressed(x, y, button)
 	local w, h = love.graphics.getDimensions()
 	if screen == "menu" then
 		if menu_step == "game_type" then
-			local pick = home.hit_test_game_type(x, y, w, h, dropdown_open, selected_game_type)
+			local pick = home.hit_test_game_type(x, y, w, h, dropdown_open, selected_game_type, dropdown_page)
 			if pick == "dropdown_open" then
 				dropdown_open = true
+				dropdown_page = home.game_type_page_for_selection(selected_game_type)
 				return
 			elseif pick == "dropdown_close" then
 				dropdown_open = false
+				dropdown_page = home.game_type_page_for_selection(selected_game_type)
+				return
+			elseif pick == "dropdown_prev_page" then
+				dropdown_page = math.max(1, (dropdown_page or 1) - 1)
+				return
+			elseif pick == "dropdown_next_page" then
+				dropdown_page = (dropdown_page or 1) + 1
+				return
+			elseif pick == "dropdown_noop" then
 				return
 			elseif pick and pick:sub(1, 10) == "game_type:" then
 				selected_game_type = pick:sub(11)
 				dropdown_open = false
+				dropdown_page = home.game_type_page_for_selection(selected_game_type)
 				menu_step = "match"
 				return
 			end
@@ -685,7 +1024,14 @@ function love.mousemoved(x, y)
 		local dy = y - card_ui.start_y
 		if (dx * dx + dy * dy) > 64 then
 			card_ui.moved = true
+			local active = match_state.player_for_color(match, match.to_play)
+			local card_def = current_selected_card(active)
+			if card_is_targetable(card_def) then
+				card_ui.drag_targeting = true
+			end
 		end
+		local active = match_state.player_for_color(match, match.to_play)
+		update_card_drag_targeting(x, y, active)
 	end
 	hover_row, hover_col = layout_mod.pixel_to_grid(layout, x, y)
 end
@@ -721,19 +1067,78 @@ function love.mousereleased(x, y, button)
 	end
 	if card_ui.drag_active then
 		if card_ui.moved and card_ui.drag_index then
-			local use = layout_mod.card_use_button_rect(layout)
-			if x >= use.x and x <= use.x + use.w and y >= use.y and y <= use.y + use.h then
-				local ok = game.play_card(match, card_ui.drag_index)
-				if ok then
-					card_ui.selected_index = nil
+			local active = match_state.player_for_color(match, match.to_play)
+			local card_def = current_selected_card(active)
+			if card_ui.drag_targeting and card_is_targetable(card_def) then
+				update_card_drag_targeting(x, y, active)
+				if card_ui.drag_target_ref and card_ui.drag_target_valid then
+					local final_targets = copy_targets(card_ui.selected_targets)
+					local key = target_key(card_ui.drag_target_ref)
+					local duplicate = false
+					for i = 1, #final_targets do
+						if target_key(final_targets[i]) == key then
+							duplicate = true
+							break
+						end
+					end
+					if not duplicate then
+						final_targets[#final_targets + 1] = card_ui.drag_target_ref
+					end
+					local ok = game.play_card(match, card_ui.drag_index, final_targets)
+					if ok then
+						card_ui.selected_index = nil
+						card_ui.selected_targets = {}
+						card_ui.status_text = ""
+						refresh_card_selection_state()
+					end
+				end
+			else
+				local use = layout_mod.card_use_button_rect(layout)
+				if x >= use.x and x <= use.x + use.w and y >= use.y and y <= use.y + use.h then
+					if not card_ui.can_use then
+						card_ui.drag_active = false
+						card_ui.drag_targeting = false
+						card_ui.drag_index = nil
+						card_ui.moved = false
+						return
+					end
+					local ok = game.play_card(match, card_ui.drag_index, card_ui.selected_targets)
+					if ok then
+						card_ui.selected_index = nil
+						card_ui.selected_targets = {}
+						refresh_card_selection_state()
+					end
 				end
 			end
 		elseif card_ui.drag_index then
 			card_ui.selected_index = card_ui.drag_index
+			refresh_card_selection_state()
 		end
 		card_ui.drag_active = false
+		card_ui.drag_targeting = false
 		card_ui.drag_index = nil
+		card_ui.drag_target_ref = nil
+		card_ui.drag_target_valid = false
+		card_ui.drag_target_error = nil
 		card_ui.moved = false
+	end
+end
+
+function love.wheelmoved(x, y)
+	if screen ~= "menu" or menu_step ~= "game_type" or not dropdown_open then
+		return
+	end
+	local mx, my = love.mouse.getPosition()
+	local w, h = love.graphics.getDimensions()
+	local rect = home.game_type_dropdown_scroll_rect(w, h, dropdown_page)
+	local inside = mx >= rect.x and mx <= rect.x + rect.w and my >= rect.y and my <= rect.y + rect.h
+	if not inside then
+		return
+	end
+	if y > 0 then
+		dropdown_page = home.step_game_type_page(dropdown_page, -1)
+	elseif y < 0 then
+		dropdown_page = home.step_game_type_page(dropdown_page, 1)
 	end
 end
 

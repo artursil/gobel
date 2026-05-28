@@ -262,6 +262,37 @@ M.vertical_slice_test = {
 	white_energy_max = 8,
 }
 
+M.targeting_modes_test = {
+	id = "targeting_modes_test",
+	name = "Targeting Modes Test",
+	description = "Deterministic setup for attack, heal, and multi-card discard targeting flows.",
+	black_stones = {
+		stone_basic = 20,
+	},
+	white_stones = {
+		stone_basic = 20,
+	},
+	stone_hand_size = 6,
+	black_deck = {},
+	white_deck = {},
+	black_initial_hand = {
+		"card_attack_1",
+		"card_heal_1",
+		"card_money_discard_2",
+		"card_point_tap",
+		"card_small_mult",
+	},
+	white_initial_hand = {},
+	black_stances = { fixed = {}, swappable = {} },
+	white_stances = { fixed = {}, swappable = {} },
+	black_energy_max = 8,
+	white_energy_max = 8,
+	initial_board = {
+		{ row = 4, col = 4, color = "black", kind = "stone_basic", solidity = 3 },
+		{ row = 4, col = 5, color = "white", kind = "stone_basic", solidity = 4 },
+	},
+}
+
 M.echo_gluttony_steel = {
 	id = "echo_gluttony_steel",
 	name = "Echo + Gluttony (steel)",
@@ -302,6 +333,7 @@ function M.get_all_types()
 		{ id = "echo_gluttony_steel", name = M.echo_gluttony_steel.name },
 		{ id = "temporary_stance_test", name = M.temporary_stance_test.name },
 		{ id = "vertical_slice_test", name = M.vertical_slice_test.name },
+		{ id = "targeting_modes_test", name = M.targeting_modes_test.name },
 	}
 end
 
