@@ -11,6 +11,8 @@ local render = require("render")
 local board = require("board")
 local content = require("content")
 local resolver = require("resolver")
+local deck = require("deck")
+local energy = require("energy")
 local ui_fonts = require("ui.fonts")
 local stance_detail_popup = require("ui.stance_detail_popup")
 
@@ -288,15 +290,18 @@ local function reset_card_ui()
 	card_ui = {
 		selected_index = nil,
 		selected_targets = {},
+		popped_target_indices = {},
 		can_use = false,
 		validation_error = nil,
 		validation_reason = "",
 		requirement_text = "",
 		status_text = "",
+		action_button_label = "Use",
 		selected_target_labels = {},
 		target_chip_rects = {},
 		invalid_target_feedback = nil,
 		card_target_hint_indices = {},
+		drag_mode = "none",
 		drag_active = false,
 		drag_targeting = false,
 		drag_index = nil,
@@ -312,6 +317,9 @@ local function reset_card_ui()
 		drag_target_valid = false,
 		drag_target_error = nil,
 		moved = false,
+		hand_target_phase = nil,
+		armed_hand_index = nil,
+		armed_card_id = nil,
 	}
 end
 
@@ -359,6 +367,65 @@ local function current_selected_card(active)
 	return content.get_card(card_id), card_id
 end
 
+local function card_targets_hand(card_def)
+	return card_def and card_def.target_object_type == "card"
+end
+
+local function card_action_button_label(card_def, hand_target_phase)
+	if hand_target_phase == "armed" then
+		return "Confirm"
+	end
+	if not card_def then
+		return "Use"
+	end
+	if card_def.play_mode == "instant" or card_def.play_mode == nil then
+		return "Confirm"
+	end
+	if card_targets_hand(card_def) then
+		return "Use"
+	end
+	return "Use"
+end
+
+local function armed_hand_target_card_def(active)
+	if card_ui.armed_card_id then
+		return content.get_card(card_ui.armed_card_id)
+	end
+	if not active or not card_ui.armed_hand_index then
+		return nil
+	end
+	local card_id = active.cards.hand.ids[card_ui.armed_hand_index]
+	return card_id and content.get_card(card_id) or nil
+end
+
+local function can_arm_hand_target_card(active, hand_index, card_def)
+	if not active or not hand_index or not card_def then
+		return false
+	end
+	if not deck.can_play_from_hand(active.cards, hand_index) then
+		return false
+	end
+	return energy.can_spend(active.resources, card_def.energy_cost)
+end
+
+local function sync_popped_target_indices()
+	card_ui.popped_target_indices = {}
+	for i = 1, #card_ui.selected_targets do
+		local ref = card_ui.selected_targets[i]
+		if ref.object_type == "card" and ref.hand_index then
+			card_ui.popped_target_indices[ref.hand_index] = true
+		end
+	end
+end
+
+local function copy_targets(targets)
+	local out = {}
+	for i = 1, #targets do
+		out[i] = targets[i]
+	end
+	return out
+end
+
 local function refresh_card_selection_state()
 	local active = match and match_state.player_for_color(match, match.to_play) or nil
 	if not active then
@@ -367,7 +434,9 @@ local function refresh_card_selection_state()
 	match.selected_card_targets = {}
 	match.card_target_hint_cells = {}
 	card_ui.card_target_hint_indices = {}
-	if not card_ui.selected_index then
+	card_ui.popped_target_indices = {}
+	card_ui.action_button_label = "Use"
+	if not card_ui.selected_index and card_ui.hand_target_phase ~= "armed" then
 		card_ui.can_use = false
 		card_ui.validation_error = nil
 		card_ui.validation_reason = ""
@@ -377,26 +446,63 @@ local function refresh_card_selection_state()
 		card_ui.target_chip_rects = {}
 		return
 	end
-	local card_def = current_selected_card(active)
-	if not card_def then
-		card_ui.selected_index = nil
-		card_ui.selected_targets = {}
-		card_ui.can_use = false
-		card_ui.validation_error = nil
-		card_ui.validation_reason = ""
-		card_ui.status_text = ""
-		card_ui.requirement_text = ""
-		card_ui.selected_target_labels = {}
-		card_ui.target_chip_rects = {}
-		return
+	local card_def = nil
+	if card_ui.hand_target_phase == "armed" then
+		card_def = armed_hand_target_card_def(active)
+		if not card_def then
+			card_ui.hand_target_phase = nil
+			card_ui.armed_hand_index = nil
+			card_ui.armed_card_id = nil
+			card_ui.selected_targets = {}
+			card_ui.can_use = false
+			card_ui.action_button_label = "Use"
+			return
+		end
+	else
+		card_def = current_selected_card(active)
+		if not card_def then
+			card_ui.selected_index = nil
+			card_ui.selected_targets = {}
+			card_ui.can_use = false
+			card_ui.validation_error = nil
+			card_ui.validation_reason = ""
+			card_ui.status_text = ""
+			card_ui.requirement_text = ""
+			card_ui.selected_target_labels = {}
+			card_ui.target_chip_rects = {}
+			return
+		end
 	end
-	local validation = resolver.validate_card_targets(card_def, card_ui.selected_targets, match, match.to_play)
-	card_ui.can_use = validation.ok
+	local validation
+	if card_ui.hand_target_phase == "armed" then
+		validation = resolver.validate_card_targets(card_def, card_ui.selected_targets, match, match.to_play)
+		card_ui.can_use = validation.ok
+	elseif card_targets_hand(card_def) then
+		card_ui.can_use = can_arm_hand_target_card(active, card_ui.selected_index, card_def)
+		validation = { ok = card_ui.can_use, error = card_ui.can_use and nil or "Insufficient energy" }
+	else
+		validation = resolver.validate_card_targets(card_def, card_ui.selected_targets, match, match.to_play)
+		card_ui.can_use = validation.ok
+	end
 	card_ui.validation_error = validation.error
 	card_ui.validation_reason = validation.ok and "" or map_validation_reason(validation.error)
+	card_ui.action_button_label = card_action_button_label(card_def, card_ui.hand_target_phase)
+	sync_popped_target_indices()
 	local min_targets = card_def.min_targets or (card_def.play_mode == "target_single" and 1 or 0)
 	local max_targets = card_def.max_targets or min_targets
-	if card_def.play_mode == "instant" or card_def.play_mode == nil then
+	if card_ui.hand_target_phase == "armed" or card_targets_hand(card_def) then
+		local requirement_suffix = ""
+		if min_targets == max_targets then
+			requirement_suffix = string.format(" (need exactly %d)", max_targets)
+		elseif min_targets > 0 then
+			requirement_suffix = string.format(" (min %d)", min_targets)
+		end
+		if card_ui.hand_target_phase == "armed" then
+			card_ui.requirement_text = string.format("Targets: %d/%d%s", #card_ui.selected_targets, max_targets, requirement_suffix)
+		else
+			card_ui.requirement_text = "Press Use to choose discards"
+		end
+	elseif card_def.play_mode == "instant" or card_def.play_mode == nil then
 		card_ui.requirement_text = "No target required"
 	else
 		local requirement_suffix = ""
@@ -411,16 +517,95 @@ local function refresh_card_selection_state()
 	for i = 1, #card_ui.selected_targets do
 		card_ui.selected_target_labels[i] = target_display_label(card_ui.selected_targets[i])
 	end
-	card_ui.target_chip_rects = layout_mod.card_target_chip_rects(layout, #card_ui.selected_targets)
+	if card_targets_hand(card_def) then
+		card_ui.target_chip_rects = {}
+	else
+		card_ui.target_chip_rects = layout_mod.card_target_chip_rects(layout, #card_ui.selected_targets)
+	end
 	match.selected_card_targets = card_ui.selected_targets
 	for i = 1, #card_ui.selected_targets do
 		local ref = card_ui.selected_targets[i]
 		if ref.object_type == "stone" then
 			match.card_target_hint_cells[target_key(ref)] = true
-		elseif ref.object_type == "card" and ref.owner == match.to_play then
-			card_ui.card_target_hint_indices[ref.hand_index] = true
 		end
 	end
+end
+
+local function clear_card_ui_after_play()
+	card_ui.selected_index = nil
+	card_ui.selected_targets = {}
+	card_ui.popped_target_indices = {}
+	card_ui.status_text = ""
+	card_ui.drag_mode = "none"
+	card_ui.hand_target_phase = nil
+	card_ui.armed_hand_index = nil
+	card_ui.armed_card_id = nil
+	refresh_card_selection_state()
+end
+
+local function arm_hand_target_card(active)
+	if card_ui.hand_target_phase == "armed" or not card_ui.selected_index or not card_ui.can_use then
+		return false
+	end
+	local card_id = active.cards.hand.ids[card_ui.selected_index]
+	if not card_id then
+		return false
+	end
+	card_ui.hand_target_phase = "armed"
+	card_ui.armed_hand_index = card_ui.selected_index
+	card_ui.armed_card_id = card_id
+	card_ui.selected_index = nil
+	card_ui.selected_targets = {}
+	card_ui.popped_target_indices = {}
+	card_ui.drag_active = false
+	card_ui.drag_mode = "none"
+	card_ui.drag_targeting = false
+	card_ui.drag_index = nil
+	card_ui.moved = false
+	refresh_card_selection_state()
+	return true
+end
+
+local function commit_selected_card()
+	local play_index = card_ui.armed_hand_index or card_ui.selected_index
+	if not play_index or not card_ui.can_use then
+		return false
+	end
+	local ok = game.play_card(match, play_index, card_ui.selected_targets)
+	if ok then
+		clear_card_ui_after_play()
+	end
+	return ok
+end
+
+local function activate_action_button()
+	if not card_ui.can_use then
+		return false
+	end
+	local active = match_state.player_for_color(match, match.to_play)
+	if card_ui.hand_target_phase == "armed" then
+		return commit_selected_card()
+	end
+	local card_def = current_selected_card(active)
+	if card_def and card_targets_hand(card_def) then
+		return arm_hand_target_card(active)
+	end
+	return commit_selected_card()
+end
+
+local function final_targets_with_drag_ref()
+	local final_targets = copy_targets(card_ui.selected_targets)
+	if not card_ui.drag_target_ref then
+		return final_targets
+	end
+	local key = target_key(card_ui.drag_target_ref)
+	for i = 1, #final_targets do
+		if target_key(final_targets[i]) == key then
+			return final_targets
+		end
+	end
+	final_targets[#final_targets + 1] = card_ui.drag_target_ref
+	return final_targets
 end
 
 local function flash_invalid_target(ref, message)
@@ -446,8 +631,15 @@ local function toggle_selected_target(ref)
 		end
 	end
 	local active = match_state.player_for_color(match, match.to_play)
-	local card_def = current_selected_card(active)
+	local card_def = card_ui.hand_target_phase == "armed" and armed_hand_target_card_def(active)
+		or current_selected_card(active)
 	if not card_def then
+		return
+	end
+	if ref.object_type == "card" and ref.hand_index == card_ui.selected_index then
+		return
+	end
+	if ref.object_type == "card" and ref.hand_index == card_ui.armed_hand_index then
 		return
 	end
 	local candidate_validation =
@@ -466,12 +658,8 @@ local function card_is_targetable(card_def)
 	return card_def and card_def.play_mode and card_def.play_mode ~= "instant" and card_def.target_object_type ~= nil
 end
 
-local function copy_targets(targets)
-	local out = {}
-	for i = 1, #targets do
-		out[i] = targets[i]
-	end
-	return out
+local function card_targets_stone(card_def)
+	return card_def and card_def.target_object_type == "stone"
 end
 
 local function build_drag_candidate_target(x, y, active, card_def)
@@ -506,18 +694,13 @@ local function build_drag_candidate_target(x, y, active, card_def)
 end
 
 local function update_card_drag_targeting(x, y, active)
-	if not card_ui.drag_active or not card_ui.drag_targeting then
+	if not card_ui.drag_active or card_ui.drag_mode ~= "target_arrow" then
 		return
 	end
-	local slots = layout_mod.hand_fan_slots(layout, #active.cards.hand.ids)
-	local drag_slot = slots[card_ui.drag_index]
-	if drag_slot then
-		card_ui.drag_arrow_from_x = drag_slot.x + drag_slot.w * 0.5
-		card_ui.drag_arrow_from_y = drag_slot.y + drag_slot.h * 0.5
-	else
-		card_ui.drag_arrow_from_x = card_ui.start_x
-		card_ui.drag_arrow_from_y = card_ui.start_y
-	end
+	local hand_count = #active.cards.hand.ids
+	local anchor_index = card_ui.selected_index or card_ui.drag_index
+	card_ui.drag_arrow_from_x, card_ui.drag_arrow_from_y =
+		layout_mod.card_focus_center(layout, anchor_index, hand_count)
 	local card_def = current_selected_card(active)
 	local candidate, tx, ty = build_drag_candidate_target(x, y, active, card_def)
 	card_ui.drag_arrow_to_x = tx
@@ -712,13 +895,10 @@ local function handle_card_press(x, y, active)
 	end
 	local hand_index = layout_mod.hand_index_at(layout, x, y, hand_count)
 	if hand_index then
-		local selected_card_def = current_selected_card(active)
-		if
-			card_ui.selected_index
-			and selected_card_def
-			and selected_card_def.target_object_type == "card"
-			and hand_index ~= card_ui.selected_index
-		then
+		if card_ui.hand_target_phase == "armed" then
+			if hand_index == card_ui.armed_hand_index then
+				return true
+			end
 			toggle_selected_target({
 				object_type = "card",
 				owner = match.to_play,
@@ -726,9 +906,15 @@ local function handle_card_press(x, y, active)
 			})
 			return true
 		end
+		if card_ui.selected_index == hand_index then
+			refresh_card_selection_state()
+			return true
+		end
 		card_ui.selected_index = hand_index
 		card_ui.selected_targets = {}
+		card_ui.popped_target_indices = {}
 		card_ui.drag_active = true
+		card_ui.drag_mode = "none"
 		card_ui.drag_targeting = false
 		card_ui.drag_index = hand_index
 		card_ui.start_x = x
@@ -744,18 +930,19 @@ local function handle_card_press(x, y, active)
 		card_ui.drag_target_error = nil
 		card_ui.moved = false
 		refresh_card_selection_state()
-		local card_def = current_selected_card(active)
-		if card_def and (card_def.play_mode == "instant" or card_def.play_mode == nil) and card_ui.can_use then
-			local ok = game.play_card(match, card_ui.selected_index, card_ui.selected_targets)
-			if ok then
-				card_ui.selected_index = nil
-				card_ui.selected_targets = {}
-				refresh_card_selection_state()
-			end
-		end
 		return true
 	end
-	if not card_ui.selected_index then
+	local use = layout_mod.card_use_button_rect(layout)
+	if (card_ui.selected_index or card_ui.hand_target_phase == "armed")
+		and x >= use.x
+		and x <= use.x + use.w
+		and y >= use.y
+		and y <= use.y + use.h
+	then
+		activate_action_button()
+		return true
+	end
+	if not card_ui.selected_index and card_ui.hand_target_phase ~= "armed" then
 		return false
 	end
 	for i = 1, #card_ui.target_chip_rects do
@@ -767,18 +954,8 @@ local function handle_card_press(x, y, active)
 			return true
 		end
 	end
-	local use = layout_mod.card_use_button_rect(layout)
-	if x >= use.x and x <= use.x + use.w and y >= use.y and y <= use.y + use.h then
-		if not card_ui.can_use then
-			return true
-		end
-		local ok = game.play_card(match, card_ui.selected_index, card_ui.selected_targets)
-		if ok then
-			card_ui.selected_index = nil
-			card_ui.selected_targets = {}
-			refresh_card_selection_state()
-		end
-		return true
+	if card_ui.hand_target_phase == "armed" then
+		return false
 	end
 	local selected_card_def = current_selected_card(active)
 	if selected_card_def and selected_card_def.target_object_type == "stone" then
@@ -1026,8 +1203,11 @@ function love.mousemoved(x, y)
 			card_ui.moved = true
 			local active = match_state.player_for_color(match, match.to_play)
 			local card_def = current_selected_card(active)
-			if card_is_targetable(card_def) then
+			if card_targets_stone(card_def) then
 				card_ui.drag_targeting = true
+				card_ui.drag_mode = "target_arrow"
+			else
+				card_ui.drag_mode = "to_confirm"
 			end
 		end
 		local active = match_state.player_for_color(match, match.to_play)
@@ -1067,47 +1247,20 @@ function love.mousereleased(x, y, button)
 	end
 	if card_ui.drag_active then
 		if card_ui.moved and card_ui.drag_index then
-			local active = match_state.player_for_color(match, match.to_play)
-			local card_def = current_selected_card(active)
-			if card_ui.drag_targeting and card_is_targetable(card_def) then
+			if card_ui.drag_mode == "target_arrow" then
+				local active = match_state.player_for_color(match, match.to_play)
 				update_card_drag_targeting(x, y, active)
 				if card_ui.drag_target_ref and card_ui.drag_target_valid then
-					local final_targets = copy_targets(card_ui.selected_targets)
-					local key = target_key(card_ui.drag_target_ref)
-					local duplicate = false
-					for i = 1, #final_targets do
-						if target_key(final_targets[i]) == key then
-							duplicate = true
-							break
-						end
-					end
-					if not duplicate then
-						final_targets[#final_targets + 1] = card_ui.drag_target_ref
-					end
+					local final_targets = final_targets_with_drag_ref()
 					local ok = game.play_card(match, card_ui.drag_index, final_targets)
 					if ok then
-						card_ui.selected_index = nil
-						card_ui.selected_targets = {}
-						card_ui.status_text = ""
-						refresh_card_selection_state()
+						clear_card_ui_after_play()
 					end
 				end
 			else
 				local use = layout_mod.card_use_button_rect(layout)
 				if x >= use.x and x <= use.x + use.w and y >= use.y and y <= use.y + use.h then
-					if not card_ui.can_use then
-						card_ui.drag_active = false
-						card_ui.drag_targeting = false
-						card_ui.drag_index = nil
-						card_ui.moved = false
-						return
-					end
-					local ok = game.play_card(match, card_ui.drag_index, card_ui.selected_targets)
-					if ok then
-						card_ui.selected_index = nil
-						card_ui.selected_targets = {}
-						refresh_card_selection_state()
-					end
+					activate_action_button()
 				end
 			end
 		elseif card_ui.drag_index then
@@ -1115,6 +1268,7 @@ function love.mousereleased(x, y, button)
 			refresh_card_selection_state()
 		end
 		card_ui.drag_active = false
+		card_ui.drag_mode = "none"
 		card_ui.drag_targeting = false
 		card_ui.drag_index = nil
 		card_ui.drag_target_ref = nil

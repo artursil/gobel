@@ -108,28 +108,60 @@ local function draw_card_target_arrow(from_x, from_y, to_x, to_y, is_valid)
 	end
 	local ux = dx / len
 	local uy = dy / len
+	local perp_x = -uy
+	local perp_y = ux
+	local curve_bend = math.min(72, math.max(18, len * 0.18))
+	local cx = (from_x + to_x) * 0.5 + perp_x * curve_bend
+	local cy = (from_y + to_y) * 0.5 + perp_y * curve_bend
+	local segments = 20
+	local points = {}
+	for i = 0, segments do
+		local t = i / segments
+		local omt = 1 - t
+		local px = omt * omt * from_x + 2 * omt * t * cx + t * t * to_x
+		local py = omt * omt * from_y + 2 * omt * t * cy + t * t * to_y
+		points[#points + 1] = px
+		points[#points + 1] = py
+	end
+	local tangent_x = to_x - cx
+	local tangent_y = to_y - cy
+	local tangent_len = math.sqrt(tangent_x * tangent_x + tangent_y * tangent_y)
+	if tangent_len < 0.001 then
+		tangent_x = ux
+		tangent_y = uy
+		tangent_len = 1
+	end
+	local tx = tangent_x / tangent_len
+	local ty = tangent_y / tangent_len
+	local nx = -ty
+	local ny = tx
+	if is_valid then
+		lg.setColor(0.16, 0.16, 0.18, 0.4)
+		lg.setLineWidth(8)
+		lg.line(points)
+		lg.setColor(0.95, 0.84, 0.22, 0.96)
+		lg.setLineWidth(5)
+		lg.line(points)
+	else
+		lg.setColor(0.14, 0.14, 0.16, 0.35)
+		lg.setLineWidth(8)
+		lg.line(points)
+		lg.setColor(0.55, 0.55, 0.57, 0.9)
+		lg.setLineWidth(5)
+		lg.line(points)
+	end
+	local head = math.min(20, math.max(12, len * 0.09))
+	local wing = head * 0.52
+	local bx = to_x - tx * head
+	local by = to_y - ty * head
+	lg.setColor(0.16, 0.16, 0.18, 0.45)
+	lg.polygon("fill", to_x, to_y, bx + nx * (wing + 2), by + ny * (wing + 2), bx - nx * (wing + 2), by - ny * (wing + 2))
 	if is_valid then
 		lg.setColor(0.95, 0.84, 0.22, 0.96)
 	else
 		lg.setColor(0.55, 0.55, 0.57, 0.9)
 	end
-	lg.setLineWidth(3)
-	lg.line(from_x, from_y, to_x, to_y)
-	local head = 12
-	local wing = 6
-	local bx = to_x - ux * head
-	local by = to_y - uy * head
-	local px = -uy
-	local py = ux
-	lg.polygon(
-		"fill",
-		to_x,
-		to_y,
-		bx + px * wing,
-		by + py * wing,
-		bx - px * wing,
-		by - py * wing
-	)
+	lg.polygon("fill", to_x, to_y, bx + nx * wing, by + ny * wing, bx - nx * wing, by - ny * wing)
 	lg.setLineWidth(1)
 end
 
@@ -719,17 +751,12 @@ local function draw_hand(game, layout)
 	local hand = player.cards.hand.ids
 	local selected = (M._card_ui and M._card_ui.selected_index) or nil
 	local card_ui_state = M._card_ui or {}
-	local selected_targets = card_ui_state.selected_targets or {}
-	local selected_target_cards = {}
+	local armed_index = card_ui_state.hand_target_phase == "armed" and card_ui_state.armed_hand_index or nil
+	local show_action_panel = selected ~= nil or armed_index ~= nil
+	local popped_targets = card_ui_state.popped_target_indices or {}
 	local invalid_target = card_ui_state.invalid_target_feedback
-	for i = 1, #selected_targets do
-		local ref = selected_targets[i]
-		if ref.object_type == "card" and ref.owner == game.to_play then
-			selected_target_cards[ref.hand_index] = true
-		end
-	end
 	local dragging_index = nil
-	if M._card_ui and M._card_ui.drag_active and M._card_ui.moved then
+	if M._card_ui and M._card_ui.drag_active and M._card_ui.moved and M._card_ui.drag_mode ~= "target_arrow" then
 		dragging_index = M._card_ui.drag_index
 	end
 	local panel = layout.hand_panel
@@ -749,12 +776,6 @@ local function draw_hand(game, layout)
 		lg.rotate(slot.angle)
 		lg.setColor(1, 1, 1, 1)
 		draw_card_in_rect(slot, card, can_afford)
-		if selected_target_cards[slot._index] then
-			lg.setColor(0.95, 0.84, 0.22, 0.95)
-			lg.setLineWidth(3)
-			lg.rectangle("line", -slot.w * 0.5 + 2, -slot.h * 0.5 + 2, slot.w - 4, slot.h - 4, 8, 8)
-			lg.setLineWidth(1)
-		end
 		if invalid_target and invalid_target.object_type == "card" and invalid_target.hand_index == slot._index then
 			lg.setColor(0.94, 0.22, 0.22, 0.95)
 			lg.setLineWidth(4)
@@ -765,28 +786,26 @@ local function draw_hand(game, layout)
 	end
 	for i = 1, #slots do
 		slots[i]._index = i
-		if i ~= selected and i ~= dragging_index then
+		if i ~= selected and i ~= dragging_index and i ~= armed_index and not popped_targets[i] then
 			draw_card(slots[i], hand[i])
 		end
 	end
 	lg.setScissor()
-	if selected and slots[selected] and hand[selected] and selected ~= dragging_index then
-		local slot = slots[selected]
-		local focus_scale = 1.32
-		local focus_h = math.min(math.floor(slot.h * focus_scale), panel.y + panel.h + protrude - 24)
-		local focus_w = card_geometry.width_for_height(focus_h)
-		if focus_w > panel.w - 20 then
-			focus_w = panel.w - 20
-			focus_h = card_geometry.height_for_width(focus_w)
+	for i = 1, #slots do
+		if popped_targets[i] and i ~= selected and i ~= armed_index then
+			local popup = layout_mod.card_target_popup_rect(layout, i, #hand)
+			if popup and hand[i] then
+				draw_card(popup, hand[i])
+			end
 		end
-		local focus = {
-			x = slot.x + (slot.w - focus_w) * 0.5,
-			y = math.max(12, panel.y + panel.h + protrude - focus_h - 56),
-			w = focus_w,
-			h = focus_h,
-			angle = 0,
-		}
-		draw_card(focus, hand[selected])
+	end
+	if show_action_panel then
+		if selected and slots[selected] and hand[selected] and selected ~= dragging_index then
+			local focus = layout_mod.card_active_focus_rect(layout, selected, #hand)
+			if focus then
+				draw_card(focus, hand[selected])
+			end
+		end
 		local use_button = layout_mod.card_use_button_rect(layout)
 		if card_ui_state.can_use then
 			lg.setColor(0.26, 0.56, 0.32, 0.92)
@@ -798,7 +817,8 @@ local function draw_hand(game, layout)
 		lg.rectangle("line", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
 		ui_fonts.set("body")
 		lg.setColor(0.96, 0.96, 0.96, 1)
-		lg.printf("Use", use_button.x, use_button.y + 10, use_button.w, "center")
+		local action_label = card_ui_state.action_button_label or "Use"
+		lg.printf(action_label, use_button.x, use_button.y + 10, use_button.w, "center")
 		ui_fonts.set("body_small")
 		local req = card_ui_state.requirement_text or ""
 		if req ~= "" then
@@ -827,7 +847,7 @@ local function draw_hand(game, layout)
 			lg.printf("×", chip.x + chip.w - 18, chip.y + 4, 12, "center")
 		end
 	end
-	if dragging_index and hand[dragging_index] then
+	if dragging_index and hand[dragging_index] and not card_ui_state.drag_targeting and dragging_index ~= armed_index then
 		local drag = M._card_ui
 		local slot = slots[dragging_index] or {
 			x = layout.hand_panel.x + 16,
@@ -855,7 +875,8 @@ local function draw_hand(game, layout)
 		lg.rectangle("line", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
 		ui_fonts.set("body")
 		lg.setColor(0.96, 0.96, 0.96, 1)
-		lg.printf("Use", use_button.x, use_button.y + 10, use_button.w, "center")
+		local action_label = card_ui_state.action_button_label or "Use"
+		lg.printf(action_label, use_button.x, use_button.y + 10, use_button.w, "center")
 	end
 end
 
@@ -1233,7 +1254,7 @@ function M.draw(game, layout, hover_row, hover_col, show_hover, popup_state, sto
 	if
 		card_ui_state
 		and card_ui_state.drag_active
-		and card_ui_state.drag_targeting
+		and card_ui_state.drag_mode == "target_arrow"
 		and card_ui_state.moved
 	then
 		draw_card_target_arrow(

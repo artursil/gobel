@@ -238,6 +238,71 @@ function M.card_use_button_rect(layout)
 	}
 end
 
+--- Popped active card rect (enlarged focus above hand).
+--- @param layout table
+--- @param hand_index integer
+--- @param hand_count integer
+--- @return table|nil
+function M.card_active_focus_rect(layout, hand_index, hand_count)
+	local panel = layout.hand_panel
+	local protrude = layout.hand_card_protrude or 44
+	local slots = M.hand_fan_slots(layout, hand_count)
+	local slot = slots[hand_index]
+	if not slot then
+		return nil
+	end
+	local focus_scale = 1.32
+	local focus_h = math.min(math.floor(slot.h * focus_scale), panel.y + panel.h + protrude - 24)
+	local focus_w = card_geometry.width_for_height(focus_h)
+	if focus_w > panel.w - 20 then
+		focus_w = panel.w - 20
+		focus_h = card_geometry.height_for_width(focus_w)
+	end
+	return {
+		x = slot.x + (slot.w - focus_w) * 0.5,
+		y = math.max(12, panel.y + panel.h + protrude - focus_h - 56),
+		w = focus_w,
+		h = focus_h,
+		angle = 0,
+	}
+end
+
+--- @param layout table
+--- @param hand_index integer
+--- @param hand_count integer
+--- @return number
+--- @return number
+function M.card_focus_center(layout, hand_index, hand_count)
+	local focus = M.card_active_focus_rect(layout, hand_index, hand_count)
+	if not focus then
+		return 0, 0
+	end
+	return focus.x + focus.w * 0.5, focus.y + focus.h * 0.5
+end
+
+--- Popped hand-card target rect (enlarged at fan slot).
+--- @param layout table
+--- @param hand_index integer
+--- @param hand_count integer
+--- @return table|nil
+function M.card_target_popup_rect(layout, hand_index, hand_count)
+	local slots = M.hand_fan_slots(layout, hand_count)
+	local slot = slots[hand_index]
+	if not slot then
+		return nil
+	end
+	local scale = 1.22
+	local w = math.floor(slot.w * scale)
+	local h = math.floor(slot.h * scale)
+	return {
+		x = slot.x + (slot.w - w) * 0.5,
+		y = slot.y + (slot.h - h) * 0.5,
+		w = w,
+		h = h,
+		angle = slot.angle,
+	}
+end
+
 --- @param layout table
 --- @param count integer
 --- @return table[]
