@@ -176,6 +176,21 @@ function M.decrement_duration(instance)
 	end
 end
 
+--- Raise level by one when below the stone definition max_level.
+--- @param instance table
+--- @return boolean upgraded true when level increased
+function M.upgrade(instance)
+	local content = require("content")
+	local def = content.get_stone(instance.def_id)
+	local cap = (def and def.max_level) or instance.max_level or 1
+	instance.max_level = cap
+	if instance.level >= cap then
+		return false
+	end
+	instance.level = instance.level + 1
+	return true
+end
+
 --- Check if instance duration has expired (remaining_rounds <= 0).
 --- @param instance table
 --- @return boolean

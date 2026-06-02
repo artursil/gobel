@@ -93,6 +93,7 @@ local function build_player(side, starter, rng_next_int)
 		stones = {
 			pouch = starter_pouch,
 			playable_stones = playable_stones,
+			instance_by_slot = {},
 			selected_stone = playable_stones[1],
 			selected_stone_index = (#playable_stones > 0) and 1 or nil,
 			hand_target_size = STONE_HAND_TARGET_SIZE,

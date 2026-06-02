@@ -403,8 +403,26 @@ end
 function M.set_hand(g, side, stone_ids)
 	local player = match_state.player_for_color(g, side)
 	player.stones.playable_stones = stone_ids
+	player.stones.instance_by_slot = {}
 	player.stones.selected_stone = stone_ids[1]
 	player.stones.selected_stone_index = 1
+end
+
+--- @param g table
+--- @param side string
+--- @param slot_index integer
+--- @param def_id string
+--- @param level integer
+function M.set_stone_instance(g, side, slot_index, def_id, level)
+	local player = match_state.player_for_color(g, side)
+	player.stones.playable_stones[slot_index] = def_id
+	player.stones.instance_by_slot = player.stones.instance_by_slot or {}
+	player.stones.instance_by_slot[slot_index] = {
+		def_id = def_id,
+		level = level,
+	}
+	player.stones.selected_stone = def_id
+	player.stones.selected_stone_index = slot_index
 end
 
 --- @param g table

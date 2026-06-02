@@ -1,0 +1,58 @@
+---
+description: Gobel coding and architecture standards — effects-driven resolver, typed Lua, minimal diffs
+alwaysApply: true
+---
+
+# Gobel coding standards
+
+## Architecture
+
+- **Gameplay rules live in effects + resolver**, not scattered `if card_id ==` / `if stone_id ==` in UI or `resolve_round`.
+- **Definitions are immutable** (`objects/definitions/*`). Runtime changes use **instances** (`ObjectInstance`, `level`, hand/board snapshots).
+- **Resolve at use time**: `content.get_*` for static defs; `content.resolve_stone(instance)` (and similar) when level/upgrades/tags matter.
+- **Card targeting**: eligibility from **target-side tags** (`resolve_target_tags`); cards declare `required_tags_all` / `excluded_tags`, not hardcoded checks.
+- **Validation is authoritative in resolver**; UI only mirrors `validate_card_targets` for buttons/hover — do not duplicate rules in `main.lua`.
+
+```lua
+-- ❌ BAD — UI-only legality
+if card_id == "card_heal_1" and cell.solidity < max then ...
+
+-- ✅ GOOD
+local v = resolver.validate_card_targets(card_def, targets, state, actor)
+if not v.ok then return end
+```
+
+## Code style (Lua)
+
+- **Minimal diff** — no drive-by refactors or unrelated files.
+- **Docstrings** (`--- @param`, `--- @return`) on new/changed functions; avoid inline comments for behavior.
+- **Fully typed** new APIs: `str | nil`, not `Optional`; use Enums/tables with schema validation in `objects/schema.lua` for defs.
+- **Small focused functions**; avoid deep nesting and copy-paste — extract shared logic once.
+- **No gratuitous defensive branches** or `pcall` unless explicitly required.
+
+## Data & state
+
+- Prefer **domain shapes** (instances, board cells with `kind` + `level` + `solidity`) over anonymous nested dicts in business logic.
+- **Snapshot on commit**: board/hand state at play time must not change when inventory upgrades later.
+- **Parameters** (`objects/parameters/*`) for balance numbers; **definitions** for identity, effects, `max_level`, upgrade tables.
+
+## Effects & scoring
+
+- Effects use **`macro` + `sub`** (`territory`, `points`, `mult`); do not add one-off scoring branches in `resolve_round`.
+- New card/stone behavior = new **effect_name** + `objects/effects.lua` factory + registry wiring + spec.
+
+## Tests
+
+- Add **unit tests** for validators, `apply_effect_deltas`, resolve helpers.
+- Add **integration tests** for one end-to-end flow per feature; keep UI specs behavior-focused (state flags), not pixel tests.
+- Run affected `spec/unit/*` and `spec/integration/*` before finishing.
+
+## AI / search (when touching `ai/`)
+
+- Do not call `resolve_round` from MCTS/search/planner paths.
+- Keep latency budgets and prescore caps unless the user explicitly requests tuning.
+
+## Commits & PRs
+
+- One concern per PR; match existing naming and file layout.
+- Do not commit secrets; do not amend/push unless the user asks.

@@ -22,14 +22,19 @@ end
 --- @param color integer
 --- @param kind string
 --- @param solidity integer|nil current health; nil = max for ``kind``
+--- @param level integer|nil upgrade tier snapshot for this board cell
 --- @return table
-function M.make_stone(color, kind, solidity)
+function M.make_stone(color, kind, solidity, level)
 	local stone_solidity = require("objects.stone_solidity")
 	local s = solidity
 	if s == nil then
 		s = stone_solidity.stone_max_solidity(kind)
 	end
-	return { color = color, kind = kind, solidity = s }
+	local cell = { color = color, kind = kind, solidity = s }
+	if level ~= nil then
+		cell.level = level
+	end
+	return cell
 end
 
 --- True if the cell holds no stone.
@@ -73,7 +78,7 @@ function M.clone(board)
 			if M.is_empty(cell) then
 				copy[r][c] = config.STONE_NONE
 			else
-				copy[r][c] = M.make_stone(cell.color, cell.kind, cell.solidity)
+				copy[r][c] = M.make_stone(cell.color, cell.kind, cell.solidity, cell.level)
 			end
 		end
 	end

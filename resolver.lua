@@ -680,10 +680,14 @@ local function compile_place_stone_events(state, action)
 	if not contains_stone_id(actor_state.stones.playable_stones, stone_id) then
 		return nil, "Selected stone is not available"
 	end
-	local stone_def = content.get_stone(stone_id)
+	local instance_by_slot = actor_state.stones.instance_by_slot
+	local instance = instance_by_slot and instance_by_slot[selected_index] or nil
+	local stone_ref = instance or stone_id
+	local stone_def = content.resolve_stone(stone_ref)
 	if not stone_def then
 		return nil, "Unknown selected stone"
 	end
+	local placement_level = instance and instance.level or nil
 	local row = action.payload and action.payload.row or -1
 	local col = action.payload and action.payload.col or -1
 	local ok, new_board, new_ko, captures, illegal_reason = rules.try_play(
@@ -692,7 +696,8 @@ local function compile_place_stone_events(state, action)
 		col,
 		color_to_stone(action.actor),
 		state.ko_ban,
-		stone_id
+		stone_id,
+		placement_level
 	)
 	if not ok then
 		if illegal_reason == "occupied" then

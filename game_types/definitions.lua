@@ -262,6 +262,27 @@ M.vertical_slice_test = {
 	white_energy_max = 8,
 }
 
+M.stone_upgrade_test = {
+	id = "stone_upgrade_test",
+	name = "Stone Upgrade Test",
+	description = "Pilot stone_power level-2 placement via instance_by_slot.",
+	black_stones = {
+		stone_basic = 20,
+	},
+	white_stones = {
+		stone_basic = 20,
+	},
+	stone_hand_size = 3,
+	black_deck = {},
+	white_deck = {},
+	black_initial_hand = {},
+	white_initial_hand = {},
+	black_stances = { fixed = {}, swappable = {} },
+	white_stances = { fixed = {}, swappable = {} },
+	black_energy_max = 8,
+	white_energy_max = 8,
+}
+
 M.targeting_modes_test = {
 	id = "targeting_modes_test",
 	name = "Targeting Modes Test",
@@ -334,6 +355,7 @@ function M.get_all_types()
 		{ id = "temporary_stance_test", name = M.temporary_stance_test.name },
 		{ id = "vertical_slice_test", name = M.vertical_slice_test.name },
 		{ id = "targeting_modes_test", name = M.targeting_modes_test.name },
+		{ id = "stone_upgrade_test", name = M.stone_upgrade_test.name },
 	}
 end
 

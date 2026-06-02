@@ -40,6 +40,15 @@ M.stone_power = {
 	rarity = "uncommon",
 	probability = 0.8,
 	cost = 1,
+	max_level = 3,
+	upgrade_levels = {
+		[1] = {},
+		[2] = {
+			effect_deltas = {
+				add_points = { macro = "playing_stones", sub = "points", delta = 1 },
+			},
+		},
+	},
 	depiction = "Diamond center mark",
 	graphic = { draw_key = "diamond" },
 	visual = {

@@ -10,6 +10,7 @@
 local M = {}
 
 local schema = require("objects.schema")
+local stone_resolve = require("objects.stone_resolve")
 
 --- Load all definitions from unified objects/ module
 M.stones = require("objects.definitions.stones")
@@ -122,6 +123,32 @@ function M.get_stone(stone_id)
 		stone_id = "wall"
 	end
 	return M.stones[stone_id]
+end
+
+--- Resolve stone def for placement: base def plus cumulative level deltas.
+--- String ref returns the static definition. Table ref uses def_id + level (clamped to max_level).
+--- Levels above the last defined upgrade_levels entry keep prior cumulative deltas only.
+--- @param stone_ref string|table
+--- @return table|nil
+function M.resolve_stone(stone_ref)
+	if type(stone_ref) == "string" then
+		return M.get_stone(stone_ref)
+	end
+	if type(stone_ref) ~= "table" then
+		return nil
+	end
+	local def_id = stone_ref.def_id or stone_ref.id
+	if not def_id then
+		return nil
+	end
+	local def = M.get_stone(def_id)
+	if not def then
+		return nil
+	end
+	local max_level = def.max_level or 1
+	local level = stone_ref.level or 1
+	level = math.max(1, math.min(level, max_level))
+	return stone_resolve.resolve_stone_def_at_level(def, level)
 end
 
 --- Get card definition by ID.

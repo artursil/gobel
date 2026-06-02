@@ -60,7 +60,16 @@ end
 --- @param actor "black"|"white"
 --- @return table
 function M.resolved_for_stone_id(stone_id, state, actor)
-	local stone_def = content.get_stone(stone_id)
+	local stone_def = content.resolve_stone(stone_id)
+	return M.resolved_stone_effects_from_def(stone_def, state, actor)
+end
+
+--- @param stone_ref string|table
+--- @param state table
+--- @param actor "black"|"white"
+--- @return table
+function M.resolved_for_stone_ref(stone_ref, state, actor)
+	local stone_def = content.resolve_stone(stone_ref)
 	return M.resolved_stone_effects_from_def(stone_def, state, actor)
 end
 
