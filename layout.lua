@@ -141,24 +141,6 @@ function M.pixel_to_grid(layout, px, py)
 	return best_r, best_c
 end
 
-function M.hand_card_rects(layout, card_count)
-	local panel = layout.hand_panel
-	local pad = 10
-	local gap = layout.hand_card_gap
-	local slots = math.max(card_count, 1)
-	local w = math.floor((panel.w - pad * 2 - gap * (slots - 1)) / slots)
-	w = math.max(84, math.min(126, w))
-	local h = panel.h - 20
-	local total = slots * w + gap * (slots - 1)
-	local x0 = panel.x + math.floor((panel.w - total) * 0.5)
-	local y = panel.y + 10
-	local out = {}
-	for i = 1, card_count do
-		out[i] = { x = x0 + (i - 1) * (w + gap), y = y, w = w, h = h }
-	end
-	return out
-end
-
 function M.hand_index_at(layout, px, py, card_count)
 	local slots = M.hand_fan_slots(layout, card_count)
 	for i = #slots, 1, -1 do
@@ -361,6 +343,32 @@ end
 function M.popup_close_rect(layout)
 	local p = layout.popup
 	return { x = p.x + p.w - 96, y = p.y + 10, w = 80, h = 28 }
+end
+
+--- Grid rects for played/discarded cards in deck/discard browser popups.
+--- @param layout table
+--- @param count integer
+--- @return table[]
+function M.deck_popup_played_grid_rects(layout, count)
+	local p = layout.popup
+	local cols = 5
+	local pad = 16
+	local gap = 8
+	local played_offset_y = p.y + 52 + 160
+	local chip = math.floor((p.w - pad * 2 - gap * (cols - 1)) / cols)
+	chip = math.max(56, math.min(78, chip))
+	local out = {}
+	for i = 1, count do
+		local col = (i - 1) % cols
+		local row = math.floor((i - 1) / cols)
+		out[i] = {
+			x = p.x + pad + col * (chip + gap),
+			y = played_offset_y + row * (chip + gap),
+			w = chip,
+			h = chip,
+		}
+	end
+	return out
 end
 
 function M.pouch_popup_grid_rects(layout, count)

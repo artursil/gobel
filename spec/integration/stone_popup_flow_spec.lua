@@ -7,6 +7,7 @@ local config = require("config")
 local content = require("content")
 local game = require("game")
 local layout_mod = require("layout")
+local card_play_controller = require("ui.card_play_controller")
 helper.reset_module("main")
 local match_state = require("match_state")
 local render = require("render")
@@ -48,22 +49,13 @@ local function setup_play_state()
 		current_y = 0,
 		moved = false,
 	})
-	helper.set_upvalue(love.mousepressed, "card_ui", {
-		selected_index = nil,
-		drag_active = false,
-		drag_index = nil,
-		start_x = 0,
-		start_y = 0,
-		current_x = 0,
-		current_y = 0,
-		moved = false,
-	})
+	helper.set_upvalue(love.mousemoved, "card_controller", card_play_controller.new())
+	helper.set_upvalue(love.mousereleased, "card_controller", helper.get_upvalue(love.mousemoved, "card_controller"))
 	helper.set_upvalue(love.mousereleased, "screen", "play")
 	helper.set_upvalue(love.mousereleased, "layout", layout)
 	helper.set_upvalue(love.mousereleased, "match", match)
 	helper.set_upvalue(love.mousereleased, "popup_state", helper.get_upvalue(love.mousepressed, "popup_state"))
 	helper.set_upvalue(love.mousereleased, "stone_drag", helper.get_upvalue(love.mousepressed, "stone_drag"))
-	helper.set_upvalue(love.mousereleased, "card_ui", helper.get_upvalue(love.mousepressed, "card_ui"))
 	helper.set_upvalue(love.keypressed, "screen", "play")
 	helper.set_upvalue(love.keypressed, "match", match)
 	return layout, match, popup
@@ -186,8 +178,8 @@ describe("T-051 stone popup and interaction integration", function()
 		local actions = layout_mod.player_action_icon_rects(layout)
 		love.mousepressed(actions[1].x + 8, actions[1].y + 8, 1)
 
-		local hand_rect = layout_mod.hand_card_rects(layout, #active.cards.hand.ids)[1]
-		love.mousepressed(hand_rect.x + 2, hand_rect.y + 2, 1)
+		local hand_slot = layout_mod.hand_fan_slots(layout, #active.cards.hand.ids)[1]
+		love.mousepressed(hand_slot.x + 2, hand_slot.y + 2, 1)
 		local legal = rules.all_legal_moves(match.board, config.STONE_BLACK, match.ko_ban, active.stones.selected_stone)[1]
 		local gx, gy = layout_mod.grid_to_pixel(layout, legal[1], legal[2])
 		love.mousepressed(gx, gy, 1)

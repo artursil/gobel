@@ -8,8 +8,7 @@ local stances = require("stances")
 local pouch = require("pouch")
 local ui_fonts = require("ui.fonts")
 local card_geometry = require("ui.card_geometry")
-local card_layout = require("ui.card_layout")
-local card_visual = require("ui.card_visual")
+local card_draw = require("ui.card_draw")
 local sprites = require("ui.sprites")
 local stone_solidity = require("objects.stone_solidity")
 local stone_solidity_atlas = require("ui.stone_solidity_atlas")
@@ -675,74 +674,24 @@ local function draw_selector(game, layout, popup_state)
 	end
 end
 
-local function draw_energy_badge(lg, x0, y0, regions, cost, circle_color)
-	local r = regions.energy_r
-	local cx = x0 + regions.energy_cx
-	local cy = y0 + regions.energy_cy
-	local cr, cg, cb, _ = card_visual.rgba_from_hex(circle_color)
-	lg.setColor(cr, cg, cb, 0.95)
-	lg.circle("fill", cx, cy, r)
-	local text = tostring(cost)
-	local font_px = math.max(12, math.floor(r * 1.35))
-	local font = ui_fonts.get_pixel_operator(font_px)
-	lg.setColor(0.96, 0.94, 0.9, 1)
-	if font and font.getWidth and font.getHeight then
-		lg.setFont(font)
-		local tw = font:getWidth(text)
-		local th = font:getHeight()
-		lg.print(text, cx - tw * 0.5, cy - th * 0.5)
+--- @param lg love.graphics
+--- @param layout table
+--- @param card_ui_state table
+--- @return nil
+local function draw_card_use_button(lg, layout, card_ui_state)
+	local use_button = layout_mod.card_use_button_rect(layout)
+	if card_ui_state.can_use then
+		lg.setColor(0.26, 0.56, 0.32, 0.92)
 	else
-		ui_fonts.set("body_small")
-		lg.printf(text, cx - r, cy - r + 1, r * 2, "center")
+		lg.setColor(0.38, 0.38, 0.4, 0.82)
 	end
-end
-
-local function draw_card_in_rect(slot, card, can_afford)
-	local lg = love.graphics
-	local slot_bounds = { x = -slot.w * 0.5, y = -slot.h * 0.5, w = slot.w, h = slot.h }
-	local inner = card_geometry.aspect_rect_in_bounds(slot_bounds)
-	local x0, y0, w, h = inner.x, inner.y, inner.w, inner.h
-	local vis = card_visual.merged(card)
-	local regions = card_layout.face_regions(w, h)
-	local bg = sprites.get_image(vis.background)
-	if can_afford then
-		lg.setColor(1, 1, 1, 1)
-	else
-		lg.setColor(0.62, 0.62, 0.66, 1)
-	end
-	if bg and bg ~= false then
-		local dx, dy, _, _, sx, sy = card_geometry.image_draw_dest_stretch(slot_bounds, bg:getWidth(), bg:getHeight())
-		lg.draw(bg, dx, dy, 0, sx, sy)
-	else
-		lg.setColor(0.55, 0.52, 0.48, 1)
-		lg.rectangle("fill", x0, y0, w, h, 8, 8)
-	end
-	lg.setColor(1, 1, 1, 1)
-	draw_energy_badge(lg, x0, y0, regions, card.energy_cost, vis.circle_color)
-	local gfx = sprites.get_image(vis.graphic)
-	if gfx and gfx ~= false then
-		lg.setColor(1, 1, 1, 1)
-		local art_bounds = {
-			x = x0 + regions.art_x,
-			y = y0 + regions.art_y,
-			w = regions.art_w,
-			h = regions.art_h,
-		}
-		local gdx, gdy, _, _, gsx, gsy = card_geometry.image_draw_dest(art_bounds, gfx:getWidth(), gfx:getHeight())
-		lg.draw(gfx, gdx, gdy, 0, gsx, gsy)
-	end
-	local tr, tg3, tb3, _t3 = card_visual.rgba_from_hex(vis.title_box_color)
-	lg.setColor(tr, tg3, tb3, 1)
-	lg.rectangle("fill", x0 + regions.title_x, y0 + regions.title_y, regions.title_w, regions.title_h, 4, 4)
-	ui_fonts.set("body_small")
-	lg.setColor(0.08, 0.08, 0.1, 1)
-	lg.printf(card.name or card.display_name or "", x0 + regions.title_x + 2, y0 + regions.title_y + 2, regions.title_w - 4, "center")
-	local dr, dg4, db4, _d4 = card_visual.rgba_from_hex(vis.description_box_color)
-	lg.setColor(dr, dg4, db4, 1)
-	lg.rectangle("fill", x0 + regions.desc_x, y0 + regions.desc_y, regions.desc_w, regions.desc_h, 4, 4)
-	ui_fonts.set("body_small")
-	lg.printf(card.description or "", x0 + regions.desc_x + 4, y0 + regions.desc_y + 3, regions.desc_w - 8, "left")
-	ui_fonts.apply_default()
+	lg.rectangle("fill", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
+	lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
+	lg.rectangle("line", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
+	ui_fonts.set("body")
+	lg.setColor(0.96, 0.96, 0.96, 1)
+	local action_label = card_ui_state.action_button_label or "Use"
+	lg.printf(action_label, use_button.x, use_button.y + 10, use_button.w, "center")
 end
 
 local function draw_hand(game, layout)
@@ -775,7 +724,7 @@ local function draw_hand(game, layout)
 		lg.translate(cx, cy)
 		lg.rotate(slot.angle)
 		lg.setColor(1, 1, 1, 1)
-		draw_card_in_rect(slot, card, can_afford)
+		card_draw.draw_card_face(slot, card, { can_afford = can_afford })
 		if invalid_target and invalid_target.object_type == "card" and invalid_target.hand_index == slot._index then
 			lg.setColor(0.94, 0.22, 0.22, 0.95)
 			lg.setLineWidth(4)
@@ -806,19 +755,8 @@ local function draw_hand(game, layout)
 				draw_card(focus, hand[selected])
 			end
 		end
+		draw_card_use_button(lg, layout, card_ui_state)
 		local use_button = layout_mod.card_use_button_rect(layout)
-		if card_ui_state.can_use then
-			lg.setColor(0.26, 0.56, 0.32, 0.92)
-		else
-			lg.setColor(0.38, 0.38, 0.4, 0.82)
-		end
-		lg.rectangle("fill", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
-		lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
-		lg.rectangle("line", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
-		ui_fonts.set("body")
-		lg.setColor(0.96, 0.96, 0.96, 1)
-		local action_label = card_ui_state.action_button_label or "Use"
-		lg.printf(action_label, use_button.x, use_button.y + 10, use_button.w, "center")
 		ui_fonts.set("body_small")
 		local req = card_ui_state.requirement_text or ""
 		if req ~= "" then
@@ -864,19 +802,7 @@ local function draw_hand(game, layout)
 			angle = 0,
 		}
 		draw_card(floating, hand[dragging_index])
-		local use_button = layout_mod.card_use_button_rect(layout)
-		if card_ui_state.can_use then
-			lg.setColor(0.26, 0.56, 0.32, 0.92)
-		else
-			lg.setColor(0.38, 0.38, 0.4, 0.82)
-		end
-		lg.rectangle("fill", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
-		lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
-		lg.rectangle("line", use_button.x, use_button.y, use_button.w, use_button.h, 6, 6)
-		ui_fonts.set("body")
-		lg.setColor(0.96, 0.96, 0.96, 1)
-		local action_label = card_ui_state.action_button_label or "Use"
-		lg.printf(action_label, use_button.x, use_button.y + 10, use_button.w, "center")
+		draw_card_use_button(lg, layout, card_ui_state)
 	end
 end
 
@@ -935,8 +861,9 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 			end
 		end
 	end
-	local selected_targets = game.selected_card_targets or {}
-	local invalid = M._card_ui and M._card_ui.invalid_target_feedback or nil
+	local card_ui_state = M._card_ui or {}
+	local selected_targets = card_ui_state.selected_targets or {}
+	local invalid = card_ui_state.invalid_target_feedback
 	for i = 1, #selected_targets do
 		local target = selected_targets[i]
 		if target.object_type == "stone" and target.row and target.col then
@@ -952,12 +879,18 @@ local function draw_board(game, layout, hover_row, hover_col, show_hover, popup_
 		lg.setLineWidth(4)
 		lg.circle("line", px, py, rad * 0.98)
 	end
-	local selected_target = game.selected_card_target
-	if selected_target and selected_target.row and selected_target.col then
-		local px, py = layout_mod.grid_to_pixel(layout, selected_target.row, selected_target.col)
-		lg.setColor(0.96, 0.84, 0.22, 0.95)
-		lg.setLineWidth(3)
-		lg.circle("line", px, py, rad * 0.92)
+	local phase = card_ui_state.phase
+	local in_card_targeting = phase == "card_selected"
+		or phase == "discard_targets_armed"
+		or phase == "drag_target_arrow"
+	if not in_card_targeting then
+		local selected_target = game.selected_card_target
+		if selected_target and selected_target.row and selected_target.col then
+			local px, py = layout_mod.grid_to_pixel(layout, selected_target.row, selected_target.col)
+			lg.setColor(0.96, 0.84, 0.22, 0.95)
+			lg.setLineWidth(3)
+			lg.circle("line", px, py, rad * 0.92)
+		end
 	end
 	lg.setLineWidth(1)
 	local probe = M._influence_probe
@@ -1079,52 +1012,34 @@ local function draw_pouch_browser_popup(layout, popup_state)
 	lg.printf(stone.description, box.x + 20, box.y + box.h - 58, box.w - 40, "left")
 end
 
+--- @param layout table
+--- @param cards table
+--- @param focus_group string|nil
+--- @param focus_index integer|nil
+--- @return nil
+local function draw_played_cards_grid(layout, cards, focus_group, focus_index)
+	local rects = layout_mod.deck_popup_played_grid_rects(layout, #cards)
+	for i = 1, #rects do
+		local card = content.get_card(cards[i])
+		if card then
+			card_draw.draw_card_face(rects[i], card, {
+				centered = false,
+				highlighted = focus_group == "played" and focus_index == i,
+			})
+		end
+	end
+end
+
 --- @param card_id string
 --- @param rect table
 --- @param highlighted boolean
 --- @return nil
 local function draw_popup_card_tile(card_id, rect, highlighted)
-	local lg = love.graphics
 	local card = content.get_card(card_id)
 	if not card then
 		return
 	end
-	if highlighted then
-		lg.setColor(0.26, 0.54, 0.78, 0.86)
-	else
-		lg.setColor(0.32, 0.47, 0.66, 0.78)
-	end
-	lg.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 6, 6)
-	lg.setColor(config.COLOR_GRID[1], config.COLOR_GRID[2], config.COLOR_GRID[3], 1)
-	lg.rectangle("line", rect.x, rect.y, rect.w, rect.h, 6, 6)
-	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
-	lg.printf(tostring(card.energy_cost), rect.x + 6, rect.y + 6, 16, "center")
-	lg.printf(card.name or card.display_name, rect.x + 26, rect.y + 10, rect.w - 32, "left")
-end
-
---- @param box table
---- @param cards table
---- @param focus_group string|nil
---- @param focus_index integer|nil
---- @return nil
-local function draw_played_cards_grid(box, cards, focus_group, focus_index)
-	local cols = 5
-	local gap = 8
-	local pad = 16
-	local chip = math.floor((box.w - pad * 2 - gap * (cols - 1)) / cols)
-	chip = math.max(56, math.min(78, chip))
-	local played_offset_y = box.y + 52 + 160
-	for i = 1, #cards do
-		local col = (i - 1) % cols
-		local row = math.floor((i - 1) / cols)
-		local rect = {
-			x = box.x + pad + col * (chip + gap),
-			y = played_offset_y + row * (chip + gap),
-			w = chip,
-			h = chip,
-		}
-		draw_popup_card_tile(cards[i], rect, focus_group == "played" and focus_index == i)
-	end
+	card_draw.draw_card_face(rect, card, { centered = false, highlighted = highlighted })
 end
 
 --- @param layout table
@@ -1148,7 +1063,7 @@ local function draw_deck_browser_popup(layout, popup_state)
 	end
 	local played_label = popup_state.mode == "discard-browser" and "Discarded" or "Played"
 	lg.printf(played_label, box.x + 20, y_top + 140, box.w - 40, "left")
-	draw_played_cards_grid(box, played_cards, popup_state.focus_group, popup_state.focus_index)
+	draw_played_cards_grid(layout, played_cards, popup_state.focus_group, popup_state.focus_index)
 	if not popup_state.focus_group or not popup_state.focus_index then
 		return
 	end
@@ -1205,7 +1120,6 @@ function M.popup_hit_test(layout, popup_state, x, y)
 		end
 	end
 	if popup_state.mode == "deck-browser" or popup_state.mode == "discard-browser" then
-		local box = layout.popup
 		local deck_cards = popup_state.cards or {}
 		local deck_rects = layout_mod.pouch_popup_grid_rects(layout, #deck_cards)
 		for i = 1, #deck_rects do
@@ -1214,22 +1128,9 @@ function M.popup_hit_test(layout, popup_state, x, y)
 			end
 		end
 		local played_cards = popup_state.played_cards or {}
-		local cols = 5
-		local gap = 8
-		local pad = 16
-		local chip = math.floor((box.w - pad * 2 - gap * (cols - 1)) / cols)
-		chip = math.max(56, math.min(78, chip))
-		local played_offset_y = box.y + 52 + 160
-		for i = 1, #played_cards do
-			local col = (i - 1) % cols
-			local row = math.floor((i - 1) / cols)
-			local rect = {
-				x = box.x + pad + col * (chip + gap),
-				y = played_offset_y + row * (chip + gap),
-				w = chip,
-				h = chip,
-			}
-			if inside(rect, x, y) then
+		local played_rects = layout_mod.deck_popup_played_grid_rects(layout, #played_cards)
+		for i = 1, #played_rects do
+			if inside(played_rects[i], x, y) then
 				return { kind = "deck_card", group = "played", index = i }
 			end
 		end
