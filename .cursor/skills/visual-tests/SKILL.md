@@ -7,6 +7,18 @@ disable-model-invocation: true
 # Visual Tests Writer
 
 Adversarial test author for **human-readable** visual specs. Only touch **`spec/visual/**`**.
+Approach every feature with the mindset that it is already broken, and actively search for the most surprising, adversarial, and realistic ways it could fail. Prioritize edge cases, boundary conditions, malformed inputs, unusual state transitions, race conditions, and interactions between components rather than validating only expected behavior. Continue generating increasingly difficult test scenarios until you have exhausted plausible failure modes, and optimize for discovering bugs.
+
+
+If objects are connected to territory calculation, territory values, walls, enclosures or influence on the board please make yourself familiar with Territory reference md files and inspire yourself by other tests for those concepts.
+
+## Territory reference (read when testing territory / enclosure / scoring)
+
+- [territory-assignment.md](territory-assignment.md) — precedence + grid legend + where to copy boards
+- [territory-enclosures.md](territory-enclosures.md) · [territory-walls.md](territory-walls.md) · [territory-influence.md](territory-influence.md)
+- [territory-value.md](territory-value.md) — per-cell weights and `assert_territory_values_ascii`
+
+Reuse ASCII from the cited `spec/visual/*` files; do not invent layouts from scratch, if not necessary.
 
 ## Hard boundaries
 
@@ -14,16 +26,18 @@ Adversarial test author for **human-readable** visual specs. Only touch **`spec/
 - **Must not edit:** production code, `spec/unit`, `spec/integration`, helpers in `spec/test_helper.lua`, or other paths.
 - If a test needs a new helper or prod fix, **stop** and report what the Code Writer must add elsewhere.
 
-
-Read `.cursor/rules/gobel-coding-standards.mdc` for architecture context; do not restate it.
-
+## Rules
+- Black basic stones are always defined as B, white basic stones are always defined as W, "b" is reserved for territory controlled by black, "w" is reserved for territory controlled by white
+- All other stones are defined at the top of each test
+- Don't use hardcoded values in tests but have them calculated based on parameters not hardcoded values, parameters can change in the future e.g. number of points added by the stone and it should never break the test
+- Each stone should have at least 10 different tests, and they should really test unique scenarios.
 ## Workflow
 
 1. **Hypothesize** — List 3–8 ways the feature could break.
 2. **Pick** — Choose hypotheses a human player would care about and can *see* on the board or score HUD.
 3. **Write** — One `it(...)` per hypothesis; name describes the player-visible outcome.
 4. **Assume objects/functions exist** - We follow TDD, so tests come before implementation.
-5. **Don't Run** — `Don't run busted spec/visual/<your_spec>.lua` (or the file you changed), NEWLY WRITTEN TESTS DON'T HAVE TO TURN GREEN, THIS IS OTHER AGENT JOB.
+5. **Don't Run** — `Run busted spec/visual/<your_spec>.lua` (or the file you changed), NEWLY WRITTEN TESTS DON'T HAVE TO TURN GREEN, THIS IS OTHER AGENT JOB so Failed tests are ok but errors in tests are not.
 
 ## Test style (human-first)
 
@@ -34,41 +48,3 @@ Read `.cursor/rules/gobel-coding-standards.mdc` for architecture context; do not
 - Use `after_each(visual_scoring_debug_after_each(...))` when debugging scoring flows (match sibling specs).
 - Reuse `spec.test_helper` APIs; do not add new helpers in this skill’s scope.
 
-## Adversarial focus
-
-Good targets:
-
-- Order sensitivity (card before stone vs after)
-- Pass / turn boundary
-- Partial patterns (almost-X, broken wall)
-- Healing/damage/solidity tier transitions
-- Targeting wrong owner or invalid target still changing state
-- Double application or zero application of an effect
-
-Skip: pixel/render assertions, brittle coordinates, duplicate coverage of unit tests.
-
-## Spec template
-
-```lua
-local test_helper = require("spec.test_helper")
-test_helper.install_love_test_stubs()
-
-describe("feature name (visual)", function()
-  local g
-  before_each(function() g = test_helper.new_isolated_game() end)
-
-  it("human-readable expected outcome", function()
-    test_helper.set_board(g, { /* minimal ASCII */ })
-    -- act: place_stone / play_card / ...
-    -- assert: player-visible score or board state
-  end)
-end)
-```
-
-## Deliverable
-
-When done, briefly list:
-
-- Hypotheses considered
-- Which were encoded as tests and why
-- `busted` command run and result
