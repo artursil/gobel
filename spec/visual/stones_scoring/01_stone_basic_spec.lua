@@ -1,12 +1,7 @@
---- Visual spec: inert baseline stone (1 stone).
+--- Visual spec: stone_basic (OBJECTS.md #1).
 ---
---- Stones under test:
---- - stone_basic (entry basic_stone): no placement points, mult, or delayed effects (STONE_BASIC_PLACEMENT_POINTS = 0)
+--- Stone under test: stone_basic
 ---
---- Multi-step time (option C): finish_turn(g), pass_turn(g)
----
---- Player-visible: points, plus_mult, x_mult unchanged by stone_basic placement
---- Source of truth: mds/STONES_IMPLEMENTATION_ENTRY.md §1
 local test_helper = require("spec.test_helper")
 test_helper.install_love_test_stubs()
 

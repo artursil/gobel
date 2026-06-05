@@ -19,14 +19,14 @@ M.standard = {
 		stone_basic = 5,
 		stone_power = 3,
 		stone_focus = 2,
-		stone_lieutenant = 2,
+		stone_influence = 2,
 		stone_tower = 1,
 	},
 	white_stones = {
 		stone_basic = 5,
 		stone_power = 3,
 		stone_focus = 2,
-		stone_lieutenant = 2,
+		stone_influence = 2,
 		stone_tower = 1,
 	},
 	stone_hand_size = 6,
@@ -144,7 +144,7 @@ M.asymmetric = {
 	name = "Asymmetric",
 	description = "Black has lieutenants, white has basic stones",
 	black_stones = {
-		stone_lieutenant = 20,
+		stone_influence = 20,
 	},
 	white_stones = {
 		stone_basic = 20,

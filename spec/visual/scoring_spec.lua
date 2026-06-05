@@ -10,7 +10,7 @@ local LETTER_TO_STONE = {
 	W = { color = config.STONE_WHITE, kind = "stone_basic" },
 	C = { color = config.STONE_BLACK, kind = "stone_power" },
 	F = { color = config.STONE_BLACK, kind = "stone_focus" },
-	L = { color = config.STONE_BLACK, kind = "stone_lieutenant" },
+	L = { color = config.STONE_BLACK, kind = "stone_influence" },
 	T = { color = config.STONE_BLACK, kind = "stone_tower" },
 	S = { color = config.STONE_BLACK, kind = "stone_special" },
 	X = { color = config.STONE_BLACK, kind = "wall" },

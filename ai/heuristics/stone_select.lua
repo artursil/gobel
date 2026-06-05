@@ -57,7 +57,7 @@ local function score_stone(view, stone_id)
 	if stone_id == "stone_tower" and has_corner_legal_move(view, stone_id) then
 		score = score + 4
 	end
-	if stone_id == "stone_lieutenant" then
+	if stone_id == "stone_influence" then
 		score = score + 2
 	end
 	if stone_id == "stone_focus" then

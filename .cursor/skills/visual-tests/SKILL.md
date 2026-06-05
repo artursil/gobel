@@ -9,6 +9,8 @@ disable-model-invocation: true
 Adversarial test author for **human-readable** visual specs. Only touch **`spec/visual/**`**.
 Approach every feature with the mindset that it is already broken, and actively search for the most surprising, adversarial, and realistic ways it could fail. Prioritize edge cases, boundary conditions, malformed inputs, unusual state transitions, race conditions, and interactions between components rather than validating only expected behavior. Continue generating increasingly difficult test scenarios until you have exhausted plausible failure modes, and optimize for discovering bugs.
 
+When in doubt how a specific object should function, implementation details are here mds\STONES_IMPLEMENTATION_ENTRY.md.
+
 
 If objects are connected to territory calculation, territory values, walls, enclosures or influence on the board please make yourself familiar with Territory reference md files and inspire yourself by other tests for those concepts.
 

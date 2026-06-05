@@ -19,7 +19,7 @@ M.stone_basic = {
 	id = "stone_basic",
 	type = "stone",
 	name = "Basic Stone",
-	description = "Steady placement stone that adds 1 point on placement.",
+	description = "Inert placement stone with no stone-specific scoring or multiplier effects.",
 	rarity = "common",
 	probability = 1.0,
 	cost = 1,
@@ -40,7 +40,7 @@ M.stone_power = {
 	rarity = "uncommon",
 	probability = 0.8,
 	cost = 1,
-	max_level = 3,
+	max_level = 1,
 	upgrade_levels = {
 		[1] = {},
 		[2] = {
@@ -91,10 +91,11 @@ M.stone_focus = {
 	},
 }
 
-M.stone_lieutenant = {
-	id = "stone_lieutenant",
+M.stone_influence = {
+	id = "stone_influence",
 	type = "stone",
 	name = "Lieutenant",
+	aliases = { "lieutenant" },
 	description = "Skilled commander whose presence extends your reach by 1 when calculating territory.",
 	rarity = "rare",
 	probability = 0.6,
@@ -112,7 +113,7 @@ M.stone_lieutenant = {
 			sub = "territory",
 			territory_step = "distance",
 			territory_scope = "board",
-			value = P.stone_lieutenant_distance_bonus,
+			value = P.stone_influence_distance_bonus,
 			priority = P.default_effect_priority,
 		},
 	},
@@ -225,5 +226,61 @@ M.wall = {
 		shared.wall_stone,
 	},
 }
+
+--- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
+--- @param id string
+--- @return table
+local function stub_stone(id)
+	return {
+		id = id,
+		type = "stone",
+		name = id,
+		description = "",
+		rarity = "common",
+		probability = 1.0,
+		cost = 1,
+		graphic = { draw_key = "solid" },
+		visual = {
+			color = { 0.72, 0.7, 0.68 },
+			sprite = "sprites/stones/basic.png",
+		},
+		effects = {},
+	}
+end
+
+local UNIMPLEMENTED_STONE_IDS = {
+	"points_stone",
+	"influence_stone",
+	"tower_stone",
+	"energy_stone",
+	"diagonal_stone",
+	"line_stone",
+	"kamikaze_stone",
+	"enclosure_stone",
+	"control_stone",
+	"blockade_stone",
+	"defence_stone",
+	"money_field_stone",
+	"anti_capture_stone",
+	"mult_3_rounds_stone",
+	"points_3_rounds_stone",
+	"capture_stone",
+	"tax_stone",
+	"self_destruct_timed_stone",
+	"territory_to_points_stone",
+	"territory_to_multiplier_stone",
+	"escalating_points_stone",
+	"escalating_money_stone",
+	"unlimited_upgrades_stone",
+	"final_blow_stone",
+	"high_power_money_loss_stone",
+	"copper_stone",
+	"retrigger_stone",
+}
+
+for i = 1, #UNIMPLEMENTED_STONE_IDS do
+	local id = UNIMPLEMENTED_STONE_IDS[i]
+	M[id] = stub_stone(id)
+end
 
 return M

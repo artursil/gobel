@@ -6,7 +6,7 @@ local helper = require("spec.spec_helper")
 --   W  = white, stone_basic
 --   C  = black, stone_power
 --   F  = black, stone_focus
---   L  = black, stone_lieutenant
+--   L  = black, stone_influence
 --   T  = black, stone_tower
 --   .  = empty
 
@@ -15,7 +15,7 @@ local LETTER_TO_STONE = {
 	W = { color = config.STONE_WHITE, kind = "stone_basic" },
 	C = { color = config.STONE_BLACK, kind = "stone_power" },
 	F = { color = config.STONE_BLACK, kind = "stone_focus" },
-	L = { color = config.STONE_BLACK, kind = "stone_lieutenant" },
+	L = { color = config.STONE_BLACK, kind = "stone_influence" },
 	T = { color = config.STONE_BLACK, kind = "stone_tower" },
 }
 

@@ -11,7 +11,7 @@ Territory grid: `B`/`W` = stone, `b`/`w` = empty owned by black/white, `.` = emp
 For each empty cell:
 
 1. Find the **nearest black stone** and **nearest white stone** (Manhattan steps: |Δrow| + |Δcol|).
-2. Some stones reduce their distance (e.g. lieutenant adds a **bonus** subtracted from distance).
+2. Some stones reduce their distance (e.g. `stone_influence` adds a **bonus** subtracted from distance).
 3. **Closer side wins** (`b` or `w`).
 4. **Same distance** → side with **more** stones tied for nearest wins.
 5. **Still tied** → `.` (no owner from influence).

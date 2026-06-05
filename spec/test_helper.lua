@@ -347,6 +347,7 @@ function M.snapshot_player(player)
 		plus_mult = player.score.plus_mult,
 		x_mult = player.score.x_mult,
 		energy = player.resources.energy_current,
+		energy_max = player.resources.energy_max,
 		money = player.resources.money,
 	}
 end
@@ -522,25 +523,42 @@ function M.place_stone(g, board_rows, finish_animations)
 	end
 	local letter_map = require_visual_letter_map()
 	local new_board = spec_helper.parse_board_ascii_kinds(board_rows, letter_map)
+	local candidates = {}
 	for r = 1, config.BOARD_SIZE do
 		for c = 1, config.BOARD_SIZE do
-			if board.is_empty(g.board[r][c]) and not board.is_empty(new_board[r][c]) then
-				local player = match_state.player_for_color(g, g.to_play)
-				local stone_kind = new_board[r][c].kind
-				player.stones.selected_stone = stone_kind
-				local idx = player.stones.selected_stone_index or 1
-				if player.stones.playable_stones[idx] then
-					player.stones.playable_stones[idx] = stone_kind
-				end
-				M.assert_legal_player_move(g, r, c, "place_stone at row " .. r .. " col " .. c)
-				if finish_animations then
-					M.finish_ui_animations_for_turn(g)
-				end
-				return r, c
+			local old_cell = g.board[r][c]
+			local new_cell = new_board[r][c]
+			local old_empty = board.is_empty(old_cell)
+			local new_empty = board.is_empty(new_cell)
+			if not new_empty and (old_empty or old_cell.kind ~= new_cell.kind or old_cell.color ~= new_cell.color) then
+				candidates[#candidates + 1] = {
+					row = r,
+					col = c,
+					priority = old_empty and 0 or 1,
+				}
 			end
 		end
 	end
-	error("place_stone: no new stone found in board_rows compared to the current board")
+	table.sort(candidates, function(a, b)
+		return a.priority < b.priority
+	end)
+	for i = 1, #candidates do
+		local r = candidates[i].row
+		local c = candidates[i].col
+		local player = match_state.player_for_color(g, g.to_play)
+		local stone_kind = new_board[r][c].kind
+		player.stones.selected_stone = stone_kind
+		local idx = player.stones.selected_stone_index or 1
+		if player.stones.playable_stones[idx] then
+			player.stones.playable_stones[idx] = stone_kind
+		end
+		M.assert_legal_player_move(g, r, c, "place_stone at row " .. r .. " col " .. c)
+		if finish_animations then
+			M.finish_ui_animations_for_turn(g)
+		end
+		return r, c
+	end
+	error("place_stone: no board change found in board_rows compared to the current board")
 end
 
 --- @param g table
@@ -714,10 +732,52 @@ function M.assert_players_total_score_delta(g, snap, expected_delta_black, expec
 	assert_equal_with_scoring_debug(g, expected_delta_white, delta_white, prefix .. " white")
 end
 
+--- @param token string
+--- @param value_map table<string, string|number>|nil
+--- @return string
+local function expand_territory_value_token(token, value_map)
+	if token == "#" then
+		return "#"
+	end
+	if token == "." then
+		return "1"
+	end
+	if value_map then
+		local mapped = value_map[token]
+		if mapped ~= nil then
+			return tostring(mapped)
+		end
+	end
+	return token
+end
+
+--- Expands ``.`` → ``1``, ``#`` unchanged, and optional letter placeholders via ``opts.values``.
+--- @param expected_rows table
+--- @param opts table|nil  ``{ values = { d = 2 } }`` maps single-letter tokens to territory value strings
+--- @return string
+local function expand_territory_values_rows(expected_rows, opts)
+	if type(expected_rows) ~= "table" then
+		error("assert_territory_values_ascii: expected_rows must be a table of row strings")
+	end
+	local value_map = opts and opts.values
+	local lines = {}
+	for i = 1, #expected_rows do
+		local tokens = {}
+		for token in string.gmatch(expected_rows[i], "%S+") do
+			tokens[#tokens + 1] = expand_territory_value_token(token, value_map)
+		end
+		lines[i] = table.concat(tokens, " ")
+	end
+	return table.concat(lines, "\n")
+end
+
 --- @param g table
 --- @param expected_rows table
 --- @param context string|nil
 function M.assert_territory_ascii(g, expected_rows, context)
+	if type(expected_rows) ~= "table" then
+		error("assert_territory_ascii: expected_rows must be a table of row strings")
+	end
 	local territory = g.territory or spec_helper.territory_map(g.board, "regional")
 	local expected = table.concat(expected_rows, "\n")
 	local actual = spec_helper.territory_ascii(g.board, territory)
@@ -728,11 +788,13 @@ function M.assert_territory_ascii(g, expected_rows, context)
 	assert.are.equal(expected, actual, msg)
 end
 
+--- Compares per-cell territory weights to ``M.territory_weight_ascii(g)``.
 --- @param g table
---- @param expected_rows table
+--- @param expected_rows table  array of row strings (not a single concatenated board string)
 --- @param context string|nil
-function M.assert_territory_values_ascii(g, expected_rows, context)
-	local expected = table.concat(expected_rows, "\n")
+--- @param opts table|nil  ``{ values = { d = 2, b = 1 } }`` expands letter tokens on empty cells
+function M.assert_territory_values_ascii(g, expected_rows, context, opts)
+	local expected = expand_territory_values_rows(expected_rows, opts)
 	local actual = M.territory_weight_ascii(g)
 	local msg = context or "territory value grid"
 	if expected ~= actual then
@@ -883,6 +945,681 @@ function M.assert_legal_player_move(g, row, col, context)
 		M.debug_dump_game_state(g, msg)
 	end
 	assert.is_true(ok, msg)
+end
+
+--- @param row integer
+--- @param col integer
+--- @return string
+local function cell_key(row, col)
+	return row .. ":" .. col
+end
+
+--- @param g table
+--- @return nil
+function M.ensure_test_state_bags(g)
+	g.blocked_cells = g.blocked_cells or {}
+	g.stone_immunity_remaining = g.stone_immunity_remaining or {}
+	g.board_cell_timers = g.board_cell_timers or {}
+	g.stone_stored_values = g.stone_stored_values or {}
+	g.territory_control_rounds = g.territory_control_rounds or {}
+	g.territory_contested = g.territory_contested or {}
+	g.test_parameter_overrides = g.test_parameter_overrides or {}
+	g.test_rng_streams = g.test_rng_streams or {}
+	g.destroy_odds = g.destroy_odds or {}
+end
+
+--- @param g table
+--- @param side string ``"black"`` | ``"white"``
+--- @return nil
+function M.ensure_actor_turn(g, side)
+	local resolver = require("resolver")
+	local guard = 0
+	while g.to_play ~= side and not g.ended and not g.over and guard < 24 do
+		if g.phase == "MAIN_PHASE" then
+			resolver.finish_main_phase(g, g.to_play)
+		end
+		if g.phase == "PLACE_PHASE" then
+			M.pass_turn(g)
+		elseif g.phase == "TURN_START" then
+			resolver.begin_turn(g, g.to_play)
+		else
+			break
+		end
+		guard = guard + 1
+	end
+end
+
+--- Flushes deferred UI turn advance after ``place_stone(..., false)``.
+--- @param g table
+--- @return nil
+function M.finish_turn(g)
+	M.finish_ui_animations_for_turn(g)
+end
+
+--- Passes for ``g.to_play`` (finishes MAIN when needed).
+--- @param g table
+--- @return nil
+function M.pass_turn(g)
+	local resolver = require("resolver")
+	local actor = g.to_play
+	if g.ended or g.over or actor == "none" then
+		return
+	end
+	if g.phase == "MAIN_PHASE" then
+		resolver.finish_main_phase(g, actor)
+	end
+	if g.phase == "PLACE_PHASE" then
+		resolver.submit_action(g, {
+			actor = actor,
+			type = "PASS_TURN",
+			payload = {},
+		})
+		M.finish_ui_animations_for_turn(g)
+	end
+end
+
+--- @param g table
+--- @param side string ``"black"`` | ``"white"``
+--- @param stone_id string
+--- @param board_rows table
+--- @param finish_animations boolean|nil
+--- @return integer row
+--- @return integer col
+function M.place_stone_for(g, side, stone_id, board_rows, finish_animations)
+	M.ensure_actor_turn(g, side)
+	local player = match_state.player_for_color(g, side)
+	local found_index = nil
+	for i = 1, #player.stones.playable_stones do
+		if player.stones.playable_stones[i] == stone_id then
+			found_index = i
+			break
+		end
+	end
+	if not found_index then
+		player.stones.playable_stones = { stone_id }
+		found_index = 1
+	end
+	player.stones.selected_stone = stone_id
+	player.stones.selected_stone_index = found_index
+	local resolver = require("resolver")
+	if g.phase == "MAIN_PHASE" and g.to_play == side then
+		resolver.finish_main_phase(g, side)
+	end
+	return M.place_stone(g, board_rows, finish_animations)
+end
+
+--- @param g table
+--- @param side string color owner of stone to remove (``"black"`` | ``"white"``)
+--- @param row integer
+--- @param col integer
+--- @return nil
+function M.capture_stone_at(g, row, col, side)
+	local color = side == "white" and config.STONE_WHITE or config.STONE_BLACK
+	local cell = g.board[row][col]
+	if board.is_empty(cell) or cell.color ~= color then
+		return
+	end
+	g.board[row][col] = config.STONE_NONE
+	g.territory, g.territory_decision_sources, g.territory_value = spec_helper.territory_map(g.board, g.territory_mode or "regional")
+	local key = cell_key(row, col)
+	if g.stone_stored_values then
+		g.stone_stored_values[key] = nil
+	end
+	if g.board_cell_timers then
+		g.board_cell_timers[key] = nil
+	end
+end
+
+--- @param g table
+--- @param count integer
+--- @return nil
+function M.advance_rounds(g, count)
+	M.ensure_test_state_bags(g)
+	local resolve_round = require("single_game.resolver.resolve_round")
+	for _ = 1, count do
+		for key, remaining in pairs(g.board_cell_timers) do
+			if remaining > 0 then
+				g.board_cell_timers[key] = remaining - 1
+			end
+		end
+		for key, remaining in pairs(g.blocked_cells) do
+			if remaining > 0 then
+				g.blocked_cells[key] = remaining - 1
+				if g.blocked_cells[key] <= 0 then
+					g.blocked_cells[key] = nil
+				end
+			end
+		end
+		for key, remaining in pairs(g.stone_immunity_remaining) do
+			if remaining > 0 then
+				g.stone_immunity_remaining[key] = remaining - 1
+				if g.stone_immunity_remaining[key] <= 0 then
+					g.stone_immunity_remaining[key] = nil
+				end
+			end
+		end
+		local kept = {}
+		for i = 1, #(g.active_effects or {}) do
+			local active = g.active_effects[i]
+			active.remaining_turns = (active.remaining_turns or 0) - 1
+			if active.remaining_turns > 0 then
+				kept[#kept + 1] = active
+			end
+		end
+		g.active_effects = kept
+		g.turn_number = (g.turn_number or 1) + 1
+		g.round_number = match_state.round_number_from_turn(g.turn_number)
+		resolve_round.resolve(g, { macro = "end_of_turn" })
+	end
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @return boolean
+function M.is_cell_blocked(g, row, col)
+	if row < 1 or row > config.BOARD_SIZE or col < 1 or col > config.BOARD_SIZE then
+		return false
+	end
+	M.ensure_test_state_bags(g)
+	local remaining = g.blocked_cells[cell_key(row, col)]
+	return remaining ~= nil and remaining > 0
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param context string|nil
+function M.assert_cell_blocked(g, row, col, context)
+	assert.is_true(M.is_cell_blocked(g, row, col), context)
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param context string|nil
+function M.assert_cell_unblocked(g, row, col, context)
+	assert.is_false(M.is_cell_blocked(g, row, col), context)
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @return integer
+function M.stone_immunity_remaining(g, row, col)
+	M.ensure_test_state_bags(g)
+	return g.stone_immunity_remaining[cell_key(row, col)] or 0
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param expected integer
+--- @param context string|nil
+function M.assert_stone_immune(g, row, col, expected, context)
+	assert.are.equal(expected, M.stone_immunity_remaining(g, row, col), context)
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param context string|nil
+function M.assert_stone_not_immune(g, row, col, context)
+	assert.are.equal(0, M.stone_immunity_remaining(g, row, col), context)
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @return integer
+function M.stone_timer_remaining(g, row, col)
+	M.ensure_test_state_bags(g)
+	local key = cell_key(row, col)
+	if g.board_cell_timers[key] then
+		return g.board_cell_timers[key]
+	end
+	for i = 1, #(g.active_effects or {}) do
+		local active = g.active_effects[i]
+		if active.row == row and active.col == col then
+			return active.remaining_turns or 0
+		end
+	end
+	local cell = g.board[row][col]
+	if type(cell) == "table" and cell.timer_remaining_rounds then
+		return cell.timer_remaining_rounds
+	end
+	return 0
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param expected integer
+--- @param context string|nil
+function M.assert_stone_timer(g, row, col, expected, context)
+	assert.are.equal(expected, M.stone_timer_remaining(g, row, col), context)
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param context string|nil
+function M.assert_board_cell_empty(g, row, col, context)
+	assert.is_true(board.is_empty(g.board[row][col]), context)
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param context string|nil
+function M.assert_board_stone_present(g, row, col, context)
+	assert.is_false(board.is_empty(g.board[row][col]), context)
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param context string|nil
+function M.assert_board_stone_empty(g, row, col, context)
+	M.assert_board_cell_empty(g, row, col, context)
+end
+
+--- @param g table
+--- @param side string
+--- @param stone_id string
+--- @param row integer
+--- @param col integer
+--- @return boolean
+function M.try_player_move_with_stone(g, side, stone_id, row, col)
+	M.ensure_actor_turn(g, side)
+	local player = match_state.player_for_color(g, side)
+	player.stones.selected_stone = stone_id
+	player.stones.selected_stone_index = 1
+	for i = 1, #player.stones.playable_stones do
+		if player.stones.playable_stones[i] == stone_id then
+			player.stones.selected_stone_index = i
+			break
+		end
+	end
+	if player.stones.playable_stones[1] ~= stone_id then
+		player.stones.playable_stones = { stone_id }
+		player.stones.selected_stone_index = 1
+	end
+	local resolver = require("resolver")
+	if g.phase == "MAIN_PHASE" and g.to_play == side then
+		resolver.finish_main_phase(g, side)
+	end
+	if g.phase ~= "PLACE_PHASE" or g.to_play ~= side then
+		return false
+	end
+	local result = resolver.submit_action(g, {
+		actor = side,
+		type = "PLACE_STONE",
+		payload = { row = row, col = col },
+	})
+	M.finish_ui_animations_for_turn(g)
+	return result.ok
+end
+
+--- @param g table
+--- @param side string
+--- @param stone_id string
+--- @param row integer
+--- @param col integer
+--- @param context string|nil
+function M.assert_legal_player_move_with_stone(g, side, stone_id, row, col, context)
+	local ok = M.try_player_move_with_stone(g, side, stone_id, row, col)
+	if not ok and spec_helper.integration_debug_enabled() then
+		M.debug_dump_game_state(g, context or "legal move")
+	end
+	assert.is_true(ok, context)
+end
+
+--- @param g table
+--- @param side string
+--- @param stone_id string
+--- @param row integer
+--- @param col integer
+--- @param context string|nil
+function M.assert_illegal_player_move_with_stone(g, side, stone_id, row, col, context)
+	local before = board.clone(g.board)
+	local points_before = match_state.player_for_color(g, side).score.points
+	local ok = M.try_player_move_with_stone(g, side, stone_id, row, col)
+	assert.is_false(ok, context)
+	local after = g.board
+	for r = 1, config.BOARD_SIZE do
+		for c = 1, config.BOARD_SIZE do
+			local b_cell = before[r][c]
+			local a_cell = after[r][c]
+			local b_empty = board.is_empty(b_cell)
+			local a_empty = board.is_empty(a_cell)
+			if b_empty ~= a_empty then
+				error((context or "illegal move") .. ": board mutated on rejected placement")
+			end
+			if not b_empty and not a_empty and (b_cell.kind ~= a_cell.kind or b_cell.color ~= a_cell.color) then
+				error((context or "illegal move") .. ": board mutated on rejected placement")
+			end
+		end
+	end
+	assert.are.equal(points_before, match_state.player_for_color(g, side).score.points, context)
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @return number|nil
+function M.stone_stored_value_at(g, row, col)
+	M.ensure_test_state_bags(g)
+	local cell = g.board[row][col]
+	if type(cell) == "table" and cell.stored_value ~= nil then
+		return cell.stored_value
+	end
+	return g.stone_stored_values[cell_key(row, col)]
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param expected number
+--- @param context string|nil
+function M.assert_stone_stored_value(g, row, col, expected, context)
+	assert.are.equal(expected, M.stone_stored_value_at(g, row, col), context)
+end
+
+--- @param g table
+--- @param side string
+--- @param snap table
+--- @param context string|nil
+function M.assert_player_energy_max_unchanged(g, side, snap, context)
+	local player = match_state.player_for_color(g, side)
+	assert.are.equal(player.resources.energy_max, snap.energy_max or player.resources.energy_max, context)
+end
+
+--- @param g table
+--- @param side string
+--- @param snap table
+--- @param context string|nil
+function M.assert_player_total_score_reflects_state(g, side, snap, context)
+	local player = match_state.player_for_color(g, side)
+	local expected = M.params.total_score(
+		g.turn_number,
+		player.score.territory,
+		player.score.points,
+		player.score.plus_mult,
+		player.score.x_mult
+	)
+	M.assert_player_total_score(g, side, expected, context)
+end
+
+--- @param g table
+--- @param side string
+--- @param amount number
+--- @param context string|nil
+function M.grant_money(g, side, amount, context)
+	local player = match_state.player_for_color(g, side)
+	player.resources.money = (player.resources.money or 0) + amount
+end
+
+--- @param g table
+--- @param stone_id string
+--- @param param_name string
+--- @param value number
+--- @return nil
+function M.set_stone_parameter(g, stone_id, param_name, value)
+	local stone_params = require("objects.parameters.stones")
+	stone_params[param_name] = value
+end
+
+--- @param g table
+--- @return nil
+function M.end_match_before_timers(g)
+	g.ended = true
+	g.over = true
+	g.phase = "MATCH_END"
+	g.to_play = "none"
+end
+
+--- @param g table
+--- @param is_final boolean
+--- @return nil
+function M.set_final_round(g, is_final)
+	g.is_final_round = is_final
+end
+
+--- @param g table
+--- @param rounds integer
+--- @return nil
+function M.set_rounds_until_final(g, rounds)
+	g.rounds_until_final = rounds
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param rounds integer
+--- @return nil
+function M.set_territory_control_rounds(g, row, col, rounds)
+	M.ensure_test_state_bags(g)
+	g.territory_control_rounds[cell_key(row, col)] = rounds
+	local cell = g.board[row][col]
+	if type(cell) == "table" then
+		cell.territory_control_rounds = rounds
+	end
+end
+
+--- @param g table
+--- @param side string
+--- @return integer
+function M.count_territory_cells(g, side)
+	local color = side == "white" and config.STONE_WHITE or config.STONE_BLACK
+	local territory = g.territory
+	if not territory then
+		territory = spec_helper.territory_map(g.board, g.territory_mode or "regional")
+	end
+	return spec_helper.territory_points(territory, color, g.territory_value)
+end
+
+--- @param g table
+--- @param side string
+--- @param cell_count integer
+--- @return nil
+function M.seed_territory_owner_grid(g, side, cell_count)
+	local color = side == "white" and config.STONE_WHITE or config.STONE_BLACK
+	local n = config.BOARD_SIZE
+	g.territory = g.territory or {}
+	g.territory_value = g.territory_value or {}
+	local placed = 0
+	for r = 1, n do
+		g.territory[r] = g.territory[r] or {}
+		g.territory_value[r] = g.territory_value[r] or {}
+		for c = 1, n do
+			if board.is_empty(g.board[r][c]) then
+				if placed < cell_count then
+					g.territory[r][c] = color
+					g.territory_value[r][c] = g.territory_value[r][c] or 1
+					placed = placed + 1
+				else
+					g.territory[r][c] = config.STONE_NONE
+				end
+			end
+		end
+	end
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param side string
+--- @return nil
+function M.seed_territory_owner_at_cell(g, row, col, side)
+	local color = side == "white" and config.STONE_WHITE or config.STONE_BLACK
+	g.territory = g.territory or {}
+	g.territory[row] = g.territory[row] or {}
+	g.territory[row][col] = color
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @return nil
+function M.mark_territory_contested(g, row, col)
+	M.ensure_test_state_bags(g)
+	g.territory_contested[cell_key(row, col)] = true
+end
+
+--- @param g table
+--- @param stone_id string
+--- @param rng_fn fun(max_value: integer): integer
+--- @return nil
+function M.set_rng_stream(g, stone_id, rng_fn)
+	M.ensure_test_state_bags(g)
+	g.test_rng_streams[stone_id] = rng_fn
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @return string
+function M.destroy_odds_display(g, row, col)
+	M.ensure_test_state_bags(g)
+	return g.destroy_odds[cell_key(row, col)] or "1/1"
+end
+
+--- @param g table
+--- @param row integer
+--- @param col integer
+--- @param expected string
+--- @param context string|nil
+function M.assert_destroy_odds(g, row, col, expected, context)
+	assert.are.equal(expected, M.destroy_odds_display(g, row, col), context)
+end
+
+--- @param g table
+--- @param stone_id string
+--- @param level integer
+--- @return integer
+function M.upgrade_cost_for_level(g, stone_id, level)
+	local stone_params = require("objects.parameters.stones")
+	local base = stone_params.unlimited_upgrades_upgrade_cost_base or 1
+	return base * level
+end
+
+--- @param g table
+--- @param side string
+--- @param slot_index integer
+--- @param opts table|nil ``{ expect_success = boolean }``
+--- @return nil
+function M.upgrade_stone_instance(g, side, slot_index, opts)
+	opts = opts or {}
+	local player = match_state.player_for_color(g, side)
+	player.stones.instance_by_slot = player.stones.instance_by_slot or {}
+	local inst = player.stones.instance_by_slot[slot_index]
+	if not inst then
+		local def_id = player.stones.playable_stones[slot_index] or player.stones.selected_stone
+		inst = { def_id = def_id, level = 1 }
+		player.stones.instance_by_slot[slot_index] = inst
+	end
+	local next_level = (inst.level or 1) + 1
+	local cost = M.upgrade_cost_for_level(g, inst.def_id, next_level)
+	if opts.expect_success ~= false and (player.resources.money or 0) < cost then
+		player.resources.money = cost * 2
+	end
+	if (player.resources.money or 0) < cost then
+		if opts.expect_success == false then
+			return
+		end
+		error("upgrade_stone_instance: insufficient money")
+	end
+	if opts.expect_success == false then
+		return
+	end
+	player.resources.money = player.resources.money - cost
+	if inst.def_id == "unlimited_upgrades_stone" then
+		inst.level = next_level
+		return
+	end
+	local ObjectInstance = require("single_game.resolver.ObjectInstance")
+	ObjectInstance.upgrade(inst)
+end
+
+--- @param g table
+--- @param side string
+--- @param slot_index integer
+--- @param expected_level integer
+--- @param context string|nil
+function M.assert_stone_instance_level(g, side, slot_index, expected_level, context)
+	local player = match_state.player_for_color(g, side)
+	local inst = player.stones.instance_by_slot and player.stones.instance_by_slot[slot_index]
+	assert.is_not_nil(inst, context)
+	assert.are.equal(expected_level, inst.level, context)
+end
+
+local function copy_stone_instances(instance_by_slot)
+	local out = {}
+	if not instance_by_slot then
+		return out
+	end
+	for slot, inst in pairs(instance_by_slot) do
+		out[slot] = {
+			def_id = inst.def_id,
+			level = inst.level,
+			max_level = inst.max_level,
+		}
+	end
+	return out
+end
+
+--- @param g table
+--- @return table
+function M.save_game_snapshot(g)
+	return {
+		board = board.clone(g.board),
+		turn_number = g.turn_number,
+		round_number = g.round_number,
+		to_play = g.to_play,
+		phase = g.phase,
+		players = {
+			black = {
+				stones = {
+					instance_by_slot = copy_stone_instances(g.players.black.stones.instance_by_slot),
+					playable_stones = M.copy_ids(g.players.black.stones.playable_stones or {}),
+				},
+				resources = {
+					money = g.players.black.resources.money,
+					energy_current = g.players.black.resources.energy_current,
+				},
+			},
+			white = {
+				stones = {
+					instance_by_slot = copy_stone_instances(g.players.white.stones.instance_by_slot),
+					playable_stones = M.copy_ids(g.players.white.stones.playable_stones or {}),
+				},
+				resources = {
+					money = g.players.white.resources.money,
+					energy_current = g.players.white.resources.energy_current,
+				},
+			},
+		},
+	}
+end
+
+--- @param g table
+--- @param saved table
+--- @return nil
+function M.restore_game_snapshot(g, saved)
+	g.board = board.clone(saved.board)
+	g.turn_number = saved.turn_number
+	g.round_number = saved.round_number
+	g.to_play = saved.to_play
+	g.phase = saved.phase
+	for _, side in ipairs({ "black", "white" }) do
+		local src = saved.players[side]
+		local dst = g.players[side]
+		dst.stones.instance_by_slot = copy_stone_instances(src.stones.instance_by_slot)
+		dst.stones.playable_stones = M.copy_ids(src.stones.playable_stones)
+		dst.resources.money = src.resources.money
+		dst.resources.energy_current = src.resources.energy_current
+	end
 end
 
 return M
