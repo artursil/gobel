@@ -410,6 +410,36 @@ describe("money_field_stone (visual ASCII)", function()
 			assert_player_money(g, "black", snap.money + expected_delta, "inner black pocket inside outer black wall")
 		end)
 
+		it("white inner pocket inside outer black wall at same scale pays zero to black", function()
+			set_hand(g, "black", { "money_field_stone" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . W . . .",
+				". . . . . . W . .",
+				"B B B B B B . . .",
+				"W B W W W B . . .",
+				". W . . W B . . .",
+				". . . . W B . . .",
+				". . . . W B . . .",
+				". . . . W B . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . W . . .",
+				". . . . . . W . .",
+				"B B B B B B . . .",
+				"W B W W W B . . .",
+				". W . M W B . . .",
+				". . . . W B . . .",
+				". . . . W B . . .",
+				". . . . W B . . .",
+			})
+			local expected_delta = 0
+			assert_player_money(g, "black", snap.money + expected_delta,
+				"M inside white pocket within outer black wall — not black-enclosed")
+		end)
+
 		it("large multi-cell enclosure pays flat money_field_payout not per cell", function()
 			set_hand(g, "black", { "money_field_stone" })
 			set_board(g, {
@@ -491,27 +521,27 @@ describe("money_field_stone (visual ASCII)", function()
 		it("fixture #13 style board: enclosed black cell pays, gap cells do not", function()
 			set_hand(g, "black", { "money_field_stone" })
 			set_board(g, {
-				". . . W . . W . .",
-				". B . W . . W . .",
-				"B . W B B B W . .",
-				". W B W . W B W B",
-				". W B . W . B W .",
-				". . W B B B . W .",
-				". B . W . . . W .",
-				"W W W . . . . . W",
-				". . . . . . . . .",
+				"W . B . W . . . .",
+				"B W . W . W . . .",
+				"B B W . B B W . .",
+				"B . B . . W . W .",
+				"W . B . . B . . W",
+				"B W W B B . . W .",
+				". . B W B B W . .",
+				"B B . W W W . W B",
+				". B B . W . . B .",
 			})
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
-				". . . W . . W . .",
-				". B . W . . W . .",
-				"B . W B B B W . .",
-				". W B W . W B W B",
-				". W B M W . B W .",
-				". . W B B B . W .",
-				". B . W . . . W .",
-				"W W W . . . . . W",
-				". . . . . . . . .",
+				"W . B . W . . . .",
+				"B W . W . W . . .",
+				"B B W . B B W . .",
+				"B . B . . W . W .",
+				"W M B . . B . . W",
+				"B W W B B . . W .",
+				". . B W B B W . .",
+				"B B . W W W . W B",
+				". B B . W . . B .",
 			})
 			local expected_delta = S.money_field_payout
 			assert_player_money(g, "black", snap.money + expected_delta, "enclosed pocket on complex multi-enclosure board")
@@ -520,27 +550,27 @@ describe("money_field_stone (visual ASCII)", function()
 		it("fixture #13 style board: open gap cell pays zero", function()
 			set_hand(g, "black", { "money_field_stone" })
 			set_board(g, {
-				". . . W . . W . .",
-				". B . W . . W . .",
-				"B . W B B B W . .",
-				". W B W . W B W B",
-				". W B . W . B W .",
-				". . W B B B . W .",
-				". B . W . . . W .",
-				"W W W . . . . . W",
-				". . . . . . . . .",
+				"W . B . W . . . .",
+				"B W . W . W . . .",
+				"B B W . B B W . .",
+				"B . B . . W . W .",
+				"W . B . . B . . W",
+				"B W W B B . . W .",
+				". . B W B B W . .",
+				"B B . W W W . W B",
+				". B B . W . . B .",
 			})
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
-				". . . W . . W . .",
-				". B . W . . W . .",
-				"B . W B B B W . .",
-				". W B W M W B W B",
-				". W B . W . B W .",
-				". . W B B B . W .",
-				". B . W . . . W .",
-				"W W W . . . . . W",
-				". . . . . . . . .",
+				"W . B . W . . . .",
+				"B W . W . W . . .",
+				"B B W . B B W . .",
+				"B . B . . W . W .",
+				"W . B . . B . . W",
+				"B W W B B . . W .",
+				"M . B W B B W . .",
+				"B B . W W W . W B",
+				". B B . W . . B .",
 			})
 			local expected_delta = 0
 			assert_player_money(g, "black", snap.money + expected_delta, "gap pocket on complex board not enclosed")
