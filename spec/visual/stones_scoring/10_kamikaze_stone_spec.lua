@@ -32,6 +32,7 @@ local visual_scoring_debug_after_each = test_helper.visual_scoring_debug_after_e
 local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_registered_in_content
 local assert_player_points_delta = test_helper.assert_player_points_delta
 local assert_board_cell_empty = test_helper.assert_board_cell_empty
+local assert_board_stone_present = test_helper.assert_board_stone_present
 local assert_legal_player_move_with_stone = test_helper.assert_legal_player_move_with_stone
 local assert_illegal_player_move_with_stone = test_helper.assert_illegal_player_move_with_stone
 
@@ -290,7 +291,7 @@ describe("kamikaze_stone (visual ASCII)", function()
 				". . . W W W . . .",
 				". . . W . W . . .",
 				". . . W W W . . .",
-				". . . . . . K . . .",
+				". . . . . . K . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
@@ -347,6 +348,40 @@ describe("kamikaze_stone (visual ASCII)", function()
 			local expected_delta = S.kamikaze_points_bonus
 			assert_player_points_delta(g, "black", snap, expected_delta, "open-board kamikaze still pays")
 			assert_board_cell_empty(g, 4, 4, "open-board kamikaze self-removes")
+		end)
+
+		it("kamikaze_stone scenario 11: adjacent friendly stones regain liberty after self-removal", function()
+			set_hand(g, "black", { "kamikaze_stone" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . W W . . . . .",
+				". . W B W W . . .",
+				". . W B . W . . .",
+				". . . W W W . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . W W . . . . .",
+				". . W B W W . . .",
+				". . W B K W . . .",
+				". . . W W W . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+
+			local expected_delta = S.kamikaze_points_bonus
+			assert_player_points_delta(g, "black", snap, expected_delta, "kamikaze pays bonus next to friendly stones")
+			assert_board_cell_empty(g, 5, 5, "kamikaze self-removes from sacrifice cell")
+			assert_board_stone_present(g, 4, 4, "friendly stone at (4,4) survives kamikaze self-removal")
+			assert_board_stone_present(g, 5, 4, "friendly stone at (5,4) survives kamikaze self-removal")
 		end)
 	end)
 end)

@@ -19,6 +19,37 @@
 - "tax_stone scenario 5: nested enclosure pays inner enemies once only" - you can safely replace with another test
 
 
+	it("keeps board fixture #12 complex mix", function()
+		local b = helper.parse_board_ascii({
+			"B . W . B . . . .",
+			"W B . B . B . . .",
+			"W W B . W W B . .",
+			"W . W . . B . B .",
+			"B . W . . W . . B",
+			"W B B W W . . B .",
+			". . W B W W B . .",
+			"W W . B B B . B W",
+			". W W . B . . W .",
+		})
+		local tiles = helper.new_tiles()
+		local regions = enclosure.detect_regions_and_ownership(b, tiles)
+		helper.debug_dump_regions("fixture1q", b, regions, tiles)
+
+		assert_expected_ownership_ascii(b, regions, tiles, {
+			"B b W b B b b b b",
+			"W B b B . B b b b",
+			"W W B . W W B b b",
+			"W w W . . B . B b",
+			"B w W . . W . . B",
+			"W B B W W . . B b",
+			". . W B W W B b b",
+			"W W b B B B b B W",
+			"w W W b B b b W w",
+		})
+	end)
+
+
+
 /visual-tests for 02_points_stone clean the file, remove unused functions and stones.
 this stone is rather easy to test so just use different boards, you can copy previous once and make sure that only recently placed stone scores, I don't think we need 10 tests here.
 

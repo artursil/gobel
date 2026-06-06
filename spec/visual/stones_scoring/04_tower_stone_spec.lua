@@ -88,15 +88,15 @@ describe("tower_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			"# c c . . . . . .",
-			"c c c . . . . . .",
-			"c c c . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"# c c 1 1 1 1 1 1",
+			"c c c 1 1 1 1 1 1",
+			"c c c 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "top-left corner 3x3 aura", TV_CORNER)
 
 		local boosted_cells = 8
@@ -123,15 +123,15 @@ describe("tower_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . c c #",
-			". . . . . . c c c",
-			". . . . . . c c c",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 c c #",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "top-right corner 3x3 aura", TV_CORNER)
 	end)
 
@@ -152,15 +152,15 @@ describe("tower_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			"c c c . . . . . .",
-			"c c c . . . . . .",
-			"# c c . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"c c c 1 1 1 1 1 1",
+			"c c c 1 1 1 1 1 1",
+			"# c c 1 1 1 1 1 1",
 		}, "bottom-left corner 3x3 aura", TV_CORNER)
 	end)
 
@@ -181,15 +181,15 @@ describe("tower_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . c c c",
-			". . . . . . c c c",
-			". . . . . . c c #",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c #",
 		}, "bottom-right corner 3x3 aura", TV_CORNER)
 	end)
 
@@ -211,15 +211,15 @@ describe("tower_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . # . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 # 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "non-corner tower adds no value bonus")
 
 		local territory_after = test_helper.count_territory_cells(g, "black")
@@ -243,15 +243,15 @@ describe("tower_stone (visual ASCII)", function()
 		}, false)
 
 		assert_territory_values_ascii(g, {
-			"# c c . . . . . .",
-			"c c c . . . . . .",
-			"c c c . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . c c c",
-			". . . . . . c c c",
-			". . . . . . c c #",
+			"# c c 1 1 1 1 1 1",
+			"c c c 1 1 1 1 1 1",
+			"c c c 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c #",
 		}, "both corners independently boosted", TV_CORNER)
 
 		local boosted_cells = 16
@@ -286,15 +286,15 @@ describe("tower_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			"# . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . c c c",
-			". . . . . . c c c",
-			". . . . . . c c #",
+			"# 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c #",
 		}, "white tower only boosts white-corner cells", TV_CORNER)
 
 		assert_territory_ascii(g, {
@@ -337,15 +337,15 @@ describe("tower_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . c c c",
-			". . . . . . c c c",
-			". . . . . . c c #",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c #",
 		}, "aura applies regardless of who owns the cells", TV_CORNER)
 
 		local white_territory = test_helper.count_territory_cells(g, "white")
@@ -372,15 +372,15 @@ describe("tower_stone (visual ASCII)", function()
 		test_helper.finish_turn(g)
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"# 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "captured tower removes corner bonus entirely")
 	end)
 
@@ -402,15 +402,99 @@ describe("tower_stone (visual ASCII)", function()
 		test_helper.assert_illegal_player_move_with_stone(g, "black", "tower_stone", 1, 1, "occupied rejects tower")
 
 		assert_territory_values_ascii(g, {
-			"# . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"# 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "no tower effect when move rejected")
+	end)
+
+	it("complex board fixture #12: black tower at top-right adds aura on 7 black-owned empties", function()
+		set_hand(g, "black", { "tower_stone" })
+		set_board(g, {
+			"B . W . B . . . .",
+			"W B . B . B . . .",
+			"W W B . W W B . .",
+			"W . W . . B . B .",
+			"B . W . . W . . B",
+			"W B B W W . . B .",
+			". . W B W W B . .",
+			"W W . B B B . B W",
+			". W W . B . . W .",
+		})
+
+		local snap_black = test_helper.count_territory_cells(g, "black")
+		local snap_white = test_helper.count_territory_cells(g, "white")
+
+		place_stone(g, {
+			"B . W . B . . . T",
+			"W B . B . B . . .",
+			"W W B . W W B . .",
+			"W . W . . B . B .",
+			"B . W . . W . . B",
+			"W B B W W . . B .",
+			". . W B W W B . .",
+			"W W . B B B . B W",
+			". W W . B . . W .",
+		})
+
+		assert_territory_values_ascii(g, {
+			"# 1 # 1 # 1 c c #",
+			"# # 1 # 1 # c c c",
+			"# # # 1 # # # c c",
+			"# 1 # 1 1 # 1 # 1",
+			"# 1 # 1 1 # 1 1 #",
+			"# # # # # 1 1 # 1",
+			"1 1 # # # # # 1 1",
+			"# # 1 # # # 1 # #",
+			"1 # # 1 # 1 1 # 1",
+		}, "tower aura limited to top-right 3x3 block; (3,7) is a B stone so it stays #", TV_CORNER)
+
+		local boosted_black_cells = 7
+		local territory_lost_to_corner = 1
+		local expected_black_delta = S.stone_tower_corner_territory_add * boosted_black_cells - territory_lost_to_corner
+		local expected_white_delta = 0
+
+		assert.are.equal(snap_black + expected_black_delta, test_helper.count_territory_cells(g, "black"),
+			"black gains aura on (1,7) (1,8) (2,7) (2,8) (2,9) (3,8) (3,9); (1,9) leaves territory to host the tower stone")
+		assert.are.equal(snap_white + expected_white_delta, test_helper.count_territory_cells(g, "white"),
+			"white territory unchanged: aura touches no white-owned cell, no influence flips")
+	end)
+
+	it("complex board fixture #12: tower stone never grants points or mult, only territory aura", function()
+		set_hand(g, "black", { "tower_stone" })
+		set_board(g, {
+			"B . W . B . . . .",
+			"W B . B . B . . .",
+			"W W B . W W B . .",
+			"W . W . . B . B .",
+			"B . W . . W . . B",
+			"W B B W W . . B .",
+			". . W B W W B . .",
+			"W W . B B B . B W",
+			". W W . B . . W .",
+		})
+		local snap = player_score_snapshot(g, "black")
+
+		place_stone(g, {
+			"B . W . B . . . T",
+			"W B . B . B . . .",
+			"W W B . W W B . .",
+			"W . W . . B . B .",
+			"B . W . . W . . B",
+			"W B B W W . . B .",
+			". . W B W W B . .",
+			"W W . B B B . B W",
+			". W W . B . . W .",
+		})
+
+		test_helper.assert_player_points_unchanged(g, "black", snap, "tower has no add_points effect on a crowded board")
+		test_helper.assert_player_plus_mult_unchanged(g, "black", snap, "tower has no add_mult effect on a crowded board")
+		test_helper.assert_player_x_mult_unchanged(g, "black", snap, "tower has no x_mult effect on a crowded board")
 	end)
 end)

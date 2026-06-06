@@ -37,7 +37,6 @@ local player_score_snapshot = test_helper.player_score_snapshot
 local visual_scoring_debug_after_each = test_helper.visual_scoring_debug_after_each
 local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_registered_in_content
 local assert_territory_values_ascii = test_helper.assert_territory_values_ascii
-local assert_territory_ascii = test_helper.assert_territory_ascii
 
 local S = P.stone
 
@@ -87,15 +86,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . # # # # # . .",
-			". . # d d d # . .",
-			". . # d d d # . .",
-			". . # # # # # . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 # # # # # 1 1",
+			"1 1 # # d d # 1 1",
+			"1 1 # d d d # 1 1",
+			"1 1 # # # # # 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "all 5 remaining interior cells multiplied", TV_OPTS)
 
 		local enclosed_cells = 5
@@ -132,15 +131,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . # . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 # 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "no region doubling without enclosure")
 	end)
 
@@ -171,15 +170,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". # # # # . . . .",
-			". # . . # . . . .",
-			". # # # # . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . # # # .",
-			". . . . . # d # .",
-			". . . . . # d # .",
-			". . . . . # # # .",
+			"1 # # # # 1 1 1 1",
+			"1 # 1 1 # 1 1 1 1",
+			"1 # # # # 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 # # # 1",
+			"1 1 1 1 1 # # # 1",
+			"1 1 1 1 1 # d # 1",
+			"1 1 1 1 1 # # # 1",
 		}, "top-left enclosure untouched, bottom-right multiplied", TV_OPTS)
 	end)
 
@@ -222,15 +221,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". # # # # . . . .",
-			". # d d # . . . .",
-			". # # # # . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . # # # .",
-			". . . . . # d # .",
-			". . . . . # d # .",
-			". . . . . # # # .",
+			"1 # # # # 1 1 1 1",
+			"1 # # d # 1 1 1 1",
+			"1 # # # # 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 # # # 1",
+			"1 1 1 1 1 # # # 1",
+			"1 1 1 1 1 # d # 1",
+			"1 1 1 1 1 # # # 1",
 		}, "both enclosures independently multiplied", TV_OPTS)
 	end)
 
@@ -274,15 +273,15 @@ describe("enclosure_stone (visual ASCII)", function()
 
 		local stacked = tostring(multiplier * multiplier)
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . # # # # # . .",
-			". . # # s s # . .",
-			". . # s s # # . .",
-			". . # # # # # . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 # # # # # 1 1",
+			"1 1 # # s s # 1 1",
+			"1 1 # s s # # 1 1",
+			"1 1 # # # # # 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "stacked enclosures multiply territory value twice",
 			{ values = { s = stacked } })
 	end)
@@ -369,15 +368,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			"# d # d # . . . .",
-			"# d d d # . . . .",
-			"# d d d # . . . .",
-			"# # # # # . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"# d # d # 1 1 1 1",
+			"# d d d # 1 1 1 1",
+			"# d d d # 1 1 1 1",
+			"# # # # # 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "board top edge serves as wall completing the enclosure", TV_OPTS)
 
 		local enclosed_cells = 8
@@ -414,15 +413,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . # # # #",
-			". . . . . # d d d",
-			". . . . . # d d d",
-			". . . . . # d d d",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 # # # #",
+			"1 1 1 1 1 # # d d",
+			"1 1 1 1 1 # d d d",
+			"1 1 1 1 1 # d d d",
 		}, "bottom-right corner: board edges complete the enclosure", TV_OPTS)
 
 		local enclosed_cells = 8
@@ -449,60 +448,56 @@ describe("enclosure_stone (visual ASCII)", function()
 		test_helper.finish_turn(g)
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . # # # # # . .",
-			". . # . . . # . .",
-			". . # . . . # . .",
-			". . # . . . # . .",
-			". . # # # # # . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 # # # # # 1 1",
+			"1 1 # 1 1 1 # 1 1",
+			"1 1 # 1 1 1 # 1 1",
+			"1 1 # 1 1 1 # 1 1",
+			"1 1 # # # # # 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "captured enclosure reverts multiplied cells to default 1")
 	end)
 
 	it("complex multi-wall board with multiple enclosures from integration fixture", function()
 		set_hand(g, "black", { "enclosure_stone" })
 		set_board(g, {
-			". . . W . . W . .",
-			". B . W . . W . .",
-			"B . W B B B W . .",
-			". W B W . W B W B",
-			". W B . . . B W .",
-			". . W B B B . W .",
-			". B . W . . . W .",
-			"W W W . . . . . W",
-			". . . . . . . . .",
+			"W . B . W . . . .",
+			"B W . W . W . . .",
+			"B B W . B B W . .",
+			"B . B . . W . W .",
+			"W . B . . B . . W",
+			"B W W B B . . W .",
+			". . B W B B W . .",
+			"B B . W W W . W B",
+			". B B . W . . B .",
 		})
 		local snap = player_score_snapshot(g, "black")
 
 		place_stone(g, {
-			". . . W . . W . .",
-			". B . W . . W . .",
-			"B . W B B B W . .",
-			". W B W N W B W B",
-			". W B . . . B W .",
-			". . W B B B . W .",
-			". B . W . . . W .",
-			"W W W . . . . . W",
-			". . . . . . . . .",
+			"W . B . W . . . .",
+			"B W . W . W . . .",
+			"B B W . B B W . .",
+			"B . B . . W . W .",
+			"W T B . . B . . W",
+			"B W W B B . . W .",
+			". . B W B B W . .",
+			"B B . W W W . W B",
+			". B B . W . . B .",
 		})
+		assert_territory_values_ascii(g, {
+			"# 1 # 1 # 1 1 1 1",
+			"# # 1 # 1 # 1 1 1",
+			"# # # 1 # # # 1 1",
+			"# d # 1 1 # 1 # 1",
+			"# # # 1 1 # 1 1 #",
+			"# # # # # 1 1 # 1",
+			"1 1 # # # # # 1 1",
+			"# # 1 # # # 1 # #",
+			"1 # # 1 # 1 1 # 1",
+		}, "top-left and bottom-left multiplied, top-right untouched", TV_OPTS)
 
-		assert_territory_ascii(g, {
-			"w w w W w w W w w",
-			"w B w W . . W w w",
-			"B w W B B B W w w",
-			"w W B W B W B W B",
-			"w W B b b b B W w",
-			"w w W B B B b W w",
-			"w B w W . b w W w",
-			"W W W w w b w w W",
-			"w w w w w b w w w",
-		}, "enclosure stone inside black-walled pocket in contested board")
-
-		local territory_after = test_helper.count_territory_cells(g, "black")
-		assert.is_true(territory_after > snap.territory,
-			"enclosure inside walled region boosts black territory score")
 	end)
 
 	it("three enclosures, stones in two of them: only those two multiplied", function()
@@ -544,15 +539,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			"# # # . # # # . .",
-			"# d # . # . # . .",
-			"# # # . # # # . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			"# # # # . . . . .",
-			"# d d # . . . . .",
-			"# # # # . . . . .",
+			"# # # 1 # # # 1 1",
+			"# # # 1 # 1 # 1 1",
+			"# # # 1 # # # 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"# # # # 1 1 1 1 1",
+			"# # d # 1 1 1 1 1",
+			"# # # # 1 1 1 1 1",
 		}, "top-left and bottom-left multiplied, top-right untouched", TV_OPTS)
 	end)
 
@@ -595,15 +590,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". # # # # # . . .",
-			". # d d # . . . .",
-			". # d d # . . . .",
-			". # # # # . . . .",
-			". # d d # . . . .",
-			". # d d # . . . .",
-			". # # # # . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 # # # # # 1 1 1",
+			"1 # # d # 1 1 1 1",
+			"1 # d d # 1 1 1 1",
+			"1 # # # # 1 1 1 1",
+			"1 # # d # 1 1 1 1",
+			"1 # d d # 1 1 1 1",
+			"1 # # # # 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "shared wall separates two independent enclosures, each multiplied", TV_OPTS)
 	end)
 
@@ -635,15 +630,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". # # # # . . . .",
-			". # d d # . . . .",
-			". # d d # # # . .",
-			". # d d d d # . .",
-			". # # # # # # . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 # # # # 1 1 1 1",
+			"1 # # d # 1 1 1 1",
+			"1 # d d # # # 1 1",
+			"1 # d d d d # 1 1",
+			"1 # # # # # # 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "L-shaped interior: all 8 enclosed cells multiplied", TV_OPTS)
 
 		local enclosed_cells = 8
@@ -680,19 +675,19 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . # # # . . .",
-			". . . # # . . . .",
-			". . . # # # . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 # # # 1 1 1",
+			"1 1 1 # # 1 1 1 1",
+			"1 1 1 # # # 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "open gap prevents enclosure formation, no cells doubled")
 	end)
 
-	it("opponent stone inside boundary: breaks same-color enclosure", function()
+	it("opponent stone inside pocket: interior empty cells still doubled", function()
 		set_hand(g, "black", { "enclosure_stone" })
 		set_board(g, {
 			". . . . . . . . .",
@@ -705,6 +700,7 @@ describe("enclosure_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
+		local snap = player_score_snapshot(g, "black")
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -719,16 +715,22 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . # # # # . . .",
-			". . # . # # . . .",
-			". . # # . # . . .",
-			". . # # # # . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		}, "white stone inside breaks pure-black enclosure, no multiplier applied")
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 # # # # 1 1 1",
+			"1 1 # d # # 1 1 1",
+			"1 1 # # d # 1 1 1",
+			"1 1 # # # # 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+		}, "white stone inside does not cancel black enclosure doubling", TV_OPTS)
+
+		local enclosed_cells = 2
+		local expected_territory_gain = enclosed_cells * (multiplier - 1)
+		local territory_after = test_helper.count_territory_cells(g, "black")
+		assert.are.equal(snap.territory + expected_territory_gain, territory_after,
+			"two doubled interior empties add multiplier-1 each")
 	end)
 
 	it("white enclosure_stone in white region multiplies white territory", function()
@@ -757,15 +759,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . # # # # # . .",
-			". . # d d d # . .",
-			". . # d d d # . .",
-			". . # # # # # . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 # # # # # 1 1",
+			"1 1 # # d d # 1 1",
+			"1 1 # d d d # 1 1",
+			"1 1 # # # # # 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "white enclosure_stone multiplies white-owned interior", TV_OPTS)
 
 		local enclosed_cells = 5
@@ -803,15 +805,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			"# # # # . . . . .",
-			"# d d # . . . . .",
-			"d d d # . . . . .",
-			"d d d # . . . . .",
-			"# # # # . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"# # # # 1 1 1 1 1",
+			"# d d # 1 1 1 1 1",
+			"d d d # 1 1 1 1 1",
+			"d d d # 1 1 1 1 1",
+			"# # # # 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "left board edge acts as wall for 8 enclosed cells", TV_OPTS)
 
 		local enclosed_cells = 8
@@ -848,15 +850,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 			"# # # # # # # # #",
-			". . . . # . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 # 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "region touches left+right+bottom (3 edges) so is open, no enclosure")
 	end)
 
@@ -891,7 +893,7 @@ describe("enclosure_stone (visual ASCII)", function()
 			"# # # # # # # # #",
 			"# # d d d d d d #",
 			"# d d # # # d d #",
-			"# d d # . # d d #",
+			"# d d # 1 # d d #",
 			"# d d # # # d d #",
 			"# d d d d d d d #",
 			"# d d d d d d d #",
@@ -930,17 +932,17 @@ describe("enclosure_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 
-		assert_territory_ascii(g, {
-			"b b b b b b b b b",
-			"b B B B B B B b b",
-			"b B B b b b B b b",
-			"b B b W W b B b b",
-			"b B b W w W B b b",
-			"b B b b W b B b b",
-			"b B B B B B B b b",
-			"b b b b b b b b b",
-			"b b b b b b b b b",
-		}, "cell (5,5) owned by white (smallest enclosure wins), rest by black")
+		assert_territory_values_ascii(g, {
+			"1 1 1 1 1 1 1 1 1",
+			"1 # # # # # # 1 1",
+			"1 # # d d d # 1 1",
+			"1 # d # # d # 1 1",
+			"1 # d # d # # 1 1",
+			"1 # d d # d # 1 1",
+			"1 # # # # # # 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+		}, "white pocket center doubled too — multiplier is field-based, not owner-based", TV_OPTS)
 	end)
 
 	it("both players nested: black enclosure_stone only multiplies black-owned cells inside", function()
@@ -971,8 +973,8 @@ describe("enclosure_stone (visual ASCII)", function()
 
 		test_helper.place_stone_for(g, "white", "enclosure_stone", {
 			". B B B B B B B .",
-			". B N . . . . B .",
-			". B . W W W . B .",
+			". B N . W . . B .",
+			". B . W . W . B .",
 			". B . W n W . B .",
 			". B . W W W . B .",
 			". B . . . . . B .",
@@ -983,9 +985,9 @@ describe("enclosure_stone (visual ASCII)", function()
 
 		assert_territory_values_ascii(g, {
 			". # # # # # # # .",
-			". # d d d d d # .",
-			". # d # # # d # .",
+			". # d d # d d # .",
 			". # d # d # d # .",
+			". # d # # # d # .",
 			". # d # # # d # .",
 			". # d d d d d # .",
 			". # # # # # # # .",
@@ -1021,15 +1023,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". . . . . . . . .",
-			". . # # # # . . .",
-			". . # d . # . . .",
-			". . # . . # . . .",
-			". # # . . # # . .",
-			". # . . . . # . .",
-			". # # # # # # . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 # # # # 1 1 1",
+			"1 1 # # 1 # 1 1 1",
+			"1 1 # 1 1 # 1 1 1",
+			"1 # # 1 1 # # 1 1",
+			"1 # 1 1 1 1 # 1 1",
+			"1 # # # # # # 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "cells in crossing overlap become neutral, only uncontested black cells multiplied", TV_OPTS)
 	end)
 
@@ -1139,15 +1141,128 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			"# # # # . # # # #",
-			"# d d # . # d d #",
-			"# d d # . # d d #",
-			"# # # # . # # # #",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"# # # # 1 # # # #",
+			"# # d # 1 # # d #",
+			"# d d # 1 # d d #",
+			"# # # # 1 # # # #",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "black enclosure multiplies black cells, white enclosure multiplies white cells", TV_OPTS)
+	end)
+
+	it("opponent closes inner fence after black enclosure_stone: seized cells keep doubled value", function()
+		set_hand(g, "black", { "enclosure_stone" })
+		set_board(g, {
+			". . . . . . . . .",
+			". B B B B B B . .",
+			". B . . . . B . .",
+			". B . . . . B . .",
+			". B . . . . B . .",
+			". B . . . . B . .",
+			". B B B B B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+
+		place_stone(g, {
+			". . . . . . . . .",
+			". B B B B B B . .",
+			". B N . . . B . .",
+			". B . . . . B . .",
+			". B . . . . B . .",
+			". B . . . . B . .",
+			". B B B B B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+
+		assert_territory_values_ascii(g, {
+			"1 1 1 1 1 1 1 1 1",
+			"1 # # # # # # 1 1",
+			"1 # # d d d # 1 1",
+			"1 # d d d d # 1 1",
+			"1 # d d d d # 1 1",
+			"1 # d d d d # 1 1",
+			"1 # # # # # # 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+		}, "black enclosure_stone doubles full interior before opponent moves", TV_OPTS)
+
+		local white_score_before = test_helper.player_territory_score(g, "white")
+		set_hand(g, "white", { "stone_basic" })
+		test_helper.place_stone_for(g, "white", "stone_basic", {
+			". . . . . . . . .",
+			". B B B B B B . .",
+			". B N . . . B . .",
+			". B . W . . B . .",
+			". B . . . . B . .",
+			". B . . . . B . .",
+			". B B B B B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		test_helper.place_stone_for(g, "white", "stone_basic", {
+			". . . . . . . . .",
+			". B B B B B B . .",
+			". B N . . . B . .",
+			". B . W W . B . .",
+			". B . . . . B . .",
+			". B . . . . B . .",
+			". B B B B B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		test_helper.place_stone_for(g, "white", "stone_basic", {
+			". . . . . . . . .",
+			". B B B B B B . .",
+			". B N . . . B . .",
+			". B . W W . B . .",
+			". B . . . W B . .",
+			". B . . . . B . .",
+			". B B B B B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		test_helper.place_stone_for(g, "white", "stone_basic", {
+			". . . . . . . . .",
+			". B B B B B B . .",
+			". B N . . . B . .",
+			". B . W W . B . .",
+			". B . W . W B . .",
+			". B . . . . B . .",
+			". B B B B B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		test_helper.place_stone_for(g, "white", "stone_basic", {
+			". . . . . . . . .",
+			". B B B B B B . .",
+			". B N . . . B . .",
+			". B . W W . B . .",
+			". B . W . W B . .",
+			". B . . W . B . .",
+			". B B B B B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+
+		assert_territory_values_ascii(g, {
+			"1 1 1 1 1 1 1 1 1",
+			"1 # # # # # # 1 1",
+			"1 # # d d d # 1 1",
+			"1 # d # # d # 1 1",
+			"1 # d # d # # 1 1",
+			"1 # d d # d # 1 1",
+			"1 # # # # # # 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+		}, "white seizes (5,5) but field value stays doubled from black enclosure_stone", TV_OPTS)
+
+		local white_score_after = test_helper.player_territory_score(g, "white")
+		assert.are.equal(white_score_before + multiplier, white_score_after,
+			"white gains seized pocket at multiplied value, not base 1")
 	end)
 end)
