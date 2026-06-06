@@ -13,7 +13,7 @@ Visual specs assert resolver-visible game state only.
 - "N rounds" means current round counts as round 1.
 - If two rules could trigger at once, run lower `priority` first, then higher `priority`.
 - If the same effect instance is already applied for the same trigger key (stone id + row + col + round + owner), do not apply it again.
-- Territory-round tracking convention: `territory_control_rounds[row][col]` is positive for Black control streak length, negative for White (`W`) control streak length, and `0` when uncontrolled/contested.
+- Territory control rounds: dense `9×9` grid `territory_control_rounds[row][col]` — positive for Black streak length, negative for White (`W`), `0` for contested/no man's land or stone-occupied cells. Maintenance rules and test ASCII format: `docs/territory/control-rounds.md`.
 
 ### Tests
 
@@ -466,9 +466,11 @@ Comment: I would change it to 2 * number of rounds controlled. For this and othe
 
 ### implementation_details
 - [ ] not implemented
-- Read streak from `territory_control_rounds[row][col]` using sign convention (positive black, negative `W`).
-- On placement, if stone owner matches control sign, payout is `2 * abs(streak_rounds)` to `plus_mult`.
-- If cell is uncontrolled/contested (`0`) or opponent-controlled, payout is `0`.
+- Grid maintenance: see `docs/territory/control-rounds.md`.
+- Read `territory_control_rounds[row][col]` at placement time (before cell is occupied), sign convention positive black / negative `W`.
+- Own territory: add `mult_control_streak_multiplier * abs(streak)` to placer `plus_mult`.
+- Enemy territory: subtract `mult_control_streak_multiplier * abs(streak)` from placer `plus_mult`; floor `plus_mult` at `0`.
+- Neutral (`0`): no payout.
 - Trigger is one-time on placement.
 
 ### animations_details
@@ -477,11 +479,13 @@ Comment: I would change it to 2 * number of rounds controlled. For this and othe
 
 ### heuristics_details
 - [ ] not implemented
-- Prefer high absolute owner-control streak cells.
+- Prefer high absolute owner-control streak cells; avoid enemy-controlled cells (penalty).
 
 ### tests
-- [x] tests specified (>=10 scenarios)
+- [x] tests specified (>=8 scenarios; payout formula only — grid tick tests in `spec/unit/territory_control_rounds_spec.lua`)
 - [ ] tests implemented in code
+- Seed control grid via `set_territory_control_rounds_ascii`; minimal stone boards; enclosure topology out of scope.
+- Assert `expected_delta = mult_control_streak_multiplier * N` (or negative equivalent) from parameters helper.
 
 ---
 

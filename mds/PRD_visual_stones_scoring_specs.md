@@ -37,7 +37,7 @@ Rebuild the stones scoring visual suite so **every stone except those exclusivel
 11. As a **Code Writer**, I want **territory_enclosure** `control_stone` cases to validate resolve-last override semantics and contested cancellation per entry doc.
 12. As a **Code Writer**, I want **territory_enclosure** `money_field_stone` and `copper_stone` deciles completed to ten scenarios including threshold and below-threshold board counts.
 13. As a **Code Writer**, I want **protection_blockade** `defence_stone` cases to assert **solidity** propagation on placement and on later adjacent placements, not abstract defense denominators alone.
-14. As a **Code Writer**, I want **protection_blockade** `mult_3_rounds_stone` to assert `2 × rounds_controlled` using territory-round tracking sign convention (positive black, negative white).
+14. As a **Code Writer**, I want **protection_blockade** `mult_3_rounds_stone` to assert `mult_control_streak_multiplier × rounds_controlled` on own territory and the negative equivalent on enemy territory (with `plus_mult` floor at `0`), using territory-round tracking sign convention (positive black, negative white).
 15. As a **Code Writer**, I want **protection_blockade** `blockade_stone` and `anti_capture_stone` multi-round chains (duration, overlap max, kamikaze still blocked, immunity expiry, silent failed capture).
 16. As a **Code Writer**, I want **timed_delayed** `points_3_rounds_stone` to use the **seven-round** timer from entry doc (not three), with capture-forfeit and independent timers across stones.
 17. As a **Code Writer**, I want **timed_delayed** `self_destruct_timed_stone`, `final_blow_stone`, and `unlimited_upgrades_stone` each at ten scenarios including round-gate and post-cap upgrade payouts.
@@ -57,7 +57,7 @@ Rebuild the stones scoring visual suite so **every stone except those exclusivel
 ### Test harness
 
 27. As a **Code Writer**, I want `finish_turn`, `pass_turn`, `advance_rounds`, and opponent `place_stone_for` used consistently for multi-step entry narratives, so that timing scenarios match prior art in existing visual specs.
-28. As a **Code Writer**, I want test helper support to seed `territory_control_rounds` (or equivalent) when scenarios require rounds-controlled counts, so that mult-on-control stones are testable without resolver internals assertions.
+28. As a **Code Writer**, I want test helper `set_territory_control_rounds_ascii` / `assert_territory_control_rounds_ascii` (explicit-sign ASCII layer, separate from stone board) when scenarios require rounds-controlled counts, so that mult-on-control stones are testable without resolver internals assertions.
 29. As a **Code Writer**, I want territory ASCII and territory-value ASCII assertions for enclosure/control/influence cases, so that territory-phase outcomes remain player-visible at the highest seam.
 30. As a **Code Writer**, I want legality helpers for blocked cells and kamikaze zero-liberty placement, so that rule negatives are state-level, not implementation hooks.
 
@@ -110,7 +110,7 @@ Rebuild the stones scoring visual suite so **every stone except those exclusivel
 - **enclosure_stone:** double enclosed field values, not isolated `+1` on placed cell only.
 - **control_stone:** territory assignment override resolves last; contested when opposing control applies same cell same pass.
 - **defence_stone:** `+1 solidity` to orthogonal and diagonal neighbors on placement and when later stones connect.
-- **mult_3_rounds_stone:** payout `2 × rounds_controlled` from territory-round tracking grid (positive black, negative white).
+- **mult_3_rounds_stone:** payout `mult_control_streak_multiplier × rounds_controlled` on own territory; negative delta on enemy territory (`plus_mult` floored at `0`). Grid rules: `docs/territory/control-rounds.md`. Visual spec tests payout only; grid tick rules in `spec/unit/territory_control_rounds_spec.lua`.
 - **points_3_rounds_stone:** **7-round** survival timer before delayed points payout.
 - **tax_stone:** innermost qualifying enclosure only; no nested double pay; per-enemy parameterized money/points each owner `end_of_turn`.
 - **territory_to_points_stone / territory_to_multiplier_stone:** each `end_of_turn`, pay **current territory owner at stone cell** based on that owner’s **total** controlled territory; parameterized divisor and cap; no territory consumption.

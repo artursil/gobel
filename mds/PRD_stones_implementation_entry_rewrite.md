@@ -56,7 +56,7 @@ Rewrite the stones implementation entry document as a self-contained **entry poi
 25. As a **Code Writer**, I want **defence_stone** scenarios for +1 **solidity** to connected stones on placement and when new stones connect later (per Comment), so that solidity propagation is specified not abstract “defense value.”
 26. As a **Code Writer**, I want **money_field_stone** enclosed vs open placement scenarios, so that conditional economy is covered.
 27. As a **Code Writer**, I want **anti_capture_stone** immunity duration, scope at trigger, and expiry scenarios, so that capture blocking is multi-step.
-28. As a **Code Writer**, I want **mult_3_rounds_stone** scenarios for **2 × rounds controlled** payout and territory-round tracking sign convention (per Comment), so that stable-territory mult is measurable.
+28. As a **Code Writer**, I want **mult_3_rounds_stone** scenarios for **mult_control_streak_multiplier × rounds controlled** payout (penalty on enemy territory, `plus_mult` floor at `0`) and territory-round tracking sign convention, so that stable-territory mult is measurable.
 29. As a **Code Writer**, I want **points_3_rounds_stone** scenarios for **7-round** survival timer (per Comment), destroy-before-payout, and single payout, so that delayed points match new duration.
 30. As a **Code Writer**, I want **capture_stone** single-target, multi-target deterministic choice, and +3 bonus scenarios, so that combat RNG is bounded in spec.
 31. As a **Code Writer**, I want **tax_stone** scenarios for tax inside enclosure, per-enemy payouts, nested enclosure stopping payout, multi-round **end_of_turn**, and no double payout with two tax in one region, so that remarks in stones_tests_remarks are satisfied in prose.
@@ -79,7 +79,7 @@ Rewrite the stones implementation entry document as a self-contained **entry poi
 45. As an **author**, I want **enclosure_stone** **implementation_details** to describe doubling values of fields in the enclosure, so that description and details match.
 46. As an **author**, I want **control_stone** **implementation_details** to specify resolve-last override during territory assignment, so that ordering is normative.
 47. As an **author**, I want **defence_stone** **implementation_details** to use **solidity** increases for connected stones including future connections, so that effects layer matches stone parameter model.
-48. As an **author**, I want **mult_3_rounds_stone** **implementation_details** to specify **2 × rounds controlled** and game-state territory-round tracking (negative white / positive black), so that mult stones can share one mechanism.
+48. As an **author**, I want **mult_3_rounds_stone** **implementation_details** to specify signed payout from game-state `territory_control_rounds` (negative white / positive black; see `docs/territory/control-rounds.md`), so that mult stones can share one mechanism.
 49. As an **author**, I want **points_3_rounds_stone** timer updated to **7 rounds**, so that delayed payout matches author tuning.
 50. As an **author**, I want **territory_to_points_stone** **implementation_details** to describe per-round points to the player who owns the stone’s cell’s territory and their total controlled territory, with parameterized divisor, so that end-of-turn conversion is not a one-shot floor formula only.
 51. As an **author**, I want **territory_to_multiplier_stone** **implementation_details** to mirror territory-to-points with mult outcomes, so that pair stays consistent.
@@ -130,7 +130,7 @@ Merge inline Comments into **implementation_details** (and globals if needed for
 - **enclosure_stone** — doubles field values inside owner-enclosed territory (not merely +1 territory_value on placed cell).
 - **control_stone** — territory assignment: resolve last; override previous assignments; contested handling when both players apply control.
 - **defence_stone** — **solidity** +1 to orthogonal and diagonal neighbors; on placement and when later stones connect; affects self and connected stones.
-- **mult_3_rounds_stone** — payout **2 × number of rounds controlled**; document reading **rounds controlled** from game state (per-cell territory control history: negative = white, positive = black) in globals or stone section.
+- **mult_3_rounds_stone** — payout **mult_control_streak_multiplier × rounds controlled** on own territory; penalty on enemy territory (`plus_mult` floored at `0`). Per-cell grid `territory_control_rounds` (negative = white, positive = black). Canonical rules: `docs/territory/control-rounds.md`.
 - **points_3_rounds_stone** — survival timer **7 rounds** (was 3).
 - **territory_to_points_stone** — each round: determine owner of territory at stone cell; add parameterized points (e.g. floor(territory/4)) to that player based on their total controlled territory; cap as parameter.
 - **territory_to_multiplier_stone** — same structure as territory-to-points with mult outcome.
