@@ -2,6 +2,7 @@
 ---
 --- Stone under test: control_stone
 --- Effect: sets override_owner on orthogonal neighbor cells to the stone's color.
+--- Also counts as a regular stone for influence (distance / tie-break) like stone_basic.
 --- Override has highest precedence in territory resolution:
 ---   override > enclosure > influence
 ---
@@ -236,13 +237,13 @@ describe("control_stone (visual ASCII)", function()
 			"w w w w w w w w w",
 			"w w w w W w w w w",
 			"w w w b w w w w w",
-			"w w w b B b w w w",
+			"w w b O b w w w w",
 			"w w w b w w w w w",
 			"w w w w w w w w w",
 		}, "diagonal cells (5,4), (5,6), (7,4), (7,6) remain white-influenced, not overridden")
 	end)
 
-	it("opposing controls on shared neighbor: cell becomes neutral", function()
+	it("opposing adjacent controls: influence assigns full board, overrides claim orthogonal neighbors", function()
 		set_hand(g, "black", { "control_stone" })
 		set_board(g, {
 			". . . . . . . . .",
@@ -281,16 +282,16 @@ describe("control_stone (visual ASCII)", function()
 		})
 
 		assert_territory_ascii(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . b w . . .",
-			". . . b B W w . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		}, "cell (5,5) contested by both → neutral '.', non-shared neighbors keep own color")
+			"b b b b b w w w w",
+			"b b b b b w w w w",
+			"b b b b b w w w w",
+			"b b b b b w w w w",
+			"b b b b B W w w w",
+			"b b b b b w w w w",
+			"b b b b b w w w w",
+			"b b b b b w w w w",
+			"b b b b b w w w w",
+		}, "control stones exert regular influence — board fully assigned, overrides on orthogonal empties")
 	end)
 
 	it("same-color overlap: two adjacent black controls reinforce", function()
@@ -324,7 +325,7 @@ describe("control_stone (visual ASCII)", function()
 			"b b b b b b b . w",
 			"b b b b b b . w w",
 			"b b b b b b b w w",
-			"b b b b B B b W w",
+			"b b b b B B b w W",
 			"b b b b b b b w w",
 			"b b b b b b . w w",
 			"b b b b b b b . w",
@@ -439,7 +440,7 @@ describe("control_stone (visual ASCII)", function()
 		}, "left-edge (5,1): neighbors (4,1), (5,2), (6,1) overridden, no (5,0)")
 	end)
 
-	it("control deep in opponent territory: creates island of own color", function()
+	it("control deep in opponent territory: regular influence claims central black zone", function()
 		set_board(g, {
 			"W . . . . . . . .",
 			". . . . . . . . .",
@@ -447,7 +448,7 @@ describe("control_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . . . .",
+			". . . . . . W . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
@@ -459,7 +460,7 @@ describe("control_stone (visual ASCII)", function()
 			"w w w w w w w w w",
 			"w w w w w w w w w",
 			"w w w w w w w w w",
-			"w w w w w w w w w",
+			"w w w w w w W w w",
 			"w w w w w w w w w",
 			"w w w w w w w w w",
 		}, "baseline: white owns entire board")
@@ -472,22 +473,22 @@ describe("control_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . O . . . .",
 			". . . . . . . . .",
-			". . . . . . . . .",
+			". . . . . . W . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
 
 		assert_territory_ascii(g, {
-			"W w w w w w w w w",
-			"w w w w w w w w w",
-			"w w w w w w w w w",
-			"w w w w b w w w w",
-			"w w w b B b w w w",
-			"w w w w b w w w w",
-			"w w w w w w w w w",
-			"w w w w w w w w w",
-			"w w w w w w w w w",
-		}, "control creates 4-cell black island surrounded by white territory")
+			"W w w w . . w w w",
+			"w w w . b b . . .",
+			"w w . b b b . . .",
+			"w . b b b b . . .",
+			". b b b B b . . .",
+			". b b b b . w w w",
+			"w . . . . w W w w",
+			"w . . . . w w w w",
+			"w . . . . w w w w",
+		}, "black control exerts regular influence — large central zone, not just override neighbors")
 	end)
 
 	it("control overrides enclosure but not the enclosure itself", function()
@@ -580,7 +581,7 @@ describe("control_stone (visual ASCII)", function()
 		}, "control at (4,5) flips neutral cell and surrounding influenced cells to black")
 	end)
 
-	it("multiple control stones spread across board: each creates local override zone", function()
+	it("multiple control stones spread across board: each contributes influence, overrides on orthogonals", function()
 		set_board(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -619,16 +620,16 @@ describe("control_stone (visual ASCII)", function()
 		})
 
 		assert_territory_ascii(g, {
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+			"b b B b b b b b b",
+			"b b b b b b b b .",
+			"b b b b b b b b .",
+			"b b b b b b b b .",
+			"b b b b b b B b .",
 			"b b b b b b b . w",
-			"b b b b b b . w w",
-			"b b B b b . w w w",
-			"b b b b . w w w w",
-			"b b b . w w w w w",
-			"b b . w w w b w w",
-			"b . w w w b B b w",
-			". w w w w w b w w",
-			"w w w w w w w . W",
-		}, "two control stones each override their local 4 neighbors independently")
+			"b b b . . . . w W",
+		}, "two black controls exert regular influence — board mostly black, white corner near W")
 	end)
 
 	it("control placed adjacent to opponent stone: override applies to empty neighbors only", function()
@@ -661,16 +662,16 @@ describe("control_stone (visual ASCII)", function()
 			"w w w w w w w w w",
 			"w w w w w w w w w",
 			"w w w w w w w w w",
-			"w w w b W b w w w",
-			"w w w b B b w w w",
-			"w w w w b w w w w",
-			"w w w w w w w w w",
-			"w w w w w w w w w",
-			"w w w w w w w w w",
-		}, "override only on empty cells; W stone at (4,5) unaffected, (4,4) and (4,6) flipped")
+			"w w w w W w w w w",
+			"b b b b B b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+		}, "O below W: regular influence splits board; override skips occupied W at (4,5)")
 	end)
 
-	it("control vs control: non-overlapping zones coexist", function()
+	it("control vs control: separated stones split board via regular influence", function()
 		set_board(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -709,16 +710,16 @@ describe("control_stone (visual ASCII)", function()
 		})
 
 		assert_territory_ascii(g, {
-			". . b . . . . . .",
-			". b B b . . . . .",
-			". . b . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . w . .",
-			". . . . . w W w .",
-			". . . . . . w . .",
-			". . . . . . . . .",
-		}, "black zone top-left, white zone bottom-right, rest neutral")
+			"b b b b b b b b b",
+			"b b B b b b b b b",
+			"b b b b b b w w w",
+			"b b b b b w w w w",
+			"b b b b w w w w w",
+			"b b b w w w w w w",
+			"w w w w w w W w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+		}, "separated controls: influence assigns full board, black top-left and white bottom-right")
 	end)
 
 	it("control overrides tie-break: neutral cell becomes owned", function()
