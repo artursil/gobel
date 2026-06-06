@@ -471,6 +471,9 @@ describe("blockade_stone (visual ASCII)", function()
 			assert_cell_blocked(g, 5, 6, "gap cell right of blockade blocked")
 			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 5, 6, "white cannot bridge gap toward own group")
 			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 4, 5, "white cannot cut through blockade zone")
+			set_hand(g, "black", { "stone_basic" })
+			assert_legal_player_move_with_stone(g, "black", "stone_basic", 4, 5, "black (owner) can fill gap above own blockade")
+			assert_legal_player_move_with_stone(g, "black", "stone_basic", 5, 6, "black (owner) can bridge gap right of own blockade")
 		end)
 
 		it("blockade between groups: owner extends freely, opponent stuck for full duration", function()
@@ -502,8 +505,7 @@ describe("blockade_stone (visual ASCII)", function()
 			assert_legal_player_move_with_stone(g, "black", "stone_basic", 5, 6, "black extends right past own blockade")
 		end)
 
-		it("blockade at choke point survives duration-1 rounds then frees opponent", function()
-			set_hand(g, "black", { "blockade_stone" })
+		it("white blockade stops black sealing enclosure until duration expires", function()
 			set_board(g, {
 				". . . . . . . . .",
 				". . B B B B . . .",
@@ -511,28 +513,47 @@ describe("blockade_stone (visual ASCII)", function()
 				". . B . . B . . .",
 				". . B B . B . . .",
 				". . . . . . . . .",
-				". . W W W W . . .",
+				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			place_stone(g, {
+			set_hand(g, "black", { "stone_basic" })
+			assert_legal_player_move_with_stone(g, "black", "stone_basic", 5, 5,
+				"black can play closing stone at (5,5) before blockade")
+
+			set_hand(g, "white", { "blockade_stone" })
+			test_helper.place_stone_for(g, "white", "blockade_stone", {
 				". . . . . . . . .",
 				". . B B B B . . .",
 				". . B . . B . . .",
 				". . B . . B . . .",
-				". . B B K B . . .",
+				". . B B k B . . .",
 				". . . . . . . . .",
-				". . W W W W . . .",
+				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_cell_blocked(g, 5, 4, "choke left blocked")
-			assert_cell_blocked(g, 5, 6, "choke right blocked")
-			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 5, 6, "white cannot break through choke")
 
-			test_helper.advance_rounds(g, S.blockade_duration_rounds)
-			assert_cell_unblocked(g, 5, 6, "choke opens after duration")
-			assert_legal_player_move_with_stone(g, "white", "stone_basic", 5, 4, "white finally breaks through choke")
+			assert_illegal_player_move_with_stone(g, "black", "stone_basic", 5, 5,
+				"black cannot occupy closing intersection — white blockade already there")
+			assert_cell_blocked(g, 4, 5, "interior cell above blockade blocked for black")
+			assert_cell_blocked(g, 6, 5, "cell below blockade blocked for black")
+			set_hand(g, "black", { "stone_basic" })
+			assert_legal_player_move_with_stone(g, "black", "stone_basic", 3, 4,
+				"black still free on interior cell outside blockade zone")
+
+			test_helper.advance_rounds(g, S.blockade_duration_rounds - 1)
+			assert_cell_blocked(g, 4, 5, "neighbour cells still blocked one round before expiry")
+			assert_illegal_player_move_with_stone(g, "black", "stone_basic", 5, 5,
+				"closing intersection still white-occupied before expiry")
+
+			test_helper.advance_rounds(g, 1)
+			assert_cell_unblocked(g, 4, 5, "interior above blockade opens after full duration")
+			assert_cell_unblocked(g, 6, 5, "cell below blockade opens after full duration")
+			assert_illegal_player_move_with_stone(g, "black", "stone_basic", 5, 5,
+				"closing intersection still white-occupied after blockade expires")
+			assert_legal_player_move_with_stone(g, "black", "stone_basic", 4, 5,
+				"black regains interior access once neighbour block expires")
 		end)
 	end)
 end)
