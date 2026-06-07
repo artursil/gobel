@@ -66,12 +66,21 @@ Each wall marks its **inside** cells with an owner and pocket size. When two wal
 | Only one wall covers the cell | That side |
 | Smallest pockets tie on size, same side | That side |
 | Smallest pockets tie on size, **different** sides | `.` |
-| One pocket inside another | Smaller pocket wins |
-| Pockets overlap in a messy way (neither contains the other) | `.` |
+| **Nested** — one pocket fully inside the other | Smaller pocket wins |
+| **Crossing** — pockets overlap, neither contains the other | `.` for shared cells |
+
+**Nested vs crossing** (both pockets claim the same empty cell):
+
+- **Nested** — black has a 1-cell hole, white has a 5-cell hole around it. Black wins the inner cell (smaller pocket).
+- **Crossing** — black and white pockets share some interior cells, but neither interior fully swallows the other. Those shared cells get **no** enclosure owner (`.`).
+
+Code calls this *walls cross*: overlap exists, but neither `inside` set contains the other.
 
 ### Step 4 — Whole empty group
 
-Every empty tile in one `region_id` must get the **same** owner from step 3. Mixed → whole group stays `.` in `regions_ascii`.
+Every empty tile in one `region_id` must get the **same** owner from step 3. If any cell in that connected empty group gets `B` and another gets `W`, the **whole group** stays `.` in `regions_ascii` — even cells that had a clear sole wall on their own.
+
+Cells in different empty groups are decided independently. Example E below: `(5,4)` is `b` while `(4,5)` is `.` because a white stone at `(5,5)` splits them into separate empty groups.
 
 ---
 
@@ -139,11 +148,50 @@ Same shape, one stone moved — fixture **#6** vs **#9** in `enclosure_integrati
 
 ---
 
-## Example E — Several pockets on one board
+## Example E — Crossing enclosures on one board
 
-Fixture **#13** in `enclosure_integration_spec.lua` — multiple `b` cells, some holes still `.` (gap in fence or conflicting walls). Full expected grid is in the spec; copy the board verbatim when extending tests.
+Minimal crop of fixture **#13** in `enclosure_integration_spec.lua` — only the **black 6-cell pocket** and the **white 8-cell pocket** that fight over one cell. The full fixture adds more pockets, gaps, and edge cases on the same shape.
 
-**Note:** `territory_integration_spec.lua` case 05 uses a similar board but asserts **full territory** (enclosure + influence). For enclosure-only, use `regions_ascii` from the enclosure spec.
+**Board** (stones in rows 1–6 only):
+
+```
+. . . W . . W . .
+. . . W . . W . .
+. . W B B B W . .
+. W B W . W B . .
+. W B . W . B . .
+. . W B B B . . .
+. . . . . . . . .
+. . . . . . . . .
+. . . . . . . . .
+```
+
+**Enclosure-only result** (`regions_ascii`):
+
+```
+. . . W w w W . .
+. . . W w w W . .
+. . W B B B W . .
+. W B W . W B . .
+. W B b W b B . .
+. . W B B B . . .
+. . . . . . . . .
+. . . . . . . . .
+. . . . . . . . .
+```
+
+**What to read off this board:**
+
+| Cell | Why |
+|------|-----|
+| `(5,4)`, `(5,6)` | Only the **black** pocket (size 6) lists these empties → `b`. The white pocket (size 8) does **not** include them. |
+| `(4,5)` | **Crossing** — both pockets list this cell, but neither interior fully contains the other → `.`. |
+
+The white stone at `(5,5)` splits `(4,5)` and `(5,4)` into **different empty groups**, so `(5,4)` can be `b` while `(4,5)` stays `.` from crossing.
+
+Smaller pocket size only wins when pockets are **nested** or **disjoint**. **Crossing cancels** enclosure for the shared cell.
+
+**Full fixture:** `enclosure_integration_spec.lua` fixture **#13** / `territory_integration_spec.lua` case 05 extend this with side pockets, fence gaps, and open edge regions. That file asserts the **full** territory grid (enclosure first, then influence for cells left as `.`).
 
 ---
 

@@ -609,9 +609,11 @@ Comment: This needs to be totally differently implemented. Conversion formula I 
 ### implementation_details
 - [ ] not implemented
 - Trigger each `end_of_turn` while stone remains on board.
-- Determine owner of territory at the stone cell at trigger time.
-- Let that owner be `T_OWNER`; compute payout from `T_OWNER` total controlled territory using parameterized formula: `min(T2P_CAP, floor(T_OWNER_TERRITORY / T2P_DIVISOR))`.
-- Add payout to `T_OWNER` points (not necessarily stone owner if cell territory flips).
+- **Pre-recompute territory snapshot (placement turn):** on the turn the stone is placed, read territory owner at the stone cell and `T_OWNER` total controlled territory from the territory map **before** placement recomputes territory. Payout uses that snapshot; the new stone must not inflate/deflate the counted territory on its placement turn.
+- **Later turns:** at each subsequent `end_of_turn`, use the territory map at trigger time (after any prior recomputation) the same way: owner at stone cell → `T_OWNER` → payout from `T_OWNER` total controlled territory.
+- Let `T_OWNER` be the side owning the stone cell at snapshot time; compute payout: `min(T2P_CAP, floor(T_OWNER_TERRITORY / T2P_DIVISOR))`.
+- Add payout to `T_OWNER` points (not necessarily the stone placer if the cell belongs to the opponent).
+- Contested / unowned cells (`T_OWNER` none): payout zero.
 - No territory consumption/reduction.
 
 ### animations_details
@@ -686,7 +688,7 @@ Comment: this stone should give some number of points every round, but then when
 
 ---
 
-Comment: similar to the last stone it should generate more money each round, but if it is captured we has to pay double of triple the money we got before.
+Comment: similar to the last stone it should generate more money each round, but if it is captured we have to pay double of triple the money we got before.
 
 ## 25. escalating_money_stone
 

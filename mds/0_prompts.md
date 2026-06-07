@@ -89,3 +89,4 @@ I want to implement following changes:
 - UI for territory value
 - stone effects when held in hand?
 - capture stone
+- finish turn / advance_round / complete_full_round
