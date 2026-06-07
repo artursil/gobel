@@ -81,6 +81,23 @@ I want to implement following changes:
 10. When stone is dealt damage the graphic for it should change depending on the % of the solidity left
 
 
+I want you to help me adjust agents_workflow to this project needs. This is taken from a public repo that uses typescript and claude code for coordinating agents. I want to use cursor agents and python for similar functionality. So here are things to implement:
+
+prompts:
+- test-writer - writes test, specifies what is a good test what is a bad test, how good test doesn't focus on implementation details but tests public interfaces. Code can change entirely; tests shouldn't.
+- visual-test-writer - use skill /visual-tests
+- code-writer.md - just implements functionality with writing_tests, refactoring or reviewing not like implement-all.md, possibly raises concerns if tests are not correctly written, but NEVER corrects them himself. It should also follow best coding principles.
+- delegator - if there is dispute between test-writer and code-writer decides who is right and delegates fixes, has similar responsibilites to a reviewer.
+
+workflows:
+- tests_exist.py - In this workflow for a single issue, we ask code-writer to implement a functionality, then we ask delegator to check if the implemenation is correct and if code-writer correctly raises concerns about the tests, visual-test-writer is asked to correct things. This loop runs until delegator has no further remarks or we run the loop already 4 times. If it doesn't finish in 4 attempts it has to be reported, by creating a new issue.
+
+- parallel_tests_exist.py - Firstly evokes planner then runs in parallel tests_exist for each issue and then merges.
+- single_feature.py - Acts similar like test_exist.py but here we use test-writer or visual-test-writer to write test first, then code-writer implements then delegator checks everything else is the same.
+- parallel_features.py - This works the same as parallel_tests_exist.py just for single_feature.
+
+
+Please take inspiration from run.ts for workflows and from prompts/.md for writing md prompts
 
 
 - how counters for stones are updated

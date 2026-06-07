@@ -1,5 +1,6 @@
 logs/
 .agents/
+.agent-worktrees/
 .vscode/
 fonts/
 sprites/

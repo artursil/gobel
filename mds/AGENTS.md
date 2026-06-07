@@ -6,6 +6,21 @@ This repo supports a **two-agent workflow** for bot AI work:
 |------|-----|------|----------|
 | **AI Planner** | Local agent with `@gobel-ai-planner` skill or `gobel-ai-planner` rule | Architecture, specs, task breakdowns, implementation briefs for the coder | Edit `ai/`, game logic, or tests |
 | **Code Writer** | Default implementer agent | Implements briefs, runs tests, commits | Redesign architecture without planner sign-off |
+| **Agent workflows** | `agents_workflow/` (Python + Cursor SDK) | test-writer, visual-test-writer, code-writer, delegator loops | See `agents_workflow/README.md` |
+
+## Agent workflows (multi-agent)
+
+For automated TDD / tests-exist loops with dispute resolution:
+
+```bash
+pip install -r agents_workflow/requirements.txt
+export CURSOR_API_KEY="..."
+python agents_workflow/workflows/single_feature.py --issue 42 --visual
+python agents_workflow/workflows/tests_exist.py --issue 42
+python agents_workflow/workflows/parallel_features.py
+```
+
+Roles and escalation rules: **`agents_workflow/README.md`**.
 
 ## Quick start (local)
 
