@@ -26,22 +26,29 @@ end
 test_helper.set_visual_board_letters(LETTER_TO_STONE, STONE_TO_LETTER)
 
 local new_base_state = test_helper.new_isolated_game
+local set_hand = test_helper.set_hand
 local set_board = test_helper.set_board
+local place_stone = test_helper.place_stone
 local player_score_snapshot = test_helper.player_score_snapshot
 local visual_scoring_debug_after_each = test_helper.visual_scoring_debug_after_each
 local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_registered_in_content
 local assert_player_points_delta = test_helper.assert_player_points_delta
 local assert_player_money = test_helper.assert_player_money
-local assert_territory_ascii = test_helper.assert_territory_ascii
 
 local S = P.stone
+
+--- @param capture_count integer
+--- @return number
+local function capture_bonus_for(capture_count)
+	return P.capture_bonus_points(capture_count)
+end
 
 describe("tax_stone (visual ASCII)", function()
 	local g
 
 	before_each(function()
 		g = new_base_state()
-		assert_stone_ids_registered_in_content({"tax_stone"}, "tax_stone")
+		assert_stone_ids_registered_in_content({ "tax_stone" }, "tax_stone")
 	end)
 
 	after_each(visual_scoring_debug_after_each(function()
@@ -49,18 +56,30 @@ describe("tax_stone (visual ASCII)", function()
 	end))
 
 	it("single enemy enclosed in minimal ring pays tax", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . . . .",
 			". . . B B B . . .",
-			". . . B W T B . .",
+			". . . B W . B . .",
+			". . . B . . B . .",
 			". . . B B B . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
 		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . B B B . . .",
+			". . . B W . B . .",
+			". . . B . T B . .",
+			". . . B B B . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 1
 		local expected_points = S.tax_points_per_enemy * 1
@@ -69,7 +88,20 @@ describe("tax_stone (visual ASCII)", function()
 	end)
 
 	it("four enemies scattered in medium enclosure pay proportional tax", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
+			". . . . . . . . .",
+			". . B B B B B . .",
+			". . B W . W B . .",
+			". . B . . . B . .",
+			". . B W . W B . .",
+			". . B B . B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
 			". . . . . . . . .",
 			". . B B B B B . .",
 			". . B W . W B . .",
@@ -80,7 +112,6 @@ describe("tax_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 4
 		local expected_points = S.tax_points_per_enemy * 4
@@ -89,7 +120,20 @@ describe("tax_stone (visual ASCII)", function()
 	end)
 
 	it("empty enclosure with no enemies pays zero tax", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . B B B B . .",
+			". . . B . . B . .",
+			". . . B . . B . .",
+			". . . B B B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -100,14 +144,26 @@ describe("tax_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
 		assert_player_money(g, "black", snap.money, "no enemies no tax")
 		assert_player_points_delta(g, "black", snap, 0, "no enemies no tax")
 	end)
 
 	it("two tax stones in same enclosure do not multiply payout", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . B B B B B . .",
+			". . B W . W B . .",
+			". . B . . . B . .",
+			". . B T . . B . .",
+			". . B B B B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . B B B B B . .",
@@ -118,7 +174,6 @@ describe("tax_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 2
 		local expected_points = S.tax_points_per_enemy * 2
@@ -126,86 +181,137 @@ describe("tax_stone (visual ASCII)", function()
 		assert_player_points_delta(g, "black", snap, expected_points, "payout not doubled by extra tax stone")
 	end)
 
-	it("two separate enclosures each with tax stone sum payouts", function()
+	it("two separate enclosure placements each pay tax on placement", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
+			"B B B B . . . . .",
+			"B W . B . . . . .",
+			"B . . B . . . . .",
+			"B B B . . . . . .",
+			". . . . . . . . .",
+			". . . . . . B B B",
+			". . . . . . B W .",
+			". . . . . . B . .",
+			". . . . . . B B B",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
+			"B B B B . . . . .",
+			"B W . B . . . . .",
+			"B . T B . . . . .",
+			"B B B . . . . . .",
+			". . . . . . . . .",
+			". . . . . . B B B",
+			". . . . . . B W .",
+			". . . . . . B . .",
+			". . . . . . B B B",
+		})
+		test_helper.finish_turn(g)
+		local per_enemy_money = S.tax_money_per_enemy
+		local per_enemy_points = S.tax_points_per_enemy
+		assert_player_money(g, "black", snap.money + per_enemy_money, "top-left enclosure taxed on first placement")
+		assert_player_points_delta(g, "black", snap, per_enemy_points, "top-left enclosure taxed on first placement")
+		test_helper.pass_turn(g)
+		local snap_after_first = player_score_snapshot(g, "black")
+		set_hand(g, "black", { "tax_stone" })
+		place_stone(g, {
+			"B B B B . . . . .",
+			"B W . B . . . . .",
+			"B . T B . . . . .",
+			"B B B . . . . . .",
+			". . . . . . . . .",
+			". . . . . . B B B",
+			". . . . . . B W .",
+			". . . . . . B T .",
+			". . . . . . B B B",
+		})
+		test_helper.finish_turn(g)
+		assert_player_money(g, "black", snap_after_first.money + per_enemy_money, "bottom-right enclosure taxed on second placement")
+		assert_player_points_delta(g, "black", snap_after_first, per_enemy_points, "bottom-right enclosure taxed on second placement")
+	end)
+
+	it("tax placement capturing sole enclosed enemy pays zero", function()
+		set_hand(g, "black", { "tax_stone" })
+		set_board(g, {
+			"B B B . . . B B B",
+			"B W . B . . B . B",
+			"B B B . . . B B B",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			"B B B B . . . . .",
+			"B W . B . . . . .",
+			"B B B . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
+			"B B B . . . B B B",
+			"B W . B . . B . B",
+			"B B B . . . B B B",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
 			"B B B B . . . . .",
 			"B W T B . . . . .",
 			"B B B . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . B B B",
-			". . . . . . B W T",
-			". . . . . . B B B",
 		})
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
-		local expected_money = S.tax_money_per_enemy * 2
-		local expected_points = S.tax_points_per_enemy * 2
-		assert_player_money(g, "black", snap.money + expected_money, "1+1 enemies from two regions")
-		assert_player_points_delta(g, "black", snap, expected_points, "separate enclosures sum independently")
+		test_helper.assert_board_cell_empty(g, 8, 2, "enclosed white captured on tax placement")
+		assert_player_money(g, "black", snap.money, "captured enemy not taxed on placement")
+		assert_player_points_delta(g, "black", snap, 0, "capture on placement removes enemy before tax")
 	end)
 
-	it("three enclosures on board but only the one with tax stone pays", function()
-		set_board(g, {
-			"B B B . . . B B B",
-			"B W B . . . B W B",
-			"B B B . . . B B B",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			"B B B B . . . . .",
-			"B W T B . . . . .",
-			"B B B . . . . . .",
-		})
-		local snap = player_score_snapshot(g, "black")
-		test_helper.finish_turn(g)
-		local expected_money = S.tax_money_per_enemy * 1
-		local expected_points = S.tax_points_per_enemy * 1
-		assert_player_money(g, "black", snap.money + expected_money, "only enclosure with tax stone pays")
-		assert_player_points_delta(g, "black", snap, expected_points, "enemies in other enclosures ignored")
-	end)
-
-	it("captured tax stone pays nothing at end of turn", function()
-		set_board(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . B B B . . .",
-			". . . B W T B . .",
-			". . . B B B . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		})
-		test_helper.capture_stone_at(g, 5, 6, "black")
-		local snap = player_score_snapshot(g, "black")
-		test_helper.finish_turn(g)
-		assert_player_money(g, "black", snap.money, "captured tax stone inactive")
-		assert_player_points_delta(g, "black", snap, 0, "captured tax stone inactive")
-	end)
 
 	it("enemy removed from enclosure before payout is excluded", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
+			". . . B B B . . .",
+			". . . B W W B . .",
+			". . . B W . B . .",
+			". . . B B B . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		local prisoners_before = g.players.black.prisoners or 0
+		place_stone(g, {
+			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . B B B . . .",
+			". . . B W W B . .",
 			". . . B W T B . .",
 			". . . B B B . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		test_helper.capture_stone_at(g, 5, 5, "white")
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
-		assert_player_money(g, "black", snap.money, "removed enemy not taxed")
-		assert_player_points_delta(g, "black", snap, 0, "removed enemy not taxed")
+		test_helper.assert_board_cell_empty(g, 4, 5, "first white of captured group removed")
+		test_helper.assert_board_cell_empty(g, 4, 6, "second white of captured group removed")
+		test_helper.assert_board_cell_empty(g, 5, 5, "third white of captured group removed")
+		assert.are.equal(prisoners_before + 3, g.players.black.prisoners or 0, "three prisoners from capture")
+		assert_player_money(g, "black", snap.money, "captured enemies not taxed")
+		assert_player_points_delta(g, "black", snap, capture_bonus_for(3), "capture bonus only, no tax points")
 	end)
 
 	it("black tax stone inside white enclosure pays black nothing", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . W W W . . .",
+			". . . W . W . . .",
+			". . . W W W . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -216,25 +322,36 @@ describe("tax_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
 		assert_player_money(g, "black", snap.money, "wrong color enclosure no tax")
 		assert_player_points_delta(g, "black", snap, 0, "wrong color enclosure no tax")
 	end)
 
 	it("tax payout repeats each end of turn", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . . . .",
 			". . . B B B . . .",
-			". . . B W T B . .",
+			". . . B W . B . .",
+			". . . B . . B . .",
 			". . . B B B . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
 		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . B B B . . .",
+			". . . B W . B . .",
+			". . . B . T B . .",
+			". . . B B B . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
 		local per_turn_money = S.tax_money_per_enemy * 1
 		test_helper.finish_turn(g)
 		assert_player_money(g, "black", snap.money + per_turn_money, "turn one tax")
@@ -243,18 +360,30 @@ describe("tax_stone (visual ASCII)", function()
 	end)
 
 	it("corner enclosure using two board edges taxes enclosed enemies", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . T B B B",
+			". . . . . . . B B",
 			". . . . . B W . .",
 			". . . . . B . W .",
 			". . . . . B . . .",
 		})
 		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . T . B B",
+			". . . . . B W . .",
+			". . . . . B . W .",
+			". . . . . B . . .",
+		})
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 2
 		local expected_points = S.tax_points_per_enemy * 2
@@ -263,7 +392,20 @@ describe("tax_stone (visual ASCII)", function()
 	end)
 
 	it("side-edge enclosure using left board boundary taxes enemies", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			"B B B B . . . . .",
+			"W . . B . . . . .",
+			". . . B . . . . .",
+			"W . . B . . . . .",
+			". B B B . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
 			"B B B B . . . . .",
@@ -274,7 +416,6 @@ describe("tax_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 2
 		local expected_points = S.tax_points_per_enemy * 2
@@ -283,18 +424,30 @@ describe("tax_stone (visual ASCII)", function()
 	end)
 
 	it("tax only counts enemies inside its enclosure, not enemies loose on the board", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . . . .",
 			". W . B B B . . .",
-			". . . B W T B W .",
+			". . . B W . B . .",
+			". . . B . . B . .",
 			". . . B B B . . .",
-			". . . . . . . . .",
+			". . . . W . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
 		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". W . B B B . . .",
+			". . . B W . B . .",
+			". . . B . T B . .",
+			". . . B B B . . .",
+			". . . . W . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 1
 		local expected_points = S.tax_points_per_enemy * 1
@@ -303,7 +456,20 @@ describe("tax_stone (visual ASCII)", function()
 	end)
 
 	it("cluster of four enemy stones inside enclosure all counted", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . B B B B B . .",
+			". . B W W W B . .",
+			". . B W . . B . .",
+			". . B . . . B . .",
+			". . B B B B B . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . B B B B B . .",
@@ -314,7 +480,6 @@ describe("tax_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 4
 		local expected_points = S.tax_points_per_enemy * 4
@@ -323,18 +488,30 @@ describe("tax_stone (visual ASCII)", function()
 	end)
 
 	it("adjacent enclosures sharing a wall stone: each taxes independently", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
 			". . . . . . . . .",
 			". B B B B . . . .",
 			". B W . B . . . .",
-			". B . . B . . . .",
-			". B B T B . . . .",
+			". B . T B . . . .",
+			". B B B B . . . .",
 			". B W . B . . . .",
 			". B . . B . . . .",
-			". B B T B . . . .",
+			". B B B B . . . .",
 			". . . . . . . . .",
 		})
 		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
+			". . . . . . . . .",
+			". B B B B . . . .",
+			". B W . B . . . .",
+			". B . T B . . . .",
+			". B B B B . . . .",
+			". B W . B . . . .",
+			". B . T B . . . .",
+			". B B B B . . . .",
+			". . . . . . . . .",
+		})
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 2
 		local expected_points = S.tax_points_per_enemy * 2
@@ -343,7 +520,20 @@ describe("tax_stone (visual ASCII)", function()
 	end)
 
 	it("open arc with gap prevents enclosure, tax pays nothing", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . B B B . . .",
+			". . . B W . . . .",
+			". . . . B . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -354,14 +544,26 @@ describe("tax_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
 		assert_player_money(g, "black", snap.money, "open arc = no enclosure")
 		assert_player_points_delta(g, "black", snap, 0, "gap in boundary prevents tax")
 	end)
 
 	it("large irregular enclosure with six scattered enemies", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
+			". . . . . . . . .",
+			". B B B B B B B .",
+			". B W . . . W B .",
+			". B . . W . . B .",
+			". B . W . . . B .",
+			". B . . . W . B .",
+			". W . . . . . B .",
+			". B B B B B B B .",
+			". . . . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
 			". . . . . . . . .",
 			". B B B B B B B .",
 			". B W . . . W B .",
@@ -372,7 +574,6 @@ describe("tax_stone (visual ASCII)", function()
 			". B B B B B B B .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 6
 		local expected_points = S.tax_points_per_enemy * 6
@@ -381,7 +582,20 @@ describe("tax_stone (visual ASCII)", function()
 	end)
 
 	it("top-edge enclosure using board boundary as wall taxes enemy", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
+			"B . W . . B . . .",
+			"B . . . . B . . .",
+			"B . . . . B . . .",
+			"B B B B B . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
 			"B . W . . B . . .",
 			"B . . . . B . . .",
 			"B . . . . B . . .",
@@ -392,7 +606,6 @@ describe("tax_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 1
 		local expected_points = S.tax_points_per_enemy * 1
@@ -401,22 +614,96 @@ describe("tax_stone (visual ASCII)", function()
 	end)
 
 	it("complex multi-region board taxes only enemies in enclosure with tax stone", function()
+		set_hand(g, "black", { "tax_stone" })
 		set_board(g, {
-			". . . W . . W . .",
-			". B . W . . W . .",
-			"B . W B B B W . .",
-			". W B W . W B W B",
-			". W B . W . B W .",
-			". . W B T B . W .",
-			". B . W . . . W .",
-			"W W W . . . . . W",
+			". . . . . . . . .",
+			". . B B B B B . .",
+			". . B W . W B . .",
+			". . B . . . B . .",
+			". . B W . . B . .",
+			". . B B B B B . .",
+			". . . . W . . . .",
+			". . . . . . . . .",
 			". . . . . . . . .",
 		})
 		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
+			". . . . . . . . .",
+			". . B B B B B . .",
+			". . B W . W B . .",
+			". . B . . . B . .",
+			". . B W . T B . .",
+			". . B B B B B . .",
+			". . . . W . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
 		test_helper.finish_turn(g)
 		local expected_money = S.tax_money_per_enemy * 3
 		local expected_points = S.tax_points_per_enemy * 3
 		assert_player_money(g, "black", snap.money + expected_money, "three enemies in contested enclosure")
 		assert_player_points_delta(g, "black", snap, expected_points, "complex multi-region taxes correctly")
+	end)
+
+	it("outer black-zone enemy taxed while white inner pocket enemies are not", function()
+		set_hand(g, "black", { "tax_stone" })
+		set_board(g, {
+			". . . . . . . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B B B . . .",
+			". B W . . B . . .",
+			"W W W W . B . . .",
+			". W . W . B . . .",
+			". . . W . B . . .",
+			". W . W . B . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
+			". . . . . . . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B B B . . .",
+			". B W . T B . . .",
+			"W W W W . B . . .",
+			". W . W . B . . .",
+			". . . W . B . . .",
+			". W . W . B . . .",
+		})
+		test_helper.finish_turn(g)
+		local expected_money = S.tax_money_per_enemy * 1
+		local expected_points = S.tax_points_per_enemy * 1
+		assert_player_money(g, "black", snap.money + expected_money, "one outer black-zone enemy taxed")
+		assert_player_points_delta(g, "black", snap, expected_points, "white inner pocket enemies not taxed")
+	end)
+
+	it("tax stone placed inside white inner pocket pays zero", function()
+		set_hand(g, "black", { "tax_stone" })
+		set_board(g, {
+			". . . . . . . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B B B . . .",
+			". B . . . B . . .",
+			"W W W W . B . . .",
+			". W . W . B . . .",
+			". . . W . B . . .",
+			". W . W . B . . .",
+		})
+		local snap = player_score_snapshot(g, "black")
+		place_stone(g, {
+			". . . . . . . . .",
+			". . . . . W . . .",
+			". . . . . . W . .",
+			"B B B B B B . . .",
+			". B . . T B . . .",
+			"W W W W . B . . .",
+			". W . W . B . . .",
+			". . . W . B . . .",
+			". W . W . B . . .",
+		})
+		test_helper.finish_turn(g)
+		assert_player_money(g, "black", snap.money, "T inside white pocket — no black enclosure")
+		assert_player_points_delta(g, "black", snap, 0, "enemies in white inner pocket not taxed by black")
 	end)
 end)
