@@ -2,7 +2,8 @@
 ---
 --- Stone under test: capture_stone
 --- Captures one enemy stone with 0 liberties on placement, regardless of surrounding colors.
---- Opponent cannot recapture on the captured cell for 1 round (capture cooldown).
+--- Opponent cannot recapture on the captured cell for 1 round when capture_stone removed
+--- a stone in a mixed black/white surround (capture cooldown). No cooldown in captor-only surround.
 --- If multiple targets at 0 liberties, one is selected at random.
 ---
 local test_helper = require("spec.test_helper")
@@ -64,7 +65,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . B . . . .",
 				". . . B W . . . .",
-				". . . . . . . . .",
+				". . . . B . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -186,7 +187,7 @@ describe("capture_stone (visual ASCII)", function()
 		it("corner stone at (1,1) with 0 liberties is captured", function()
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
-				"W B . . . . . . .",
+				"W W . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -199,7 +200,7 @@ describe("capture_stone (visual ASCII)", function()
 			local snap = player_score_snapshot(g, "black")
 
 			place_stone(g, {
-				"W B . . . . . . .",
+				"W W . . . . . . .",
 				"C . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -218,7 +219,7 @@ describe("capture_stone (visual ASCII)", function()
 		it("edge stone at (1,5) with 0 liberties is captured", function()
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
-				". . . B W B . . .",
+				". . . W W B . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -231,7 +232,7 @@ describe("capture_stone (visual ASCII)", function()
 			local snap = player_score_snapshot(g, "black")
 
 			place_stone(g, {
-				". . . B W B . . .",
+				". . . W W B . . .",
 				". . . . C . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -257,8 +258,8 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . . . . B .",
-				". . . . . . . . W",
+				". . . . . . . . .",
+				". . . . . . . W W",
 			})
 			local snap = player_score_snapshot(g, "black")
 
@@ -270,8 +271,8 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . . . . B .",
-				". . . . . . . C W",
+				". . . . . . . . C",
+				". . . . . . . W W",
 			})
 
 			local expected_delta = S.capture_stone_bonus_points
@@ -287,7 +288,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . B . . . .",
+				". . . . W . . . .",
 				". . . B W . . . .",
 				". . . . B . . . .",
 				". . . . . . . . .",
@@ -299,7 +300,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . B . . . .",
+				". . . . W . . . .",
 				". . . B W C . . .",
 				". . . . B . . . .",
 				". . . . . . . . .",
@@ -318,7 +319,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . B . . . .",
+				". . . . W . . . .",
 				". . . B W . . . .",
 				". . . . B . . . .",
 				". . . . . . . . .",
@@ -330,7 +331,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . B . . . .",
+				". . . . W . . . .",
 				". . . B W C . . .",
 				". . . . B . . . .",
 				". . . . . . . . .",
@@ -349,7 +350,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . B . . . .",
+				". . . . W . . . .",
 				". . . B W . . . .",
 				". . . . B . . . .",
 				". . . . . . . . .",
@@ -361,7 +362,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . B . . . .",
+				". . . . W . . . .",
 				". . . B W C . . .",
 				". . . . B . . . .",
 				". . . . . . . . .",
@@ -377,13 +378,13 @@ describe("capture_stone (visual ASCII)", function()
 	end)
 
 	describe("multi-round recapture scenario", function()
-		it("opponent places stone on previously captured cell after cooldown expires", function()
+		it("mixed surround: opponent places on captured cell after cooldown expires", function()
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . B . . . .",
+				". . . . W . . . .",
 				". . . B W . . . .",
 				". . . . B . . . .",
 				". . . . . . . . .",
@@ -395,7 +396,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . B . . . .",
+				". . . . W . . . .",
 				". . . B W C . . .",
 				". . . . B . . . .",
 				". . . . . . . . .",
@@ -403,14 +404,16 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			assert_board_cell_empty(g, 5, 5, "white captured round 1")
+			assert_cell_blocked(g, 5, 5, "mixed-surround capture triggers cooldown")
 			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 5, 5, "blocked during cooldown")
 
 			test_helper.advance_rounds(g, 1)
+			assert_cell_unblocked(g, 5, 5, "cooldown expired")
 			test_helper.place_stone_for(g, "white", "stone_basic", {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . B . . . .",
+				". . . . W . . . .",
 				". . . B W C . . .",
 				". . . . B . . . .",
 				". . . . . . . . .",
@@ -420,7 +423,7 @@ describe("capture_stone (visual ASCII)", function()
 			test_helper.assert_board_stone_present(g, 5, 5, "white recaptured the cell after cooldown")
 		end)
 
-		it("two consecutive captures on different cells: both get independent cooldowns", function()
+		it("captor-only surround: no cooldown and sealed pocket stays illegal for opponent", function()
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
 				". . . . . . . . .",
@@ -445,39 +448,89 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_board_cell_empty(g, 5, 5, "first white captured")
-			assert_cell_blocked(g, 5, 5, "first capture cell blocked")
+			assert_board_cell_empty(g, 5, 5, "white captured in black-only surround")
+			assert_cell_unblocked(g, 5, 5, "no cooldown when only captor stones surround")
+			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 5, 5, "sealed pocket illegal even without cooldown")
 
 			test_helper.advance_rounds(g, 1)
-			assert_cell_unblocked(g, 5, 5, "first capture cooldown expired")
+			assert_cell_unblocked(g, 5, 5, "still no cooldown after advance")
+			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 5, 5, "sealed pocket still illegal after advance")
+		end)
 
-			test_helper.place_stone_for(g, "white", "stone_basic", {
+		it("two mixed-surround captures on different cells get independent cooldowns", function()
+			set_hand(g, "black", { "capture_stone" })
+			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . B . . . .",
-				". . . . B . . . .",
-				". . . B W C . . .",
-				". . . . B . . . .",
+				". . . . . . . . .",
+				". . . . W . W . .",
+				". . . B W . B W .",
+				". . . . B . . B .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.assert_board_stone_present(g, 5, 5, "white placed back on previously captured cell")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . W . W . .",
+				". . . B W C B W .",
+				". . . . B . . B .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			assert_board_cell_empty(g, 5, 5, "first white captured at (5,5)")
+			assert_cell_blocked(g, 5, 5, "first capture cell blocked")
+			assert_cell_unblocked(g, 8, 5, "second pocket not on cooldown yet")
+			test_helper.assert_board_stone_present(g, 8, 5, "second white still on board")
 
 			set_hand(g, "black", { "capture_stone" })
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . B B . . . .",
-				". . . . B . . . .",
-				". . . B W C . . .",
-				". . . . B . . . .",
+				". . . . . . . . .",
+				". . . . W . W . .",
+				". . . B W C B W C",
+				". . . . B . . B .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_board_cell_empty(g, 5, 5, "white captured again on same cell")
-			assert_cell_blocked(g, 5, 5, "second capture triggers fresh cooldown")
+			assert_board_cell_empty(g, 8, 5, "second white captured at (8,5)")
+			assert_cell_blocked(g, 5, 5, "first capture cooldown still active")
+			assert_cell_blocked(g, 8, 5, "second capture cell blocked")
+
+			test_helper.advance_rounds(g, 1)
+			assert_cell_unblocked(g, 5, 5, "first capture cooldown expired")
+			assert_cell_unblocked(g, 8, 5, "second capture cooldown expired")
+
+			test_helper.place_stone_for(g, "white", "stone_basic", {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . W . W . .",
+				". . . B W C B W C",
+				". . . . B . . B .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			test_helper.assert_board_stone_present(g, 5, 5, "white placed back on first captured cell")
+			test_helper.place_stone_for(g, "white", "stone_basic", {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . W . W . .",
+				". . . B W W B W C",
+				". . . . B . . B .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			test_helper.assert_board_stone_present(g, 8, 5, "white placed back on second captured cell")
 		end)
 	end)
 
