@@ -11,7 +11,7 @@ local P = require("spec.parameters_helper")
 local LETTER_TO_STONE = {
 	B = { color = config.STONE_BLACK, kind = "stone_basic" },
 	W = { color = config.STONE_WHITE, kind = "stone_basic" },
-	P = { color = config.STONE_BLACK, kind = "points_3_rounds_stone" },
+	P = { color = config.STONE_BLACK, kind = "delay_reward_stone" },
 	S = { color = config.STONE_BLACK, kind = "self_destruct_timed_stone" },
 	F = { color = config.STONE_BLACK, kind = "final_blow_stone" },
 	U = { color = config.STONE_BLACK, kind = "unlimited_upgrades_stone" },
@@ -50,7 +50,7 @@ end
 
 --- @return number
 local function points_delay_payout()
-	return S.points_delay_payout or P.stone_effect_value("points_3_rounds_stone", "add_points") or 20
+	return S.points_delay_payout or P.stone_effect_value("delay_reward_stone", "add_points") or 20
 end
 
 --- @return number
@@ -93,7 +93,7 @@ local function unlimited_level_plus_mult(level)
 end
 
 local STONE_IDS = {
-	"points_3_rounds_stone",
+	"delay_reward_stone",
 	"self_destruct_timed_stone",
 	"final_blow_stone",
 	"unlimited_upgrades_stone",

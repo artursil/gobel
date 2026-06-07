@@ -115,13 +115,13 @@ Remove "OR"s when using parameter values
 We don't want to define new functions for checking values. We should use parametrized value directly in the test. If we want to check the delta we simply before assert should create a variable local expected_delta = S.<parameter_name> * N, where N is value that makes sense for the test. This will make the tests way easier to follow. There is no limit of number of tests.
 
 
-/visual-tests for 17_mult_3_rounds_stone_spec clean the file, remove unused functions and stones.
+/visual-tests for 17_control_territory_stone_spec clean the file, remove unused functions and stones.
 Those tests miss the stone mechanic. Payout depends only on `territory_control_rounds` at the placement cell (see `docs/territory/control-rounds.md`), not enclosure topology. Seed the control grid via `set_territory_control_rounds_ascii` (separate layer from stone board). Assert `plus_mult` delta: own territory `S.mult_control_streak_multiplier * N`, enemy territory negative (floor at 0), `+0` gives nothing. Minimal boards; multi-zone board to prove each cell reads independently. Grid tick rules belong in `spec/unit/territory_control_rounds_spec.lua`, not this visual spec.
 
 Remove "OR"s when using parameter values
 We don't want to define new functions for checking values. We should use parametrized value directly in the test. If we want to check the delta we simply before assert should create a variable local expected_delta = S.<parameter_name> * N, where N is value that makes sense for the test. This will make the tests way easier to follow. There is no limit of number of tests.
 
-/visual-tests for 18_points_3_rounds_stone_spec clean the file, remove unused functions and stones.
+/visual-tests for 18_delay_reward_stone_spec clean the file, remove unused functions and stones.
 Those tests are mostly fine but please double check their validity and think about other usecases.
 Remove "OR"s when using parameter values
 We don't want to define new functions for checking values. We should use parametrized value directly in the test. If we want to check the delta we simply before assert should create a variable local expected_delta = S.<parameter_name> * N, where N is value that makes sense for the test. This will make the tests way easier to follow. There is no limit of number of tests.

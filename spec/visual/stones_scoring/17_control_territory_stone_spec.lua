@@ -1,4 +1,4 @@
---- Visual spec: mult_3_rounds_stone (OBJECTS.md #17).
+--- Visual spec: control_territory_stone (OBJECTS.md #17).
 ---
 --- Payout = mult_control_streak_multiplier * abs(streak) on own territory;
 --- penalty on enemy territory (plus_mult floored at 0). Reads territory_control_rounds at placement cell only.
@@ -12,8 +12,8 @@ local P = require("spec.parameters_helper")
 local LETTER_TO_STONE = {
 	B = { color = config.STONE_BLACK, kind = "stone_basic" },
 	W = { color = config.STONE_WHITE, kind = "stone_basic" },
-	M = { color = config.STONE_BLACK, kind = "mult_3_rounds_stone" },
-	m = { color = config.STONE_WHITE, kind = "mult_3_rounds_stone" },
+	M = { color = config.STONE_BLACK, kind = "control_territory_stone" },
+	m = { color = config.STONE_WHITE, kind = "control_territory_stone" },
 }
 
 local STONE_TO_LETTER = {}
@@ -50,12 +50,12 @@ local EMPTY_BOARD = {
 	". . . . . . . . .",
 }
 
-describe("mult_3_rounds_stone (visual ASCII)", function()
+describe("control_territory_stone (visual ASCII)", function()
 	local g
 
 	before_each(function()
 		g = new_base_state()
-		assert_stone_ids_registered_in_content({ "mult_3_rounds_stone" }, "mult_3_rounds_stone")
+		assert_stone_ids_registered_in_content({ "control_territory_stone" }, "control_territory_stone")
 		set_board(g, EMPTY_BOARD)
 	end)
 
@@ -64,7 +64,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 	end))
 
 	it("black on own +5 cell pays positive plus_mult", function()
-		set_hand(g, "black", { "mult_3_rounds_stone" })
+		set_hand(g, "black", { "control_territory_stone" })
 		set_control(g, {
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
@@ -93,7 +93,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 	end)
 
 	it("white on own -4 cell pays positive plus_mult", function()
-		set_hand(g, "white", { "mult_3_rounds_stone" })
+		set_hand(g, "white", { "control_territory_stone" })
 		set_control(g, {
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
@@ -107,7 +107,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 		})
 		local snap = player_score_snapshot(g, "white")
 		local expected_delta = S.mult_control_streak_multiplier * 4
-		place_stone_for(g, "white", "mult_3_rounds_stone", {
+		place_stone_for(g, "white", "control_territory_stone", {
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -122,7 +122,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 	end)
 
 	it("black on enemy -3 cell applies penalty", function()
-		set_hand(g, "black", { "mult_3_rounds_stone" })
+		set_hand(g, "black", { "control_territory_stone" })
 		test_helper.set_mult(g, "black", 10)
 		set_control(g, {
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
@@ -152,7 +152,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 	end)
 
 	it("white on enemy +2 cell applies penalty", function()
-		set_hand(g, "white", { "mult_3_rounds_stone" })
+		set_hand(g, "white", { "control_territory_stone" })
 		test_helper.set_mult(g, "white", 10)
 		set_control(g, {
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
@@ -167,7 +167,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 		})
 		local snap = player_score_snapshot(g, "white")
 		local expected_delta = -(S.mult_control_streak_multiplier * 2)
-		place_stone_for(g, "white", "mult_3_rounds_stone", {
+		place_stone_for(g, "white", "control_territory_stone", {
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -182,7 +182,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 	end)
 
 	it("neutral +0 cell pays nothing", function()
-		set_hand(g, "black", { "mult_3_rounds_stone" })
+		set_hand(g, "black", { "control_territory_stone" })
 		set_control(g, {
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
@@ -210,7 +210,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 	end)
 
 	it("streak +1 pays mult_control_streak_multiplier", function()
-		set_hand(g, "black", { "mult_3_rounds_stone" })
+		set_hand(g, "black", { "control_territory_stone" })
 		set_control(g, {
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
@@ -239,7 +239,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 	end)
 
 	it("penalty is floored when plus_mult would go below zero", function()
-		set_hand(g, "black", { "mult_3_rounds_stone" })
+		set_hand(g, "black", { "control_territory_stone" })
 		test_helper.set_mult(g, "black", 2)
 		set_control(g, {
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
@@ -269,7 +269,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 	end)
 
 	it("one-time trigger: no payout after advance_rounds", function()
-		set_hand(g, "black", { "mult_3_rounds_stone" })
+		set_hand(g, "black", { "control_territory_stone" })
 		set_control(g, {
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
@@ -298,7 +298,7 @@ describe("mult_3_rounds_stone (visual ASCII)", function()
 	end)
 
 	it("multi-zone board reads only placement cell", function()
-		set_hand(g, "black", { "mult_3_rounds_stone" })
+		set_hand(g, "black", { "control_territory_stone" })
 		set_control(g, {
 			"+0 +0 +0 +0 +0 +0 +0 +0 +0",
 			"+0 +0 +3 +0 +0 +0 -5 +0 +0",

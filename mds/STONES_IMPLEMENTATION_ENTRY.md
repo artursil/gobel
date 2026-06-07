@@ -459,9 +459,9 @@ Comment: This stone prevents opponent to place a stone on an empty field that wo
 
 Comment: I would change it to 2 * number of rounds controlled. For this and other stones in implementation we also need to specify how to get information about number of rounds in controlled territory. I would suggest in state of the game store information about territory controlled over rounds where negative numbers are for white player and positive are for black player.
 
-## 17. mult_3_rounds_stone
+## 17. control_territory_stone
 
-**name:** `mult_3_rounds_stone`
+**name:** `control_territory_stone`
 **description:** Multiplier stone based on territory control streak length at placement.
 
 ### implementation_details
@@ -491,9 +491,9 @@ Comment: I would change it to 2 * number of rounds controlled. For this and othe
 
 Comment: This is ok but I would increase it to 7 rounds
 
-## 18. points_3_rounds_stone
+## 18. delay_reward_stone
 
-**name:** `points_3_rounds_stone`
+**name:** `delay_reward_stone`
 **description:** Delayed points stone with a 7-round survival timer.
 
 ### implementation_details

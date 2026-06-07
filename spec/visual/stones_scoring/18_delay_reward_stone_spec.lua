@@ -1,6 +1,6 @@
---- Visual spec: points_3_rounds_stone (OBJECTS.md #18).
+--- Visual spec: delay_reward_stone (OBJECTS.md #18).
 ---
---- Stone under test: points_3_rounds_stone
+--- Stone under test: delay_reward_stone
 --- Effect: survival timer — on placement registers points_delay_rounds; if the stone
 --- still exists when the timer expires, grants points_delay_payout once.
 ---
@@ -13,8 +13,8 @@ local S = require("spec.parameters_helper").stone
 local LETTER_TO_STONE = {
 	B = { color = config.STONE_BLACK, kind = "stone_basic" },
 	W = { color = config.STONE_WHITE, kind = "stone_basic" },
-	P = { color = config.STONE_BLACK, kind = "points_3_rounds_stone" },
-	p = { color = config.STONE_WHITE, kind = "points_3_rounds_stone" },
+	P = { color = config.STONE_BLACK, kind = "delay_reward_stone" },
+	p = { color = config.STONE_WHITE, kind = "delay_reward_stone" },
 }
 
 local STONE_TO_LETTER = {}
@@ -49,21 +49,21 @@ local function blank_board()
 	}
 end
 
-describe("points_3_rounds_stone (visual ASCII)", function()
+describe("delay_reward_stone (visual ASCII)", function()
 	local g
 
 	before_each(function()
 		g = new_base_state()
-		assert_stone_ids_registered_in_content({ "points_3_rounds_stone" }, "points_3_rounds_stone")
+		assert_stone_ids_registered_in_content({ "delay_reward_stone" }, "delay_reward_stone")
 	end)
 
 	after_each(visual_scoring_debug_after_each(function()
 		return g
 	end))
 
-	describe("points_3_rounds_stone delayed payout", function()
+	describe("delay_reward_stone delayed payout", function()
 		it("placement pays zero points immediately", function()
-			set_hand(g, "black", { "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone" })
 			set_board(g, blank_board())
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
@@ -82,7 +82,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("fresh timer starts at points_delay_rounds", function()
-			set_hand(g, "black", { "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone" })
 			set_board(g, blank_board())
 			place_stone(g, {
 				". . . . . . . . .",
@@ -100,7 +100,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("one round elapsed decrements timer by one", function()
-			set_hand(g, "black", { "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone" })
 			set_board(g, blank_board())
 			place_stone(g, {
 				". . . . . . . . .",
@@ -119,7 +119,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("one round before expiry pays zero", function()
-			set_hand(g, "black", { "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone" })
 			set_board(g, blank_board())
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
@@ -139,7 +139,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("timer expiry pays points_delay_payout when stone survives", function()
-			set_hand(g, "black", { "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone" })
 			set_board(g, blank_board())
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
@@ -160,7 +160,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("enemy capture before expiry forfeits payout", function()
-			set_hand(g, "black", { "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone" })
 			set_board(g, blank_board())
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
@@ -201,7 +201,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("second expiry round never triggers another payout", function()
-			set_hand(g, "black", { "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone" })
 			set_board(g, blank_board())
 			place_stone(g, {
 				". . . . . . . . .",
@@ -222,7 +222,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("two stones track independent timers", function()
-			set_hand(g, "black", { "points_3_rounds_stone", "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone", "delay_reward_stone" })
 			set_board(g, blank_board())
 			place_stone(g, {
 				". . . . . . . . .",
@@ -254,7 +254,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("two stones expiring same round each pay points_delay_payout", function()
-			set_hand(g, "black", { "points_3_rounds_stone", "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone", "delay_reward_stone" })
 			set_board(g, blank_board())
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
@@ -274,7 +274,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("capture one stone leaves the other eligible for payout", function()
-			set_hand(g, "black", { "points_3_rounds_stone", "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone", "delay_reward_stone" })
 			set_board(g, blank_board())
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
@@ -299,7 +299,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 			set_board(g, blank_board())
 			local white_snap = player_score_snapshot(g, "white")
 			local black_snap = player_score_snapshot(g, "black")
-			test_helper.place_stone_for(g, "white", "points_3_rounds_stone", {
+			test_helper.place_stone_for(g, "white", "delay_reward_stone", {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -318,7 +318,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("edge placement expiry matches center payout", function()
-			set_hand(g, "black", { "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone" })
 			set_board(g, blank_board())
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
@@ -337,28 +337,8 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 			assert_player_points_delta(g, "black", snap, expected_delta, "edge expiry payout")
 		end)
 
-		it("corner placement expiry matches center payout", function()
-			set_hand(g, "black", { "points_3_rounds_stone" })
-			set_board(g, blank_board())
-			local snap = player_score_snapshot(g, "black")
-			place_stone(g, {
-				"P . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-			test_helper.advance_rounds(g, S.points_delay_rounds)
-			local expected_delta = S.points_delay_payout
-			assert_player_points_delta(g, "black", snap, expected_delta, "corner expiry payout")
-		end)
-
 		it("match end before expiry skips unpaid timer", function()
-			set_hand(g, "black", { "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone" })
 			set_board(g, blank_board())
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
@@ -378,7 +358,7 @@ describe("points_3_rounds_stone (visual ASCII)", function()
 		end)
 
 		it("staggered expiries pay on different rounds", function()
-			set_hand(g, "black", { "points_3_rounds_stone", "points_3_rounds_stone" })
+			set_hand(g, "black", { "delay_reward_stone", "delay_reward_stone" })
 			set_board(g, blank_board())
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {

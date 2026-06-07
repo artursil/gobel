@@ -145,8 +145,8 @@ M.stone_tower = {
 	},
 }
 
-M.mult_3_rounds_stone = {
-	id = "mult_3_rounds_stone",
+M.control_territory_stone = {
+	id = "control_territory_stone",
 	type = "stone",
 	name = "Control Mult Stone",
 	description = "On placement, adds multiplier based on territory control streak at the cell.",
@@ -286,7 +286,7 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"defence_stone",
 	"money_field_stone",
 	"anti_capture_stone",
-	"points_3_rounds_stone",
+	"delay_reward_stone",
 	"capture_stone",
 	"tax_stone",
 	"self_destruct_timed_stone",

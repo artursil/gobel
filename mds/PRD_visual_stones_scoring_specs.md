@@ -37,9 +37,9 @@ Rebuild the stones scoring visual suite so **every stone except those exclusivel
 11. As a **Code Writer**, I want **territory_enclosure** `control_stone` cases to validate resolve-last override semantics and contested cancellation per entry doc.
 12. As a **Code Writer**, I want **territory_enclosure** `money_field_stone` and `copper_stone` deciles completed to ten scenarios including threshold and below-threshold board counts.
 13. As a **Code Writer**, I want **protection_blockade** `defence_stone` cases to assert **solidity** propagation on placement and on later adjacent placements, not abstract defense denominators alone.
-14. As a **Code Writer**, I want **protection_blockade** `mult_3_rounds_stone` to assert `mult_control_streak_multiplier × rounds_controlled` on own territory and the negative equivalent on enemy territory (with `plus_mult` floor at `0`), using territory-round tracking sign convention (positive black, negative white).
+14. As a **Code Writer**, I want **protection_blockade** `control_territory_stone` to assert `mult_control_streak_multiplier × rounds_controlled` on own territory and the negative equivalent on enemy territory (with `plus_mult` floor at `0`), using territory-round tracking sign convention (positive black, negative white).
 15. As a **Code Writer**, I want **protection_blockade** `blockade_stone` and `anti_capture_stone` multi-round chains (duration, overlap max, kamikaze still blocked, immunity expiry, silent failed capture).
-16. As a **Code Writer**, I want **timed_delayed** `points_3_rounds_stone` to use the **seven-round** timer from entry doc (not three), with capture-forfeit and independent timers across stones.
+16. As a **Code Writer**, I want **timed_delayed** `delay_reward_stone` to use the **seven-round** timer from entry doc (not three), with capture-forfeit and independent timers across stones.
 17. As a **Code Writer**, I want **timed_delayed** `self_destruct_timed_stone`, `final_blow_stone`, and `unlimited_upgrades_stone` each at ten scenarios including round-gate and post-cap upgrade payouts.
 18. As a **Code Writer**, I want **end_of_turn_economy** `tax_stone` nested-enclosure, multi-round, capture-before-payout, and dual-region cases per entry scenarios 1–10.
 19. As a **Code Writer**, I want **end_of_turn_economy** `territory_to_points_stone` and `territory_to_multiplier_stone` to test per-round payout to **current cell territory owner** with total-territory formula, caps, flip to white, contested zero, multiple stones, blockade, and capture—not one-shot `set_player_territory_score` on empty board only.
@@ -97,8 +97,8 @@ Rebuild the stones scoring visual suite so **every stone except those exclusivel
 | Tier / immediate | `basic_stone` (new file), `points_stone`, `influence_stone`, `energy_stone`, `tower_stone` |
 | Pattern / sacrifice | `diagonal_stone`, `line_stone`, `kamikaze_stone`, `capture_stone` |
 | Territory / enclosure | `enclosure_stone`, `control_stone`, `money_field_stone`, `copper_stone` |
-| Protection / blockade | `blockade_stone`, `defence_stone`, `anti_capture_stone`, `mult_3_rounds_stone` |
-| Timed / delayed | `points_3_rounds_stone`, `self_destruct_timed_stone`, `final_blow_stone`, `unlimited_upgrades_stone` |
+| Protection / blockade | `blockade_stone`, `defence_stone`, `anti_capture_stone`, `control_territory_stone` |
+| Timed / delayed | `delay_reward_stone`, `self_destruct_timed_stone`, `final_blow_stone`, `unlimited_upgrades_stone` |
 | End-of-turn economy | `tax_stone`, `territory_to_points_stone`, `territory_to_multiplier_stone`, `escalating_money_stone` |
 | Tradeoff / retrigger | `escalating_points_stone`, `high_power_money_loss_stone`, `retrigger_stone` |
 
@@ -110,8 +110,8 @@ Rebuild the stones scoring visual suite so **every stone except those exclusivel
 - **enclosure_stone:** double enclosed field values, not isolated `+1` on placed cell only.
 - **control_stone:** territory assignment override resolves last; contested when opposing control applies same cell same pass.
 - **defence_stone:** `+1 solidity` to orthogonal and diagonal neighbors on placement and when later stones connect.
-- **mult_3_rounds_stone:** payout `mult_control_streak_multiplier × rounds_controlled` on own territory; negative delta on enemy territory (`plus_mult` floored at `0`). Grid rules: `docs/territory/control-rounds.md`. Visual spec tests payout only; grid tick rules in `spec/unit/territory_control_rounds_spec.lua`.
-- **points_3_rounds_stone:** **7-round** survival timer before delayed points payout.
+- **control_territory_stone:** payout `mult_control_streak_multiplier × rounds_controlled` on own territory; negative delta on enemy territory (`plus_mult` floored at `0`). Grid rules: `docs/territory/control-rounds.md`. Visual spec tests payout only; grid tick rules in `spec/unit/territory_control_rounds_spec.lua`.
+- **delay_reward_stone:** **7-round** survival timer before delayed points payout.
 - **tax_stone:** innermost qualifying enclosure only; no nested double pay; per-enemy parameterized money/points each owner `end_of_turn`.
 - **territory_to_points_stone / territory_to_multiplier_stone:** each `end_of_turn`, pay **current territory owner at stone cell** based on that owner’s **total** controlled territory; parameterized divisor and cap; no territory consumption.
 - **escalating_points_stone:** accrue points each round; on capture, transfer accumulated value to enemy with parameterized multiplier.

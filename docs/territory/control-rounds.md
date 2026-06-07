@@ -1,6 +1,6 @@
 # Territory control rounds
 
-Per-cell history of how long each empty board cell has been continuously controlled by one player. Used by `mult_3_rounds_stone` and maintained by the resolver each full round.
+Per-cell history of how long each empty board cell has been continuously controlled by one player. Used by `control_territory_stone` and maintained by the resolver each full round.
 
 Normative stone payout rules live in `mds/STONES_IMPLEMENTATION_ENTRY.md` §17. This document defines the grid, update rules, test harness, and spec split.
 
@@ -28,7 +28,7 @@ Contested and no man's land are the same state: both map to `0`. There is no sep
 
 Each tick reads the current territory owner for **empty** cells from the normal territory resolver (`game_state.territory` after the territory phase). Enclosure topology affects the grid only indirectly — by determining who owns a cell each round.
 
-`mult_3_rounds_stone` reads `territory_control_rounds[row][col]` at **placement time**, before the placed stone occupies the cell.
+`control_territory_stone` reads `territory_control_rounds[row][col]` at **placement time**, before the placed stone occupies the cell.
 
 ## Update rules
 
@@ -70,7 +70,7 @@ Black gradually takes a contested cell, holds it, then white flips it:
 | 6 | white (first round) | `0` |
 | 7 | white | `-1` |
 
-## `mult_3_rounds_stone` payout
+## `control_territory_stone` payout
 
 Parameter: `mult_control_streak_multiplier` (default `2`).
 
@@ -148,7 +148,7 @@ Use `S.mult_control_streak_multiplier * N` for expected deltas; do not hardcode 
 | Spec | Owns |
 |------|------|
 | `spec/visual/territory_control_rounds_spec.lua` | End-to-end grid maintenance — initial board + seeded control ASCII, one placement, `complete_full_round`, assert final control ASCII. |
-| `spec/visual/stones_scoring/17_mult_3_rounds_stone_spec.lua` | Stone payout only — minimal boards, ASCII-seeded control grid, assert `plus_mult` delta. Enclosure topology is **out of scope** (does not affect payout). |
+| `spec/visual/stones_scoring/17_control_territory_stone_spec.lua` | Stone payout only — minimal boards, ASCII-seeded control grid, assert `plus_mult` delta. Enclosure topology is **out of scope** (does not affect payout). |
 | `spec/unit/territory_control_rounds_spec.lua` | Grid maintenance — delayed start, flip → `0`, stone clears cell, once-per-round tick. Isolated tick helper calls and ASCII seeding. |
 
 ### Recommended stone spec scenarios

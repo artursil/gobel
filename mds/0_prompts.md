@@ -81,3 +81,9 @@ I want to implement following changes:
 10. When stone is dealt damage the graphic for it should change depending on the % of the solidity left
 
 
+
+
+- how counters for stones are updated
+- combination of stones
+- UI for controlled territory
+- UI for territory value
