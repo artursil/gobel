@@ -4,6 +4,7 @@ local config = require("config")
 local content = require("content")
 local deck = require("deck")
 local pouch = require("pouch")
+local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
 
 local M = {}
 
@@ -175,6 +176,7 @@ function M.new_match(match_kind, territory_mode, seed)
 			end
 			return tv
 		end)(),
+		territory_control_rounds = territory_control_rounds.new_grid(),
 		scores = {
 			turn_bonus = { B = 1, W = 1 },
 			territory = { B = 0, W = 0 },

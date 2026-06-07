@@ -465,7 +465,7 @@ Comment: I would change it to 2 * number of rounds controlled. For this and othe
 **description:** Multiplier stone based on territory control streak length at placement.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Grid maintenance: see `docs/territory/control-rounds.md`.
 - Read `territory_control_rounds[row][col]` at placement time (before cell is occupied), sign convention positive black / negative `W`.
 - Own territory: add `mult_control_streak_multiplier * abs(streak)` to placer `plus_mult`.
@@ -483,7 +483,7 @@ Comment: I would change it to 2 * number of rounds controlled. For this and othe
 
 ### tests
 - [x] tests specified (>=8 scenarios; payout formula only — grid tick tests in `spec/unit/territory_control_rounds_spec.lua`)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 - Seed control grid via `set_territory_control_rounds_ascii`; minimal stone boards; enclosure topology out of scope.
 - Assert `expected_delta = mult_control_streak_multiplier * N` (or negative equivalent) from parameters helper.
 

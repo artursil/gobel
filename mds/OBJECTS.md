@@ -103,6 +103,7 @@ CARDS:
 - predict next opponents stone get points - IMPORTANT
 - -10 points now 20 points next game
 - Consumes the value of the card
+- Teleport card
 
 
 1. Discard card - can be used on stones or cards

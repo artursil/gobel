@@ -99,19 +99,20 @@ Control grid is a **separate ASCII layer** from the stone board (`set_board`).
 | `territory_control_rounds_ascii(g)` | Dump grid to row strings |
 | `set_territory_control_rounds_ascii(g, rows)` | Seed grid from row strings |
 | `assert_territory_control_rounds_ascii(g, expected_rows, context?)` | Assert dump matches expected |
+| `complete_full_round(g)` | Pass for `g.to_play` after opponent placement (end-of-round tick when `turn_number` is even) |
 
 `set_territory_control_rounds(g, row, col, n)` is **removed** — seeding goes through ASCII only.
 
 ### ASCII format
 
-Explicit signs on every token. Space-separated cells per row, `9` rows.
+Explicit signs on every token; all tokens are two characters wide (`+0`, `+3`, `-4`, `##`). Space-separated cells per row, `9` rows.
 
 | Token | Meaning |
 |-------|---------|
 | `+0` | No control (contested / no man's land) |
 | `+N` | Black controlled `N` rounds |
 | `-N` | White controlled `N` rounds |
-| `#` | Stone on cell (dump only; streak not tracked) |
+| `##` | Stone on cell (two-char token; dump only; streak not tracked on seed) |
 
 **Seed example:**
 
@@ -146,8 +147,9 @@ Use `S.mult_control_streak_multiplier * N` for expected deltas; do not hardcode 
 
 | Spec | Owns |
 |------|------|
+| `spec/visual/territory_control_rounds_spec.lua` | End-to-end grid maintenance — initial board + seeded control ASCII, one placement, `complete_full_round`, assert final control ASCII. |
 | `spec/visual/stones_scoring/17_mult_3_rounds_stone_spec.lua` | Stone payout only — minimal boards, ASCII-seeded control grid, assert `plus_mult` delta. Enclosure topology is **out of scope** (does not affect payout). |
-| `spec/unit/territory_control_rounds_spec.lua` | Grid maintenance — delayed start, flip → `0`, stone clears cell, once-per-round tick. Mix isolated tick helper calls with a few `advance_rounds` wiring cases. |
+| `spec/unit/territory_control_rounds_spec.lua` | Grid maintenance — delayed start, flip → `0`, stone clears cell, once-per-round tick. Isolated tick helper calls and ASCII seeding. |
 
 ### Recommended stone spec scenarios
 

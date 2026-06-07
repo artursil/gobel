@@ -496,6 +496,8 @@ end
 --- @param rows table
 function M.set_board(g, rows)
 	g.board = spec_helper.parse_board_ascii_kinds(rows, require_visual_letter_map())
+	g.territory, g.territory_decision_sources, g.territory_value =
+		spec_helper.territory_map(g.board, g.territory_mode or "regional")
 end
 
 --- @param g table
@@ -597,6 +599,95 @@ end
 --- Per-empty-cell ``territory_value`` multipliers; ``#`` on stones.
 --- @param g table
 --- @return string
+--- @param value integer
+--- @param is_stone boolean
+--- @return string
+local function format_control_rounds_token(value, is_stone)
+	if is_stone then
+		return "##"
+	end
+	if value == 0 then
+		return "+0"
+	end
+	if value > 0 then
+		return "+" .. tostring(value)
+	end
+	return tostring(value)
+end
+
+--- @param token string
+--- @return integer|nil
+local function parse_control_rounds_token(token)
+	if token == "##" or token == "#" then
+		return nil
+	end
+	local value = tonumber(token)
+	if value == nil then
+		error("invalid territory control token: " .. tostring(token))
+	end
+	return value
+end
+
+--- Per-cell control streaks; ``##`` on stones (two-char token), explicit signs elsewhere (`+0`, `+3`, `-4`).
+--- @param g table
+--- @return string
+function M.territory_control_rounds_ascii(g)
+	local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+	territory_control_rounds.ensure_grid(g)
+	local grid = g.territory_control_rounds
+	local lines = {}
+	for r = 1, config.BOARD_SIZE do
+		local row = {}
+		for c = 1, config.BOARD_SIZE do
+			local is_stone = not board.is_empty(g.board[r][c])
+			row[#row + 1] = format_control_rounds_token(grid[r][c] or 0, is_stone)
+		end
+		lines[#lines + 1] = table.concat(row, " ")
+	end
+	return table.concat(lines, "\n")
+end
+
+--- @param g table
+--- @param rows table
+--- @return nil
+function M.set_territory_control_rounds_ascii(g, rows)
+	local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+	territory_control_rounds.ensure_grid(g)
+	if #rows ~= config.BOARD_SIZE then
+		error("set_territory_control_rounds_ascii: expected " .. config.BOARD_SIZE .. " rows")
+	end
+	for r = 1, config.BOARD_SIZE do
+		local col = 0
+		for token in string.gmatch(rows[r], "%S+") do
+			col = col + 1
+			if col > config.BOARD_SIZE then
+				error("set_territory_control_rounds_ascii: too many tokens on row " .. r)
+			end
+			local value = parse_control_rounds_token(token)
+			if value ~= nil then
+				g.territory_control_rounds[r][col] = value
+			end
+		end
+		if col ~= config.BOARD_SIZE then
+			error("set_territory_control_rounds_ascii: expected " .. config.BOARD_SIZE .. " tokens on row " .. r)
+		end
+	end
+end
+
+--- @param g table
+--- @param expected_rows table
+--- @param context string|nil
+--- @return nil
+function M.assert_territory_control_rounds_ascii(g, expected_rows, context)
+	if type(expected_rows) ~= "table" then
+		error("assert_territory_control_rounds_ascii: expected_rows must be a table of row strings")
+	end
+	local expected = table.concat(expected_rows, "\n")
+	local actual = M.territory_control_rounds_ascii(g)
+	local msg = context or "territory control rounds grid"
+	assert.are.equal(expected, actual, msg)
+end
+
 function M.territory_weight_ascii(g)
 	local territory_value = g.territory_value
 	if not territory_value then
@@ -961,7 +1052,6 @@ function M.ensure_test_state_bags(g)
 	g.stone_immunity_remaining = g.stone_immunity_remaining or {}
 	g.board_cell_timers = g.board_cell_timers or {}
 	g.stone_stored_values = g.stone_stored_values or {}
-	g.territory_control_rounds = g.territory_control_rounds or {}
 	g.territory_contested = g.territory_contested or {}
 	g.test_parameter_overrides = g.test_parameter_overrides or {}
 	g.test_rng_streams = g.test_rng_streams or {}
@@ -994,6 +1084,13 @@ end
 --- @return nil
 function M.finish_turn(g)
 	M.finish_ui_animations_for_turn(g)
+end
+
+--- Completes the current player's turn after the opponent placed (triggers end-of-round control tick when appropriate).
+--- @param g table
+--- @return nil
+function M.complete_full_round(g)
+	M.pass_turn(g)
 end
 
 --- Passes for ``g.to_play`` (finishes MAIN when needed).
@@ -1391,20 +1488,6 @@ end
 --- @return nil
 function M.set_rounds_until_final(g, rounds)
 	g.rounds_until_final = rounds
-end
-
---- @param g table
---- @param row integer
---- @param col integer
---- @param rounds integer
---- @return nil
-function M.set_territory_control_rounds(g, row, col, rounds)
-	M.ensure_test_state_bags(g)
-	g.territory_control_rounds[cell_key(row, col)] = rounds
-	local cell = g.board[row][col]
-	if type(cell) == "table" then
-		cell.territory_control_rounds = rounds
-	end
 end
 
 --- @param g table

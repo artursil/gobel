@@ -145,6 +145,30 @@ M.stone_tower = {
 	},
 }
 
+M.mult_3_rounds_stone = {
+	id = "mult_3_rounds_stone",
+	type = "stone",
+	name = "Control Mult Stone",
+	description = "On placement, adds multiplier based on territory control streak at the cell.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Triple-ring mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.62, 0.48, 0.72 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "mult_control_streak",
+			macro = "playing_stones",
+			sub = "mult",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.stone_special = {
 	id = "stone_special",
 	type = "stone",
@@ -262,7 +286,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"defence_stone",
 	"money_field_stone",
 	"anti_capture_stone",
-	"mult_3_rounds_stone",
 	"points_3_rounds_stone",
 	"capture_stone",
 	"tax_stone",

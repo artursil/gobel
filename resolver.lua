@@ -388,12 +388,21 @@ local function stone_placement_message(stone_def, resolved_effects)
 	return name .. " placed"
 end
 
+local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+
 local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
+	mult_control_streak = true,
 }
 
-local function resolved_stone_effects_from_def(stone_def, state, actor)
+--- @param stone_def table
+--- @param state table
+--- @param actor string
+--- @param row integer
+--- @param col integer
+--- @return table
+local function resolved_stone_effects_from_def(stone_def, state, actor, row, col)
 	if type(stone_def.behavior) == "function" then
 		return stone_def.behavior(state, actor)
 	end
@@ -401,7 +410,23 @@ local function resolved_stone_effects_from_def(stone_def, state, actor)
 	if stone_def.effects then
 		for i = 1, #stone_def.effects do
 			local effect = stone_def.effects[i]
-			if IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
+			if effect.effect_name == "mult_control_streak" then
+				local delta = territory_control_rounds.placement_plus_mult_delta(
+					state,
+					row,
+					col,
+					owner_for_side(actor)
+				)
+				if delta ~= 0 then
+					out[#out + 1] = Effects.stones.resolve({
+						effect_name = "add_mult",
+						macro = effect.macro or "playing_stones",
+						sub = effect.sub or "mult",
+						value = delta,
+						priority = effect.priority or 10,
+					})
+				end
+			elseif IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
 				out[#out + 1] = Effects.stones.resolve(effect)
 			end
 		end
@@ -484,6 +509,9 @@ local function run_event_queue(state, event_queue)
 		if event.kind == "BOARD_APPLY" then
 			state.board = event.board
 			state.ko_ban = event.ko_ban
+			if event.row and event.col then
+				territory_control_rounds.clear_cell(state, event.row, event.col)
+			end
 			state.last_played_stone = event.stone_id
 			state.last_opponent_move = { stone_id = event.stone_id, row = event.row, col = event.col, actor = event.actor }
 			local actor_state = match_state.player_for_color(state, event.actor)
@@ -714,7 +742,7 @@ local function compile_place_stone_events(state, action)
 		end
 		return nil, "Illegal move: rule violation"
 	end
-	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor)
+	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor, row, col)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
 		if not resolved or type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then
