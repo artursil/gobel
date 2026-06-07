@@ -87,3 +87,5 @@ I want to implement following changes:
 - combination of stones
 - UI for controlled territory
 - UI for territory value
+- stone effects when held in hand?
+- capture stone

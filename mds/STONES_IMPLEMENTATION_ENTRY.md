@@ -14,6 +14,7 @@ Visual specs assert resolver-visible game state only.
 - If two rules could trigger at once, run lower `priority` first, then higher `priority`.
 - If the same effect instance is already applied for the same trigger key (stone id + row + col + round + owner), do not apply it again.
 - Territory control rounds: dense `9×9` grid `territory_control_rounds[row][col]` — positive for Black streak length, negative for White (`W`), `0` for contested/no man's land or stone-occupied cells. Maintenance rules and test ASCII format: `docs/territory/control-rounds.md`.
+- Capture scoring: on stone placement, award `capture_bonus_points_per_stone` × enemy stones removed; independent of stone type. Details: `docs/capture/scoring.md`.
 
 ### Tests
 
@@ -528,9 +529,8 @@ Comment: This is ok but I would increase it to 7 rounds
 - Eligible targets: enemy stones with exactly **0 liberties** after this stone is placed. Unlike basic Go capture, it does not matter which colors surround the target — only that the target has no empty orthogonal neighbors.
 - If exactly one eligible target exists, capture (remove) it.
 - If multiple eligible targets exist, select one at random via RNG stream key `capture_stone`.
-- Add `CAPTURE_STONE_BONUS_POINTS` after successful capture.
 - After a stone is captured, the opponent cannot immediately place a stone on the now-empty capture cell; the cell is blocked for the opponent for **1 round** (capture cooldown). The capturing player may place on that cell freely.
-- If no eligible target exists (no enemy stone at 0 liberties), no capture occurs and no bonus is awarded.
+- If no eligible target exists (no enemy stone at 0 liberties), no capture occurs.
 
 ### animations_details
 - [ ] not implemented

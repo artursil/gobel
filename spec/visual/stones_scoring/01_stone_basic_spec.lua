@@ -138,39 +138,7 @@ describe("stone_basic inert placement (visual ASCII)", function()
 		assert_player_plus_mult_unchanged(g, "black", snap, "mult still unchanged across turns")
 	end)
 
-	it("stone_basic scenario 4: core capture allowed with zero stone-specific bonus", function()
-		set_hand(g, "black", { "stone_basic" })
-		set_board(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . B W B . . .",
-			". . . . B . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		})
-		local snap = player_score_snapshot(g, "black")
-
-		place_stone(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . B . . . .",
-			". . . B W B . . .",
-			". . . . B . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		})
-
-		test_helper.assert_board_cell_empty(g, 5, 5, "core capture removes white stone")
-		assert_player_points_unchanged(g, "black", snap, "stone_basic grants no capture bonus points")
-		assert_player_plus_mult_unchanged(g, "black", snap, "stone_basic grants no capture bonus mult")
-	end)
-
-	it("stone_basic scenario 5: illegal placement rejects move with unchanged score", function()
+	it("stone_basic scenario 4: illegal placement rejects move with unchanged score", function()
 		set_hand(g, "black", { "stone_basic" })
 		set_board(g, {
 			". . . . . . . . .",

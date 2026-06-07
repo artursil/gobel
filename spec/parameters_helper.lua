@@ -148,6 +148,12 @@ function M.wall_points(connected_stone_count)
 	return shape_patterns.wall_points_for_connected_group_size(connected_stone_count)
 end
 
+--- @param capture_count integer
+--- @return integer
+function M.capture_bonus_points(capture_count)
+	return stone_params.capture_bonus_points_per_stone * capture_count
+end
+
 --- @return string
 function M.wall_points_float_label()
 	return string.format("+%d", stone_params.wall_points_per_block)

@@ -42,7 +42,13 @@ local assert_cell_blocked = test_helper.assert_cell_blocked
 local assert_cell_unblocked = test_helper.assert_cell_unblocked
 local assert_territory_ascii = test_helper.assert_territory_ascii
 
-local S = P.stone
+local P = require("spec.parameters_helper")
+
+--- @param capture_count integer
+--- @return number
+local function capture_bonus_for(capture_count)
+	return P.capture_bonus_points(capture_count)
+end
 
 describe("capture_stone (visual ASCII)", function()
 	local g
@@ -84,7 +90,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
+			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "capture bonus awarded")
 			assert_board_cell_empty(g, 5, 5, "captured white removed from board")
 		end)
@@ -177,10 +183,11 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
+			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "mixed surround still captures at 0 liberties")
 			assert_board_cell_empty(g, 5, 5, "white removed despite mixed surrounding colors")
 		end)
+
 	end)
 
 	describe("corner and edge captures", function()
@@ -211,7 +218,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
+			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "corner capture bonus")
 			assert_board_cell_empty(g, 1, 1, "corner white captured")
 		end)
@@ -243,7 +250,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
+			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "edge capture bonus")
 			assert_board_cell_empty(g, 1, 5, "edge white captured")
 		end)
@@ -275,7 +282,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . W W",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
+			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "bottom-right corner capture bonus")
 			assert_board_cell_empty(g, 9, 9, "bottom-right corner white captured")
 		end)
@@ -463,7 +470,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . W . W . .",
+				". . . . W . . W .",
 				". . . B W . B W .",
 				". . . . B . . B .",
 				". . . . . . . . .",
@@ -475,74 +482,79 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . W . W . .",
-				". . . B W C B W .",
+				". . . . W . . W .",
+				". . . B . C B W .",
 				". . . . B . . B .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_board_cell_empty(g, 5, 5, "first white captured at (5,5)")
-			assert_cell_blocked(g, 5, 5, "first capture cell blocked")
-			assert_cell_unblocked(g, 8, 5, "second pocket not on cooldown yet")
-			test_helper.assert_board_stone_present(g, 8, 5, "second white still on board")
+			assert_board_cell_empty(g, 5, 5, "left pocket white captured at (5,5)")
+			assert_cell_blocked(g, 5, 5, "left capture cell on cooldown")
+			assert_cell_unblocked(g, 8, 5, "right pocket not on cooldown yet")
+			test_helper.assert_board_stone_present(g, 8, 5, "right pocket white still on board")
+
+			test_helper.pass_turn(g)
+			test_helper.advance_rounds(g, 1)
+			assert_cell_unblocked(g, 5, 5, "left capture cooldown expired before second capture")
 
 			set_hand(g, "black", { "capture_stone" })
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . W . W . .",
-				". . . B W C B W C",
+				". . . . W . . W .",
+				". . . B . C B . C",
 				". . . . B . . B .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_board_cell_empty(g, 8, 5, "second white captured at (8,5)")
-			assert_cell_blocked(g, 5, 5, "first capture cooldown still active")
-			assert_cell_blocked(g, 8, 5, "second capture cell blocked")
+			assert_board_cell_empty(g, 8, 5, "right pocket white captured at (8,5)")
+			assert_cell_unblocked(g, 5, 5, "left pocket free after second capture")
+			assert_cell_blocked(g, 8, 5, "right capture cell on cooldown")
 
 			test_helper.advance_rounds(g, 1)
-			assert_cell_unblocked(g, 5, 5, "first capture cooldown expired")
-			assert_cell_unblocked(g, 8, 5, "second capture cooldown expired")
+			assert_cell_unblocked(g, 8, 5, "right capture cooldown expired")
 
 			test_helper.place_stone_for(g, "white", "stone_basic", {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . W . W . .",
+				". . . . W . . W .",
+				". . . B W C B . C",
+				". . . . B . . B .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			test_helper.assert_board_stone_present(g, 5, 5, "white reclaimed left pocket after cooldown")
+
+			test_helper.pass_turn(g)
+			test_helper.place_stone_for(g, "white", "stone_basic", {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . W . . W .",
 				". . . B W C B W C",
 				". . . . B . . B .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.assert_board_stone_present(g, 5, 5, "white placed back on first captured cell")
-			test_helper.place_stone_for(g, "white", "stone_basic", {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . W . W . .",
-				". . . B W W B W C",
-				". . . . B . . B .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-			test_helper.assert_board_stone_present(g, 8, 5, "white placed back on second captured cell")
+			test_helper.assert_board_stone_present(g, 8, 5, "white reclaimed right pocket after cooldown")
 		end)
 	end)
 
 	describe("multiple targets — random selection", function()
-		it("two enemies at 0 liberties, RNG picks first: only one captured", function()
+		it("shared last liberty creates two targets, RNG picks first: only one captured", function()
 			test_helper.set_rng_stream(g, "capture_stone", test_helper.rng_always_one)
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
 				". . . . . . . . .",
-				". . B . . . B . .",
-				". B W B . B W B .",
-				". . B . . . B . .",
+				". . . B . B . . .",
+				". . B W . W B . .",
+				". . B W . W B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -553,103 +565,67 @@ describe("capture_stone (visual ASCII)", function()
 
 			place_stone(g, {
 				". . . . . . . . .",
-				". . B . . . B . .",
-				". B W B . B W B .",
-				". . B . . . B . .",
-				". . . . C . . . .",
+				". . . B . B . . .",
+				". . B W C W B . .",
+				". . B W . W B . .",
+				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
+			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "only one capture bonus even with two targets")
+			assert_board_cell_empty(g, 2, 4, "left white captured first by RNG")
+			test_helper.assert_board_stone_present(g, 2, 6, "right white still on board at 0 liberties")
+		end)
 
-			local w1_empty = not test_helper.is_board_cell_occupied(g, 3, 3)
-			local w2_empty = not test_helper.is_board_cell_occupied(g, 3, 7)
-			assert.is_true(w1_empty or w2_empty, "at least one white captured")
-			assert.is_false(w1_empty and w2_empty, "only one white captured, not both")
+		it("shared liberty: right white regular capture, left white capture_stone capture", function()
+			set_hand(g, "black", { "capture_stone" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . B . B . . .",
+				". . B W . W B . .",
+				". . B W . B B . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . B . B . . .",
+				". . B W C W B . .",
+				". . B W . B B . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+
+			local expected_delta = capture_bonus_for(2)
+			assert_player_points_delta(g, "black", snap, expected_delta, "global capture bonus for two stones removed")
+			assert_board_cell_empty(g, 3, 6, "right white removed by regular capture")
+			assert_board_cell_empty(g, 3, 4, "top-left white removed by capture_stone")
+			test_helper.assert_board_stone_present(g, 4, 4, "lower-left white survives with remaining liberties")
 		end)
 	end)
 
-	describe("white capture_stone symmetry", function()
-		it("white capture_stone captures black stone at 0 liberties and awards white bonus", function()
-			set_board(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . W . . . .",
-				". . . W B . . . .",
-				". . . . W . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-			local snap = player_score_snapshot(g, "white")
-
-			test_helper.place_stone_for(g, "white", "capture_stone", {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . W . . . .",
-				". . . W B c . . .",
-				". . . . W . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			local expected_delta = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "white", snap, expected_delta, "white capture_stone bonus awarded")
-			assert_board_cell_empty(g, 5, 5, "black stone captured by white")
-		end)
-
-		it("white capture_stone cooldown blocks black from recapturing", function()
-			set_board(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . W . . . .",
-				". . . W B . . . .",
-				". . . . W . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			test_helper.place_stone_for(g, "white", "capture_stone", {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . W . . . .",
-				". . . W B c . . .",
-				". . . . W . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			assert_board_cell_empty(g, 5, 5, "black captured by white")
-			assert_cell_blocked(g, 5, 5, "captured cell blocked for black")
-			assert_illegal_player_move_with_stone(g, "black", "stone_basic", 5, 5, "black cannot recapture immediately")
-
-			test_helper.advance_rounds(g, 1)
-			assert_cell_unblocked(g, 5, 5, "cooldown expired")
-			assert_legal_player_move_with_stone(g, "black", "stone_basic", 5, 5, "black recaptures after cooldown")
-		end)
-	end)
-
-	describe("enclosure scenarios — captures inside enclosed territory", function()
-		it("enemy inside own small enclosure with 0 liberties is captured", function()
+	describe("multi-stone group captures", function()
+		it("horizontal two-stone chain with one liberty: regular capture removes both", function()
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . B B B . . .",
-				". . . B W B . . .",
-				". . . B B . . . .",
+				". . . B W W B . .",
+				". . . B . W B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -661,152 +637,91 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . B B B . . .",
-				". . . B W B . . .",
-				". . . B B C . . .",
+				". . . B W W B . .",
+				". . . B C W B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "black", snap, expected_delta, "captured inside own enclosure")
-			assert_board_cell_empty(g, 5, 5, "enclosed white removed")
-		end)
-
-		it("enemy inside opponent enclosure (black stone inside white fence) at 0 liberties captured", function()
+			local expected_delta = capture_bonus_for(2)
+			assert_player_points_delta(g, "black", snap, expected_delta, "global capture bonus for two-stone group")
+			assert_board_cell_empty(g, 5, 5, "left chain stone removed by regular capture")
+			assert_board_cell_empty(g, 5, 6, "right chain stone removed by regular capture")
+			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . W W W . . .",
-				". . . W B W . . .",
-				". . . W W . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-			local snap = player_score_snapshot(g, "white")
-
-			test_helper.place_stone_for(g, "white", "capture_stone", {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . W W W . . .",
-				". . . W B W . . .",
-				". . . W W c . . .",
-				". . . . . . . . .",
+				". . . B B B . . .",
+				". . . B W W B . .",
+				". . . B W B B . .",
+				". . . B . B B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
+			local snap = player_score_snapshot(g, "black")
 
-			local expected_delta = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "white", snap, expected_delta, "white captures black inside white enclosure")
-			assert_board_cell_empty(g, 5, 5, "black removed from inside white fence")
-		end)
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . B B B . . .",
+				". . . B W W B . .",
+				". . . B W B B . .",
+				". . . B C B B . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
 
-		it("two separate enclosures each with a capturable enemy", function()
+			local expected_delta = capture_bonus_for(3)
+			assert_player_points_delta(g, "black", snap, expected_delta, "global capture bonus for three-stone group")
+			assert_board_cell_empty(g, 5, 5, "corner stone of L removed")
+			assert_board_cell_empty(g, 5, 6, "arm stone of L removed")
+			assert_board_cell_empty(g, 6, 5, "stem stone of L removed")
 			test_helper.set_rng_stream(g, "capture_stone", test_helper.rng_always_one)
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
-				"B B B . . . . . .",
-				"B W B . . . . . .",
-				"B B . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . . . B B B",
-				". . . . . . B W B",
-				". . . . . . B B .",
+				". . . . W W . . .",
+				". . . B W W . . .",
+				". . . . B B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
 
 			place_stone(g, {
-				"B B B . . . . . .",
-				"B W B . . . . . .",
-				"B B C . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . . . B B B",
-				". . . . . . B W B",
-				". . . . . . B B .",
+				". . . . W W . . .",
+				". . . B W W C . .",
+				". . . . B B . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "black", snap, expected_delta, "only one capture even with two enclosed enemies at 0 liberties")
+			local expected_delta = capture_bonus_for(1)
+			assert_player_points_delta(g, "black", snap, expected_delta, "capture_stone bonus for one mixed-surround chain stone")
+			assert_board_cell_empty(g, 5, 5, "left chain stone removed by capture_stone")
+			test_helper.assert_board_stone_present(g, 5, 6, "right chain stone survives with new liberties")
 		end)
 
-		it("nested enclosure: enemy inside inner enclosure at 0 liberties is captured", function()
+		it("mixed-surround three-stone chain: RNG picks one stone from group at 0 liberties", function()
+			test_helper.set_rng_stream(g, "capture_stone", test_helper.rng_always_one)
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
 				". . . . . . . . .",
-				". B B B B B B . .",
-				". B . . . . B . .",
-				". B . B B B B . .",
-				". B . B W B . . .",
-				". B . B B . . . .",
-				". B . . . . B . .",
-				". B B B B B B . .",
 				". . . . . . . . .",
-			})
-			local snap = player_score_snapshot(g, "black")
-
-			place_stone(g, {
 				". . . . . . . . .",
-				". B B B B B B . .",
-				". B . . . . B . .",
-				". B . B B B B . .",
-				". B . B W B . . .",
-				". B . B B C . . .",
-				". B . . . . B . .",
-				". B B B B B B . .",
-				". . . . . . . . .",
-			})
-
-			local expected_delta = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "black", snap, expected_delta, "inner nested enclosure capture bonus")
-			assert_board_cell_empty(g, 5, 5, "white removed from inner enclosure")
-		end)
-
-		it("opponent enclosure nested inside own enclosure: capture enemy at boundary", function()
-			set_hand(g, "black", { "capture_stone" })
-			set_board(g, {
-				"B B B B B B B B B",
-				"B . . . . . . . B",
-				"B . W W W W W . B",
-				"B . W . . . W . B",
-				"B . W . B . W . B",
-				"B . W . . . W . B",
-				"B . W W W W W . B",
-				"B . . . . . . . B",
-				"B B B B B B B B B",
-			})
-			local snap = player_score_snapshot(g, "black")
-
-			place_stone(g, {
-				"B B B B B B B B B",
-				"B . . . . . . . B",
-				"B . W W W W W . B",
-				"B . W . B . W . B",
-				"B . W B B . W . B",
-				"B . W . B . W . B",
-				"B . W W W W W . B",
-				"B . . . . . . . B",
-				"B B B B B B B B B",
-			})
-
-			assert_player_points_unchanged(g, "black", snap, "no enemy at 0 liberties inside nested opponent enclosure")
-		end)
-
-		it("board-edge enclosure: enemy along edge with 0 liberties is captured", function()
-			set_hand(g, "black", { "capture_stone" })
-			set_board(g, {
-				"B B B B B . . . .",
-				"B . . . B . . . .",
-				"B . W . B . . . .",
-				"B . B . B . . . .",
-				"B B B B B . . . .",
-				". . . . . . . . .",
+				". . . . W W W . .",
+				". . . B W W W . .",
+				". . . . B B B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -814,65 +729,33 @@ describe("capture_stone (visual ASCII)", function()
 			local snap = player_score_snapshot(g, "black")
 
 			place_stone(g, {
-				"B B B B B . . . .",
-				"B . . . B . . . .",
-				"B C W . B . . . .",
-				"B . B . B . . . .",
-				"B B B B B . . . .",
 				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . W W W . .",
+				". . . B W W W C .",
+				". . . . B B B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "black", snap, expected_delta, "edge enclosure capture bonus")
-			assert_board_cell_empty(g, 3, 3, "white inside edge enclosure captured")
+			local expected_delta = capture_bonus_for(1)
+			assert_player_points_delta(g, "black", snap, expected_delta, "only one capture_stone bonus from three-stone chain")
+			assert_board_cell_empty(g, 5, 5, "first chain stone removed by RNG")
+			test_helper.assert_board_stone_present(g, 5, 6, "middle chain stone still on board")
+			test_helper.assert_board_stone_present(g, 5, 7, "tail chain stone still on board")
 		end)
 
-		it("top-edge enclosure: enemy pinned against top wall with 0 liberties", function()
-			set_hand(g, "black", { "capture_stone" })
-			set_board(g, {
-				". . B W B . . . .",
-				". . B B . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-			local snap = player_score_snapshot(g, "black")
-
-			place_stone(g, {
-				". . B W B . . . .",
-				". . B B C . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			local expected_delta = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "black", snap, expected_delta, "top-edge pinned capture bonus")
-			assert_board_cell_empty(g, 1, 4, "white pinned at top edge captured")
-		end)
-	end)
-
-	describe("territory impact after capture", function()
-		it("capturing enemy inside enclosure flips territory to captor", function()
+		it("regular capture of chain updates territory inside black pocket", function()
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . B B B . . .",
-				". . . B W B . . .",
-				". . . B B . . . .",
+				". . . B W W B . .",
+				". . . B . B B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -883,161 +766,29 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . B B B . . .",
-				". . . B W B . . .",
-				". . . B B C . . .",
+				". . . B W W B . .",
+				". . . B . C B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
 
-			assert_board_cell_empty(g, 5, 5, "white removed from enclosure")
+			assert_board_cell_empty(g, 5, 5, "chain cleared from pocket")
+			assert_board_cell_empty(g, 5, 6, "chain cleared from pocket")
 			assert_territory_ascii(g, {
 				"b b b b b b b b b",
 				"b b b b b b b b b",
 				"b b b b b b b b b",
 				"b b b B B B b b b",
 				"b b b B b B b b b",
-				"b b b B B C b b b",
+				"b b b B C B b b b",
 				"b b b b b b b b b",
 				"b b b b b b b b b",
 				"b b b b b b b b b",
-			}, "enclosure interior now fully black territory after capture")
+			}, "pocket interior becomes black territory after chain removed")
 		end)
 	end)
 
-	describe("capture does NOT trigger on already-placed stones", function()
-		it("enemy reaches 0 liberties after opponent places, but no capture_stone was placed this turn", function()
-			set_hand(g, "black", { "stone_basic" })
-			set_board(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . B . . . .",
-				". . . B W . . . .",
-				". . . . B . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . B . . . .",
-				". . . B W B . . .",
-				". . . . B . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			test_helper.assert_board_stone_present(g, 5, 5, "regular stone does not trigger capture effect")
-		end)
-	end)
-
-	describe("placement-only trigger", function()
-		it("capture_stone already on board does not re-trigger capture on later rounds", function()
-			set_hand(g, "black", { "capture_stone" })
-			set_board(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . C . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			test_helper.place_stone_for(g, "white", "stone_basic", {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . W . . . .",
-				". . . . C . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			set_hand(g, "black", { "stone_basic" })
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . B W . . . .",
-				". . . . C . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			test_helper.place_stone_for(g, "white", "stone_basic", {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . W . . . .",
-				". . . B W . . . .",
-				". . . . C . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			set_hand(g, "black", { "stone_basic" })
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . W . . . .",
-				". . . B W B . . .",
-				". . . . C . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			local snap = player_score_snapshot(g, "black")
-			test_helper.advance_rounds(g, 1)
-			assert_player_points_unchanged(g, "black", snap, "existing capture_stone on board does not re-trigger capture")
-			test_helper.assert_board_stone_present(g, 4, 5, "W(4,5) survives — capture not re-triggered")
-		end)
-	end)
-
-	describe("occupied cell rejection", function()
-		it("cannot place capture_stone on an occupied cell", function()
-			set_hand(g, "black", { "capture_stone" })
-			set_board(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . B . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			assert_illegal_player_move_with_stone(g, "black", "capture_stone", 5, 5, "occupied cell rejects capture_stone")
-		end)
-	end)
 
 	describe("prisoners tracking", function()
 		it("successful capture increments prisoner count", function()
@@ -1074,83 +825,53 @@ describe("capture_stone (visual ASCII)", function()
 		end)
 	end)
 
-	describe("complex multi-round enclosure warfare", function()
-		it("capture inside large enclosure, opponent retakes after cooldown, second capture stone finishes them", function()
+	describe("multi-round group capture chains", function()
+		it("black-only chain: regular capture clears group, no cooldown, pocket stays sealed", function()
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
-				"B B B B B . . . .",
-				"B . . . B . . . .",
-				"B . . W B . . . .",
-				"B . B . B . . . .",
-				"B B B B B . . . .",
 				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . B B B . . .",
+				". . . B W W B . .",
+				". . . B . B B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			local snap = player_score_snapshot(g, "black")
 
 			place_stone(g, {
-				"B B B B B . . . .",
-				"B . . . B . . . .",
-				"B C . W B . . . .",
-				"B . B . B . . . .",
-				"B B B B B . . . .",
 				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . B B B . . .",
+				". . . B W W B . .",
+				". . . B . C B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "black", snap, expected_delta, "first capture inside large enclosure")
-			assert_board_cell_empty(g, 3, 4, "white removed from inside enclosure")
-			assert_cell_blocked(g, 3, 4, "captured cell blocked for opponent")
+			assert_board_cell_empty(g, 5, 5, "chain removed by regular capture")
+			assert_board_cell_empty(g, 5, 6, "chain removed by regular capture")
+			assert_cell_unblocked(g, 5, 5, "no cooldown in captor-only surround")
+			assert_cell_unblocked(g, 5, 6, "no cooldown in captor-only surround")
 
 			test_helper.advance_rounds(g, 1)
-			assert_cell_unblocked(g, 3, 4, "cooldown expired")
-
-			test_helper.place_stone_for(g, "white", "stone_basic", {
-				"B B B B B . . . .",
-				"B . . . B . . . .",
-				"B C W . B . . . .",
-				"B . B . B . . . .",
-				"B B B B B . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-			test_helper.assert_board_stone_present(g, 3, 3, "white re-entered enclosure after cooldown")
-
-			set_hand(g, "black", { "capture_stone" })
-			local snap2 = player_score_snapshot(g, "black")
-			place_stone(g, {
-				"B B B B B . . . .",
-				"B . C . B . . . .",
-				"B C W . B . . . .",
-				"B . B . B . . . .",
-				"B B B B B . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-
-			local expected_delta2 = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "black", snap2, expected_delta2, "second capture bonus after opponent returned")
-			assert_board_cell_empty(g, 3, 3, "white captured again inside enclosure")
+			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 5, 5, "pocket still illegal after advance")
+			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 5, 6, "pocket still illegal after advance")
 		end)
 
-		it("opponent fills captured cell after cooldown then gets captured again by new capture_stone in different enclosure", function()
+		it("mixed chain: capture_stone picks one, cooldown expires, second placement regular-captures survivor", function()
+			test_helper.set_rng_stream(g, "capture_stone", test_helper.rng_always_one)
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
-				"B B B . . . . . .",
-				"B W B . . . . . .",
-				"B B . . . . B B B",
-				". . . . . . B . B",
-				". . . . . . B B B",
 				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . W B . . .",
+				". . . B W W . . .",
+				". . . . B B . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -1158,64 +879,44 @@ describe("capture_stone (visual ASCII)", function()
 			local snap = player_score_snapshot(g, "black")
 
 			place_stone(g, {
-				"B B B . . . . . .",
-				"B W B . . . . . .",
-				"B B C . . . . . .",
 				". . . . . . . . .",
-				". . . . . . B B B",
-				". . . . . . B . B",
-				". . . . . . B B B",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . W B . . .",
+				". . . B W W C . .",
+				". . . . B B . . .",
+				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
 
-			local expected_delta = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "black", snap, expected_delta, "first enclosure capture")
-			assert_board_cell_empty(g, 2, 2, "white removed from first enclosure")
+			local expected_delta = capture_bonus_for(1)
+			assert_player_points_delta(g, "black", snap, expected_delta, "first capture_stone bonus on mixed-surround chain stone")
+			assert_board_cell_empty(g, 5, 5, "left chain stone removed")
+			assert_cell_blocked(g, 5, 5, "mixed-surround capture triggers cooldown")
+			test_helper.assert_board_stone_present(g, 5, 6, "black-only survivor still on board with one liberty")
 
+			test_helper.pass_turn(g)
 			test_helper.advance_rounds(g, 1)
-			test_helper.place_stone_for(g, "white", "stone_basic", {
-				"B B B . . . . . .",
-				"B W B . . . . . .",
-				"B B C . . . . . .",
-				". . . . . . . . .",
-				". . . . . . B B B",
-				". . . . . . B . B",
-				". . . . . . B B B",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-			test_helper.assert_board_stone_present(g, 2, 2, "white placed back after cooldown in first enclosure")
+			assert_cell_unblocked(g, 5, 5, "cooldown expired on first capture cell")
 
 			set_hand(g, "black", { "capture_stone" })
-			set_board(g, {
-				"B B B . . . . . .",
-				"B W B . . . . . .",
-				"B B C . . . . . .",
-				". . . . . . . . .",
-				". . . . . . B B B",
-				". . . . . . B W B",
-				". . . . . . B B .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
 			local snap2 = player_score_snapshot(g, "black")
-
 			place_stone(g, {
-				"B B B . . . . . .",
-				"B W B . . . . . .",
-				"B B C . . . . . .",
 				". . . . . . . . .",
-				". . . . . . B B B",
-				". . . . . . B W B",
-				". . . . . . B B C",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . W B . . .",
+				". . . B C W C . .",
+				". . . . B B . . .",
+				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
 
-			local expected_delta2 = S.capture_stone_bonus_points
-			assert_player_points_delta(g, "black", snap2, expected_delta2, "second enclosure capture bonus")
-			assert_board_cell_empty(g, 6, 8, "white captured in second enclosure")
+			local expected_delta = capture_bonus_for(1)
+			assert_player_points_delta(g, "black", snap2, expected_delta, "global capture bonus on second placement capture")
+			assert_board_cell_empty(g, 5, 6, "survivor removed by regular capture")
 		end)
 	end)
 end)

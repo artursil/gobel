@@ -11,6 +11,7 @@ local score_display = require("ui.score_display")
 local card_play_memory = require("single_game.resolver.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
+local stone_params = require("objects.parameters.stones")
 
 local M = {}
 
@@ -434,6 +435,33 @@ local function resolved_stone_effects_from_def(stone_def, state, actor, row, col
 	return out
 end
 
+--- @param captures integer
+--- @return integer
+local function capture_bonus_points_for(captures)
+	if captures <= 0 then
+		return 0
+	end
+	return captures * stone_params.capture_bonus_points_per_stone
+end
+
+--- @param resolved_effects table
+--- @param captures integer
+--- @return integer
+local function append_capture_bonus_resolved_effects(resolved_effects, captures)
+	local bonus = capture_bonus_points_for(captures)
+	if bonus <= 0 then
+		return 0
+	end
+	resolved_effects[#resolved_effects + 1] = Effects.stones.resolve({
+		effect_name = "add_points",
+		macro = "playing_stones",
+		sub = "points",
+		value = bonus,
+		priority = stone_params.default_effect_priority,
+	})
+	return bonus
+end
+
 local function round_effects_from_resolved(resolved_effects)
 	local round = {}
 	for i = 1, #resolved_effects do
@@ -540,24 +568,58 @@ local function run_event_queue(state, event_queue)
 	push_status_from_messages(state)
 end
 
-local function push_score_delta_events(state, actor, points_before, mult_before)
+--- @param state table
+--- @param actor string
+--- @param points_before number
+--- @param mult_before number
+--- @param capture_bonus_points integer
+--- @return nil
+local function push_place_stone_score_events(state, actor, points_before, mult_before, capture_bonus_points)
 	local actor_state = match_state.player_for_color(state, actor)
-	local points_after = actor_state.score.points or 0
-	local mult_after = actor_state.score.plus_mult or 1
-	local points_delta = points_after - points_before
-	local mult_delta = mult_after - mult_before
-	if points_delta ~= 0 then
+	local points_after_stones = actor_state.score.points or 0
+	local mult_after_stones = actor_state.score.plus_mult or 1
+	local stones_points_delta = points_after_stones - points_before
+	local placement_points_delta = stones_points_delta - capture_bonus_points
+	if placement_points_delta ~= 0 then
 		state.messages.score_events[#state.messages.score_events + 1] = {
 			actor = actor,
 			kind = "points",
-			value = points_delta,
+			value = placement_points_delta,
 		}
 	end
-	if mult_delta ~= 0 then
+	if capture_bonus_points > 0 then
+		state.messages.score_events[#state.messages.score_events + 1] = {
+			actor = actor,
+			kind = "points",
+			value = capture_bonus_points,
+			source = "capture",
+		}
+	end
+	local mult_stones_delta = mult_after_stones - mult_before
+	if mult_stones_delta ~= 0 then
 		state.messages.score_events[#state.messages.score_events + 1] = {
 			actor = actor,
 			kind = "mult",
-			value = mult_delta,
+			value = mult_stones_delta,
+		}
+	end
+	recalc_all_scores(state, "end_of_turn")
+	local points_after = actor_state.score.points or 0
+	local mult_after = actor_state.score.plus_mult or 1
+	local eot_points_delta = points_after - points_after_stones
+	if eot_points_delta ~= 0 then
+		state.messages.score_events[#state.messages.score_events + 1] = {
+			actor = actor,
+			kind = "points",
+			value = eot_points_delta,
+		}
+	end
+	local eot_mult_delta = mult_after - mult_after_stones
+	if eot_mult_delta ~= 0 then
+		state.messages.score_events[#state.messages.score_events + 1] = {
+			actor = actor,
+			kind = "mult",
+			value = eot_mult_delta,
 		}
 	end
 end
@@ -743,6 +805,7 @@ local function compile_place_stone_events(state, action)
 		return nil, "Illegal move: rule violation"
 	end
 	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor, row, col)
+	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
 		if not resolved or type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then
@@ -757,6 +820,7 @@ local function compile_place_stone_events(state, action)
 			board = new_board,
 			ko_ban = new_ko,
 			captures = captures,
+			capture_bonus_points = capture_bonus_points,
 			stone_id = stone_id,
 			stone_index = selected_index,
 			row = row,
@@ -1030,14 +1094,23 @@ function M.submit_action(state, action)
 	end
 
 	state.phase = "RESOLVE_PHASE"
+	local capture_bonus_points = 0
+	if action.type == "PLACE_STONE" then
+		for i = 1, #event_queue do
+			local event = event_queue[i]
+			if event.kind == "BOARD_APPLY" then
+				capture_bonus_points = event.capture_bonus_points or 0
+				break
+			end
+		end
+	end
 	if action.type == "PASS_TURN" then
 		recalc_all_scores(state, "end_of_turn")
 	elseif action.type == "PLACE_STONE" then
 		recalc_all_scores(state, "playing_stones")
-		recalc_all_scores(state, "end_of_turn")
 	end
 	if action.type == "PLACE_STONE" then
-		push_score_delta_events(state, action.actor, actor_points_before, actor_mult_before)
+		push_place_stone_score_events(state, action.actor, actor_points_before, actor_mult_before, capture_bonus_points)
 	end
 	state.phase = "TURN_END"
 	if finish_match_if_needed(state) then

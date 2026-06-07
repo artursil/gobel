@@ -91,5 +91,5 @@ return {
 	kamikaze_points_bonus = 15,
 	kamikaze_self_removal_counts_as_prisoner = false,
 
-	capture_stone_bonus_points = 3,
+	capture_bonus_points_per_stone = 3,
 }
