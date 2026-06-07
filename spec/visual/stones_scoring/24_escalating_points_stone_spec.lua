@@ -34,6 +34,7 @@ local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_regi
 local assert_player_points_delta = test_helper.assert_player_points_delta
 local assert_player_plus_mult_delta = test_helper.assert_player_plus_mult_delta
 local assert_stone_stored_value = test_helper.assert_stone_stored_value
+local advance_rounds = test_helper.advance_rounds
 
 local function blank_board()
 	return {
@@ -98,7 +99,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			test_helper.finish_turn(g)
+			advance_rounds(g, 1)
 			local expected_bank = S.eps_round_points
 			assert_stone_stored_value(g, 5, 5, expected_bank, "bank after one turn")
 			local expected_delta = S.eps_round_points
@@ -120,8 +121,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.finish_turn(g)
-			test_helper.finish_turn(g)
+			advance_rounds(g, 2)
 			local expected_bank = S.eps_round_points * 2
 			assert_stone_stored_value(g, 5, 5, expected_bank, "bank after two turns")
 		end)
@@ -141,9 +141,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local rounds = 4
-			for _ = 1, rounds do
-				test_helper.finish_turn(g)
-			end
+			advance_rounds(g, rounds)
 			local expected_bank = S.eps_round_points * rounds
 			assert_stone_stored_value(g, 5, 5, expected_bank, "bank scales linearly")
 		end)
@@ -160,8 +158,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.finish_turn(g)
-			test_helper.finish_turn(g)
+			advance_rounds(g, 2)
 			local bank_rounds = 2
 			local bank = S.eps_round_points * bank_rounds
 			local white_snap = player_score_snapshot(g, "white")
@@ -182,7 +179,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.finish_turn(g)
+			advance_rounds(g, 1)
 			test_helper.capture_stone_at(g, 5, 5, "white")
 			local expected_bank = 0
 			assert_stone_stored_value(g, 5, 5, expected_bank, "bank cleared on removal")
@@ -202,7 +199,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.finish_turn(g)
+			advance_rounds(g, 1)
 			local white_snap = player_score_snapshot(g, "white")
 			test_helper.capture_stone_at(g, 5, 5, "black")
 			local expected_delta = 0
@@ -237,9 +234,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			}, false)
 			local accrual_rounds = 3
-			for _ = 1, accrual_rounds do
-				test_helper.finish_turn(g)
-			end
+			advance_rounds(g, accrual_rounds)
 			local captured_bank = S.eps_round_points * accrual_rounds
 			local white_snap = player_score_snapshot(g, "white")
 			test_helper.capture_stone_at(g, 5, 4, "white")
@@ -273,9 +268,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			}, false)
 			local accrual_rounds = 3
-			for _ = 1, accrual_rounds do
-				test_helper.finish_turn(g)
-			end
+			advance_rounds(g, accrual_rounds)
 			test_helper.capture_stone_at(g, 5, 4, "white")
 			local expected_bank = S.eps_round_points * accrual_rounds
 			assert_stone_stored_value(g, 5, 5, expected_bank, "surviving stone keeps full bank")
@@ -297,9 +290,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 			})
 			local snap = player_score_snapshot(g, "black")
 			local accrual_rounds = 2
-			for _ = 1, accrual_rounds do
-				test_helper.finish_turn(g)
-			end
+			advance_rounds(g, accrual_rounds)
 			test_helper.capture_stone_at(g, 5, 5, "white")
 			local expected_delta = S.eps_round_points * accrual_rounds
 			assert_player_points_delta(g, "black", snap, expected_delta, "owner keeps prior round points")
@@ -317,11 +308,10 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.finish_turn(g)
-			test_helper.finish_turn(g)
+			advance_rounds(g, 2)
 			test_helper.capture_stone_at(g, 5, 5, "white")
 			local white_snap = player_score_snapshot(g, "white")
-			test_helper.finish_turn(g)
+			advance_rounds(g, 1)
 			local expected_delta = 0
 			assert_player_points_delta(g, "white", white_snap, expected_delta, "captured stone stops accruing")
 		end)
@@ -341,7 +331,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 			})
 			local white_snap = player_score_snapshot(g, "white")
 			local black_snap = player_score_snapshot(g, "black")
-			test_helper.finish_turn(g)
+			advance_rounds(g, 1)
 			local expected_delta = S.eps_round_points
 			assert_player_points_delta(g, "white", white_snap, expected_delta, "white receives round accrual")
 			local black_expected_delta = 0
@@ -361,9 +351,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local accrual_rounds = 2
-			for _ = 1, accrual_rounds do
-				test_helper.finish_turn(g)
-			end
+			advance_rounds(g, accrual_rounds)
 			local bank = S.eps_round_points * accrual_rounds
 			local black_snap = player_score_snapshot(g, "black")
 			test_helper.capture_stone_at(g, 5, 5, "black")
@@ -404,7 +392,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.finish_turn(g)
+			advance_rounds(g, 1)
 			local expected_bank = S.eps_round_points
 			local white_snap = player_score_snapshot(g, "white")
 			test_helper.end_match_before_timers(g)
@@ -439,7 +427,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
-			test_helper.finish_turn(g)
+			advance_rounds(g, 1)
 			local expected_delta = S.eps_round_points * 2
 			assert_player_points_delta(g, "black", snap, expected_delta, "each stone pays one round accrual")
 		end)

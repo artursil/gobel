@@ -175,7 +175,10 @@ Mostly those tests are fine, but please confirm their validity and remove all th
 We don't want to define new functions for checking values. We should use parametrized value directly in the test. If we want to check the delta we simply before assert should create a variable local expected_delta = S.<parameter_name> * N, where N is value that makes sense for the test. This will make the tests way easier to follow. There is no limit of number of tests.
 
 /visual-tests for 25_escalating_money_stone_spec clean the file, remove unused functions and stones.
-Mostly those tests are fine, but please confirm their validity and remove all those "OR" parameters there should be only one parameter used in each case.
+Remove all those "OR" parameters there should be only one parameter used in each case.
+We don't want to define new functions for checking values. We should use parametrized value directly in the test. If we want to check the delta we simply before assert should create a variable local expected_delta = S.<parameter_name> * N, where N is value that makes sense for the test. This will make the tests way easier to follow. There is no limit of number of tests.
+
+
 /visual-tests for 09_line_stone_spec clean the file, remove unused functions and stones.
 
 

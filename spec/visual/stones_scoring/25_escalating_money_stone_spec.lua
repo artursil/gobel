@@ -1,25 +1,20 @@
 --- Visual spec: escalating_money_stone (OBJECTS.md #25).
 ---
 --- Stone under test: escalating_money_stone
+--- Effect: each owner end_of_turn adds ems_round_money to owner money and tracks
+--- cumulative received; on capture the stone owner pays ems_capture_multiplier times total received.
 ---
 local test_helper = require("spec.test_helper")
 test_helper.install_love_test_stubs()
 
 local config = require("config")
-local P = require("spec.parameters_helper")
+local S = require("spec.parameters_helper").stone
 
 local LETTER_TO_STONE = {
 	B = { color = config.STONE_BLACK, kind = "stone_basic" },
 	W = { color = config.STONE_WHITE, kind = "stone_basic" },
-	T = { color = config.STONE_BLACK, kind = "tax_stone" },
-	Y = { color = config.STONE_BLACK, kind = "territory_to_points_stone" },
-	Z = { color = config.STONE_BLACK, kind = "territory_to_multiplier_stone" },
 	R = { color = config.STONE_BLACK, kind = "escalating_money_stone" },
-	K = { color = config.STONE_BLACK, kind = "blockade_stone" },
-	I = { color = config.STONE_BLACK, kind = "influence_stone" },
-	i = { color = config.STONE_WHITE, kind = "influence_stone" },
-	O = { color = config.STONE_BLACK, kind = "control_stone" },
-	o = { color = config.STONE_WHITE, kind = "control_stone" },
+	r = { color = config.STONE_WHITE, kind = "escalating_money_stone" },
 }
 
 local STONE_TO_LETTER = {}
@@ -31,95 +26,15 @@ test_helper.set_visual_board_letters(LETTER_TO_STONE, STONE_TO_LETTER)
 
 local new_base_state = test_helper.new_isolated_game
 local set_hand = test_helper.set_hand
-local set_stone_instance = test_helper.set_stone_instance
 local set_board = test_helper.set_board
 local place_stone = test_helper.place_stone
 local player_score_snapshot = test_helper.player_score_snapshot
 local visual_scoring_debug_after_each = test_helper.visual_scoring_debug_after_each
 local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_registered_in_content
-local assert_player_points_delta = test_helper.assert_player_points_delta
-local assert_player_plus_mult_delta = test_helper.assert_player_plus_mult_delta
 local assert_player_money = test_helper.assert_player_money
-local assert_territory_ascii = test_helper.assert_territory_ascii
-
-local S = P.stone
-
---- @return number
-local function tax_money_per_enemy()
-	return S.tax_money_per_enemy or 1
-end
-
---- @return number
-local function tax_points_per_enemy()
-	return S.tax_points_per_enemy or 1
-end
-
---- @param enemy_count integer
---- @return number
-local function tax_money_total(enemy_count)
-	return enemy_count * tax_money_per_enemy()
-end
-
---- @param enemy_count integer
---- @return number
-local function tax_points_total(enemy_count)
-	return enemy_count * tax_points_per_enemy()
-end
-
---- @return number
-local function t2p_divisor()
-	return S.t2p_divisor or 4
-end
-
---- @return number
-local function t2p_cap()
-	return S.t2p_cap or 12
-end
-
---- @return number
-local function t2m_divisor()
-	return S.t2m_divisor or 6
-end
-
---- @return number
-local function t2m_cap()
-	return S.t2m_cap or 8
-end
-
---- @param territory_total integer
---- @return number
-local function t2p_payout(territory_total)
-	return math.min(t2p_cap(), math.floor(territory_total / t2p_divisor()))
-end
-
---- @param territory_total integer
---- @return number
-local function t2m_payout(territory_total)
-	return math.min(t2m_cap(), math.floor(territory_total / t2m_divisor()))
-end
-
---- @return number
-local function ems_round_money()
-	return S.ems_round_money or 1
-end
-
---- @return number
-local function ems_capture_multiplier()
-	return S.ems_capture_multiplier or 2
-end
-
---- @param received number
---- @return number
-local function ems_capture_penalty(received)
-	return ems_capture_multiplier() * received
-end
-
---- @param g table
---- @param side string
---- @return integer
-local function territory_cell_count(g, side)
-	return test_helper.count_territory_cells(g, side)
-end
+local assert_player_points_delta = test_helper.assert_player_points_delta
+local assert_stone_stored_value = test_helper.assert_stone_stored_value
+local advance_rounds = test_helper.advance_rounds
 
 local function blank_board()
 	return {
@@ -135,27 +50,41 @@ local function blank_board()
 	}
 end
 
-local STONE_IDS = {
-	"tax_stone",
-	"territory_to_points_stone",
-	"territory_to_multiplier_stone",
-	"escalating_money_stone",
-}
-
 describe("escalating_money_stone (visual ASCII)", function()
 	local g
 
 	before_each(function()
 		g = new_base_state()
-		assert_stone_ids_registered_in_content({"escalating_money_stone"}, "escalating_money_stone")
+		assert_stone_ids_registered_in_content({ "escalating_money_stone" }, "escalating_money_stone")
 	end)
 
 	after_each(visual_scoring_debug_after_each(function()
 		return g
 	end))
 
-	describe("escalating_money_stone", function()
-		it("first black end of turn adds EMS_ROUND_MONEY", function()
+	describe("escalating_money_stone per-round accrual and capture penalty", function()
+		it("placement pays zero money before first end_of_turn", function()
+			set_hand(g, "black", { "escalating_money_stone" })
+			set_board(g, blank_board())
+			local snap = player_score_snapshot(g, "black")
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . R . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local expected_delta = 0
+			assert_player_money(g, "black", snap.money + expected_delta, "no immediate payout on placement")
+			assert_player_points_delta(g, "black", snap, expected_delta, "placement does not add points")
+			assert_stone_stored_value(g, 5, 5, 0, "tracked total starts at zero")
+		end)
+
+		it("first end_of_turn adds ems_round_money to owner money", function()
 			set_hand(g, "black", { "escalating_money_stone" })
 			set_board(g, blank_board())
 			place_stone(g, {
@@ -170,11 +99,14 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			test_helper.finish_turn(g)
-			assert_player_money(g, "black", snap.money + ems_round_money(), "first escalating money tick")
+			advance_rounds(g, 1)
+			local expected_delta = S.ems_round_money
+			assert_player_money(g, "black", snap.money + expected_delta, "owner money gain same round")
+			assert_stone_stored_value(g, 5, 5, expected_delta, "tracked total after one turn")
+			assert_player_points_delta(g, "black", snap, 0, "accrual adds money only")
 		end)
 
-		it("two survived turns accumulate 2x EMS_ROUND_MONEY received", function()
+		it("two end_of_turns accumulate two times ems_round_money", function()
 			set_hand(g, "black", { "escalating_money_stone" })
 			set_board(g, blank_board())
 			place_stone(g, {
@@ -189,12 +121,13 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			test_helper.finish_turn(g)
-			test_helper.finish_turn(g)
-			assert_player_money(g, "black", snap.money + 2 * ems_round_money(), "two ticks cumulative")
+			advance_rounds(g, 2)
+			local expected_delta = S.ems_round_money * 2
+			assert_player_money(g, "black", snap.money + expected_delta, "two ticks cumulative")
+			assert_stone_stored_value(g, 5, 5, expected_delta, "tracked total after two turns")
 		end)
 
-		it("N survived turns accumulate Nx EMS_ROUND_MONEY received", function()
+		it("four end_of_turns scale linearly with ems_round_money", function()
 			set_hand(g, "black", { "escalating_money_stone" })
 			set_board(g, blank_board())
 			place_stone(g, {
@@ -209,17 +142,15 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			local turns = 4
-			for _ = 1, turns do
-				test_helper.finish_turn(g)
-			end
-			assert_player_money(g, "black", snap.money + turns * ems_round_money(), "N turn cumulative")
+			local rounds = 4
+			advance_rounds(g, rounds)
+			local expected_delta = S.ems_round_money * rounds
+			assert_player_money(g, "black", snap.money + expected_delta, "N turn cumulative")
+			assert_stone_stored_value(g, 5, 5, expected_delta, "tracked total scales linearly")
 		end)
 
-		it("enemy capture charges EMS_CAPTURE_MULTIPLIER times total received", function()
-			set_hand(g, "black", { "escalating_money_stone" })
-			set_board(g, blank_board())
-			place_stone(g, {
+		it("capture charges ems_capture_multiplier times total received from owner", function()
+			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -230,61 +161,34 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.finish_turn(g)
-			test_helper.finish_turn(g)
-			local received = 2 * ems_round_money()
-			local snap = player_score_snapshot(g, "black")
-			test_helper.capture_stone_at(g, 5, 5, "black")
-			assert_player_money(g, "black", snap.money - ems_capture_penalty(received), "capture penalty from cumulative received")
-		end)
-
-		it("capture penalty clamps money at global floor", function()
-			set_hand(g, "black", { "escalating_money_stone" })
-			test_helper.set_money(g, "black", 1)
-			set_board(g, blank_board())
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . R . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-			for _ = 1, 3 do
-				test_helper.finish_turn(g)
-			end
-			test_helper.capture_stone_at(g, 5, 5, "black")
-			assert_player_money(g, "black", 0, "money clamp at floor")
-		end)
-
-		it("EMS_CAPTURE_MULTIPLIER 2 makes penalty exactly double received", function()
-			local mult = 2
-			test_helper.set_stone_parameter(g, "escalating_money_stone", "ems_capture_multiplier", mult)
-			set_hand(g, "black", { "escalating_money_stone" })
-			set_board(g, blank_board())
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . R . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-			test_helper.finish_turn(g)
-			local received = ems_round_money()
+			local accrual_rounds = 2
+			advance_rounds(g, accrual_rounds)
+			local received = S.ems_round_money * accrual_rounds
 			local snap = player_score_snapshot(g, "black")
 			test_helper.capture_stone_at(g, 5, 5, "black")
-			assert_player_money(g, "black", snap.money - mult * received, "double penalty")
+			local expected_penalty = S.ems_capture_multiplier * received
+			assert_player_money(g, "black", snap.money - expected_penalty, "capture penalty from cumulative received")
 		end)
 
-		it("EMS_CAPTURE_MULTIPLIER 3 makes penalty exactly triple received", function()
-			test_helper.set_stone_parameter(g, "escalating_money_stone", "ems_capture_multiplier", 3)
+		it("tracked total resets to zero after capture", function()
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . R . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			advance_rounds(g, 1)
+			test_helper.capture_stone_at(g, 5, 5, "black")
+			local expected_total = 0
+			assert_stone_stored_value(g, 5, 5, expected_total, "tracked total cleared on removal")
+		end)
+
+		it("self removal charges no capture penalty", function()
 			set_hand(g, "black", { "escalating_money_stone" })
 			set_board(g, blank_board())
 			place_stone(g, {
@@ -298,35 +202,14 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.finish_turn(g)
-			test_helper.finish_turn(g)
-			local received = 2 * ems_round_money()
+			advance_rounds(g, 1)
 			local snap = player_score_snapshot(g, "black")
 			test_helper.capture_stone_at(g, 5, 5, "black")
-			assert_player_money(g, "black", snap.money - 3 * received, "triple penalty")
+			local expected_delta = 0
+			assert_player_money(g, "black", snap.money + expected_delta, "self removal no penalty")
 		end)
 
-		it("self removal without enemy capture charges no penalty", function()
-			set_hand(g, "black", { "escalating_money_stone" })
-			set_board(g, blank_board())
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . R . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
-			test_helper.finish_turn(g)
-			local snap = player_score_snapshot(g, "black")
-			test_helper.capture_stone_at(g, 5, 5, "black")
-			assert_player_money(g, "black", snap.money, "self removal no enemy penalty")
-		end)
-
-		it("two stones penalize only captured stone cumulative received", function()
+		it("capturing one stone penalizes only that stone cumulative received", function()
 			set_hand(g, "black", { "escalating_money_stone", "escalating_money_stone" })
 			set_board(g, blank_board())
 			place_stone(g, {
@@ -351,18 +234,48 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
-			test_helper.finish_turn(g)
+			local accrual_rounds = 3
+			advance_rounds(g, accrual_rounds)
+			local captured_received = S.ems_round_money * accrual_rounds
 			local snap = player_score_snapshot(g, "black")
 			test_helper.capture_stone_at(g, 5, 4, "black")
-			assert_player_money(
-				g,
-				"black",
-				snap.money - ems_capture_penalty(ems_round_money()),
-				"only captured stone total"
-			)
+			local expected_penalty = S.ems_capture_multiplier * captured_received
+			assert_player_money(g, "black", snap.money - expected_penalty, "only captured stone total penalized")
 		end)
 
-		it("late capture penalty uses full cumulative received", function()
+		it("surviving stone tracked total unchanged when sibling captured", function()
+			set_hand(g, "black", { "escalating_money_stone", "escalating_money_stone" })
+			set_board(g, blank_board())
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . R . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			}, false)
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . R R . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			}, false)
+			local accrual_rounds = 3
+			advance_rounds(g, accrual_rounds)
+			test_helper.capture_stone_at(g, 5, 4, "black")
+			local expected_total = S.ems_round_money * accrual_rounds
+			assert_stone_stored_value(g, 5, 5, expected_total, "surviving stone keeps full tracked total")
+		end)
+
+		it("owner net money reflects accrual minus capture penalty", function()
 			set_hand(g, "black", { "escalating_money_stone" })
 			set_board(g, blank_board())
 			place_stone(g, {
@@ -377,18 +290,173 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			local turns = 5
-			for _ = 1, turns do
-				test_helper.finish_turn(g)
-			end
-			local received = turns * ems_round_money()
+			local accrual_rounds = 2
+			advance_rounds(g, accrual_rounds)
+			local received = S.ems_round_money * accrual_rounds
 			test_helper.capture_stone_at(g, 5, 5, "black")
-			assert_player_money(
-				g,
-				"black",
-				snap.money + received - ems_capture_penalty(received),
-				"late penalty uses full tracked total"
-			)
+			local expected_money = snap.money + received - S.ems_capture_multiplier * received
+			assert_player_money(g, "black", expected_money, "earned money minus capture penalty")
+		end)
+
+		it("no further accrual after stone is captured", function()
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . R . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			advance_rounds(g, 2)
+			test_helper.capture_stone_at(g, 5, 5, "black")
+			local snap = player_score_snapshot(g, "black")
+			advance_rounds(g, 1)
+			local expected_delta = 0
+			assert_player_money(g, "black", snap.money + expected_delta, "captured stone stops accruing")
+		end)
+
+		it("white stone accrues ems_round_money for white only", function()
+			set_board(g, blank_board())
+			test_helper.place_stone_for(g, "white", "escalating_money_stone", {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . r . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local white_snap = player_score_snapshot(g, "white")
+			local black_snap = player_score_snapshot(g, "black")
+			advance_rounds(g, 1)
+			local expected_delta = S.ems_round_money
+			assert_player_money(g, "white", white_snap.money + expected_delta, "white receives round accrual")
+			local black_expected_delta = 0
+			assert_player_money(g, "black", black_snap.money + black_expected_delta, "black receives no white accrual")
+		end)
+
+		it("capture penalty clamps money at global floor", function()
+			set_hand(g, "black", { "escalating_money_stone" })
+			test_helper.set_money(g, "black", 1)
+			set_board(g, blank_board())
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . R . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local accrual_rounds = 3
+			advance_rounds(g, accrual_rounds)
+			test_helper.capture_stone_at(g, 5, 5, "black")
+			local expected_money = 0
+			assert_player_money(g, "black", expected_money, "money clamp at floor")
+		end)
+
+		it("ems_capture_multiplier 3 makes penalty triple received", function()
+			test_helper.set_stone_parameter(g, "escalating_money_stone", "ems_capture_multiplier", 3)
+			set_hand(g, "black", { "escalating_money_stone" })
+			set_board(g, blank_board())
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . R . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local accrual_rounds = 2
+			advance_rounds(g, accrual_rounds)
+			local received = S.ems_round_money * accrual_rounds
+			local snap = player_score_snapshot(g, "black")
+			test_helper.capture_stone_at(g, 5, 5, "black")
+			local expected_penalty = S.ems_capture_multiplier * received
+			assert_player_money(g, "black", snap.money - expected_penalty, "triple penalty")
+		end)
+
+		it("illegal occupied placement pays nothing", function()
+			set_hand(g, "black", { "escalating_money_stone" })
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . B . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+			test_helper.assert_illegal_player_move_with_stone(g, "black", "escalating_money_stone", 5, 5, "occupied rejects escalating money")
+			local expected_delta = 0
+			assert_player_money(g, "black", snap.money + expected_delta, "illegal move no money")
+		end)
+
+		it("match end charges no capture penalty without capture", function()
+			set_hand(g, "black", { "escalating_money_stone" })
+			set_board(g, blank_board())
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . R . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			advance_rounds(g, 1)
+			local expected_total = S.ems_round_money
+			local snap = player_score_snapshot(g, "black")
+			test_helper.end_match_before_timers(g)
+			local expected_delta = 0
+			assert_player_money(g, "black", snap.money + expected_delta, "no penalty without capture")
+			assert_stone_stored_value(g, 5, 5, expected_total, "tracked total remains until capture")
+		end)
+
+		it("two placements each accrue ems_round_money independently", function()
+			set_hand(g, "black", { "escalating_money_stone", "escalating_money_stone" })
+			set_board(g, blank_board())
+			local snap = player_score_snapshot(g, "black")
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . R . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			}, false)
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . R R . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			}, false)
+			advance_rounds(g, 1)
+			local expected_delta = S.ems_round_money * 2
+			assert_player_money(g, "black", snap.money + expected_delta, "each stone pays one round accrual")
 		end)
 	end)
 end)
