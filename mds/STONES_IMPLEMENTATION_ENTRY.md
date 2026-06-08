@@ -103,7 +103,7 @@ Visual specs assert resolver-visible game state only.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
