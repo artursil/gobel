@@ -117,6 +117,25 @@ If the loop does not converge in 4 iterations, `lib/workflow_common.py` creates 
 
 Parallel runs use **git worktrees** under `.agent-worktrees/issue-{N}` so each issue gets an isolated checkout.
 
+## Run logs
+
+Each `tests_exist` / `single_feature` run writes artifacts under `.agents/runs/` (gitignored):
+
+```
+.agents/runs/tests_exist/issue-4/20260608-143022/
+  summary.md              # outcome + index of artifacts
+  run.json                # issue/branch metadata
+  initial/code-writer.md  # first code-writer output
+  iteration-01/
+    test-concerns.md      # if code-writer raised <test-concerns>
+    delegator.md          # raw delegator output
+    delegation.json       # parsed status, remarks, assignments
+    assigned/
+      visual-test-writer.md
+```
+
+The workflow prints `[workflow-log] <path>` at start. Open `summary.md` first, then drill into iteration folders.
+
 ## Legacy
 
 - `run.ts` — original TypeScript/Sandcastle orchestrator (npm/build oriented)
