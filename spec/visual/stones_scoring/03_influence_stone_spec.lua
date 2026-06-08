@@ -2,8 +2,8 @@
 ---
 --- Stone under test: influence_stone
 --- Effect: distance_bonus — reduces the stone's effective Manhattan distance
---- for territory assignment, letting it "reach further" and claim cells that
---- would otherwise belong to the opponent or be neutral.
+--- for territory assignment, letting it reach further and claim cells that
+--- would otherwise be neutral or opponent-owned.
 ---
 local test_helper = require("spec.test_helper")
 test_helper.install_love_test_stubs()
@@ -30,22 +30,12 @@ local set_hand = test_helper.set_hand
 local set_stone_instance = test_helper.set_stone_instance
 local set_board = test_helper.set_board
 local place_stone = test_helper.place_stone
+local ensure_actor_turn = test_helper.ensure_actor_turn
 local visual_scoring_debug_after_each = test_helper.visual_scoring_debug_after_each
 local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_registered_in_content
 local assert_territory_ascii = test_helper.assert_territory_ascii
 
 local S = P.stone
-
---- @param tier integer
---- @return number
-local function influence_tier_bonus(tier)
-	local key = "influence_t" .. tier
-	if S[key] then
-		return S[key]
-	end
-	return P.stone_effect_value("influence_stone", "distance_bonus_tier" .. tier)
-		or S.stone_influence_distance_bonus
-end
 
 describe("influence_stone (visual ASCII)", function()
 	local g
@@ -59,7 +49,43 @@ describe("influence_stone (visual ASCII)", function()
 		return g
 	end))
 
-	it("tier1 on contested row flips midline column to black", function()
+	it("basic stone on contested row leaves midline column neutral", function()
+		set_board(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . W",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		place_stone(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			"B . . . . . . . W",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		assert_territory_ascii(g, {
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"B b b b . w w w W",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+		}, "baseline: equidistant midline column stays neutral without distance bonus")
+	end)
+
+	it("tier1 on contested row claims midline column black", function()
 		set_stone_instance(g, "black", 1, "influence_stone", 1)
 		set_board(g, {
 			". . . . . . . . .",
@@ -88,15 +114,15 @@ describe("influence_stone (visual ASCII)", function()
 			"b b b b b w w w w",
 			"b b b b b w w w w",
 			"b b b b b w w w w",
-			"I b b b b w w w W",
+			"B b b b b w w w W",
 			"b b b b b w w w w",
 			"b b b b b w w w w",
 			"b b b b b w w w w",
 			"b b b b b w w w w",
-		}, "tier1 bonus shifts boundary one column past what a basic stone would claim")
+		}, "tier1 bonus shifts boundary one column past basic stone reach")
 	end)
 
-	it("tier2 extends territory further than tier1 on same contested board", function()
+	it("tier2 contested row leaves next column neutral at distance tie", function()
 		set_stone_instance(g, "black", 1, "influence_stone", 2)
 		set_board(g, {
 			". . . . . . . . .",
@@ -121,19 +147,19 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"I b b b b b w w W",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-		}, "tier2 bonus claims one extra column vs tier1")
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"B b b b b . w w W",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+		}, "tier2 reaches midline but column 6 stays neutral on equidistant tie")
 	end)
 
-	it("tier3 reaches maximum configured distance on contested row", function()
+	it("tier3 on contested row claims one column further than tier2", function()
 		set_stone_instance(g, "black", 1, "influence_stone", 3)
 		set_board(g, {
 			". . . . . . . . .",
@@ -158,26 +184,23 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-			"I b b b b b b w W",
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-		}, "tier3 bonus claims maximum configured extra territory")
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+			"B b b b b b w w W",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+		}, "tier3 bonus breaks tier2 tie and claims column 6 for black")
 	end)
 
 	it("tier ordering: T1 < T2 < T3 in parameters", function()
-		local t1 = influence_tier_bonus(1)
-		local t2 = influence_tier_bonus(2)
-		local t3 = influence_tier_bonus(3)
-		assert.is_true(t1 < t2 and t2 < t3, "influence tier bonuses preserve ordering")
+		assert.is_true(S.influence_t1 < S.influence_t2 and S.influence_t2 < S.influence_t3, "influence tier bonuses preserve ordering")
 	end)
 
-	it("influence breaks tie on equidistant cells in multi-stone board", function()
+	it("equidistant midline cells stay neutral even after influence placement", function()
 		set_stone_instance(g, "black", 1, "influence_stone", 1)
 		set_board(g, {
 			". . . . . . . . .",
@@ -202,26 +225,26 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
+			"b b b b . w w w w",
+			"b B b b . w w W w",
 			"b b b b b w w w w",
-			"b B b b b w w W w",
+			"b b b b b . w w w",
+			"b B b b b b w w w",
+			"b b b b b . w w w",
 			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b I b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b B b b b w w W w",
-			"b b b b b w w w w",
-		}, "influence stone tips balance in column 5 from tie to black")
+			"b B b b . w w W w",
+			"b b b b . w w w w",
+		}, "influence shifts nearby cells but does not override equidistant tie at column 5")
 	end)
 
-	it("complex board with white pressure — influence reclaims contested border", function()
+	it("tier2 influence reclaims interior cells on contested case-04 board", function()
 		set_stone_instance(g, "black", 1, "influence_stone", 2)
 		set_board(g, {
 			"B B . . W . . . .",
 			"B . . W . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			". W W . . . . . .",
+			"W W . . . B . . .",
+			". . . . W W . . .",
 			". . . B . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -230,28 +253,28 @@ describe("influence_stone (visual ASCII)", function()
 		place_stone(g, {
 			"B B . . W . . . .",
 			"B . . W . . . . .",
-			". . . . . . . . .",
-			". . . I . . . . .",
-			". . . . . . . . .",
+			". W W . . . . . .",
+			"W W . . . B . . .",
+			". . . I W W . . .",
 			". . . B . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
-			"B B b b W w w w w",
-			"B b b W w w w w w",
-			"b b b b b w w w w",
-			"b b b I b b w w w",
-			"b b b b b b w w w",
-			"b b b B b b w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-		}, "tier2 influence reclaims cells from white despite W pressure in top rows")
+			"B B w w W w w w w",
+			"B w w W w w w w w",
+			"w W W b b b b b b",
+			"W W b b b B b b b",
+			". b b B W W . . .",
+			". b b B b . . . .",
+			". b b b b . . . .",
+			". b b b b . . . .",
+			". b b b b . . . .",
+		}, "tier2 influence pushes black reach into former white/neutral interior")
 	end)
 
-	it("two influence stones on same side stack their reach", function()
+	it("two tier1 influence stones stack reach via sequential placements", function()
 		set_stone_instance(g, "black", 1, "influence_stone", 1)
 		set_stone_instance(g, "black", 2, "influence_stone", 1)
 		set_hand(g, "black", { "influence_stone", "influence_stone" })
@@ -272,25 +295,38 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			"I . . . . . . . .",
 			". . . . . . . . W",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		ensure_actor_turn(g, "black")
+		set_hand(g, "black", { "influence_stone", "influence_stone" })
+		place_stone(g, {
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			"B . . . . . . . .",
+			". . . . . . . . W",
 			"I . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-		}, false)
+		})
 		assert_territory_ascii(g, {
-			"b b b b b w w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"I b b b b b w w w",
-			"b b b b b b w w W",
-			"I b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b w w w w",
-		}, "two tier1 stones each extend independently, overlapping claims more territory than one alone")
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"B b b b b . w w w",
+			"b b b b b w w w W",
+			"B b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+		}, "two tier1 stones each extend independently with overlapping black reach")
 	end)
 
-	it("opponent nearby still holds adjacent territory despite influence", function()
+	it("adjacent opponent stone does not prevent influence reach beyond", function()
 		set_stone_instance(g, "black", 1, "influence_stone", 1)
 		set_board(g, {
 			". . . . . . . . .",
@@ -315,19 +351,19 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
-			"b b b b b b b b b",
-			"b b b b b b b b b",
-			"b b b b b b b b b",
-			"b b w w b b b b b",
-			"b b w W I b b b b",
-			"b b w w b b b b b",
-			"b b b b b b b b b",
-			"b b b b b b b b b",
-			"b b b b b b b b b",
-		}, "white stone retains immediate surrounding cells despite adjacent influence")
+			". . . . b b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
+			". . . W B b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
+		}, "black influence still claims exterior cells beside adjacent white stone")
 	end)
 
-	it("captured influence stone reverts territory to basic-stone levels", function()
+	it("captured influence stone reverts territory to opponent control", function()
 		set_stone_instance(g, "black", 1, "influence_stone", 1)
 		set_board(g, {
 			". . . . . . . . .",
@@ -351,8 +387,7 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		test_helper.capture_stone_at(g, 5, 1, "white")
-		test_helper.finish_turn(g)
+		test_helper.capture_stone_at(g, 5, 1, "black")
 		assert_territory_ascii(g, {
 			"w w w w w w w w w",
 			"w w w w w w w w w",
@@ -363,10 +398,10 @@ describe("influence_stone (visual ASCII)", function()
 			"w w w w w w w w w",
 			"w w w w w w w w w",
 			"w w w w w w w w w",
-		}, "captured influence leaves white as sole owner, territory fully reverts")
+		}, "removing black influence leaves white as sole influence source")
 	end)
 
-	it("edge placement clamps influence halo within board bounds", function()
+	it("corner influence reach stays within board bounds", function()
 		set_stone_instance(g, "black", 1, "influence_stone", 2)
 		set_board(g, {
 			". . . . . . . . .",
@@ -391,19 +426,19 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . I",
 		})
 		assert_territory_ascii(g, {
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b b b b",
-			"b b b b b b b b b",
-			"b b b b b b w W b",
-			"b b b b b b b b I",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . W b",
+			"b b b b b b b b B",
 		}, "edge influence extends only within valid board coordinates")
 	end)
 
-	it("existing basic stone does not gain bonus from nearby influence placement", function()
+	it("existing basic stone keeps normal reach when influence placed beside it", function()
 		set_stone_instance(g, "black", 1, "influence_stone", 1)
 		set_board(g, {
 			". . . . . . . . .",
@@ -428,15 +463,52 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
-			"b b b b b w w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"B I b b b b w w W",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b w w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"B B b b b . w w W",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
 		}, "basic stone at (5,1) keeps normal reach; only influence stone at (5,2) gets the bonus")
+	end)
+
+	it("white tier1 influence extends reach symmetrically", function()
+		set_stone_instance(g, "white", 1, "influence_stone", 1)
+		set_board(g, {
+			"B . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		test_helper.place_stone_for(g, "white", "influence_stone", {
+			"B . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . i",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+		})
+		assert_territory_ascii(g, {
+			"B b b b b b w w w",
+			"b b b b b w w w w",
+			"b b b b w w w w w",
+			"b b b w w w w w w",
+			"b b w w w w w w W",
+			"b b w w w w w w w",
+			"b b w w w w w w w",
+			"b b w w w w w w w",
+			"b b w w w w w w w",
+		}, "white tier1 influence reaches further toward isolated black stone")
 	end)
 end)
