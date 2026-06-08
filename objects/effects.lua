@@ -815,7 +815,8 @@ end
 function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active_sub, territory_step)
 	local scoring_phases = require("single_game.resolver.scoring_phases")
 	local content = require("content")
-	local stone_def = content.get_stone(stone_cell.kind)
+	local stone_ref = stone_cell.level and { def_id = stone_cell.kind, level = stone_cell.level } or stone_cell.kind
+	local stone_def = content.resolve_stone(stone_ref)
 	local key = helpers.stone_key(row, col)
 	local n = config.BOARD_SIZE
 	local out = {}
