@@ -6,13 +6,19 @@ Orchestrates **test-writer**, **visual-test-writer**, **code-writer**, and **del
 
 ```bash
 pip install -r agents_workflow/requirements.txt
-export CURSOR_API_KEY="cursor_..."
-export AGENT_MODEL="composer-2.5"   # optional override
+```
+
+Create a local secrets file (gitignored):
+
+```bash
+cp agents_workflow/secrets.example agents_workflow/secrets
+# edit agents_workflow/secrets — set CURSOR_API_KEY from Cursor account settings
 ```
 
 Also requires:
 
-- `gh` CLI authenticated
+- `gh` CLI authenticated (`winget install GitHub.cli` on Windows; restart the terminal or run `& "C:\Program Files\GitHub CLI\gh.exe" auth login` if `gh` is not on PATH yet)
+- On Windows, agents run via the SDK's **async** bridge (sync local bridge is broken on pipe I/O)
 - `busted` for Lua tests
 - Git repo with `main` as integration branch
 

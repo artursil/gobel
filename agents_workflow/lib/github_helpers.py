@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,8 +18,28 @@ class PlannedIssue:
     labels: list[str] | None = None
 
 
+def _gh_windows_candidates() -> list[Path]:
+    program_files = Path(r"C:\Program Files\GitHub CLI\gh.exe")
+    local_app = Path.home() / "AppData" / "Local" / "Programs" / "GitHub CLI" / "gh.exe"
+    return [program_files, local_app]
+
+
+def _gh_executable() -> str:
+    gh = shutil.which("gh")
+    if gh is not None:
+        return gh
+    for candidate in _gh_windows_candidates():
+        if candidate.is_file():
+            return str(candidate)
+    raise RuntimeError(
+        "GitHub CLI (`gh`) not found on PATH. "
+        "Install: https://cli.github.com/ "
+        "(Windows: `winget install GitHub.cli`), then run `gh auth login`."
+    )
+
+
 def _run_gh(args: list[str], *, cwd: Path | None = None) -> str:
-    cmd = ["gh", *args]
+    cmd = [_gh_executable(), *args]
     completed = subprocess.run(
         cmd,
         cwd=cwd,

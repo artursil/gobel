@@ -4,3 +4,5 @@ logs/
 .vscode/
 fonts/
 sprites/
+agents_workflow/secrets
+*.pyc
