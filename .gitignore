@@ -5,4 +5,5 @@ logs/
 fonts/
 sprites/
 agents_workflow/secrets
-*.pyc
+__pycache__/
+*.py[cod]
