@@ -1,20 +1,19 @@
 --- Visual spec: high_power_money_loss_stone (OBJECTS.md #29).
 ---
---- Stone under test: high_power_money_loss_stone
+--- Stone under test: high_power_money_loss_stone (letters H / h).
+--- Effect: on placement only — add hpml_points_gain and hpml_plus_mult_gain,
+--- subtract hpml_money_loss (clamped at money floor). No recurring end_of_turn effects.
 ---
 local test_helper = require("spec.test_helper")
 test_helper.install_love_test_stubs()
 
 local config = require("config")
-local P = require("spec.parameters_helper")
+local S = require("spec.parameters_helper").stone
 
 local LETTER_TO_STONE = {
 	B = { color = config.STONE_BLACK, kind = "stone_basic" },
 	W = { color = config.STONE_WHITE, kind = "stone_basic" },
-	E = { color = config.STONE_BLACK, kind = "escalating_points_stone" },
 	H = { color = config.STONE_BLACK, kind = "high_power_money_loss_stone" },
-	R = { color = config.STONE_BLACK, kind = "retrigger_stone" },
-	w = { color = config.STONE_BLACK, kind = "wall" },
 	h = { color = config.STONE_WHITE, kind = "high_power_money_loss_stone" },
 }
 
@@ -34,49 +33,11 @@ local player_score_snapshot = test_helper.player_score_snapshot
 local visual_scoring_debug_after_each = test_helper.visual_scoring_debug_after_each
 local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_registered_in_content
 local assert_player_points_delta = test_helper.assert_player_points_delta
+local assert_player_points_unchanged = test_helper.assert_player_points_unchanged
 local assert_player_plus_mult_delta = test_helper.assert_player_plus_mult_delta
+local assert_player_plus_mult_unchanged = test_helper.assert_player_plus_mult_unchanged
 local assert_player_money = test_helper.assert_player_money
-local assert_stone_stored_value = test_helper.assert_stone_stored_value
-
-local S = P.stone
-
---- @return number
-local function eps_round_points()
-	return S.eps_round_points or 3
-end
-
---- @return number
-local function eps_capture_multiplier()
-	return S.eps_capture_multiplier or 2
-end
-
---- @param bank number
---- @return number
-local function eps_capture_transfer(bank)
-	return eps_capture_multiplier() * bank
-end
-
---- @return number
-local function hpml_points()
-	return S.hpml_points_gain or P.stone_effect_value("high_power_money_loss_stone", "add_points") or 12
-end
-
---- @return number
-local function hpml_plus_mult()
-	return S.hpml_plus_mult_gain or P.stone_effect_value("high_power_money_loss_stone", "add_mult") or 6
-end
-
---- @return number
-local function hpml_money_loss()
-	return S.hpml_money_loss or 8
-end
-
---- @return number
-local function retrigger_fallback_points()
-	return S.retrigger_fallback_points or 1
-end
-
-local STONE_IDS = { "escalating_points_stone", "high_power_money_loss_stone", "retrigger_stone" }
+local advance_rounds = test_helper.advance_rounds
 
 local function blank_board()
 	return {
@@ -97,15 +58,15 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 
 	before_each(function()
 		g = new_base_state()
-		assert_stone_ids_registered_in_content({"high_power_money_loss_stone"}, "high_power_money_loss_stone")
+		assert_stone_ids_registered_in_content({ "high_power_money_loss_stone" }, "high_power_money_loss_stone")
 	end)
 
 	after_each(visual_scoring_debug_after_each(function()
 		return g
 	end))
 
-	describe("high_power_money_loss_stone", function()
-		it("high_power_money_loss_stone scenario 1: sufficient money applies gains and loss", function()
+	describe("high_power_money_loss_stone placement tradeoff", function()
+		it("placement with sufficient money applies points mult and money loss", function()
 			set_hand(g, "black", { "high_power_money_loss_stone" })
 			set_money(g, "black", 20)
 			set_board(g, blank_board())
@@ -121,14 +82,17 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_player_points_delta(g, "black", snap, hpml_points(), "points gain")
-			assert_player_plus_mult_delta(g, "black", snap, hpml_plus_mult(), "plus_mult gain")
-			assert_player_money(g, "black", 20 - hpml_money_loss(), "money loss applied")
+			local expected_points_delta = S.hpml_points_gain
+			local expected_mult_delta = S.hpml_plus_mult_gain
+			local expected_money = snap.money - S.hpml_money_loss
+			assert_player_points_delta(g, "black", snap, expected_points_delta, "points gain on placement")
+			assert_player_plus_mult_delta(g, "black", snap, expected_mult_delta, "plus_mult gain on placement")
+			assert_player_money(g, "black", expected_money, "money loss on placement")
 		end)
 
-		it("high_power_money_loss_stone scenario 2: money exactly loss amount reaches zero", function()
+		it("money exactly hpml_money_loss reaches zero", function()
 			set_hand(g, "black", { "high_power_money_loss_stone" })
-			set_money(g, "black", hpml_money_loss())
+			set_money(g, "black", S.hpml_money_loss)
 			set_board(g, blank_board())
 			place_stone(g, {
 				". . . . . . . . .",
@@ -141,10 +105,11 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_player_money(g, "black", 0, "exact loss to zero")
+			local expected_money = 0
+			assert_player_money(g, "black", expected_money, "exact loss to zero")
 		end)
 
-		it("high_power_money_loss_stone scenario 3: below loss amount clamps money at floor", function()
+		it("money below hpml_money_loss clamps at floor but gains still apply", function()
 			set_hand(g, "black", { "high_power_money_loss_stone" })
 			set_money(g, "black", 5)
 			set_board(g, blank_board())
@@ -160,14 +125,42 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_player_money(g, "black", 0, "clamp at zero")
-			assert_player_points_delta(g, "black", snap, hpml_points(), "gains still apply")
+			local expected_money = 0
+			local expected_points_delta = S.hpml_points_gain
+			local expected_mult_delta = S.hpml_plus_mult_gain
+			assert_player_money(g, "black", expected_money, "clamp at zero")
+			assert_player_points_delta(g, "black", snap, expected_points_delta, "points gain despite clamp")
+			assert_player_plus_mult_delta(g, "black", snap, expected_mult_delta, "plus_mult gain despite clamp")
 		end)
 
-		it("high_power_money_loss_stone scenario 4: net money includes other same-turn money effects", function()
+		it("zero money still receives scoring gains on placement", function()
+			set_hand(g, "black", { "high_power_money_loss_stone" })
+			set_money(g, "black", 0)
+			set_board(g, blank_board())
+			local snap = player_score_snapshot(g, "black")
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . H . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local expected_points_delta = S.hpml_points_gain
+			local expected_mult_delta = S.hpml_plus_mult_gain
+			local expected_money = 0
+			assert_player_points_delta(g, "black", snap, expected_points_delta, "points at zero money")
+			assert_player_plus_mult_delta(g, "black", snap, expected_mult_delta, "plus_mult at zero money")
+			assert_player_money(g, "black", expected_money, "money stays at floor")
+		end)
+
+		it("same-turn grant_money nets with hpml_money_loss", function()
 			set_hand(g, "black", { "high_power_money_loss_stone" })
 			set_money(g, "black", 10)
-			test_helper.grant_money(g, "black", 4, "other effect")
+			test_helper.grant_money(g, "black", 4, "other same-turn money")
 			set_board(g, blank_board())
 			place_stone(g, {
 				". . . . . . . . .",
@@ -180,10 +173,11 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_player_money(g, "black", 10 + 4 - hpml_money_loss(), "combined money deltas")
+			local expected_money = 10 + 4 - S.hpml_money_loss
+			assert_player_money(g, "black", expected_money, "combined same-turn money deltas")
 		end)
 
-		it("high_power_money_loss_stone scenario 5: illegal placement applies no package", function()
+		it("illegal occupied placement applies no package", function()
 			set_hand(g, "black", { "high_power_money_loss_stone" })
 			set_money(g, "black", 10)
 			set_board(g, {
@@ -198,16 +192,17 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			test_helper.assert_illegal_player_move_with_stone(g, "black", "high_power_money_loss_stone", 4, 4, "illegal")
-			assert_player_money(g, "black", 10, "money unchanged")
-			assert_player_points_delta(g, "black", snap, 0, "no points")
+			test_helper.assert_illegal_player_move_with_stone(g, "black", "high_power_money_loss_stone", 5, 5, "occupied rejects high power money loss")
+			local expected_delta = 0
+			assert_player_money(g, "black", snap.money + expected_delta, "money unchanged")
+			assert_player_points_delta(g, "black", snap, expected_delta, "no points")
+			assert_player_plus_mult_delta(g, "black", snap, expected_delta, "no plus_mult")
 		end)
 
-		it("high_power_money_loss_stone scenario 6: two turns each apply full package", function()
-			set_hand(g, "black", { "high_power_money_loss_stone", "high_power_money_loss_stone" })
+		it("second placement on later turn applies full package again", function()
+			set_hand(g, "black", { "high_power_money_loss_stone" })
 			set_money(g, "black", 30)
 			set_board(g, blank_board())
-			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -219,6 +214,10 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
+			test_helper.finish_turn(g)
+			test_helper.pass_turn(g)
+			set_hand(g, "black", { "high_power_money_loss_stone" })
+			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -229,12 +228,16 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-			}, false)
-			assert_player_points_delta(g, "black", snap, 2 * hpml_points(), "two placements points")
-			assert_player_money(g, "black", 30 - 2 * hpml_money_loss(), "two placements money loss")
+			})
+			local expected_points_delta = S.hpml_points_gain
+			local expected_mult_delta = S.hpml_plus_mult_gain
+			local expected_money = snap.money - S.hpml_money_loss
+			assert_player_points_delta(g, "black", snap, expected_points_delta, "second placement adds points")
+			assert_player_plus_mult_delta(g, "black", snap, expected_mult_delta, "second placement adds plus_mult")
+			assert_player_money(g, "black", expected_money, "second placement subtracts money")
 		end)
 
-		it("high_power_money_loss_stone scenario 7: white placement affects white only", function()
+		it("white placement affects white only", function()
 			set_hand(g, "white", { "high_power_money_loss_stone" })
 			test_helper.set_money(g, "white", 15)
 			set_board(g, blank_board())
@@ -251,43 +254,13 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_player_points_delta(g, "white", snap_white, hpml_points(), "white points")
-			assert_player_points_delta(g, "black", snap_black, 0, "black untouched")
+			local expected_points_delta = S.hpml_points_gain
+			local expected_delta = 0
+			assert_player_points_delta(g, "white", snap_white, expected_points_delta, "white points")
+			assert_player_points_delta(g, "black", snap_black, expected_delta, "black untouched")
 		end)
 
-		it("high_power_money_loss_stone scenario 8: retrigger replays gain and loss together", function()
-			set_hand(g, "black", { "high_power_money_loss_stone" })
-			set_money(g, "black", 20)
-			set_board(g, blank_board())
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . H . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			}, false)
-			local snap = player_score_snapshot(g, "black")
-			set_hand(g, "black", { "retrigger_stone" })
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . H R . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			}, false)
-			assert_player_points_delta(g, "black", snap, 2 * hpml_points(), "retrigger doubles points component")
-			assert_player_money(g, "black", 20 - 2 * hpml_money_loss(), "retrigger doubles money loss")
-		end)
-
-		it("high_power_money_loss_stone scenario 9: end_of_turn adds no extra penalty", function()
+		it("advance_rounds after placement adds no extra points", function()
 			set_hand(g, "black", { "high_power_money_loss_stone" })
 			set_money(g, "black", 12)
 			set_board(g, blank_board())
@@ -303,11 +276,97 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap_after = player_score_snapshot(g, "black")
-			test_helper.finish_turn(g)
-			assert_player_money(g, "black", snap_after.money, "no delayed money loss")
+			advance_rounds(g, 1)
+			local expected_delta = 0
+			assert_player_points_unchanged(g, "black", snap_after, "no recurring points")
 		end)
 
-		it("high_power_money_loss_stone scenario 10: total score uses updated points mult and money", function()
+		it("advance_rounds after placement adds no extra plus_mult", function()
+			set_hand(g, "black", { "high_power_money_loss_stone" })
+			set_money(g, "black", 12)
+			set_board(g, blank_board())
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . H . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap_after = player_score_snapshot(g, "black")
+			advance_rounds(g, 1)
+			assert_player_plus_mult_unchanged(g, "black", snap_after, "no recurring plus_mult")
+		end)
+
+		it("advance_rounds after placement adds no extra money loss", function()
+			set_hand(g, "black", { "high_power_money_loss_stone" })
+			set_money(g, "black", 12)
+			set_board(g, blank_board())
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . H . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap_after = player_score_snapshot(g, "black")
+			advance_rounds(g, 1)
+			local expected_delta = 0
+			assert_player_money(g, "black", snap_after.money + expected_delta, "no recurring money loss")
+		end)
+
+		it("multiple advance_rounds leave placement package unchanged", function()
+			set_hand(g, "black", { "high_power_money_loss_stone" })
+			set_money(g, "black", 20)
+			set_board(g, blank_board())
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . H . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap_after = player_score_snapshot(g, "black")
+			advance_rounds(g, 3)
+			local expected_delta = 0
+			assert_player_points_unchanged(g, "black", snap_after, "points stable across rounds")
+			assert_player_plus_mult_unchanged(g, "black", snap_after, "plus_mult stable across rounds")
+			assert_player_money(g, "black", snap_after.money + expected_delta, "money stable across rounds")
+		end)
+
+		it("pre-seeded stone on board triggers nothing on advance_rounds", function()
+			set_money(g, "black", 20)
+			set_board(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . H . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			})
+			local snap = player_score_snapshot(g, "black")
+			advance_rounds(g, 2)
+			local expected_delta = 0
+			assert_player_points_delta(g, "black", snap, expected_delta, "set_board alone pays no points")
+			assert_player_plus_mult_delta(g, "black", snap, expected_delta, "set_board alone pays no plus_mult")
+			assert_player_money(g, "black", snap.money + expected_delta, "set_board alone pays no money change")
+		end)
+
+		it("total score reflects post-placement points and plus_mult", function()
 			set_hand(g, "black", { "high_power_money_loss_stone" })
 			set_money(g, "black", 10)
 			set_board(g, blank_board())

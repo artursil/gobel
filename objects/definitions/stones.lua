@@ -294,15 +294,22 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"territory_to_multiplier_stone",
 	"escalating_points_stone",
 	"escalating_money_stone",
+	"high_power_money_loss_stone",
+}
+
+local LATER_IMPLMENTED_STONE_IDS = {
 	"unlimited_upgrades_stone",
 	"final_blow_stone",
-	"high_power_money_loss_stone",
 	"copper_stone",
 	"retrigger_stone",
 }
 
 for i = 1, #UNIMPLEMENTED_STONE_IDS do
 	local id = UNIMPLEMENTED_STONE_IDS[i]
+	M[id] = stub_stone(id)
+end
+for i = 1, #LATER_IMPLMENTED_STONE_IDS do
+	local id = LATER_IMPLMENTED_STONE_IDS[i]
 	M[id] = stub_stone(id)
 end
 

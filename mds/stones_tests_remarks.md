@@ -185,3 +185,8 @@ We don't want to define new functions for checking values. We should use paramet
 
 Mostly those tests are fine, but please confirm their validity and remove all those "OR" parameters there should be only one parameter used in each case.
 Remove "OR"s when using parameter values
+
+/visual-tests for 29_high_power_moeny_loss_stone clean the file, remove unused functions and stones.
+Remove all those "OR" parameters there should be only one parameter used in each case.
+We don't want to define new functions for checking values. We should use parametrized value directly in the test. If we want to check the delta we simply before assert should create a variable local expected_delta = S.<parameter_name> * N, where N is value that makes sense for the test. This will make the tests way easier to follow. There is no limit of number of tests.
+Also make sure all effects work only on placement and don't work in the future turns.
