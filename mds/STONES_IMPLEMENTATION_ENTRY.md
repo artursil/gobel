@@ -1,4 +1,4 @@
-# Stones Implementation Entry Point
+﻿# Stones Implementation Entry Point
 
 This document is the normative implementation handoff for stones.
 Visual specs assert resolver-visible game state only.
@@ -63,7 +63,7 @@ Visual specs assert resolver-visible game state only.
 **description:** Direct points stone with three upgrade tiers.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Tier payouts are parameters: `POINTS_STONE_T1`, `POINTS_STONE_T2`, `POINTS_STONE_T3`.
 - Trigger on placement only.
 - Upgrading affects future placements of upgraded instances only.
@@ -78,7 +78,7 @@ Visual specs assert resolver-visible game state only.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
