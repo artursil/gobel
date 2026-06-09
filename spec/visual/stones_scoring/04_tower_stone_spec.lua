@@ -386,13 +386,13 @@ describe("tower_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 
-		test_helper.capture_stone_at(g, 1, 1, "white")
+		test_helper.capture_stone_at(g, 1, 1, "black")
 		test_helper.finish_turn(g)
 
 		assert_territory_values_ascii(g, {
-			"# 2 2 1 1 1 1 1 1",
-			"2 2 2 1 1 1 1 1 1",
-			"2 2 2 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
