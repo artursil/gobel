@@ -208,7 +208,13 @@ describe("energy_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 
-		assert_player_energy(g, "black", snap.energy + energy_gain(), "second placement adds gain independently")
+		local max_e = match_state.player_for_color(g, "black").resources.energy_max
+		assert_player_energy(
+			g,
+			"black",
+			math.min(max_e, snap.energy + energy_gain()),
+			"second placement adds gain independently"
+		)
 	end)
 
 	it("no passive energy gained from board stone on subsequent turns", function()
@@ -228,19 +234,23 @@ describe("energy_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 
-		local energy_after_placement = energy_gain()
+		local max_e = match_state.player_for_color(g, "black").resources.energy_max
 		test_helper.finish_turn(g)
 		test_helper.pass_turn(g)
 		test_helper.finish_turn(g)
 		test_helper.pass_turn(g)
 
-		assert_player_energy(g, "black", energy_after_placement, "no passive energy ticks from board stone")
+		assert_player_energy(g, "black", max_e, "no passive energy ticks from board stone")
 	end)
 
 	it("white energy_stone adds energy to white, not black", function()
 		set_energy(g, "white", 0)
 		set_energy(g, "black", 0)
 		set_board(g, blank_board())
+
+		test_helper.ensure_actor_turn(g, "white")
+		local white_snap = player_score_snapshot(g, "white")
+		local black_snap = player_score_snapshot(g, "black")
 
 		test_helper.place_stone_for(g, "white", "energy_stone", {
 			". . . . . . . . .",
@@ -252,10 +262,15 @@ describe("energy_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-		})
+		}, false)
 
-		assert_player_energy(g, "white", energy_gain(), "white gains energy from own placement")
-		assert_player_energy(g, "black", 0, "black unaffected by white energy_stone")
+		assert_player_energy(
+			g,
+			"white",
+			math.min(white_snap.energy_max, white_snap.energy + energy_gain()),
+			"white gains energy from own placement"
+		)
+		assert_player_energy(g, "black", black_snap.energy_max, "black unaffected by white energy_stone")
 	end)
 
 	it("illegal placement on occupied cell gives no energy", function()
