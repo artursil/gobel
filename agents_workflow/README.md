@@ -28,6 +28,7 @@ Also requires:
 |--------|------|--------|
 | `test-writer.md` | Unit/integration specs | `spec/unit`, `spec/integration` |
 | `visual-test-writer.md` | Visual specs (`/visual-tests` skill) | `spec/visual` only |
+| `visual-test-fixer.md` | Fix existing visual specs (`tests_exist` only) | `spec/visual` only; **assert-only** by default |
 | `code-writer.md` | Production implementation | All except `spec/**`; may raise `<test-concerns>` |
 | `delegator.md` | Reviewer / arbiter | Assigns fixes; emits `<delegation>` JSON |
 
@@ -52,7 +53,7 @@ Loop (max **4** iterations):
 
 1. **code-writer** implements against existing tests
 2. **delegator** reviews; validates `<test-concerns>` if present
-3. Assigned **test-writer** / **visual-test-writer** fix tests (code-writer never edits tests)
+3. Assigned **test-writer** / **visual-test-fixer** fix tests (assert-only for visual specs; code-writer never edits tests)
 4. Repeat until delegator `status: complete` or escalation issue created
 
 ```bash

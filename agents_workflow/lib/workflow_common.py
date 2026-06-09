@@ -14,6 +14,7 @@ from lib.prompt_loader import load_prompt
 from lib.workflow_logger import WorkflowRunLogger
 
 MAX_ITERATIONS = 4
+VISUAL_TEST_FIXER_PROMPT = "visual-test-fixer"
 
 
 @dataclass(frozen=True)
@@ -92,14 +93,16 @@ def run_visual_test_writer(
     *,
     cwd: Path,
     extra: str = "",
+    prompt_name: str = "visual-test-writer",
     logger: WorkflowRunLogger | None = None,
     log_phase: str = "initial/visual-test-writer",
 ) -> str:
     variables = issue_variables(ctx)
     extra_context = extra or "(none)"
     variables["EXTRA_CONTEXT"] = extra_context
-    prompt = load_prompt("visual-test-writer", variables)
-    text = run_agent("Visual Test Writer", prompt, cwd=cwd).text
+    prompt = load_prompt(prompt_name, variables)
+    agent_label = "Visual Test Fixer" if prompt_name == "visual-test-fixer" else "Visual Test Writer"
+    text = run_agent(agent_label, prompt, cwd=cwd).text
     if logger is not None:
         logger.log_agent(
             "visual-test-writer",
@@ -138,6 +141,7 @@ def run_assigned_agents(
     cwd: Path,
     logger: WorkflowRunLogger | None = None,
     iteration: int,
+    visual_test_prompt: str = "visual-test-writer",
 ) -> dict[str, str]:
     outputs: dict[str, str] = {}
     for assignment in delegation.assignments:
@@ -153,7 +157,12 @@ def run_assigned_agents(
             )
         elif assignment.agent == "visual-test-writer":
             outputs["visual-test-writer"] = run_visual_test_writer(
-                ctx, cwd=cwd, extra=extra, logger=logger, log_phase=phase
+                ctx,
+                cwd=cwd,
+                extra=extra,
+                prompt_name=visual_test_prompt,
+                logger=logger,
+                log_phase=phase,
             )
     return outputs
 
@@ -183,7 +192,12 @@ def escalate(ctx: IssueContext, delegation: DelegationResult, *, iterations: int
     return number
 
 
-def tests_exist_loop(ctx: IssueContext, *, cwd: Path) -> bool:
+def tests_exist_loop(
+    ctx: IssueContext,
+    *,
+    cwd: Path,
+    visual_test_prompt: str = VISUAL_TEST_FIXER_PROMPT,
+) -> bool:
     """Tests already on branch: code-writer → delegator → assigned fixes (loop)."""
     logger = WorkflowRunLogger.start(
         "tests_exist",
@@ -228,6 +242,7 @@ def tests_exist_loop(ctx: IssueContext, *, cwd: Path) -> bool:
             cwd=cwd,
             logger=logger,
             iteration=iteration,
+            visual_test_prompt=visual_test_prompt,
         )
         if "code-writer" in fix_outputs:
             code_output = fix_outputs["code-writer"]

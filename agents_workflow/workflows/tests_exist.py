@@ -12,6 +12,7 @@ sys.path.insert(0, str(WORKFLOW_DIR))
 
 from lib.agent_runner import repo_root
 from lib.workflow_common import (
+    VISUAL_TEST_FIXER_PROMPT,
     add_issue_args,
     checkout_branch,
     issue_context_from_args,
@@ -29,7 +30,7 @@ def main() -> int:
     print(f"tests_exist #{ctx.number} on {ctx.branch}")
     checkout_branch(ctx.branch, cwd=cwd)
 
-    ok = tests_exist_loop(ctx, cwd=cwd)
+    ok = tests_exist_loop(ctx, cwd=cwd, visual_test_prompt=VISUAL_TEST_FIXER_PROMPT)
     return 0 if ok else 1
 
 

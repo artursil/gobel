@@ -14,7 +14,7 @@ from lib.agent_runner import repo_root, run_agent
 from lib.git_worktree import ensure_issue_worktree
 from lib.github_helpers import PlannedIssue, parse_plan
 from lib.prompt_loader import load_prompt
-from lib.workflow_common import IssueContext, tests_exist_loop
+from lib.workflow_common import VISUAL_TEST_FIXER_PROMPT, IssueContext, tests_exist_loop
 
 MAX_PARALLEL = 4
 
@@ -33,7 +33,7 @@ def run_issue(issue: PlannedIssue, repo: Path) -> tuple[PlannedIssue, bool]:
         branch=issue.branch,
         visual_spec=False,
     )
-    ok = tests_exist_loop(ctx, cwd=worktree)
+    ok = tests_exist_loop(ctx, cwd=worktree, visual_test_prompt=VISUAL_TEST_FIXER_PROMPT)
     return issue, ok
 
 
