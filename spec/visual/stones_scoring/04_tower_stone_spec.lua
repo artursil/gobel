@@ -241,8 +241,23 @@ describe("tower_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . . . T",
+			". . . . . . . . .",
 		}, false)
+
+		test_helper.finish_turn(g)
+		test_helper.pass_turn(g)
+
+		place_stone(g, {
+			"T . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . .",
+			". . . . . . . . T",
+		})
 
 		assert_territory_values_ascii(g, {
 			"# c c 1 1 1 1 1 1",
@@ -251,12 +266,12 @@ describe("tower_stone (visual ASCII)", function()
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
-			"1 1 1 1 1 1 1 1 1",
-			"1 1 1 1 1 1 1 1 1",
-			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c c #",
 		}, "both corners independently boosted", TV_CORNER)
 
-		local boosted_cells = 8
+		local boosted_cells = 16
 		local base_territory = P.territory_after_single_center_stone() + 1
 		local expected_territory_gain = boosted_cells * tower_bonus()
 		local territory_after = test_helper.count_territory_cells(g, "black")
