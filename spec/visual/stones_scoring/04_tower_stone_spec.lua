@@ -222,8 +222,10 @@ describe("tower_stone (visual ASCII)", function()
 			"1 1 1 1 1 1 1 1 1",
 		}, "non-corner tower adds no value bonus")
 
+		local expected_territory = P.territory_after_single_center_stone() + 1
 		local territory_after = test_helper.count_territory_cells(g, "black")
-		assert.are.equal(81, territory_after, "all 81 empty cells count at value 1")
+		assert.are.equal(expected_territory, territory_after,
+			"count_territory_cells includes placed stone plus all empty cells at value 1")
 	end)
 
 	it("two towers in opposite corners both apply their aura", function()
