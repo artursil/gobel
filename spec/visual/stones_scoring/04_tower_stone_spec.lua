@@ -73,7 +73,6 @@ describe("tower_stone (visual ASCII)", function()
 	it("top-left corner: 8 neighboring cells gain tower bonus", function()
 		set_hand(g, "black", { "tower_stone" })
 		set_board(g, blank_board())
-		local snap = player_score_snapshot(g, "black")
 
 		place_stone(g, {
 			"T . . . . . . . .",
@@ -100,9 +99,10 @@ describe("tower_stone (visual ASCII)", function()
 		}, "top-left corner 3x3 aura", TV_CORNER)
 
 		local boosted_cells = 8
-		local territory_cells = 81 - 1
-		local expected_territory = (territory_cells - boosted_cells) + boosted_cells * (1 + tower_bonus())
-		assert.are.equal(expected_territory, player_score_snapshot(g, "black").territory,
+		local base_territory = P.territory_after_single_center_stone() + 1
+		local expected_territory_gain = boosted_cells * tower_bonus()
+		local territory_after = test_helper.count_territory_cells(g, "black")
+		assert.are.equal(base_territory + expected_territory_gain, territory_after,
 			"territory score increases by bonus * boosted cells")
 	end)
 
@@ -255,9 +255,10 @@ describe("tower_stone (visual ASCII)", function()
 		}, "both corners independently boosted", TV_CORNER)
 
 		local boosted_cells = 8
-		local territory_cells = 81 - 1
-		local expected_territory = (territory_cells - boosted_cells) + boosted_cells * (1 + tower_bonus())
-		assert.are.equal(expected_territory, player_score_snapshot(g, "black").territory,
+		local base_territory = P.territory_after_single_center_stone() + 1
+		local expected_territory_gain = boosted_cells * tower_bonus()
+		local territory_after = test_helper.count_territory_cells(g, "black")
+		assert.are.equal(base_territory + expected_territory_gain, territory_after,
 			"territory score sums both auras")
 	end)
 
