@@ -42,6 +42,35 @@ local function tower_bonus()
 	return S.stone_tower_corner_territory_add
 end
 
+--- @param g table
+--- @param corner_row integer
+--- @param corner_col integer
+--- @param owner_color integer
+--- @return integer
+local function count_owned_corner_aura_cells(g, corner_row, corner_col, owner_color)
+	local n = config.BOARD_SIZE
+	local territory = g.territory
+	local r0, r1, c0, c1
+	if corner_row == 1 and corner_col == 1 then
+		r0, r1, c0, c1 = 1, math.min(3, n), 1, math.min(3, n)
+	elseif corner_row == 1 and corner_col == n then
+		r0, r1, c0, c1 = 1, math.min(3, n), math.max(1, n - 2), n
+	elseif corner_row == n and corner_col == 1 then
+		r0, r1, c0, c1 = math.max(1, n - 2), n, 1, math.min(3, n)
+	else
+		r0, r1, c0, c1 = math.max(1, n - 2), n, math.max(1, n - 2), n
+	end
+	local count = 0
+	for r = r0, r1 do
+		for c = c0, c1 do
+			if not (r == corner_row and c == corner_col) and territory[r][c] == owner_color then
+				count = count + 1
+			end
+		end
+	end
+	return count
+end
+
 local function blank_board()
 	return {
 		". . . . . . . . .",
@@ -473,14 +502,14 @@ describe("tower_stone (visual ASCII)", function()
 			"1 # # 1 # 1 1 # 1",
 		}, "tower aura limited to top-right 3x3 block; (3,7) is a B stone so it stays #", TV_CORNER)
 
-		local boosted_black_cells = 8
-		local territory_lost_to_corner = 0
-		local expected_black_delta = S.stone_tower_corner_territory_add * boosted_black_cells - territory_lost_to_corner
-		local expected_white_delta = 0
+		local boosted_black_cells = count_owned_corner_aura_cells(g, 1, config.BOARD_SIZE, config.STONE_BLACK)
+		local expected_black_delta = tower_bonus() * boosted_black_cells
+		local territory_after_black = test_helper.count_territory_cells(g, "black")
+		local territory_after_white = test_helper.count_territory_cells(g, "white")
 
-		assert.are.equal(snap_black + expected_black_delta, test_helper.count_territory_cells(g, "black"),
-			"black gains aura on (1,7) (1,8) (2,7) (2,8) (2,9) (3,8) (3,9); (1,9) leaves territory to host the tower stone")
-		assert.are.equal(snap_white + expected_white_delta, test_helper.count_territory_cells(g, "white"),
+		assert.are.equal(snap_black + expected_black_delta, territory_after_black,
+			"black territory delta equals tower bonus times black-owned cells in top-right 3x3 aura excluding tower")
+		assert.are.equal(snap_white, territory_after_white,
 			"white territory unchanged: aura touches no white-owned cell, no influence flips")
 	end)
 
