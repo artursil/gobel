@@ -227,6 +227,33 @@ M.plus_stone = {
 	},
 }
 
+M.energy_stone = {
+	id = "energy_stone",
+	type = "stone",
+	name = "Energy Stone",
+	description = "On placement, adds "
+		.. tostring(P.energy_stone_gain)
+		.. " energy (clamped to max; does not raise max energy).",
+	rarity = "common",
+	probability = 1.0,
+	cost = 1,
+	depiction = "Bolt center mark",
+	graphic = { draw_key = "star" },
+	visual = {
+		color = { 0.85, 0.78, 0.35 },
+		sprite = "sprites/stones/special.png",
+	},
+	effects = {
+		{
+			effect_name = "add_energy",
+			macro = "playing_stones",
+			sub = "points",
+			value = P.energy_stone_gain,
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.wall = {
 	id = "wall",
 	type = "stone",
@@ -276,7 +303,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"points_stone",
 	"influence_stone",
 	"tower_stone",
-	"energy_stone",
 	"diagonal_stone",
 	"line_stone",
 	"kamikaze_stone",

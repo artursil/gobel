@@ -4,6 +4,7 @@
 --- @module objects.effects
 
 local config = require("config")
+local energy = require("energy")
 local board = require("board")
 local queries = require("single_game.resolver.state_queries")
 local helpers = require("objects.effects_helpers")
@@ -31,6 +32,30 @@ function M.add_points(effect)
 		conditions = effect.conditions,
 		apply = function(state, owner)
 			state.scores.points[owner] = state.scores.points[owner] + effect.value
+		end,
+	}
+end
+
+--- Add energy effect builder (on placement; clamped to energy_max).
+--- @param effect table: {effect_name, phase, value, priority, conditions?}
+--- @return table: {type, phase, value, priority, conditions?, apply}
+function M.add_energy(effect)
+	local sub = effect.sub or effect.phase or "points"
+	return {
+		type = "ADD_ENERGY",
+		phase = sub,
+		macro = effect.macro,
+		sub = sub,
+		value = effect.value,
+		priority = effect.priority or 10,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			local side = owner == config.OWNER_BLACK and "black" or "white"
+			local player = require("match_state").player_for_color(state, side)
+			if not player then
+				return
+			end
+			energy.gain(player.resources, effect.value)
 		end,
 	}
 end

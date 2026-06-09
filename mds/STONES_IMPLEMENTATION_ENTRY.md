@@ -138,7 +138,7 @@ Visual specs assert resolver-visible game state only.
 **description:** Economy stone for immediate energy gain with no max-energy change.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - On placement, increase current energy by `ENERGY_STONE_GAIN`.
 - Does not modify `max_energy`.
 - No delayed/recurring payout from this stone.
@@ -153,7 +153,7 @@ Visual specs assert resolver-visible game state only.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
