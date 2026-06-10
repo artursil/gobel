@@ -35,6 +35,26 @@ function M.add_points(effect)
 	}
 end
 
+--- Kamikaze sacrifice effect builder: immediate points on placement (board self-removal handled in resolver).
+--- @param effect table: {effect_name, macro?, sub?, value?, priority?, conditions?}
+--- @return table: {type, phase, value, priority, conditions?, apply}
+function M.kamikaze_sacrifice(effect)
+	local sub = effect.sub or effect.phase or "points"
+	local value = effect.value or stone_params.kamikaze_points_bonus
+	return {
+		type = "KAMIKAZE_SACRIFICE",
+		phase = sub,
+		macro = effect.macro or "playing_stones",
+		sub = sub,
+		value = value,
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			state.scores.points[owner] = state.scores.points[owner] + value
+		end,
+	}
+end
+
 --- Add multiplier effect builder.
 --- @param effect table: {effect_name, phase, value, priority, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
@@ -615,7 +635,7 @@ function M.pattern_plus_mult(effect)
 			local placed_plus = false
 			if place_r and place_c then
 				local placed = board_after[place_r][place_c]
-				placed_plus = placed and placed.kind == "plus_stone"
+				placed_plus = placed and not board.is_empty(placed) and placed.kind == "plus_stone"
 			end
 			local to_score = {}
 			for i = 1, #newly_completed do

@@ -380,7 +380,7 @@ local function stone_placement_message(stone_def, resolved_effects)
 	end
 	local name = stone_def.name
 	local r = resolved_effects[1]
-	if r.type == "ADD_POINTS" then
+	if r.type == "ADD_POINTS" or r.type == "KAMIKAZE_SACRIFICE" then
 		return string.format("%s placement: +%d points", name, r.value)
 	end
 	if r.type == "ADD_MULT" then
@@ -395,7 +395,25 @@ local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
 	mult_control_streak = true,
+	kamikaze_sacrifice = true,
 }
+
+--- @param resolved table|nil
+--- @return boolean
+local function is_kamikaze_sacrifice_resolved(resolved)
+	return resolved ~= nil and resolved.type == "KAMIKAZE_SACRIFICE"
+end
+
+--- @param resolved_effects table
+--- @return boolean
+local function has_kamikaze_sacrifice_effect(resolved_effects)
+	for i = 1, #resolved_effects do
+		if is_kamikaze_sacrifice_resolved(resolved_effects[i]) then
+			return true
+		end
+	end
+	return false
+end
 
 --- @param stone_def table
 --- @param state table
@@ -474,6 +492,14 @@ local function round_effects_from_resolved(resolved_effects)
 				value = r.value,
 				priority = r.priority or 10,
 			}
+		elseif r.type == "KAMIKAZE_SACRIFICE" then
+			round[i] = {
+				effect_name = "kamikaze_sacrifice",
+				macro = "playing_stones",
+				sub = "points",
+				value = r.value,
+				priority = r.priority or 10,
+			}
 		elseif r.type == "ADD_MULT" then
 			round[i] = {
 				effect_name = "add_mult",
@@ -544,6 +570,10 @@ local function run_event_queue(state, event_queue)
 			state.last_opponent_move = { stone_id = event.stone_id, row = event.row, col = event.col, actor = event.actor }
 			local actor_state = match_state.player_for_color(state, event.actor)
 			actor_state.prisoners = actor_state.prisoners + event.captures
+			if event.kamikaze_opponent_prisoner then
+				local opp_state = match_state.player_for_color(state, opponent_color(event.actor))
+				opp_state.prisoners = (opp_state.prisoners or 0) + 1
+			end
 			if event.stone_index and actor_state.stones.playable_stones[event.stone_index] == event.stone_id then
 				table.remove(actor_state.stones.playable_stones, event.stone_index)
 			elseif remove_first_stone_id(actor_state.stones.playable_stones, event.stone_id) then
@@ -808,9 +838,18 @@ local function compile_place_stone_events(state, action)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
-		if not resolved or type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then
+		if not resolved or type(resolved) ~= "table" then
 			return nil, "Stone behavior produced invalid effect"
 		end
+		local valid_type = resolved.type == "ADD_POINTS"
+			or resolved.type == "ADD_MULT"
+			or resolved.type == "KAMIKAZE_SACRIFICE"
+		if not valid_type or type(resolved.value) ~= "number" then
+			return nil, "Stone behavior produced invalid effect"
+		end
+	end
+	if has_kamikaze_sacrifice_effect(resolved_effects) then
+		new_board[row][col] = config.STONE_NONE
 	end
 	local placement_round = round_effects_from_resolved(resolved_effects)
 	local events = {
@@ -827,6 +866,8 @@ local function compile_place_stone_events(state, action)
 			col = col,
 			stone_effects = placement_round,
 			resolved_stone_effects = resolved_effects,
+			kamikaze_opponent_prisoner = has_kamikaze_sacrifice_effect(resolved_effects)
+				and stone_params.kamikaze_self_removal_counts_as_prisoner,
 		},
 	}
 	return events, nil

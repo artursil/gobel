@@ -273,7 +273,7 @@ Comment: should work the same way wall stone does, so we get points only placeme
 **description:** Sacrifice stone with illegal-placement override and immediate self-removal payout.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Placement legality override applies to self-atari/no-liberty placements for this stone.
 - On placement resolve, stone is removed from board.
 - Add `KAMIKAZE_POINTS_BONUS` points once.
@@ -289,7 +289,7 @@ Comment: should work the same way wall stone does, so we get points only placeme
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

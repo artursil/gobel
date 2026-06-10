@@ -227,6 +227,33 @@ M.plus_stone = {
 	},
 }
 
+M.kamikaze_stone = {
+	id = "kamikaze_stone",
+	type = "stone",
+	name = "Kamikaze Stone",
+	description = "Sacrifice stone that may enter zero-liberty cells, pays "
+		.. tostring(P.kamikaze_points_bonus)
+		.. " points once, then removes itself from the board.",
+	rarity = "uncommon",
+	probability = 0.7,
+	cost = 1,
+	depiction = "Burst mark",
+	graphic = { draw_key = "star" },
+	visual = {
+		color = { 0.85, 0.35, 0.3 },
+		sprite = "sprites/stones/special.png",
+	},
+	effects = {
+		{
+			effect_name = "kamikaze_sacrifice",
+			macro = "playing_stones",
+			sub = "points",
+			value = P.kamikaze_points_bonus,
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.wall = {
 	id = "wall",
 	type = "stone",
@@ -279,7 +306,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"energy_stone",
 	"diagonal_stone",
 	"line_stone",
-	"kamikaze_stone",
 	"enclosure_stone",
 	"control_stone",
 	"blockade_stone",

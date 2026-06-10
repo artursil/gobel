@@ -22,6 +22,7 @@ end
 local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
+	kamikaze_sacrifice = true,
 }
 
 local function resolved_from_effect_defs(stone_def)
@@ -82,6 +83,14 @@ function M.round_effect_defs(resolved_effects)
 		if r.type == "ADD_POINTS" then
 			round[i] = {
 				effect_name = "add_points",
+				macro = "playing_stones",
+				sub = "points",
+				value = r.value,
+				priority = r.priority or 10,
+			}
+		elseif r.type == "KAMIKAZE_SACRIFICE" then
+			round[i] = {
+				effect_name = "kamikaze_sacrifice",
 				macro = "playing_stones",
 				sub = "points",
 				value = r.value,
