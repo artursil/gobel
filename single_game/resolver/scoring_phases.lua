@@ -17,6 +17,7 @@ M.SUB_ORDER = { "territory", "points", "mult" }
 
 M.TERRITORY_STEP_DISTANCE = "distance"
 M.TERRITORY_STEP_VALUE = "value"
+M.TERRITORY_STEP_OVERRIDE = "override"
 
 M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	add_points = true,
@@ -27,6 +28,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 M.BOARD_TERRITORY_EFFECT_NAMES = {
 	distance_bonus = true,
 	double_corner_nearby_territory = true,
+	control_territory_override = true,
 }
 
 --- Board stones reapply these on every territory recalc; ``macro`` on the def is ignored.

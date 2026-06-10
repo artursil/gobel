@@ -218,6 +218,7 @@ local function apply_territory_sub(state, macro)
 	effect_manager.apply_sub_phase(state, macro, "territory", scoring_phases.TERRITORY_STEP_DISTANCE)
 	territory.begin_assignment(state)
 	effect_manager.apply_sub_phase(state, macro, "territory", scoring_phases.TERRITORY_STEP_VALUE)
+	effect_manager.apply_sub_phase(state, macro, "territory", scoring_phases.TERRITORY_STEP_OVERRIDE)
 	territory.finish_assignment(state)
 end
 

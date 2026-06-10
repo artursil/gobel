@@ -37,6 +37,7 @@ local function new_tile()
 		influence = { B = 0, W = 0 },
 		region_id = nil,
 		override_owner = nil,
+		override_contested = false,
 		owner = nil,
 	}
 end
@@ -342,6 +343,18 @@ local function override_decision(owner, black_stones, white_stones, nearest_blac
 	}
 end
 
+--- Builds provenance entry when opposing control overrides cancel on the same cell.
+--- @param nearest_black table
+--- @param nearest_white table
+--- @return table
+local function override_contested_decision(nearest_black, nearest_white)
+	return {
+		mode = "override_contested",
+		owner = nil,
+		contributors = { B = nearest_black, W = nearest_white },
+	}
+end
+
 --- Resolves owner and provenance for one empty tile.
 --- Decision order: special override -> enclosure owner -> regular distance/count.
 --- @param tile table
@@ -360,6 +373,12 @@ end
 local function resolve_empty_tile(tile, row, col, regions, walls, black_stones, white_stones, distance_modifiers, print_debug)
 	local regular_owner, nearest_black, nearest_white =
 		resolve_regular_owner(row, col, black_stones, white_stones, distance_modifiers)
+	if tile.override_contested then
+		if print_debug then
+			print("[Territory] override contested at", row, col)
+		end
+		return nil, override_contested_decision(nearest_black, nearest_white)
+	end
 	if tile.override_owner then
 		if print_debug then
 			print("[Territory] override at", row, col, "->", tile.override_owner)
@@ -536,8 +555,13 @@ function M.compute_from_board(b, territory_mode)
 			end,
 		},
 	}
-	effect_manager.apply_phase(temp_state, "distance")
-	effect_manager.apply_phase(temp_state, "territory")
+	local scoring_phases = require("single_game.resolver.scoring_phases")
+	effect_manager.apply_sub_phase(temp_state, "playing_stones", "territory", scoring_phases.TERRITORY_STEP_DISTANCE)
+	temp_state.territory_tiles = tiles
+	temp_state.enclosure_walls = walls
+	temp_state.regions = regions
+	effect_manager.apply_sub_phase(temp_state, "playing_stones", "territory", scoring_phases.TERRITORY_STEP_VALUE)
+	effect_manager.apply_sub_phase(temp_state, "playing_stones", "territory", scoring_phases.TERRITORY_STEP_OVERRIDE)
 	local territory_grid, decision_sources = finish_resolve_owners(tiles, regions, walls, b, temp_state, false)
 	return territory_grid, decision_sources, temp_state.territory_value
 end

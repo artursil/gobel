@@ -227,6 +227,32 @@ M.plus_stone = {
 	},
 }
 
+M.control_stone = {
+	id = "control_stone",
+	type = "stone",
+	name = "Control Stone",
+	description = "Overrides orthogonal adjacent empty cells to your color after enclosure and influence; still counts for regular distance assignment.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Control ring mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.58, 0.42, 0.62 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "control_territory_override",
+			macro = "playing_stones",
+			sub = "territory",
+			territory_step = "override",
+			territory_scope = "board",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.wall = {
 	id = "wall",
 	type = "stone",
@@ -281,7 +307,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"line_stone",
 	"kamikaze_stone",
 	"enclosure_stone",
-	"control_stone",
 	"blockade_stone",
 	"defence_stone",
 	"money_field_stone",
