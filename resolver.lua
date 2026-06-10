@@ -405,6 +405,7 @@ end
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
 local territory_resolver = require("single_game.resolver.territory")
 local territory_stone_payout = require("single_game.resolver.territory_stone_payout")
+local stone_removal = require("single_game.resolver.stone_removal")
 
 local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
@@ -658,17 +659,21 @@ local function run_event_queue(state, event_queue)
 		local event = event_queue[i]
 		if event.kind == "BOARD_APPLY" then
 			local old_board = state.board
+			stone_removal.apply_board_replacement_diff(state, old_board, event.board, { capturer = event.actor })
 			stone_removal_effects.apply_for_board_replacement(state, old_board, event.board, event.actor)
+			stone_removal.preserve_cell_metadata(old_board, event.board)
 			stone_timers.clear_removed_stones(state, old_board, event.board)
 			if event.row and event.col and event.stone_id then
 				territory_resolver.capture_placement_snapshot_if_needed(state, event.row, event.col, event.stone_id)
 				territory_stone_payout.record_placement_snapshot(state, event.row, event.col, event.stone_id)
 			end
 			state.board = event.board
+			stone_removal.install_board_hooks(state)
 			defence_solidity_network.recompute_board(state.board)
 			state.ko_ban = event.ko_ban
 			if event.row and event.col then
 				territory_control_rounds.clear_cell(state, event.row, event.col)
+				stone_removal.mark_placed_via_play(state, event.row, event.col)
 				local stone_def = content.get_stone(event.stone_id)
 				if stone_def and stone_def.effects then
 					local placement_owner = owner_for_side(event.actor)
@@ -770,8 +775,10 @@ local function push_place_stone_score_events(state, actor, points_before, mult_b
 		}
 	end
 	state._suppress_recurring_end_of_turn = true
+	state._skip_board_end_of_turn_effects = true
 	recalc_all_scores(state, "end_of_turn", owner_for_side(actor))
 	state._suppress_recurring_end_of_turn = nil
+	state._skip_board_end_of_turn_effects = nil
 	local points_after = actor_state.score.points or 0
 	local mult_after = actor_state.score.plus_mult or 1
 	local eot_points_delta = points_after - points_after_stones

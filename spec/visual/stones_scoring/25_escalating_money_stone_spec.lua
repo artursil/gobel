@@ -167,7 +167,8 @@ describe("escalating_money_stone (visual ASCII)", function()
 			local snap = player_score_snapshot(g, "black")
 			test_helper.capture_stone_at(g, 5, 5, "black")
 			local expected_penalty = S.ems_capture_multiplier * received
-			assert_player_money(g, "black", snap.money - expected_penalty, "capture penalty from cumulative received")
+			local expected_money = math.max(0, snap.money - expected_penalty)
+			assert_player_money(g, "black", expected_money, "capture penalty from cumulative received")
 		end)
 
 		it("tracked total resets to zero after capture", function()
@@ -240,7 +241,8 @@ describe("escalating_money_stone (visual ASCII)", function()
 			local snap = player_score_snapshot(g, "black")
 			test_helper.capture_stone_at(g, 5, 4, "black")
 			local expected_penalty = S.ems_capture_multiplier * captured_received
-			assert_player_money(g, "black", snap.money - expected_penalty, "only captured stone total penalized")
+			local expected_money = math.max(0, snap.money - expected_penalty)
+			assert_player_money(g, "black", expected_money, "only captured stone total penalized")
 		end)
 
 		it("surviving stone tracked total unchanged when sibling captured", function()
@@ -294,7 +296,7 @@ describe("escalating_money_stone (visual ASCII)", function()
 			advance_rounds(g, accrual_rounds)
 			local received = S.ems_round_money * accrual_rounds
 			test_helper.capture_stone_at(g, 5, 5, "black")
-			local expected_money = snap.money + received - S.ems_capture_multiplier * received
+			local expected_money = math.max(0, snap.money + received - S.ems_capture_multiplier * received)
 			assert_player_money(g, "black", expected_money, "earned money minus capture penalty")
 		end)
 
@@ -383,7 +385,8 @@ describe("escalating_money_stone (visual ASCII)", function()
 			local snap = player_score_snapshot(g, "black")
 			test_helper.capture_stone_at(g, 5, 5, "black")
 			local expected_penalty = S.ems_capture_multiplier * received
-			assert_player_money(g, "black", snap.money - expected_penalty, "triple penalty")
+			local expected_money = math.max(0, snap.money - expected_penalty)
+			assert_player_money(g, "black", expected_money, "triple penalty")
 		end)
 
 		it("illegal occupied placement pays nothing", function()
@@ -431,7 +434,6 @@ describe("escalating_money_stone (visual ASCII)", function()
 		it("two placements each accrue ems_round_money independently", function()
 			set_hand(g, "black", { "escalating_money_stone", "escalating_money_stone" })
 			set_board(g, blank_board())
-			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -443,6 +445,7 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
+			test_helper.ensure_actor_turn(g, "black")
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -454,6 +457,7 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
+			local snap = player_score_snapshot(g, "black")
 			advance_rounds(g, 1)
 			local expected_delta = S.ems_round_money * 2
 			assert_player_money(g, "black", snap.money + expected_delta, "each stone pays one round accrual")

@@ -967,6 +967,49 @@ function M.add_money(effect)
 	}
 end
 
+--- Each owner end_of_turn: add ``ems_round_money`` to owner money and track cumulative received on this cell.
+--- @param effect table
+--- @return table
+function M.escalating_money_tracker(effect)
+	return {
+		type = "ESCALATING_MONEY_TRACKER",
+		phase = effect.sub or "points",
+		macro = effect.macro or "end_of_turn",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			local cell = state.board[row] and state.board[row][col]
+			if not cell or board.is_empty(cell) or cell.kind ~= "escalating_money_stone" then
+				return
+			end
+			local stone_owner = cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
+			if stone_owner ~= owner then
+				return
+			end
+			if cell.placed_turn_number ~= nil and cell.placed_turn_number == (state.turn_number or 1) then
+				return
+			end
+			if state._skip_board_end_of_turn_effects then
+				return
+			end
+			local stone_stored_values = require("single_game.resolver.stone_stored_values")
+			local economy = require("economy")
+			local side = owner == config.OWNER_WHITE and "white" or "black"
+			local player = require("match_state").player_for_color(state, side)
+			local round_money = stone_params.ems_round_money
+			economy.gain(player.resources, round_money)
+			local next_total = stone_stored_values.get(state, row, col) + round_money
+			stone_stored_values.set(state, row, col, next_total)
+		end,
+	}
+end
+
+--- @param state table
+--- @return integer|nil, integer|nil
 local function placement_coords(state)
 	local move = state.last_opponent_move
 	if move and move.row and move.col then
@@ -1774,7 +1817,8 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 		or resolved.type == "TAX_ENCLOSURE_ENEMIES"
 		or resolved.type == "TERRITORY_TO_POINTS"
 		or resolved.type == "TERRITORY_TO_MULTIPLIER"
-		or resolved.type == "ESCALATING_POINTS_BANK" then
+		or resolved.type == "ESCALATING_POINTS_BANK"
+		or resolved.type == "ESCALATING_MONEY_TRACKER" then
 		resolved.apply = function(current_state)
 			base_apply(current_state, owner, row, col)
 		end

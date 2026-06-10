@@ -817,6 +817,30 @@ M.escalating_points_stone = {
 	},
 }
 
+M.escalating_money_stone = {
+	id = "escalating_money_stone",
+	type = "stone",
+	name = "Escalating Money Stone",
+	description = "Each owner end of turn adds money and tracks cumulative received; on capture the owner pays a multiple of total received.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Coin stack mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.78, 0.68, 0.28 },
+		sprite = "sprites/stones/special.png",
+	},
+	effects = {
+		{
+			effect_name = "escalating_money_tracker",
+			macro = "end_of_turn",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 --- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
 --- @param id string
 --- @return table
@@ -839,7 +863,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"escalating_money_stone",
 	"high_power_money_loss_stone",
 }
 

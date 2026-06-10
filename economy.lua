@@ -24,4 +24,28 @@ function M.spend(resources, amount)
 	return true
 end
 
+--- Subtracts money and clamps the balance at zero.
+--- @param resources table
+--- @param amount number
+--- @return boolean
+function M.deduct_clamped(resources, amount)
+	if amount <= 0 then
+		return true
+	end
+	resources.money = math.max(0, (resources.money or 0) - amount)
+	return true
+end
+
+--- Applies a full capture penalty, allowing negative balances.
+--- @param resources table
+--- @param amount number
+--- @return boolean
+function M.deduct_penalty(resources, amount)
+	if amount <= 0 then
+		return true
+	end
+	resources.money = (resources.money or 0) - amount
+	return true
+end
+
 return M
