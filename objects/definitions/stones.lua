@@ -251,6 +251,35 @@ M.wall = {
 	},
 }
 
+M.escalating_points_stone = {
+	id = "escalating_points_stone",
+	type = "stone",
+	name = "Escalating Points Stone",
+	description = "Each end of turn adds "
+		.. tostring(P.eps_round_points)
+		.. " points to owner and this stone bank; enemy capture grants "
+		.. tostring(P.eps_capture_multiplier)
+		.. "× bank to the captor.",
+	rarity = "uncommon",
+	probability = 0.8,
+	cost = 1,
+	depiction = "Stacked point tiers",
+	graphic = { draw_key = "diamond" },
+	visual = {
+		color = { 0.55, 0.72, 0.45 },
+		sprite = "sprites/stones/power.png",
+	},
+	effects = {
+		{
+			effect_name = "escalating_points_bank",
+			macro = "end_of_turn",
+			sub = "points",
+			value = P.eps_round_points,
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 --- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
 --- @param id string
 --- @return table
@@ -292,7 +321,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"self_destruct_timed_stone",
 	"territory_to_points_stone",
 	"territory_to_multiplier_stone",
-	"escalating_points_stone",
 	"escalating_money_stone",
 	"high_power_money_loss_stone",
 }

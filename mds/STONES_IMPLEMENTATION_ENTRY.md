@@ -667,7 +667,7 @@ Comment: this stone should give some number of points every round, but then when
 **description:** Per-round point generator with capture transfer multiplier.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - While on board, each owner `end_of_turn` adds `EPS_ROUND_POINTS` to this stone's accumulated bank.
 - Also add `EPS_ROUND_POINTS` to owner points each round (generator behavior).
 - On capture, opponent gains `EPS_CAPTURE_MULTIPLIER * accumulated_bank`.
@@ -684,7 +684,7 @@ Comment: this stone should give some number of points every round, but then when
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

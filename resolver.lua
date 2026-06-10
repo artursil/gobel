@@ -12,6 +12,8 @@ local card_play_memory = require("single_game.resolver.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
+local stone_removal_effects = require("single_game.resolver.stone_removal_effects")
+local effects_helpers = require("objects.effects_helpers")
 
 local M = {}
 
@@ -535,6 +537,8 @@ local function run_event_queue(state, event_queue)
 	for i = 1, #event_queue do
 		local event = event_queue[i]
 		if event.kind == "BOARD_APPLY" then
+			local old_board = state.board
+			stone_removal_effects.apply_for_board_replacement(state, old_board, event.board, event.actor)
 			state.board = event.board
 			state.ko_ban = event.ko_ban
 			if event.row and event.col then
@@ -560,6 +564,9 @@ local function run_event_queue(state, event_queue)
 			if def and event.resolved_stone_effects then
 				messages.push(state.messages, stone_placement_message(def, event.resolved_stone_effects))
 				push_status_from_messages(state)
+			end
+			if event.stone_id == "escalating_points_stone" and event.row and event.col then
+				effects_helpers.set_stone_stored_value(state, event.row, event.col, 0)
 			end
 		elseif event.kind == "PASS" then
 			state.consecutive_passes = state.consecutive_passes + 1
@@ -603,7 +610,9 @@ local function push_place_stone_score_events(state, actor, points_before, mult_b
 			value = mult_stones_delta,
 		}
 	end
+	state._suppress_recurring_end_of_turn = true
 	recalc_all_scores(state, "end_of_turn")
+	state._suppress_recurring_end_of_turn = nil
 	local points_after = actor_state.score.points or 0
 	local mult_after = actor_state.score.plus_mult or 1
 	local eot_points_delta = points_after - points_after_stones
@@ -1150,5 +1159,47 @@ function M.flush_pending_turn_if_ready(state)
 	score_display.end_rollout(state)
 	begin_next_turn(state)
 end
+
+--- Runs removal hooks when a board stone is cleared (capture or voluntary removal).
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @param captor_side string|nil ``"black"`` | ``"white"`` removing side; nil skips enemy transfer
+--- @return nil
+function M.apply_board_stone_removal(state, row, col, captor_side)
+	local cell = state.board and state.board[row] and state.board[row][col]
+	if not cell or board.is_empty(cell) then
+		return
+	end
+	stone_removal_effects.on_stone_removed(state, row, col, cell, captor_side)
+end
+
+--- Visual specs remove stones via ``capture_stone_at``; wire removal hooks when test helper is loaded.
+--- @return nil
+local function wire_visual_test_capture_stone_at()
+	local ok, test_helper = pcall(require, "spec.test_helper")
+	if not ok or not test_helper or test_helper._gobel_capture_removal_wired then
+		return
+	end
+	local spec_helper = require("spec.spec_helper")
+	function test_helper.capture_stone_at(g, row, col, captor_side)
+		local cell = g.board[row][col]
+		if board.is_empty(cell) then
+			return
+		end
+		M.apply_board_stone_removal(g, row, col, captor_side)
+		g.board[row][col] = config.STONE_NONE
+		g.territory, g.territory_decision_sources, g.territory_value =
+			spec_helper.territory_map(g.board, g.territory_mode or "regional")
+		effects_helpers.set_stone_stored_value(g, row, col, 0)
+		local key = row .. ":" .. col
+		if g.board_cell_timers then
+			g.board_cell_timers[key] = nil
+		end
+	end
+	test_helper._gobel_capture_removal_wired = true
+end
+
+wire_visual_test_capture_stone_at()
 
 return M
