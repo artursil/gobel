@@ -16,6 +16,7 @@ local territory = require("single_game.resolver.territory")
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
 local card_play_memory = require("single_game.resolver.card_play_memory")
 local scoring_phases = require("single_game.resolver.scoring_phases")
+local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
 
 local M = {}
 
@@ -259,6 +260,7 @@ function M.resolve(state, opts)
 	if macro == "end_of_turn" then
 		card_play_memory.flush_just_played_to_history(state)
 		tick_timed_effects(state)
+		anti_capture_immunity.tick(state)
 		tick_temporary_stances(state)
 		if (state.turn_number or 1) % 2 == 0 then
 			territory_control_rounds.tick(state)

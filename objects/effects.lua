@@ -13,6 +13,7 @@ local shared_stones_effects = require("objects.definitions.shared_stones_effects
 local stone_params = require("objects.parameters.stones")
 local stance_params = require("objects.parameters.stances")
 local card_params = require("objects.parameters.cards")
+local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
 
 local M = {}
 
@@ -652,6 +653,26 @@ function M.pattern_plus_mult(effect)
 					board_after = board_after,
 				})
 			end
+		end,
+	}
+end
+
+--- Grants temporary capture immunity to the placed stone and its orthogonally connected own group.
+--- @param effect table
+--- @return table
+function M.anti_capture_immunity(effect)
+	return {
+		type = "ANTI_CAPTURE_IMMUNITY",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, _owner, row, col, board_snapshot)
+			if row == nil or col == nil then
+				return
+			end
+			anti_capture_immunity.grant_at_placement(state, board_snapshot, row, col)
 		end,
 	}
 end
