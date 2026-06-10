@@ -434,7 +434,6 @@ describe("escalating_money_stone (visual ASCII)", function()
 		it("two placements each accrue ems_round_money independently", function()
 			set_hand(g, "black", { "escalating_money_stone", "escalating_money_stone" })
 			set_board(g, blank_board())
-			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -446,6 +445,7 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
+			test_helper.ensure_actor_turn(g, "black")
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -457,8 +457,9 @@ describe("escalating_money_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
+			local snap = player_score_snapshot(g, "black")
 			advance_rounds(g, 1)
-			local expected_delta = S.ems_round_money
+			local expected_delta = S.ems_round_money * 2
 			assert_player_money(g, "black", snap.money + expected_delta, "each stone pays one round accrual")
 		end)
 	end)
