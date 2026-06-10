@@ -72,6 +72,11 @@ def view_issue(number: int) -> str:
     return _run_gh(["issue", "view", str(number)])
 
 
+def issue_title(number: int) -> str:
+    """Return the GitHub issue title for ``number``."""
+    return _run_gh(["issue", "view", str(number), "--json", "title", "-q", ".title"])
+
+
 def create_escalation_issue(
     *,
     source_issue: int,
@@ -99,6 +104,32 @@ def create_escalation_issue(
 
 def comment_on_issue(number: int, body: str) -> None:
     _run_gh(["issue", "comment", str(number), "--body", body])
+
+
+def create_pull_request(
+    *,
+    title: str,
+    body: str,
+    head: str,
+    base: str,
+    cwd: Path | None = None,
+) -> str:
+    """Open a GitHub pull request and return its URL."""
+    return _run_gh(
+        [
+            "pr",
+            "create",
+            "--base",
+            base,
+            "--head",
+            head,
+            "--title",
+            title,
+            "--body",
+            body,
+        ],
+        cwd=cwd,
+    )
 
 
 def parse_plan(text: str) -> list[PlannedIssue]:

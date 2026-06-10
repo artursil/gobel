@@ -74,13 +74,30 @@ python agents_workflow/workflows/single_feature.py --issue 42 --visual
 
 ### `parallel_tests_exist.py`
 
-1. **Planner** (`plan-prompt.md`) → unblocked issues
-2. Up to **4** parallel `tests_exist` runs
-3. **Merger** merges completed branches
+1. **Planner** (`plan-prompt.md`) → unblocked issues, **or** explicit `--process` list
+2. Parallel `tests_exist` runs (default max **8**)
+3. **Merger** merges into a new integration branch, **pushes**, and **opens a PR** for your review (does not merge to `main` directly)
 
 ```bash
+# Planner picks ready-for-agent / unblocked tests_exist issues
 python agents_workflow/workflows/parallel_tests_exist.py
+
+# Run issues 6-15; PR merges successful completions into agent/merge-issues-6-15
+python agents_workflow/workflows/parallel_tests_exist.py --process 6-15
+
+# Run 8-12, then PR-merge a different already-done set
+python agents_workflow/workflows/parallel_tests_exist.py --process 8-12 --merge 4-7
+
+# Merge only (no new agent runs) → opens review PR
+python agents_workflow/workflows/parallel_tests_exist.py --merge 4-6
+
+# Custom integration branch name
+python agents_workflow/workflows/parallel_tests_exist.py --merge 4-6 --merge-branch agent/merge-stones-batch-1
 ```
+
+Issue lists use ranges and commas: `3-15`, `4,6,8-10`, `4, 6, 8-10`.
+
+Default integration branch: `agent/merge-issues-4-6` (from the `--merge` issue list). PR targets `main` unless `--base-branch` is set. Issues are linked with `Closes #N` in the PR body; they close when **you** merge the PR on GitHub.
 
 ### `parallel_features.py`
 

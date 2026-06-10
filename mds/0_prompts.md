@@ -107,3 +107,5 @@ Please take inspiration from run.ts for workflows and from prompts/.md for writi
 - stone effects when held in hand?
 - capture stone
 - finish turn / advance_round / complete_full_round
+- energy not the state of the game, energy stone doesn't work as it supposed.
+- energy max, after run

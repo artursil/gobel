@@ -1,6 +1,8 @@
 # Merger
 
-Merge agent branches into the current branch for Gobel (Lua/LÖVE project).
+Merge agent branches into integration branch **`{{MERGE_BRANCH}}`** (based on **`{{BASE_BRANCH}}`**) for Gobel (Lua/LÖVE project).
+
+You are already checked out on `{{MERGE_BRANCH}}`. **Do not switch branches, push, or create a PR** — the workflow script publishes the branch and opens a PR after you finish.
 
 Branches to merge:
 
@@ -27,8 +29,10 @@ busted spec/unit spec/integration spec/visual
 
 After all merges, one commit if needed summarizing the merge.
 
-# CLOSE ISSUES
+# DO NOT
 
-Close each merged issue via `gh issue close`. Close parent PRD issues if fully satisfied.
+- Do **not** push to `origin`
+- Do **not** create a pull request
+- Do **not** close issues (the PR links them; the human merges after review)
 
 <promise>MERGE_COMPLETE</promise>
