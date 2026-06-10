@@ -841,6 +841,51 @@ M.escalating_money_stone = {
 	},
 }
 
+M.high_power_money_loss_stone = {
+	id = "high_power_money_loss_stone",
+	type = "stone",
+	name = "High Power Money Loss Stone",
+	description = "On placement adds +"
+		.. tostring(P.hpml_points_gain)
+		.. " points and +"
+		.. tostring(P.hpml_plus_mult_gain)
+		.. " plus mult, but costs "
+		.. tostring(P.hpml_money_loss)
+		.. " money.",
+	rarity = "rare",
+	probability = 0.5,
+	cost = 1,
+	depiction = "Split gain-loss mark",
+	graphic = { draw_key = "star" },
+	visual = {
+		color = { 0.82, 0.38, 0.32 },
+		sprite = "sprites/stones/special.png",
+	},
+	effects = {
+		{
+			effect_name = "add_points",
+			macro = "playing_stones",
+			sub = "points",
+			value = P.hpml_points_gain,
+			priority = P.default_effect_priority,
+		},
+		{
+			effect_name = "add_mult",
+			macro = "playing_stones",
+			sub = "mult",
+			value = P.hpml_plus_mult_gain,
+			priority = P.default_effect_priority,
+		},
+		{
+			effect_name = "add_money",
+			macro = "playing_stones",
+			sub = "points",
+			value = { amount = -P.hpml_money_loss },
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 --- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
 --- @param id string
 --- @return table
@@ -863,7 +908,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"high_power_money_loss_stone",
 }
 
 local TO_BE_IMPL_LATER_STONE_IDS = {

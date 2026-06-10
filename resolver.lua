@@ -411,6 +411,7 @@ local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
 	add_energy = true,
+	add_money = true,
 	mult_control_streak = true,
 	kamikaze_sacrifice = true,
 	money_field_enclosure_payout = true,

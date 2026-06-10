@@ -23,6 +23,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
 	add_energy = true,
+	add_money = true,
 	mult_control_streak = true,
 	defence_solidity_network = true,
 	kamikaze_sacrifice = true,
