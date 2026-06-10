@@ -463,6 +463,93 @@ local function count_controlled(territory_grid, b, state)
 	return black, white
 end
 
+--- @param territory_grid table
+--- @param row integer
+--- @param col integer
+--- @return "B"|"W"|nil
+function M.owner_at_territory_cell(territory_grid, row, col)
+	local row_cells = territory_grid[row]
+	if not row_cells then
+		return nil
+	end
+	local color = row_cells[col]
+	if color == config.STONE_BLACK then
+		return config.OWNER_BLACK
+	end
+	if color == config.STONE_WHITE then
+		return config.OWNER_WHITE
+	end
+	return nil
+end
+
+--- Weighted territory total for one owner on the current territory grid (matches ``spec_helper.territory_points``).
+--- @param state table
+--- @param owner "B"|"W"
+--- @return integer
+function M.total_territory_for_owner(state, owner)
+	local territory_grid = state.territory
+	if not territory_grid then
+		return 0
+	end
+	local color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
+	local territory_value = state.territory_value or {}
+	local n = config.BOARD_SIZE
+	local sum = 0
+	for r = 1, n do
+		local row_cells = territory_grid[r]
+		if row_cells then
+			for c = 1, n do
+				if row_cells[c] == color then
+					local weight = (territory_value[r] and territory_value[r][c]) or 1
+					sum = sum + weight
+				end
+			end
+		end
+	end
+	return sum
+end
+
+--- @param state table
+--- @return integer black
+--- @return integer white
+function M.count_controlled_totals(state)
+	if not state.territory then
+		return 0, 0
+	end
+	return count_controlled(state.territory, state.board, state)
+end
+
+--- Territory owner at ``row,col`` if the stone cell were empty, using the current assignment pass tiles.
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return "B"|"W"|nil
+function M.hypothetical_empty_owner(state, row, col)
+	local tiles = state.territory_tiles
+	local b = state.board
+	if not tiles or not b then
+		return nil
+	end
+	local n = config.BOARD_SIZE
+	local black_stones, white_stones = collect_stones_by_owner(b, n)
+	local tile = tiles[row] and tiles[row][col]
+	if not tile then
+		return nil
+	end
+	local owner = resolve_empty_tile(
+		tile,
+		row,
+		col,
+		state.regions,
+		state.enclosure_walls,
+		black_stones,
+		white_stones,
+		state.distance_modifiers,
+		false
+	)
+	return owner
+end
+
 --- @param regions table
 --- @return integer
 local function region_count(regions)

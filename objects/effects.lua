@@ -1615,6 +1615,28 @@ function M.enclosure_territory_multiply(row, col, effect_def)
 	}
 end
 
+local territory_stone_payout = require("single_game.resolver.territory_stone_payout")
+
+--- End-of-turn plus_mult from territory controlled by the owner of the stone cell.
+--- @param effect table
+--- @return table
+function M.territory_to_multiplier(effect)
+	return {
+		type = "TERRITORY_TO_MULTIPLIER",
+		phase = effect.sub or "mult",
+		macro = effect.macro or "end_of_turn",
+		sub = effect.sub or "mult",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, _owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			territory_stone_payout.apply_multiplier_payout(state, row, col)
+		end,
+	}
+end
+
 --- Double corner nearby territory effect: corner tower adds ``1`` to ``territory_value`` on every cell in the
 --- board-aligned ``3×3`` block anchored at that corner (excluding the tower cell). Stacks with prior cell values.
 --- @param row integer
@@ -1714,7 +1736,8 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 		or resolved.type == "LINE_GROUP_POINTS"
 		or resolved.type == "CONTROL_TERRITORY_OVERRIDE"
 		or resolved.type == "TAX_ENCLOSURE_ENEMIES"
-		or resolved.type == "TERRITORY_TO_POINTS" then
+		or resolved.type == "TERRITORY_TO_POINTS"
+		or resolved.type == "TERRITORY_TO_MULTIPLIER" then
 		resolved.apply = function(current_state)
 			base_apply(current_state, owner, row, col)
 		end

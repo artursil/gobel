@@ -763,6 +763,31 @@ M.self_destruct_timed_stone = {
 	},
 }
 
+M.territory_to_multiplier_stone = {
+	id = "territory_to_multiplier_stone",
+	type = "stone",
+	name = "Territory Mult Stone",
+	description = "Each end of turn, adds plus mult to the player who owns the territory at this cell, "
+		.. "based on that player's total controlled territory.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Territory multiplier sigil",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.55, 0.62, 0.78 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "territory_to_multiplier",
+			macro = "end_of_turn",
+			sub = "mult",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 --- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
 --- @param id string
 --- @return table
@@ -785,7 +810,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"territory_to_multiplier_stone",
 	"escalating_points_stone",
 	"escalating_money_stone",
 	"high_power_money_loss_stone",
