@@ -301,7 +301,7 @@ Comment: implementation details don't really match this description "if placed i
 **description:** Territory amplifier that doubles field values inside owner enclosure.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger condition: placed cell is in owner-enclosed territory.
 - Effect: all fields inside that enclosure region have territory value multiplied by `ENCLOSURE_STONE_MULTIPLIER`.
 - Multiplication applies to region fields, not only placed cell.
@@ -318,7 +318,7 @@ Comment: implementation details don't really match this description "if placed i
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

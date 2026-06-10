@@ -220,6 +220,33 @@ M.tower_stone = {
 	},
 }
 
+M.enclosure_stone = {
+	id = "enclosure_stone",
+	type = "stone",
+	name = "Enclosure Stone",
+	description = "When placed inside owner-enclosed territory, doubles field values in that enclosure.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Nested ring mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.55, 0.62, 0.48 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "enclosure_territory_multiply",
+			macro = "playing_stones",
+			sub = "territory",
+			territory_step = "value",
+			territory_scope = "board",
+			value = P.enclosure_stone_multiplier,
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.control_territory_stone = {
 	id = "control_territory_stone",
 	type = "stone",
@@ -506,7 +533,6 @@ end
 local UNIMPLEMENTED_STONE_IDS = {
 	"energy_stone",
 	"diagonal_stone",
-	"enclosure_stone",
 	"control_stone",
 	"blockade_stone",
 	"money_field_stone",

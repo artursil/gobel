@@ -284,6 +284,35 @@ local function inside_for_boundary(boundary_fields, n)
 	return regions[2]
 end
 
+--- All board cells in the interior pocket bounded by ``boundary_fields`` (empty and occupied).
+--- @param boundary_fields table[]
+--- @param n integer
+--- @return table[]|nil
+function M.interior_pocket_cells(boundary_fields, n)
+	return inside_for_boundary(boundary_fields, n)
+end
+
+--- Whether ``row,col`` lies in the interior pocket of ``wall`` (not only empty ``inside_fields``).
+--- @param wall table
+--- @param row integer
+--- @param col integer
+--- @param n integer|nil
+--- @return boolean
+function M.cell_in_wall_interior(wall, row, col, n)
+	n = n or config.BOARD_SIZE
+	local pocket = inside_for_boundary(wall.boundary_fields, n)
+	if not pocket then
+		return false
+	end
+	for i = 1, #pocket do
+		local cell = pocket[i]
+		if cell[1] == row and cell[2] == col then
+			return true
+		end
+	end
+	return false
+end
+
 local function boundary_signature(boundary_fields)
 	local keys = {}
 	for i = 1, #boundary_fields do

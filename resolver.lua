@@ -849,20 +849,7 @@ local function compile_place_stone_events(state, action)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
-<<<<<<< HEAD
-		if
-			not resolved
-			or type(resolved) ~= "table"
-			or (
-				resolved.type ~= "ADD_POINTS"
-				and resolved.type ~= "ADD_MULT"
-				and resolved.type ~= "ADD_ENERGY"
-			)
-			or type(resolved.value) ~= "number"
-		then
-=======
 		if not resolved or type(resolved) ~= "table" then
->>>>>>> agent/issue-10
 			return nil, "Stone behavior produced invalid effect"
 		end
 		local valid_type = resolved.type == "ADD_POINTS"

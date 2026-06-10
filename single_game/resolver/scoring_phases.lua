@@ -23,16 +23,14 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	add_mult = true,
 	add_energy = true,
 	mult_control_streak = true,
-<<<<<<< HEAD
 	defence_solidity_network = true,
-=======
 	kamikaze_sacrifice = true,
->>>>>>> agent/issue-10
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {
 	distance_bonus = true,
 	double_corner_nearby_territory = true,
+	enclosure_territory_multiply = true,
 }
 
 --- Board stones reapply these on every territory recalc; ``macro`` on the def is ignored.
