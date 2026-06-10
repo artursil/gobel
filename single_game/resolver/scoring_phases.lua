@@ -21,6 +21,7 @@ M.TERRITORY_STEP_VALUE = "value"
 M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
+	add_money = true,
 	mult_control_streak = true,
 }
 

@@ -22,6 +22,7 @@ end
 local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
+	add_money = true,
 }
 
 local function resolved_from_effect_defs(stone_def)
@@ -92,6 +93,14 @@ function M.round_effect_defs(resolved_effects)
 				effect_name = "add_mult",
 				macro = "playing_stones",
 				sub = "mult",
+				value = r.value,
+				priority = r.priority or 10,
+			}
+		elseif r.type == "ADD_MONEY" then
+			round[i] = {
+				effect_name = "add_money",
+				macro = "playing_stones",
+				sub = "points",
 				value = r.value,
 				priority = r.priority or 10,
 			}

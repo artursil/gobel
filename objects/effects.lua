@@ -471,7 +471,7 @@ function M.add_money(effect)
 			local amount = effect.value.amount or 0
 			local side = owner == config.OWNER_BLACK and "black" or "white"
 			local player = require("match_state").player_for_color(state, side)
-			player.resources.money = (player.resources.money or 0) + amount
+			player.resources.money = math.max(0, (player.resources.money or 0) + amount)
 		end,
 	}
 end

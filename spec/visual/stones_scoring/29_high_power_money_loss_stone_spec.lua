@@ -8,6 +8,7 @@ local test_helper = require("spec.test_helper")
 test_helper.install_love_test_stubs()
 
 local config = require("config")
+local match_state = require("match_state")
 local S = require("spec.parameters_helper").stone
 
 local LETTER_TO_STONE = {
@@ -37,6 +38,7 @@ local assert_player_points_unchanged = test_helper.assert_player_points_unchange
 local assert_player_plus_mult_delta = test_helper.assert_player_plus_mult_delta
 local assert_player_plus_mult_unchanged = test_helper.assert_player_plus_mult_unchanged
 local assert_player_money = test_helper.assert_player_money
+local assert_player_total_score = test_helper.assert_player_total_score
 local advance_rounds = test_helper.advance_rounds
 
 local function blank_board()
@@ -382,7 +384,13 @@ describe("high_power_money_loss_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.assert_player_total_score_reflects_state(g, "black", snap, "score uses post-placement state")
+			local player = match_state.player_for_color(g, "black")
+			local expected_total = player.score.turn_bonus
+				* player.score.territory
+				* player.score.points
+				* player.score.plus_mult
+				* player.score.x_mult
+			assert_player_total_score(g, "black", expected_total, "score uses post-placement state")
 		end)
 	end)
 end)

@@ -394,6 +394,7 @@ local territory_control_rounds = require("single_game.resolver.territory_control
 local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
+	add_money = true,
 	mult_control_streak = true,
 }
 
@@ -479,6 +480,14 @@ local function round_effects_from_resolved(resolved_effects)
 				effect_name = "add_mult",
 				macro = "playing_stones",
 				sub = "mult",
+				value = r.value,
+				priority = r.priority or 10,
+			}
+		elseif r.type == "ADD_MONEY" then
+			round[i] = {
+				effect_name = "add_money",
+				macro = "playing_stones",
+				sub = "points",
 				value = r.value,
 				priority = r.priority or 10,
 			}
@@ -808,7 +817,18 @@ local function compile_place_stone_events(state, action)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
-		if not resolved or type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then
+		if not resolved or type(resolved) ~= "table" then
+			return nil, "Stone behavior produced invalid effect"
+		end
+		if resolved.type == "ADD_POINTS" or resolved.type == "ADD_MULT" then
+			if type(resolved.value) ~= "number" then
+				return nil, "Stone behavior produced invalid effect"
+			end
+		elseif resolved.type == "ADD_MONEY" then
+			if type(resolved.value) ~= "table" or type(resolved.value.amount) ~= "number" then
+				return nil, "Stone behavior produced invalid effect"
+			end
+		else
 			return nil, "Stone behavior produced invalid effect"
 		end
 	end

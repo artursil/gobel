@@ -798,7 +798,7 @@ Comment: similar to the last stone it should generate more money each round, but
 **description:** Immediate high reward with immediate money penalty.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - On placement add `HPML_POINTS_GAIN` and `HPML_PLUS_MULT_GAIN`.
 - On same resolution subtract `HPML_MONEY_LOSS`.
 - If money underflows, clamp by global money floor.
@@ -813,7 +813,7 @@ Comment: similar to the last stone it should generate more money each round, but
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
