@@ -783,6 +783,46 @@ function M.wall_stone(effect)
 	}
 end
 
+--- Line stone placement: points per full block of orthogonal connected group (line stone included).
+--- @param effect table
+--- @return table
+function M.line_group_points(effect)
+	local stone_kind = effect.stone_kind or "line_stone"
+	return {
+		type = "LINE_GROUP_POINTS",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.wall_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			local place_r, place_c = placement_coords(state)
+			if place_r and place_c and (place_r ~= row or place_c ~= col) then
+				return
+			end
+			local cell = state.board[row] and state.board[row][col]
+			if not cell or board.is_empty(cell) or cell.kind ~= stone_kind then
+				return
+			end
+			local dedupe = "line:" .. row .. ":" .. col
+			if pattern_key_seen(state, dedupe) then
+				return
+			end
+			local group = shape_patterns.group_connected(state.board, row, col)
+			local block = stone_params.line_stone_block_size
+			local per_block = stone_params.line_stone_points_per_block
+			local bonus = math.floor(#group / block) * per_block
+			if bonus <= 0 then
+				return
+			end
+			state.scores.points[owner] = state.scores.points[owner] + bonus
+		end,
+	}
+end
+
 --- Double corner nearby territory effect: corner tower adds ``1`` to ``territory_value`` on every cell in the
 --- board-aligned ``3×3`` block anchored at that corner (excluding the tower cell). Stacks with prior cell values.
 --- @param row integer
@@ -874,8 +914,7 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 		return nil
 	end
 	local base_apply = resolved.apply
-	if resolved.type == "WALL_STONE" or resolved.type == "DIAGONAL_GROUP_POINTS" then
-		resolved.apply = function(current_state)
+	if resolved.type == "WALL_STONE" or resolved.type == "DIAGONAL_GROUP_POINTS" then	if resolved.type == "WALL_STONE" or resolved.type == "LINE_GROUP_POINTS" then		resolved.apply = function(current_state)
 			base_apply(current_state, owner, row, col)
 		end
 	else

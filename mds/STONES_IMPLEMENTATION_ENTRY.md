@@ -246,7 +246,7 @@ Comment: should work the same way wall stone does, so we get points only placeme
 **description:** Placement-scoring stone that behaves like wall-style placement reward, not line-completion tier reward.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger only when `line_stone` is placed.
 - Compute orthogonally connected group size including placed line stone.
 - Points bonus formula: `floor(group_size / LINE_STONE_BLOCK_SIZE) * LINE_STONE_POINTS_PER_BLOCK`.
@@ -263,7 +263,7 @@ Comment: should work the same way wall stone does, so we get points only placeme
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

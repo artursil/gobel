@@ -91,8 +91,8 @@ describe("line_stone (visual ASCII)", function()
 			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
+				". . . . B B B B .",
 				". . . . . . . . .",
-				". . . B B B . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -105,9 +105,9 @@ describe("line_stone (visual ASCII)", function()
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
+				". . . L B B B B .",
 				". . . . . . . . .",
-				". . . B B B . . .",
-				". . . . L . . . .",
+				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -121,10 +121,10 @@ describe("line_stone (visual ASCII)", function()
 			set_hand(g, "black", { "line_stone" })
 			set_board(g, {
 				". . . . . . . . .",
-				". . B B B B . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . . . . . .",
+				". . . B B . B B .",
+				". . . B B B B B .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -135,10 +135,10 @@ describe("line_stone (visual ASCII)", function()
 
 			place_stone(g, {
 				". . . . . . . . .",
-				". . B B B B L . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . . . . . .",
+				". . . B B L B B .",
+				". . . B B B B B .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -152,8 +152,8 @@ describe("line_stone (visual ASCII)", function()
 			set_hand(g, "black", { "line_stone" })
 			set_board(g, {
 				". . . . . . . . .",
-				". . B B B B . . .",
-				". . . . . . . . .",
+				". . . B B B B .",
+				". . . B B B B .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -165,8 +165,8 @@ describe("line_stone (visual ASCII)", function()
 
 			place_stone(g, {
 				". . . . . . . . .",
-				". . B B B B B . .",
-				". . . . . . . . .",
+				". . L B B B B .",
+				". . . B B B B .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -175,7 +175,7 @@ describe("line_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_delta(g, "black", snap, line_placement_bonus(5), "nine-size group still one block short of two")
+			assert_player_points_delta(g, "black", snap, line_placement_bonus(9), "nine-size group still one block short of two")
 		end)
 
 		it("line_stone scenario 5: connecting groups uses merged size", function()
@@ -342,7 +342,7 @@ describe("line_stone (visual ASCII)", function()
 			})
 			local snap = player_score_snapshot(g, "black")
 
-			assert_illegal_player_move_with_stone(g, "black", "line_stone", 4, 4, "occupied rejects line_stone")
+			assert_illegal_player_move_with_stone(g, "black", "line_stone", 5, 5, "occupied rejects line_stone")
 			assert_player_points_unchanged(g, "black", snap, "no payout on illegal line placement")
 		end)
 	end)

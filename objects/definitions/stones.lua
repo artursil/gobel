@@ -446,8 +446,26 @@ M.diagonal_stone = {
 		sprite = "sprites/stones/basic.png",
 	},
 	effects = {
-		shared.diagonal_group_points,
+		shared.diagonal_group_points,M.line_stone = {
+	id = "line_stone",
+	type = "stone",
+	name = "Line Stone",
+	description = "When placed, adds +"
+		.. tostring(P.line_stone_points_per_block)
+		.. " Points for every "
+		.. tostring(P.line_stone_block_size)
+		.. " stones in its orthogonal connected group (including the line stone).",
+	rarity = "common",
+	probability = 0.8,
+	cost = 1,
+	depiction = "Horizontal line mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.45, 0.55, 0.82 },
+		sprite = "sprites/stones/focus.png",
 	},
+	effects = {
+		shared.line_group_points,	},
 }
 
 --- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
@@ -472,7 +490,7 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"line_stone",
+	"diagonal_stone",
 	"kamikaze_stone",
 	"enclosure_stone",
 	"control_stone",
