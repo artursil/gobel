@@ -974,8 +974,8 @@ describe("enclosure_stone (visual ASCII)", function()
 
 		test_helper.place_stone_for(g, "white", "enclosure_stone", {
 			". B B B B B B B .",
-			". B N . W . . B .",
-			". B . W . W . B .",
+			". B N . . . . B .",
+			". B . W W W . B .",
 			". B . W n W . B .",
 			". B . W W W . B .",
 			". B . . . . . B .",
@@ -986,9 +986,9 @@ describe("enclosure_stone (visual ASCII)", function()
 
 		assert_territory_values_ascii(g, {
 			"1 # # # # # # # 1",
-			"1 # # d # d d # 1",
+			"1 # # d d d d # 1",
 			"1 # d # # # d # 1",
-			"1 # d # d # d # 1",
+			"1 # d # # # d # 1",
 			"1 # d # # # d # 1",
 			"1 # d d d d d # 1",
 			"1 # # # # # # # 1",

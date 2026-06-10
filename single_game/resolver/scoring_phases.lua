@@ -27,6 +27,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 M.BOARD_TERRITORY_EFFECT_NAMES = {
 	distance_bonus = true,
 	double_corner_nearby_territory = true,
+	enclosure_territory_multiply = true,
 }
 
 --- Board stones reapply these on every territory recalc; ``macro`` on the def is ignored.
