@@ -343,8 +343,7 @@ M.points_stone = {
 			effect_name = "add_points",
 			macro = "playing_stones",
 			sub = "points",
-			value = P.points_stone_t1,
-			priority = P.default_effect_priority,
+			value = P.points_stone_t1,			priority = P.default_effect_priority,
 		},
 	},
 }

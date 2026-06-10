@@ -394,6 +394,7 @@ local territory_control_rounds = require("single_game.resolver.territory_control
 local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
+	add_energy = true,
 	mult_control_streak = true,
 }
 
@@ -479,6 +480,14 @@ local function round_effects_from_resolved(resolved_effects)
 				effect_name = "add_mult",
 				macro = "playing_stones",
 				sub = "mult",
+				value = r.value,
+				priority = r.priority or 10,
+			}
+		elseif r.type == "ADD_ENERGY" then
+			round[i] = {
+				effect_name = "add_energy",
+				macro = r.macro or "playing_stones",
+				sub = r.sub or "points",
 				value = r.value,
 				priority = r.priority or 10,
 			}
@@ -808,7 +817,16 @@ local function compile_place_stone_events(state, action)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
-		if not resolved or type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then
+		if
+			not resolved
+			or type(resolved) ~= "table"
+			or (
+				resolved.type ~= "ADD_POINTS"
+				and resolved.type ~= "ADD_MULT"
+				and resolved.type ~= "ADD_ENERGY"
+			)
+			or type(resolved.value) ~= "number"
+		then
 			return nil, "Stone behavior produced invalid effect"
 		end
 	end
