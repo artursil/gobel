@@ -114,10 +114,10 @@ describe("money_field_stone (visual ASCII)", function()
 			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
+				". . W W W . . . .",
+				". . W . . W . . .",
+				". . W W W . . . .",
 				". . . . . . . . .",
-				". . . W W W . . .",
-				". . . W . W . . .",
-				". . . W W W . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -126,10 +126,10 @@ describe("money_field_stone (visual ASCII)", function()
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
+				". . W W W . . . .",
+				". . W M . W . . .",
+				". . W W W . . . .",
 				". . . . . . . . .",
-				". . . W W W . . .",
-				". . . W M W . . .",
-				". . . W W W . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -170,7 +170,7 @@ describe("money_field_stone (visual ASCII)", function()
 		it("edge-connected pocket open to board edge pays zero", function()
 			set_hand(g, "black", { "money_field_stone" })
 			set_board(g, {
-				". . . B . . . . .",
+				". . . . . . . . .",
 				". B B B . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -203,7 +203,7 @@ describe("money_field_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . B B B . . .",
-				". . . B . . . . .",
+				". . . B . B . . .",
 				". . . B B B . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -228,9 +228,9 @@ describe("money_field_stone (visual ASCII)", function()
 		it("corner pocket using board boundary pays money_field_payout", function()
 			set_hand(g, "black", { "money_field_stone" })
 			set_board(g, {
-				"B B . . . . . . .",
-				"B . . . . . . . .",
-				". . . . . . . . .",
+				"B B B . . . . . .",
+				"B . B . . . . . .",
+				"B B B . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -240,8 +240,9 @@ describe("money_field_stone (visual ASCII)", function()
 			})
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
-				"B B . . . . . . .",
-				"B M . . . . . . .",
+				"B B B . . . . . .",
+				"B M B . . . . . .",
+				"B B B . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -307,8 +308,8 @@ describe("money_field_stone (visual ASCII)", function()
 				". . . . . B . B .",
 				". . . . . B . B .",
 				". . . . . B B B .",
-			}, false)
-			place_stone(g, {
+			})
+			test_helper.place_stone_for(g, "black", "money_field_stone", {
 				". B B B B . . . .",
 				". B M . B . . . .",
 				". B B B B . . . .",
@@ -318,7 +319,7 @@ describe("money_field_stone (visual ASCII)", function()
 				". . . . . B M B .",
 				". . . . . B . B .",
 				". . . . . B B B .",
-			}, false)
+			})
 			local expected_delta = S.money_field_payout * 2
 			assert_player_money(g, "black", snap.money + expected_delta, "each separate enclosure pays once")
 		end)
@@ -356,24 +357,24 @@ describe("money_field_stone (visual ASCII)", function()
 			set_hand(g, "black", { "money_field_stone" })
 			set_board(g, {
 				". . . . . . . . .",
-				". . . . . . . . .",
-				". . W W . . . . .",
-				". W B W W . . . .",
-				". . W . W . . . .",
-				". . W W W . . . .",
-				". . . . . . . . .",
+				". . . . . W . . .",
+				". . . . . . W . .",
+				"B B B B B B . . .",
+				". B . . . B . . .",
+				"W W W W . B . . .",
+				". W . W . B . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
 				". . . . . . . . .",
-				". . . . . . . . .",
-				". . W W . . . . .",
-				". W B W W . . . .",
-				". . W M W . . . .",
-				". . W W W . . . .",
-				". . . . . . . . .",
+				". . . . . W . . .",
+				". . . . . . W . .",
+				"B B B B B B . . .",
+				". B . M . B . . .",
+				"W W W W . B . . .",
+				". W . W . B . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})

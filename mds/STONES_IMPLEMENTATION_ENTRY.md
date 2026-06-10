@@ -410,7 +410,7 @@ Comment: stones have solidity parameter so defense stone should increase solidit
 **description:** Immediate money payout stone gated by enclosed placement.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - If placed in owner-enclosed territory, add `MONEY_FIELD_PAYOUT`.
 - Otherwise add zero.
 - One-time placement payout only.
@@ -425,7 +425,7 @@ Comment: stones have solidity parameter so defense stone should increase solidit
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

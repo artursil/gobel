@@ -169,6 +169,30 @@ M.control_territory_stone = {
 	},
 }
 
+M.money_field_stone = {
+	id = "money_field_stone",
+	type = "stone",
+	name = "Money Field Stone",
+	description = "On placement in owner-enclosed territory, adds money_field_payout; otherwise zero.",
+	rarity = "uncommon",
+	probability = 0.7,
+	cost = 1,
+	depiction = "Coin field mark",
+	graphic = { draw_key = "solid" },
+	visual = {
+		color = { 0.78, 0.68, 0.28 },
+		sprite = "sprites/stones/basic.png",
+	},
+	effects = {
+		{
+			effect_name = "money_field_enclosure_payout",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.stone_special = {
 	id = "stone_special",
 	type = "stone",
@@ -284,7 +308,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"control_stone",
 	"blockade_stone",
 	"defence_stone",
-	"money_field_stone",
 	"anti_capture_stone",
 	"delay_reward_stone",
 	"capture_stone",

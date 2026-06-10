@@ -476,14 +476,42 @@ function M.add_money(effect)
 	}
 end
 
---- @param state table
---- @return table|nil
 local function placement_coords(state)
 	local move = state.last_opponent_move
 	if move and move.row and move.col then
 		return move.row, move.col
 	end
 	return nil, nil
+end
+
+--- Adds money when the last placement cell is owner-enclosed on the post-placement board.
+--- @param effect table
+--- @return table
+function M.money_field_enclosure_payout(effect)
+	local sub = effect.sub or "points"
+	return {
+		type = "MONEY_FIELD_ENCLOSURE_PAYOUT",
+		phase = sub,
+		macro = effect.macro or "playing_stones",
+		sub = sub,
+		value = effect.value or {},
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			local row, col = placement_coords(state)
+			if not row or not col then
+				return
+			end
+			local enclosure_placement = require("single_game.resolver.enclosure_placement")
+			local amount = enclosure_placement.placement_money_payout(state.board, row, col, owner)
+			if amount <= 0 then
+				return
+			end
+			local side = owner == config.OWNER_BLACK and "black" or "white"
+			local player = require("match_state").player_for_color(state, side)
+			player.resources.money = (player.resources.money or 0) + amount
+		end,
+	}
 end
 
 --- @param state table
