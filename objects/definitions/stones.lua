@@ -227,6 +227,53 @@ M.plus_stone = {
 	},
 }
 
+M.points_stone = {
+	id = "points_stone",
+	type = "stone",
+	name = "Points Stone",
+	description = "Direct points stone with three upgrade tiers on placement.",
+	rarity = "common",
+	probability = 1.0,
+	cost = 1,
+	max_level = 3,
+	upgrade_levels = {
+		[1] = {},
+		[2] = {
+			effect_deltas = {
+				add_points = {
+					macro = "playing_stones",
+					sub = "points",
+					delta = P.points_stone_t2 - P.points_stone_t1,
+				},
+			},
+		},
+		[3] = {
+			effect_deltas = {
+				add_points = {
+					macro = "playing_stones",
+					sub = "points",
+					delta = P.points_stone_t3 - P.points_stone_t2,
+				},
+			},
+		},
+	},
+	depiction = "Numeric tier mark",
+	graphic = { draw_key = "diamond" },
+	visual = {
+		color = { 0.55, 0.65, 0.45 },
+		sprite = "sprites/stones/power.png",
+	},
+	effects = {
+		{
+			effect_name = "add_points",
+			macro = "playing_stones",
+			sub = "points",
+			value = P.points_stone_t1,
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.wall = {
 	id = "wall",
 	type = "stone",
@@ -273,7 +320,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"points_stone",
 	"influence_stone",
 	"tower_stone",
 	"energy_stone",
@@ -297,7 +343,7 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"high_power_money_loss_stone",
 }
 
-local LATER_IMPLMENTED_STONE_IDS = {
+local TO_BE_IMPL_LATER_STONE_IDS = {
 	"unlimited_upgrades_stone",
 	"final_blow_stone",
 	"copper_stone",
@@ -308,8 +354,8 @@ for i = 1, #UNIMPLEMENTED_STONE_IDS do
 	local id = UNIMPLEMENTED_STONE_IDS[i]
 	M[id] = stub_stone(id)
 end
-for i = 1, #LATER_IMPLMENTED_STONE_IDS do
-	local id = LATER_IMPLMENTED_STONE_IDS[i]
+for i = 1, #TO_BE_IMPL_LATER_STONE_IDS do
+	local id = TO_BE_IMPL_LATER_STONE_IDS[i]
 	M[id] = stub_stone(id)
 end
 
