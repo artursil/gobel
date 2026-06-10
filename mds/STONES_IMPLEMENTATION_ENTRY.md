@@ -579,7 +579,7 @@ Comment: This is ok but I would increase it to 7 rounds
 **description:** Immediate points stone that auto-removes after a timer.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - On placement add `SELF_DESTRUCT_IMMEDIATE_POINTS`.
 - Register removal timer `SELF_DESTRUCT_DELAY_ROUNDS`.
 - On expiry, remove stone from board.
@@ -595,7 +595,7 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

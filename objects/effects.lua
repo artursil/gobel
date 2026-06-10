@@ -656,6 +656,35 @@ function M.pattern_plus_mult(effect)
 	}
 end
 
+--- Immediate placement points plus a removal timer; stone leaves the board on expiry with no payout.
+--- @param effect table
+--- @return table
+function M.self_destruct_timed(effect)
+	local sub = effect.sub or effect.phase or "points"
+	local immediate_points = effect.immediate_points
+		or effect.value
+		or stone_params.self_destruct_immediate_points
+	local delay_rounds = effect.delay_rounds or stone_params.self_destruct_delay_rounds
+	local board_cell_timers = require("single_game.resolver.board_cell_timers")
+	return {
+		type = "SELF_DESTRUCT_TIMED",
+		phase = sub,
+		macro = effect.macro or "playing_stones",
+		sub = sub,
+		value = immediate_points,
+		delay_rounds = delay_rounds,
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			state.scores.points[owner] = state.scores.points[owner] + immediate_points
+			local row, col = placement_coords(state)
+			if row and col then
+				board_cell_timers.register(state, row, col, delay_rounds)
+			end
+		end,
+	}
+end
+
 --- Wall placement: +5 Points per 5 stones in the orthogonal connected group (wall included).
 --- @param effect table
 --- @return table

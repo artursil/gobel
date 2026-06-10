@@ -380,7 +380,7 @@ local function stone_placement_message(stone_def, resolved_effects)
 	end
 	local name = stone_def.name
 	local r = resolved_effects[1]
-	if r.type == "ADD_POINTS" then
+	if r.type == "ADD_POINTS" or r.type == "SELF_DESTRUCT_TIMED" then
 		return string.format("%s placement: +%d points", name, r.value)
 	end
 	if r.type == "ADD_MULT" then
@@ -395,7 +395,20 @@ local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
 	mult_control_streak = true,
+	self_destruct_timed = true,
 }
+
+--- @param resolved table|nil
+--- @return boolean
+local function is_valid_placement_resolved_effect(resolved)
+	if not resolved or type(resolved) ~= "table" then
+		return false
+	end
+	if resolved.type == "ADD_POINTS" or resolved.type == "ADD_MULT" or resolved.type == "SELF_DESTRUCT_TIMED" then
+		return type(resolved.value) == "number"
+	end
+	return false
+end
 
 --- @param stone_def table
 --- @param state table
@@ -466,7 +479,16 @@ local function round_effects_from_resolved(resolved_effects)
 	local round = {}
 	for i = 1, #resolved_effects do
 		local r = resolved_effects[i]
-		if r.type == "ADD_POINTS" then
+		if r.type == "SELF_DESTRUCT_TIMED" then
+			round[i] = {
+				effect_name = "self_destruct_timed",
+				macro = "playing_stones",
+				sub = "points",
+				immediate_points = r.value,
+				delay_rounds = r.delay_rounds,
+				priority = r.priority or 10,
+			}
+		elseif r.type == "ADD_POINTS" then
 			round[i] = {
 				effect_name = "add_points",
 				macro = "playing_stones",
@@ -807,8 +829,7 @@ local function compile_place_stone_events(state, action)
 	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor, row, col)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
-		local resolved = resolved_effects[i]
-		if not resolved or type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then
+		if not is_valid_placement_resolved_effect(resolved_effects[i]) then
 			return nil, "Stone behavior produced invalid effect"
 		end
 	end
@@ -1105,7 +1126,9 @@ function M.submit_action(state, action)
 		end
 	end
 	if action.type == "PASS_TURN" then
+		state._decrement_board_cell_timers_on_eot = true
 		recalc_all_scores(state, "end_of_turn")
+		state._decrement_board_cell_timers_on_eot = nil
 	elseif action.type == "PLACE_STONE" then
 		recalc_all_scores(state, "playing_stones")
 	end

@@ -251,6 +251,36 @@ M.wall = {
 	},
 }
 
+M.self_destruct_timed_stone = {
+	id = "self_destruct_timed_stone",
+	type = "stone",
+	name = "Self-Destruct Timed Stone",
+	description = "Adds "
+		.. tostring(P.self_destruct_immediate_points)
+		.. " points on placement, then self-removes after "
+		.. tostring(P.self_destruct_delay_rounds)
+		.. " rounds with no extra payout.",
+	rarity = "uncommon",
+	probability = 0.8,
+	cost = 1,
+	depiction = "Cracked core with timer ring",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.78, 0.42, 0.38 },
+		sprite = "sprites/stones/special.png",
+	},
+	effects = {
+		{
+			effect_name = "self_destruct_timed",
+			macro = "playing_stones",
+			sub = "points",
+			immediate_points = P.self_destruct_immediate_points,
+			delay_rounds = P.self_destruct_delay_rounds,
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 --- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
 --- @param id string
 --- @return table
@@ -289,7 +319,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"delay_reward_stone",
 	"capture_stone",
 	"tax_stone",
-	"self_destruct_timed_stone",
 	"territory_to_points_stone",
 	"territory_to_multiplier_stone",
 	"escalating_points_stone",
