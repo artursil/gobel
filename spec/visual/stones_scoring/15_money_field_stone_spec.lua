@@ -363,8 +363,8 @@ describe("money_field_stone (visual ASCII)", function()
 				". B . . . B . . .",
 				"W W W W . B . . .",
 				". W . W . B . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
+				". . . W . B . . .",
+				". W . W . B . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
@@ -372,11 +372,11 @@ describe("money_field_stone (visual ASCII)", function()
 				". . . . . W . . .",
 				". . . . . . W . .",
 				"B B B B B B . . .",
-				". B . M . B . . .",
+				". B . . . B . . .",
 				"W W W W . B . . .",
+				". W M . W . B . . .",
+				". . . W . B . . .",
 				". W . W . B . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
 			})
 			local expected_delta = 0
 			assert_player_money(g, "black", snap.money + expected_delta, "opponent pocket inside our frame still white-owned")
