@@ -26,6 +26,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	mult_control_streak = true,
 	defence_solidity_network = true,
 	kamikaze_sacrifice = true,
+	blockade_adjacent = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {

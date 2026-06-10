@@ -121,7 +121,7 @@ function M.new_match(match_kind, territory_mode, seed)
 	local rng_next_int = make_side_rng(rng_state)
 	local black = build_player("black", content.starters.black, rng_next_int)
 	local white = build_player("white", content.starters.white, rng_next_int)
-	return {
+	local state = {
 		board = board.new(),
 		to_play = "black",
 		phase = "TURN_START",
@@ -193,6 +193,8 @@ function M.new_match(match_kind, territory_mode, seed)
 		status = "",
 		pending_turn_after_ui = false,
 	}
+	require("single_game.resolver.blocked_cells").ensure(state)
+	return state
 end
 
 function M.rng_next_int(match_state, max_value)

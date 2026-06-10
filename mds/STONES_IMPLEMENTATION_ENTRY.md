@@ -356,7 +356,7 @@ Comment: Implementation details I don't like, during the territory resolution si
 **description:** Temporarily blocks placement on nearby cells just for an opponent.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Affected cells: orthogonally adjacent cells.
 - Block duration parameter: `BLOCKADE_DURATION_ROUNDS`.
 - Block applies to all stone types, including `kamikaze_stone`.
@@ -372,7 +372,7 @@ Comment: Implementation details I don't like, during the territory resolution si
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

@@ -1200,6 +1200,28 @@ function M.defence_solidity_network(effect)
 	}
 end
 
+--- On placement, block opponent on orthogonally adjacent empty cells for ``blockade_duration_rounds``.
+--- @param effect table
+--- @return table
+function M.blockade_adjacent(effect)
+	return {
+		type = "BLOCKADE_ADJACENT",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			local actor = owner == config.OWNER_BLACK and "black" or "white"
+			local blocked_cells = require("single_game.resolver.blocked_cells")
+			blocked_cells.register_adjacent_from_blockade(state, row, col, actor)
+		end,
+	}
+end
+
 --- Wall placement: +5 Points per 5 stones in the orthogonal connected group (wall included).
 --- @param effect table
 --- @return table
