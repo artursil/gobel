@@ -14,6 +14,7 @@ local effect_manager = require("single_game.resolver.effect_manager")
 local queries = require("single_game.resolver.state_queries")
 local territory = require("single_game.resolver.territory")
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+local board_cell_timers = require("single_game.resolver.board_cell_timers")
 local card_play_memory = require("single_game.resolver.card_play_memory")
 local scoring_phases = require("single_game.resolver.scoring_phases")
 local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
@@ -267,6 +268,10 @@ function M.resolve(state, opts)
 		state.round_stone_effects = {}
 	end
 	if macro == "end_of_turn" then
+		if state._decrement_board_cell_timers_on_eot then
+			board_cell_timers.decrement(state)
+		end
+		board_cell_timers.expire(state)
 		card_play_memory.flush_just_played_to_history(state)
 		local blocked_cells = require("single_game.resolver.blocked_cells")
 		blocked_cells.bootstrap_from_board_if_needed(state)

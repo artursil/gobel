@@ -391,7 +391,7 @@ local function stone_placement_message(stone_def, resolved_effects)
 	end
 	local name = stone_def.name
 	local r = resolved_effects[1]
-	if r.type == "ADD_POINTS" or r.type == "KAMIKAZE_SACRIFICE" then
+	if r.type == "ADD_POINTS" or r.type == "KAMIKAZE_SACRIFICE" or r.type == "SELF_DESTRUCT_TIMED" then
 		return string.format("%s placement: +%d points", name, r.value)
 	end
 	if r.type == "ADD_MULT" then
@@ -409,6 +409,7 @@ local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	mult_control_streak = true,
 	kamikaze_sacrifice = true,
 	money_field_enclosure_payout = true,
+	self_destruct_timed = true,
 }
 
 --- @param resolved table|nil
@@ -437,7 +438,7 @@ local function is_valid_resolved_stone_effect(resolved)
 	if resolved.type == "ADD_POINTS" or resolved.type == "ADD_MULT" or resolved.type == "ADD_ENERGY" then
 		return type(resolved.value) == "number"
 	end
-	if resolved.type == "KAMIKAZE_SACRIFICE" then
+	if resolved.type == "KAMIKAZE_SACRIFICE" or resolved.type == "SELF_DESTRUCT_TIMED" then
 		return type(resolved.value) == "number"
 	end
 	if resolved.type == "ADD_MONEY" then
@@ -541,7 +542,16 @@ local function round_effects_from_resolved(resolved_effects)
 	local round = {}
 	for i = 1, #resolved_effects do
 		local r = resolved_effects[i]
-		if r.type == "ADD_POINTS" then
+		if r.type == "SELF_DESTRUCT_TIMED" then
+			round[i] = {
+				effect_name = "self_destruct_timed",
+				macro = "playing_stones",
+				sub = "points",
+				immediate_points = r.value,
+				delay_rounds = r.delay_rounds,
+				priority = r.priority or 10,
+			}
+		elseif r.type == "ADD_POINTS" then
 			round[i] = {
 				effect_name = "add_points",
 				macro = "playing_stones",
@@ -1314,7 +1324,9 @@ function M.submit_action(state, action)
 		end
 	end
 	if action.type == "PASS_TURN" then
+		state._decrement_board_cell_timers_on_eot = true
 		recalc_all_scores(state, "end_of_turn", owner_for_side(action.actor))
+		state._decrement_board_cell_timers_on_eot = nil
 	elseif action.type == "PLACE_STONE" then
 		recalc_all_scores(state, "playing_stones")
 	end

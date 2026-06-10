@@ -31,6 +31,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	anti_capture_immunity = true,
 	delay_reward_survival = true,
 	capture_zero_liberty_enemy = true,
+	self_destruct_timed = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {
