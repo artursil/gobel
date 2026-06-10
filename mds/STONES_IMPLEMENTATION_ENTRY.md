@@ -638,10 +638,12 @@ Comment: should act exactly like the previous stone just with mult
 **description:** End-of-turn multiplier generator mirroring territory_to_points behavior.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger each `end_of_turn` while stone remains on board.
-- Determine territory owner at stone cell at trigger time.
-- Let recipient be that current owner; add `min(T2M_CAP, floor(RECIPIENT_TERRITORY / T2M_DIVISOR))` to `plus_mult`.
+- **Pre-recompute territory snapshot (placement turn):** on the turn the stone is placed, read territory owner at the stone cell and recipient total controlled territory from the territory map **before** placement recomputes territory. Payout uses that snapshot; the new stone must not inflate/deflate the counted territory on its placement turn.
+- **Later turns:** at each subsequent `end_of_turn`, use the territory map at trigger time: owner at stone cell → recipient → payout from recipient total controlled territory.
+- Let recipient be the side owning the stone cell at snapshot/trigger time; add `min(T2M_CAP, floor(RECIPIENT_TERRITORY / T2M_DIVISOR))` to `plus_mult`.
+- Contested / unowned cells: payout zero.
 - No territory consumption/reduction.
 - Behavior is structurally parallel to `territory_to_points_stone` but outputs `plus_mult`.
 
@@ -655,7 +657,7 @@ Comment: should act exactly like the previous stone just with mult
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
