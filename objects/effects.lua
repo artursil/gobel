@@ -615,7 +615,7 @@ function M.pattern_plus_mult(effect)
 			local placed_plus = false
 			if place_r and place_c then
 				local placed = board_after[place_r][place_c]
-				placed_plus = placed and placed.kind == "plus_stone"
+				placed_plus = not board.is_empty(placed) and placed.kind == "plus_stone"
 			end
 			local to_score = {}
 			for i = 1, #newly_completed do
@@ -653,6 +653,20 @@ function M.pattern_plus_mult(effect)
 				})
 			end
 		end,
+	}
+end
+
+--- Placement capture: remove one enemy stone with zero liberties (resolved in ``capture_stone`` module).
+--- @param effect table
+--- @return table
+function M.capture_zero_liberty_enemy(effect)
+	return {
+		type = "CAPTURE_ZERO_LIBERTY_ENEMY",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
 	}
 end
 

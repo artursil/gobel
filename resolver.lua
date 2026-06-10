@@ -12,6 +12,8 @@ local card_play_memory = require("single_game.resolver.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
+local capture_stone_resolver = require("single_game.resolver.capture_stone")
+local kamikaze_stone_resolver = require("single_game.resolver.kamikaze_stone")
 
 local M = {}
 
@@ -780,14 +782,34 @@ local function compile_place_stone_events(state, action)
 	local placement_level = instance and instance.level or nil
 	local row = action.payload and action.payload.row or -1
 	local col = action.payload and action.payload.col or -1
+	if capture_stone_resolver.is_cell_blocked_for_actor(state, row, col, action.actor, stone_id) then
+		return nil, "Illegal move: cell blocked"
+	end
+	local player_chain_color = color_to_stone(action.actor)
+	local allow_suicide = kamikaze_stone_resolver.allows_suicide_placement(stone_id)
+	local on_capture_cooldown_cell = capture_stone_resolver.is_cell_on_capture_cooldown(state, row, col)
+		and capture_stone_resolver.is_cell_blocked_for_actor(state, row, col, action.actor, "stone_basic")
+	local empty_cell_had_no_empty_neighbors = board.is_empty(state.board[row][col])
+		and kamikaze_stone_resolver.empty_cell_has_no_empty_neighbors(state.board, row, col)
+	local ok_without_override, _trial_no_override = rules.try_play(
+		state.board,
+		row,
+		col,
+		player_chain_color,
+		state.ko_ban,
+		stone_id,
+		placement_level
+	)
+	local required_suicide_override = allow_suicide and not ok_without_override
 	local ok, new_board, new_ko, captures, illegal_reason = rules.try_play(
 		state.board,
 		row,
 		col,
-		color_to_stone(action.actor),
+		player_chain_color,
 		state.ko_ban,
 		stone_id,
-		placement_level
+		placement_level,
+		{ allow_suicide = allow_suicide }
 	)
 	if not ok then
 		if illegal_reason == "occupied" then
@@ -804,7 +826,39 @@ local function compile_place_stone_events(state, action)
 		end
 		return nil, "Illegal move: rule violation"
 	end
+	if capture_stone_resolver.stone_def_has_effect(stone_def) then
+		local extra_captures
+		new_board, extra_captures = capture_stone_resolver.apply_extra_capture(
+			new_board,
+			state,
+			action.actor,
+			player_chain_color
+		)
+		captures = captures + extra_captures
+	end
+	local kamikaze_opts = {
+		required_suicide_override = required_suicide_override,
+		on_capture_cooldown_cell = on_capture_cooldown_cell,
+		empty_cell_had_no_empty_neighbors = empty_cell_had_no_empty_neighbors,
+	}
+	local kamikaze_self_remove = false
+	local kamikaze_bonus = 0
+	if kamikaze_stone_resolver.is_kamikaze_stone(stone_id) then
+		kamikaze_self_remove, kamikaze_bonus = kamikaze_stone_resolver.resolve_placement(kamikaze_opts)
+		if kamikaze_self_remove then
+			new_board[row][col] = config.STONE_NONE
+		end
+	end
 	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor, row, col)
+	if kamikaze_bonus > 0 then
+		resolved_effects[#resolved_effects + 1] = Effects.stones.resolve({
+			effect_name = "add_points",
+			macro = "playing_stones",
+			sub = "points",
+			value = kamikaze_bonus,
+			priority = stone_params.default_effect_priority,
+		})
+	end
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]

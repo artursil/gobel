@@ -22,6 +22,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	add_points = true,
 	add_mult = true,
 	mult_control_streak = true,
+	capture_zero_liberty_enemy = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {
