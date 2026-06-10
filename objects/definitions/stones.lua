@@ -251,6 +251,30 @@ M.wall = {
 	},
 }
 
+M.diagonal_stone = {
+	id = "diagonal_stone",
+	type = "stone",
+	name = "Diagonal Stone",
+	description = "When placed, adds +"
+		.. tostring(P.diagonal_stone_points_per_block)
+		.. " Points for every "
+		.. tostring(P.diagonal_stone_block_size)
+		.. " stones in its diagonally connected group (including the placed stone).",
+	rarity = "common",
+	probability = 1.0,
+	cost = 1,
+	tags = { "diagonal" },
+	depiction = "Diagonal link icon",
+	graphic = { draw_key = "solid" },
+	visual = {
+		color = { 0.55, 0.68, 0.82 },
+		sprite = "sprites/stones/basic.png",
+	},
+	effects = {
+		shared.diagonal_group_points,
+	},
+}
+
 --- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
 --- @param id string
 --- @return table
@@ -277,7 +301,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"influence_stone",
 	"tower_stone",
 	"energy_stone",
-	"diagonal_stone",
 	"line_stone",
 	"kamikaze_stone",
 	"enclosure_stone",

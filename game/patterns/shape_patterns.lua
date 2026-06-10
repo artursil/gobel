@@ -15,6 +15,8 @@ M.pattern_scoring = {
 	plus_mult_per_tier = stone_params.plus_stone_mult_add,
 	wall_stones_per_points_block = stone_params.wall_stones_per_block,
 	wall_points_per_block = stone_params.wall_points_per_block,
+	diagonal_stone_block_size = stone_params.diagonal_stone_block_size,
+	diagonal_stone_points_per_block = stone_params.diagonal_stone_points_per_block,
 }
 
 local DIAG_DIRS = {
@@ -238,6 +240,40 @@ function M.group_connected(b, row, col)
 end
 
 --- @param b table
+--- @param row integer
+--- @param col integer
+--- @return table[] list of { row, col }
+function M.group_diagonal_connected(b, row, col)
+	local seed = b[row][col]
+	if board.is_empty(seed) then
+		return {}
+	end
+	local base_c = seed.color
+	local n = config.BOARD_SIZE
+	local visited = {}
+	local queue = { { row, col } }
+	local head = 1
+	local out = {}
+	while head <= #queue do
+		local r, c = queue[head][1], queue[head][2]
+		head = head + 1
+		local key = r * (n + 1) + c
+		if not visited[key] then
+			visited[key] = true
+			out[#out + 1] = { r, c }
+			for i = 1, #DIAG_DIRS do
+				local dr, dc = DIAG_DIRS[i][1], DIAG_DIRS[i][2]
+				local nr, nc = r + dr, c + dc
+				if in_bounds(b, nr, nc) and board.chain_color(b[nr][nc]) == base_c then
+					queue[#queue + 1] = { nr, nc }
+				end
+			end
+		end
+	end
+	return out
+end
+
+--- @param b table
 --- @param group table[]
 --- @return boolean
 function M.group_has_wall_stone(b, group)
@@ -256,6 +292,14 @@ end
 function M.wall_points_for_connected_group_size(connected_stone_count)
 	local block = M.pattern_scoring.wall_stones_per_points_block
 	local per_block = M.pattern_scoring.wall_points_per_block
+	return math.floor(connected_stone_count / block) * per_block
+end
+
+--- @param connected_stone_count integer stones in the placed diagonal stone's diagonal group (including the stone)
+--- @return integer points to add
+function M.diagonal_group_points_for_connected_group_size(connected_stone_count)
+	local block = M.pattern_scoring.diagonal_stone_block_size
+	local per_block = M.pattern_scoring.diagonal_stone_points_per_block
 	return math.floor(connected_stone_count / block) * per_block
 end
 

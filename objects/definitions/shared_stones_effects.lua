@@ -26,6 +26,13 @@ M.wall_stone = {
 	priority = stone_params.wall_effect_priority,
 }
 
+M.diagonal_group_points = {
+	effect_name = "diagonal_group_points",
+	macro = "playing_stones",
+	sub = "points",
+	priority = stone_params.wall_effect_priority,
+}
+
 M.all_stone_board_effects = {
 	M.pattern_x_mult,
 	M.pattern_plus_mult,

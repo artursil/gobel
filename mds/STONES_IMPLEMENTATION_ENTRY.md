@@ -217,9 +217,9 @@ Comment: should work more like wall_stone, because there is not much to be compl
 **description:** Placement-scoring stone that behaves like wall-style placement reward, not diagonal completion reward.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger only when `diagonal_stone` is placed.
-- Compute orthogonally connected group size including placed stone.
+- Compute diagonally connected group size including placed stone.
 - Points bonus formula mirrors wall-style block scoring using diagonal parameters: `floor(group_size / DIAGONAL_STONE_BLOCK_SIZE) * DIAGONAL_STONE_POINTS_PER_BLOCK`.
 - No pattern-completion line tier logic.
 - Same placement key cannot score twice.
@@ -234,7 +234,7 @@ Comment: should work more like wall_stone, because there is not much to be compl
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

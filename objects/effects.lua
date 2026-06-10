@@ -656,6 +656,43 @@ function M.pattern_plus_mult(effect)
 	}
 end
 
+--- Diagonal placement: points per block for the diagonally connected same-color group.
+--- @param effect table
+--- @return table
+function M.diagonal_group_points(effect)
+	return {
+		type = "DIAGONAL_GROUP_POINTS",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.wall_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			local place_r, place_c = placement_coords(state)
+			if place_r and place_c and (place_r ~= row or place_c ~= col) then
+				return
+			end
+			local cell = state.board[row] and state.board[row][col]
+			if not cell or board.is_empty(cell) or cell.kind ~= "diagonal_stone" then
+				return
+			end
+			local dedupe = "diagonal:" .. row .. ":" .. col
+			if pattern_key_seen(state, dedupe) then
+				return
+			end
+			local group = shape_patterns.group_diagonal_connected(state.board, row, col)
+			local bonus = shape_patterns.diagonal_group_points_for_connected_group_size(#group)
+			if bonus <= 0 then
+				return
+			end
+			state.scores.points[owner] = state.scores.points[owner] + bonus
+		end,
+	}
+end
+
 --- Wall placement: +5 Points per 5 stones in the orthogonal connected group (wall included).
 --- @param effect table
 --- @return table
@@ -791,7 +828,7 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 		return nil
 	end
 	local base_apply = resolved.apply
-	if resolved.type == "WALL_STONE" then
+	if resolved.type == "WALL_STONE" or resolved.type == "DIAGONAL_GROUP_POINTS" then
 		resolved.apply = function(current_state)
 			base_apply(current_state, owner, row, col)
 		end
