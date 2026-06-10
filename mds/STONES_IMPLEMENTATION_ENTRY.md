@@ -384,7 +384,7 @@ Comment: stones have solidity parameter so defense stone should increase solidit
 **description:** Solidity amplifier for connected stones, including future connections.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - On placement, apply `+1 solidity` to defence stone and all orthogonally/diagonally connected own stones in its effect scope.
 - When new own stones later become connected to defence network, they receive `+1 solidity` automatically while connection holds.
 - Solidity bonus is a stone parameter modification, not a separate chance formula.
@@ -400,7 +400,7 @@ Comment: stones have solidity parameter so defense stone should increase solidit
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

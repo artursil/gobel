@@ -423,12 +423,16 @@ function M.damage_selected_stone(effect)
 			local stone_solidity = require("objects.stone_solidity")
 			local amount = effect.value.amount or 1
 			local current = cell.solidity or stone_solidity.stone_max_solidity(cell.kind)
-			local next_value = math.max(0, current - amount)
-			if next_value <= 0 then
+			local previous_bonus = cell._defence_solidity_bonus or 0
+			local intrinsic = current - previous_bonus
+			local next_intrinsic = math.max(0, intrinsic - amount)
+			if next_intrinsic <= 0 then
 				state.board[row][col] = config.STONE_NONE
+				require("objects.defence_solidity_network").recompute_board(state.board)
 				return
 			end
-			cell.solidity = next_value
+			cell.solidity = next_intrinsic + previous_bonus
+			require("objects.defence_solidity_network").recompute_board(state.board)
 		end,
 	}
 end
@@ -652,6 +656,23 @@ function M.pattern_plus_mult(effect)
 					board_after = board_after,
 				})
 			end
+		end,
+	}
+end
+
+--- Board connectivity effect: defence stones buff solidity for connected own stones.
+--- Actual recompute runs from resolver hooks; this builder registers the effect name only.
+--- @param effect table
+--- @return table
+function M.defence_solidity_network(effect)
+	return {
+		type = "DEFENCE_SOLIDITY_NETWORK",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(_state)
 		end,
 	}
 end
