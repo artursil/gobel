@@ -271,25 +271,23 @@ M.control_territory_stone = {
 	},
 }
 
-M.blockade_stone = {
-	id = "blockade_stone",
+M.money_field_stone = {
+	id = "money_field_stone",
 	type = "stone",
-	name = "Blockade Stone",
-	description = "On placement, blocks opponent stones on orthogonally adjacent empty cells for "
-		.. tostring(P.blockade_duration_rounds)
-		.. " rounds.",
-	rarity = "rare",
-	probability = 0.6,
+	name = "Money Field Stone",
+	description = "On placement in owner-enclosed territory, adds money_field_payout; otherwise zero.",
+	rarity = "uncommon",
+	probability = 0.7,
 	cost = 1,
-	depiction = "Barrier ring mark",
-	graphic = { draw_key = "ring" },
+	depiction = "Coin field mark",
+	graphic = { draw_key = "solid" },
 	visual = {
-		color = { 0.55, 0.35, 0.35 },
-		sprite = "sprites/stones/focus.png",
+		color = { 0.78, 0.68, 0.28 },
+		sprite = "sprites/stones/basic.png",
 	},
 	effects = {
 		{
-			effect_name = "blockade_adjacent",
+			effect_name = "money_field_enclosure_payout",
 			macro = "playing_stones",
 			sub = "points",
 			priority = P.default_effect_priority,
@@ -627,7 +625,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"money_field_stone",
 	"anti_capture_stone",
 	"delay_reward_stone",
 	"capture_stone",

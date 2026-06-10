@@ -399,6 +399,7 @@ local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_energy = true,
 	mult_control_streak = true,
 	kamikaze_sacrifice = true,
+	money_field_enclosure_payout = true,
 }
 
 --- @param resolved table|nil
@@ -414,6 +415,27 @@ local function has_kamikaze_sacrifice_effect(resolved_effects)
 		if is_kamikaze_sacrifice_resolved(resolved_effects[i]) then
 			return true
 		end
+	end
+	return false
+end
+
+--- @param resolved table
+--- @return boolean
+local function is_valid_resolved_stone_effect(resolved)
+	if not resolved or type(resolved) ~= "table" then
+		return false
+	end
+	if resolved.type == "ADD_POINTS" or resolved.type == "ADD_MULT" or resolved.type == "ADD_ENERGY" then
+		return type(resolved.value) == "number"
+	end
+	if resolved.type == "KAMIKAZE_SACRIFICE" then
+		return type(resolved.value) == "number"
+	end
+	if resolved.type == "ADD_MONEY" then
+		return type(resolved.value) == "table" and type(resolved.value.amount) == "number"
+	end
+	if resolved.type == "MONEY_FIELD_ENCLOSURE_PAYOUT" then
+		return true
 	end
 	return false
 end
@@ -448,6 +470,8 @@ local function resolved_stone_effects_from_def(stone_def, state, actor, row, col
 						priority = effect.priority or 10,
 					})
 				end
+			elseif effect.effect_name == "money_field_enclosure_payout" then
+				out[#out + 1] = Effects.stones.resolve(effect)
 			elseif IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
 				out[#out + 1] = Effects.stones.resolve(effect)
 			end
@@ -518,6 +542,23 @@ local function round_effects_from_resolved(resolved_effects)
 				sub = r.sub or "points",
 				value = r.value,
 				priority = r.priority or 10,
+			}
+		elseif r.type == "ADD_MONEY" then
+			round[i] = {
+				effect_name = "add_money",
+				macro = "playing_stones",
+				sub = "points",
+				value = r.value,
+				priority = r.priority or 10,
+			}
+		elseif r.type == "MONEY_FIELD_ENCLOSURE_PAYOUT" then
+			local def = r._effect_def or {}
+			round[i] = {
+				effect_name = "money_field_enclosure_payout",
+				macro = def.macro or "playing_stones",
+				sub = def.sub or "points",
+				value = def.value,
+				priority = r.priority or def.priority or 10,
 			}
 		end
 	end
@@ -864,13 +905,7 @@ local function compile_place_stone_events(state, action)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
-		if not resolved or type(resolved) ~= "table" then
-			return nil, "Stone behavior produced invalid effect"
-		end
-		local valid_type = resolved.type == "ADD_POINTS"
-			or resolved.type == "ADD_MULT"
-			or resolved.type == "KAMIKAZE_SACRIFICE"
-		if not valid_type or type(resolved.value) ~= "number" then
+		if not is_valid_resolved_stone_effect(resolved) then
 			return nil, "Stone behavior produced invalid effect"
 		end
 	end

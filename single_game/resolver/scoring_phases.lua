@@ -27,6 +27,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	defence_solidity_network = true,
 	kamikaze_sacrifice = true,
 	blockade_adjacent = true,
+	money_field_enclosure_payout = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {
