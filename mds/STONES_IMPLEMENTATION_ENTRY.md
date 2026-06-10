@@ -498,7 +498,7 @@ Comment: This is ok but I would increase it to 7 rounds
 **description:** Delayed points stone with a 7-round survival timer.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - On placement, register survival timer `POINTS_DELAY_ROUNDS = 7`.
 - If stone still exists when timer expires, grant `POINTS_DELAY_PAYOUT`.
 - If removed/captured before expiry, no payout.
@@ -514,7 +514,7 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

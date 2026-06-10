@@ -17,6 +17,7 @@ local territory_control_rounds = require("single_game.resolver.territory_control
 local card_play_memory = require("single_game.resolver.card_play_memory")
 local scoring_phases = require("single_game.resolver.scoring_phases")
 local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
+local stone_timers = require("single_game.resolver.stone_timers")
 
 local M = {}
 
@@ -250,6 +251,9 @@ function M.resolve(state, opts)
 	queries.clear_resolution(state)
 	state._resolve_macro = macro
 	run_sub_phases(state, macro)
+	if macro == "end_of_turn" then
+		stone_timers.process_expirations(state)
+	end
 	sync_player_scores(state)
 	if macro == "playing_cards" then
 		card_play_memory.flush_just_played_to_history(state)

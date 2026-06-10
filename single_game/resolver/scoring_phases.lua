@@ -29,6 +29,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	blockade_adjacent = true,
 	money_field_enclosure_payout = true,
 	anti_capture_immunity = true,
+	delay_reward_survival = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {

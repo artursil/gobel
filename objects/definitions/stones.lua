@@ -319,6 +319,36 @@ M.anti_capture_stone = {
 	},
 }
 
+M.delay_reward_stone = {
+	id = "delay_reward_stone",
+	type = "stone",
+	name = "Delay Reward Stone",
+	description = "Survives on the board for "
+		.. tostring(P.points_delay_rounds)
+		.. " rounds, then grants "
+		.. tostring(P.points_delay_payout)
+		.. " points once if still present.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Hourglass mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.55, 0.62, 0.78 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "delay_reward_survival",
+			macro = "playing_stones",
+			sub = "points",
+			rounds = P.points_delay_rounds,
+			payout = P.points_delay_payout,
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.stone_special = {
 	id = "stone_special",
 	type = "stone",
@@ -649,7 +679,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"delay_reward_stone",
 	"capture_stone",
 	"tax_stone",
 	"self_destruct_timed_stone",
