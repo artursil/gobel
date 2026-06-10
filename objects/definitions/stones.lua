@@ -681,6 +681,34 @@ M.blockade_stone = {
 	},
 }
 
+M.tax_stone = {
+	id = "tax_stone",
+	type = "stone",
+	name = "Tax Stone",
+	description = "Each end of turn, taxes enemy stones inside the innermost owner enclosure containing this stone.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Coin ring mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.78, 0.62, 0.28 },
+		sprite = "sprites/stones/special.png",
+	},
+	effects = {
+		{
+			effect_name = "tax_enclosure_enemies",
+			macro = "end_of_turn",
+			sub = "points",
+			value = {
+				money_per_enemy = P.tax_money_per_enemy,
+				points_per_enemy = P.tax_points_per_enemy,
+			},
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 --- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
 --- @param id string
 --- @return table
@@ -703,7 +731,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"tax_stone",
 	"self_destruct_timed_stone",
 	"territory_to_points_stone",
 	"territory_to_multiplier_stone",

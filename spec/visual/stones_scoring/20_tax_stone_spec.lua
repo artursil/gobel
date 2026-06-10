@@ -36,6 +36,7 @@ local visual_scoring_debug_after_each = test_helper.visual_scoring_debug_after_e
 local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_registered_in_content
 local assert_player_points_delta = test_helper.assert_player_points_delta
 local assert_player_money = test_helper.assert_player_money
+local advance_rounds = test_helper.advance_rounds
 
 local S = P.stone
 
@@ -140,8 +141,8 @@ describe("tax_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . B B B B . .",
+			". . . B . T B . .",
 			". . . B . . B . .",
-			". . . B . . T . .",
 			". . . B B B B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -213,7 +214,7 @@ describe("tax_stone (visual ASCII)", function()
 		local per_round_points = S.tax_points_per_enemy * 2
 		assert_player_money(g, "black", snap.money + per_round_money, "both enclosures taxed same end of turn")
 		assert_player_points_delta(g, "black", snap, per_round_points, "1+1 enemies from two regions")
-		test_helper.finish_turn(g)
+		advance_rounds(g, 1)
 		assert_player_money(g, "black", snap.money + per_round_money * 2, "both enclosures taxed again next end of turn")
 	end)
 
@@ -247,7 +248,7 @@ describe("tax_stone (visual ASCII)", function()
 		local expected_points = S.tax_points_per_enemy * 1
 		assert_player_money(g, "black", snap.money + expected_money, "only bottom enclosure with tax stone pays")
 		assert_player_points_delta(g, "black", snap, expected_points, "enemies in other enclosures ignored")
-		test_helper.finish_turn(g)
+		advance_rounds(g, 1)
 		assert_player_money(g, "black", snap.money + expected_money * 2, "tax repeats while stone and enemy remain")
 	end)
 
@@ -415,7 +416,7 @@ describe("tax_stone (visual ASCII)", function()
 		assert_player_money(g, "black", snap.money + per_turn_money, "turn one tax")
 		assert_player_points_delta(g, "black", snap, per_turn_points, "turn one tax points")
 		local snap_after_first = player_score_snapshot(g, "black")
-		test_helper.finish_turn(g)
+		advance_rounds(g, 1)
 		assert_player_money(g, "black", snap.money + per_turn_money * 2, "turn two tax again")
 		assert_player_points_delta(g, "black", snap_after_first, per_turn_points, "turn two tax points again")
 	end)

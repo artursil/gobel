@@ -1301,6 +1301,51 @@ function M.blockade_adjacent(effect)
 	}
 end
 
+--- End-of-turn tax from enemy stones inside the innermost owner enclosure containing this tax stone.
+--- @param effect table
+--- @return table
+function M.tax_enclosure_enemies(effect)
+	local sub = effect.sub or "points"
+	return {
+		type = "TAX_ENCLOSURE_ENEMIES",
+		phase = sub,
+		macro = effect.macro or "end_of_turn",
+		sub = sub,
+		value = effect.value or {},
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			local active_owner = helpers.active_end_of_turn_owner(state)
+			if not active_owner or owner ~= active_owner then
+				return
+			end
+			local wall = enclosure.innermost_wall_containing(state.board, row, col, owner)
+			if not wall then
+				return
+			end
+			local region_key = enclosure.wall_region_key(wall)
+			state._tax_enclosure_paid = state._tax_enclosure_paid or {}
+			if state._tax_enclosure_paid[region_key] then
+				return
+			end
+			state._tax_enclosure_paid[region_key] = true
+			local enemy_count = enclosure.count_enemy_stones_in_wall(state.board, wall, owner)
+			if enemy_count <= 0 then
+				return
+			end
+			local money_per = effect.value.money_per_enemy or stone_params.tax_money_per_enemy
+			local points_per = effect.value.points_per_enemy or stone_params.tax_points_per_enemy
+			local side = owner == config.OWNER_BLACK and "black" or "white"
+			local player = require("match_state").player_for_color(state, side)
+			player.resources.money = (player.resources.money or 0) + enemy_count * money_per
+			state.scores.points[owner] = state.scores.points[owner] + enemy_count * points_per
+		end,
+	}
+end
+
 --- Wall placement: +5 Points per 5 stones in the orthogonal connected group (wall included).
 --- @param effect table
 --- @return table
@@ -1599,7 +1644,8 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 	if resolved.type == "WALL_STONE"
 		or resolved.type == "DIAGONAL_GROUP_POINTS"
 		or resolved.type == "LINE_GROUP_POINTS"
-		or resolved.type == "CONTROL_TERRITORY_OVERRIDE" then
+		or resolved.type == "CONTROL_TERRITORY_OVERRIDE"
+		or resolved.type == "TAX_ENCLOSURE_ENEMIES" then
 		resolved.apply = function(current_state)
 			base_apply(current_state, owner, row, col)
 		end

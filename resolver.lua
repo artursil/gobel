@@ -348,10 +348,15 @@ end
 
 --- @param state table
 --- @param macro string|nil active scoring macro (``playing_cards``, ``playing_stones``, ``end_of_turn``, …)
+--- @param end_of_turn_owner string|nil owner token when ``macro`` is ``end_of_turn``
 --- @return nil
-local function recalc_all_scores(state, macro)
+local function recalc_all_scores(state, macro, end_of_turn_owner)
+	if macro == "end_of_turn" and end_of_turn_owner then
+		state._end_of_turn_owner = end_of_turn_owner
+	end
 	local baseline = score_display.snapshot_scores(state)
 	resolve_round.resolve(state, { macro = macro or "playing_stones" })
+	state._end_of_turn_owner = nil
 	score_display.after_resolve(state, baseline, state.ui_animation_events)
 end
 
@@ -741,7 +746,7 @@ local function push_place_stone_score_events(state, actor, points_before, mult_b
 			value = mult_stones_delta,
 		}
 	end
-	recalc_all_scores(state, "end_of_turn")
+	recalc_all_scores(state, "end_of_turn", owner_for_side(actor))
 	local points_after = actor_state.score.points or 0
 	local mult_after = actor_state.score.plus_mult or 1
 	local eot_points_delta = points_after - points_after_stones
@@ -1309,7 +1314,7 @@ function M.submit_action(state, action)
 		end
 	end
 	if action.type == "PASS_TURN" then
-		recalc_all_scores(state, "end_of_turn")
+		recalc_all_scores(state, "end_of_turn", owner_for_side(action.actor))
 	elseif action.type == "PLACE_STONE" then
 		recalc_all_scores(state, "playing_stones")
 	end

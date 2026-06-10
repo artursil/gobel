@@ -6,6 +6,24 @@ local queries = require("single_game.resolver.state_queries")
 
 local H = {}
 
+--- Side whose turn just ended for the active ``end_of_turn`` resolve.
+--- Uses explicit resolver hook when set; otherwise infers from ``to_play`` for round-advance test paths.
+--- @param state table
+--- @return string|nil ``config.OWNER_BLACK`` | ``config.OWNER_WHITE``
+function H.active_end_of_turn_owner(state)
+	if state._end_of_turn_owner == config.OWNER_BLACK or state._end_of_turn_owner == config.OWNER_WHITE then
+		return state._end_of_turn_owner
+	end
+	local to_play = state.to_play
+	if to_play == "white" then
+		return config.OWNER_BLACK
+	end
+	if to_play == "black" then
+		return config.OWNER_WHITE
+	end
+	return nil
+end
+
 --- Next non-echo stance on the **same player's** panel to the right of ``source_slot_index``.
 --- @param state table
 --- @param owner string Normalized ``config`` owner token for the Echo row.
