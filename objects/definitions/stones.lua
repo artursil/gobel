@@ -315,8 +315,20 @@ M.energy_stone = {
 	depiction = "Bolt center mark",
 	graphic = { draw_key = "star" },
 	visual = {
-		color = { 0.85, 0.78, 0.35 },
-		sprite = "sprites/stones/special.png",
+		color = { 0.85, 0.78, 0.35 },M.kamikaze_stone = {
+	id = "kamikaze_stone",
+	type = "stone",
+	name = "Kamikaze Stone",
+	description = "Sacrifice stone that may enter zero-liberty cells, pays "
+		.. tostring(P.kamikaze_points_bonus)
+		.. " points once, then removes itself from the board.",
+	rarity = "uncommon",
+	probability = 0.7,
+	cost = 1,
+	depiction = "Burst mark",
+	graphic = { draw_key = "star" },
+	visual = {
+		color = { 0.85, 0.35, 0.3 },		sprite = "sprites/stones/special.png",
 	},
 	effects = {
 		{
@@ -396,8 +408,10 @@ M.points_stone = {
 			effect_name = "add_points",
 			macro = "playing_stones",
 			sub = "points",
-			value = P.points_stone_t1,
-			priority = P.default_effect_priority,
+			value = P.points_stone_t1,			effect_name = "kamikaze_sacrifice",
+			macro = "playing_stones",
+			sub = "points",
+			value = P.kamikaze_points_bonus,			priority = P.default_effect_priority,
 		},
 	},
 }
@@ -490,8 +504,8 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
+	"energy_stone",
 	"diagonal_stone",
-	"kamikaze_stone",
 	"enclosure_stone",
 	"control_stone",
 	"blockade_stone",

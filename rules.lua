@@ -162,7 +162,7 @@ function M.try_play(b, row, col, player, ko_ban, stone_kind, stone_level)
 	trial[row][col] = board.make_stone(player, stone_kind, stone_solidity.stone_max_solidity(stone_kind), stone_level)
 	local captures, ko_coord = M.remove_opponent_captures(trial, row, col, player)
 	local my_group = M.collect_group(trial, row, col)
-	if M.liberty_count(trial, my_group) == 0 then
+	if M.liberty_count(trial, my_group) == 0 and stone_kind ~= "kamikaze_stone" then
 		return false, nil, nil, 0, "suicide"
 	end
 	local new_ko = nil

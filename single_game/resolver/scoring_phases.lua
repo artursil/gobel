@@ -23,7 +23,11 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	add_mult = true,
 	add_energy = true,
 	mult_control_streak = true,
+<<<<<<< HEAD
 	defence_solidity_network = true,
+=======
+	kamikaze_sacrifice = true,
+>>>>>>> agent/issue-10
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {

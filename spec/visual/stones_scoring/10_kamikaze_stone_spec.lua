@@ -62,7 +62,7 @@ describe("kamikaze_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_legal_player_move_with_stone(g, "black", "kamikaze_stone", 4, 4, "kamikaze may enter zero-liberty cell")
+			assert_legal_player_move_with_stone(g, "black", "kamikaze_stone", 5, 5, "kamikaze may enter zero-liberty cell")
 		end)
 
 		it("kamikaze_stone scenario 2: cell is empty after resolve", function()
@@ -91,7 +91,7 @@ describe("kamikaze_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_board_cell_empty(g, 4, 4, "kamikaze self-removes from board")
+			assert_board_cell_empty(g, 5, 5, "kamikaze self-removes from board")
 		end)
 
 		it("kamikaze_stone scenario 3: grants configured kamikaze points", function()
@@ -205,7 +205,7 @@ describe("kamikaze_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_illegal_player_move_with_stone(g, "black", "kamikaze_stone", 4, 4, "kamikaze cannot overwrite stone")
+			assert_illegal_player_move_with_stone(g, "black", "kamikaze_stone", 5, 5, "kamikaze cannot overwrite stone")
 		end)
 
 		it("kamikaze_stone scenario 7: end_of_turn adds no delayed kamikaze payout", function()
@@ -315,7 +315,7 @@ describe("kamikaze_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_illegal_player_move_with_stone(g, "black", "stone_basic", 4, 4, "basic cannot use kamikaze liberty override")
+			assert_illegal_player_move_with_stone(g, "black", "stone_basic", 5, 5, "basic cannot use kamikaze liberty override")
 		end)
 
 		it("kamikaze_stone scenario 10: kamikaze on open board is legal and pays", function()
@@ -347,7 +347,7 @@ describe("kamikaze_stone (visual ASCII)", function()
 
 			local expected_delta = S.kamikaze_points_bonus
 			assert_player_points_delta(g, "black", snap, expected_delta, "open-board kamikaze still pays")
-			assert_board_cell_empty(g, 4, 4, "open-board kamikaze self-removes")
+			assert_board_cell_empty(g, 5, 5, "open-board kamikaze self-removes")
 		end)
 
 		it("kamikaze_stone scenario 11: adjacent friendly stones regain liberty after self-removal", function()
