@@ -169,6 +169,32 @@ M.control_territory_stone = {
 	},
 }
 
+M.blockade_stone = {
+	id = "blockade_stone",
+	type = "stone",
+	name = "Blockade Stone",
+	description = "On placement, blocks opponent stones on orthogonally adjacent empty cells for "
+		.. tostring(P.blockade_duration_rounds)
+		.. " rounds.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Barrier ring mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.55, 0.35, 0.35 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "blockade_adjacent",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.stone_special = {
 	id = "stone_special",
 	type = "stone",
@@ -282,7 +308,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"kamikaze_stone",
 	"enclosure_stone",
 	"control_stone",
-	"blockade_stone",
 	"defence_stone",
 	"money_field_stone",
 	"anti_capture_stone",

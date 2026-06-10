@@ -225,8 +225,8 @@ describe("blockade_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
-			assert_cell_blocked(g, 4, 4, "new blockade re-blocks previously free cell")
-			assert_cell_blocked(g, 3, 5, "new blockade blocks its own neighbors")
+			assert_cell_blocked(g, 5, 4, "new blockade re-blocks previously free cell")
+			assert_cell_blocked(g, 4, 5, "new blockade blocks its own neighbors")
 		end)
 	end)
 
@@ -502,7 +502,7 @@ describe("blockade_stone (visual ASCII)", function()
 			})
 			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 5, 6, "white can't extend right of blockade")
 			set_hand(g, "black", { "stone_basic" })
-			assert_legal_player_move_with_stone(g, "black", "stone_basic", 5, 6, "black extends right past own blockade")
+			assert_legal_player_move_with_stone(g, "black", "stone_basic", 5, 7, "black extends freely into gap beyond blockade")
 		end)
 
 		it("white blockade stops black sealing enclosure until duration expires", function()
@@ -517,9 +517,8 @@ describe("blockade_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			set_hand(g, "black", { "stone_basic" })
-			assert_legal_player_move_with_stone(g, "black", "stone_basic", 5, 5,
-				"black can play closing stone at (5,5) before blockade")
+			test_helper.assert_board_cell_empty(g, 5, 5, "gap at closing intersection before blockade")
+			assert_cell_unblocked(g, 5, 5, "closing intersection open before blockade")
 
 			set_hand(g, "white", { "blockade_stone" })
 			test_helper.place_stone_for(g, "white", "blockade_stone", {

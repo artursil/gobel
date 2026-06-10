@@ -12,6 +12,7 @@ local card_play_memory = require("single_game.resolver.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
+local blocked_cells = require("single_game.resolver.blocked_cells")
 
 local M = {}
 
@@ -540,6 +541,17 @@ local function run_event_queue(state, event_queue)
 			if event.row and event.col then
 				territory_control_rounds.clear_cell(state, event.row, event.col)
 			end
+			if event.row and event.col and event.stone_id then
+				local stone_def = content.get_stone(event.stone_id)
+				if stone_def and stone_def.effects then
+					for ei = 1, #stone_def.effects do
+						if stone_def.effects[ei].effect_name == "blockade_adjacent" then
+							blocked_cells.register_adjacent_from_blockade(state, event.row, event.col, event.actor)
+							state._blockade_registered_this_action = true
+						end
+					end
+				end
+			end
 			state.last_played_stone = event.stone_id
 			state.last_opponent_move = { stone_id = event.stone_id, row = event.row, col = event.col, actor = event.actor }
 			local actor_state = match_state.player_for_color(state, event.actor)
@@ -780,6 +792,9 @@ local function compile_place_stone_events(state, action)
 	local placement_level = instance and instance.level or nil
 	local row = action.payload and action.payload.row or -1
 	local col = action.payload and action.payload.col or -1
+	if blocked_cells.is_blocked_for_actor(state, row, col, action.actor) then
+		return nil, "Illegal move: cell is blockaded for this player"
+	end
 	local ok, new_board, new_ko, captures, illegal_reason = rules.try_play(
 		state.board,
 		row,

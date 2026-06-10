@@ -23,6 +23,7 @@ local M = {}
 --- @return nil
 local function ensure_state_fields(state)
 	state.round_number = match_state.round_number_from_turn(state.turn_number)
+	require("single_game.resolver.blocked_cells").ensure(state)
 	state.run_state = state.run_state or {}
 	state.run_state.pending_counter_mult_delta = {}
 	state.last_opponent_move = state.last_opponent_move or nil
@@ -258,6 +259,12 @@ function M.resolve(state, opts)
 	end
 	if macro == "end_of_turn" then
 		card_play_memory.flush_just_played_to_history(state)
+		local blocked_cells = require("single_game.resolver.blocked_cells")
+		blocked_cells.bootstrap_from_board_if_needed(state)
+		if not state._blockade_registered_this_action and (state.turn_number or 1) % 2 == 0 then
+			blocked_cells.tick(state)
+		end
+		state._blockade_registered_this_action = nil
 		tick_timed_effects(state)
 		tick_temporary_stances(state)
 		if (state.turn_number or 1) % 2 == 0 then
