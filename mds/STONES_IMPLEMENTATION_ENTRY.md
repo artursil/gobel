@@ -524,7 +524,7 @@ Comment: This is ok but I would increase it to 7 rounds
 **description:** Placement-triggered capture stone that removes one enemy stone with zero liberties, regardless of which color surrounds it.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger on placement only.
 - Eligible targets: enemy stones with exactly **0 liberties** after this stone is placed. Unlike basic Go capture, it does not matter which colors surround the target — only that the target has no empty orthogonal neighbors.
 - If exactly one eligible target exists, capture (remove) it.
@@ -542,7 +542,7 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

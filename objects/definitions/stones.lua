@@ -560,6 +560,30 @@ M.points_stone = {
 	},
 }
 
+M.capture_stone = {
+	id = "capture_stone",
+	type = "stone",
+	name = "Capture Stone",
+	description = "On placement, removes one enemy stone with zero liberties regardless of surrounding colors.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Crosshair mark",
+	graphic = { draw_key = "star" },
+	visual = {
+		color = { 0.75, 0.35, 0.35 },
+		sprite = "sprites/stones/special.png",
+	},
+	effects = {
+		{
+			effect_name = "capture_zero_liberty_enemy",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.wall = {
 	id = "wall",
 	type = "stone",
@@ -679,7 +703,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"capture_stone",
 	"tax_stone",
 	"self_destruct_timed_stone",
 	"territory_to_points_stone",

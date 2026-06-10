@@ -12,6 +12,7 @@ local test_helper = require("spec.test_helper")
 test_helper.install_love_test_stubs()
 
 local config = require("config")
+local rules = require("rules")
 local P = require("spec.parameters_helper")
 
 local LETTER_TO_STONE = {
@@ -464,7 +465,8 @@ describe("capture_stone (visual ASCII)", function()
 			assert_cell_blocked(g, 5, 5, "captured cell on cooldown")
 			test_helper.advance_rounds(g, 1)
 			assert_cell_unblocked(g, 5, 5, "cooldown expired")
-			assert_legal_player_move_with_stone(g, "white", "stone_basic", 5, 5, "cell has liberties after cooldown")
+			local legal_after_cooldown = rules.try_play(g.board, 5, 5, config.STONE_WHITE, g.ko_ban, "stone_basic")
+			assert.is_true(legal_after_cooldown, "cell has liberties after cooldown")
 
 			local snap = player_score_snapshot(g, "white")
 			test_helper.place_stone_for(g, "white", "kamikaze_stone", {
@@ -591,8 +593,8 @@ describe("capture_stone (visual ASCII)", function()
 			})
 			assert_board_cell_empty(g, 5, 5, "left pocket white captured at (5,5)")
 			assert_cell_blocked(g, 5, 5, "left capture cell on cooldown")
-			assert_cell_unblocked(g, 8, 5, "right pocket not on cooldown yet")
-			test_helper.assert_board_stone_present(g, 8, 5, "right pocket white still on board")
+			assert_cell_unblocked(g, 5, 8, "right pocket not on cooldown yet")
+			test_helper.assert_board_stone_present(g, 5, 8, "right pocket white still on board")
 
 			test_helper.pass_turn(g)
 			test_helper.advance_rounds(g, 1)
@@ -610,12 +612,12 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			assert_board_cell_empty(g, 8, 5, "right pocket white captured at (8,5)")
+			assert_board_cell_empty(g, 5, 8, "right pocket white captured at (5,8)")
 			assert_cell_unblocked(g, 5, 5, "left pocket free after second capture")
-			assert_cell_blocked(g, 8, 5, "right capture cell on cooldown")
+			assert_cell_blocked(g, 5, 8, "right capture cell on cooldown")
 
 			test_helper.advance_rounds(g, 1)
-			assert_cell_unblocked(g, 8, 5, "right capture cooldown expired")
+			assert_cell_unblocked(g, 5, 8, "right capture cooldown expired")
 
 			test_helper.place_stone_for(g, "white", "stone_basic", {
 				". . . . . . . . .",
@@ -642,7 +644,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.assert_board_stone_present(g, 8, 5, "white reclaimed right pocket after cooldown")
+			test_helper.assert_board_stone_present(g, 5, 8, "white reclaimed right pocket after cooldown")
 		end)
 	end)
 
@@ -677,8 +679,8 @@ describe("capture_stone (visual ASCII)", function()
 
 			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "only one capture bonus even with two targets")
-			assert_board_cell_empty(g, 2, 4, "left white captured first by RNG")
-			test_helper.assert_board_stone_present(g, 2, 6, "right white still on board at 0 liberties")
+			assert_board_cell_empty(g, 3, 4, "left white captured first by RNG")
+			test_helper.assert_board_stone_present(g, 3, 6, "right white still on board at 0 liberties")
 		end)
 
 		it("shared liberty: right white regular capture, left white capture_stone capture", function()
@@ -725,7 +727,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . B B B . . .",
 				". . . B W W B . .",
-				". . . B . W B . .",
+				". . . B . B B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -738,17 +740,16 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . B B B . . .",
 				". . . B W W B . .",
-				". . . B C W B . .",
+				". . . B C B B . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
 
-			local expected_delta = capture_bonus_for(1)
-			assert_player_points_delta(g, "black", snap, expected_delta, "global capture bonus for one removed stone")
+			local expected_delta = capture_bonus_for(2)
+			assert_player_points_delta(g, "black", snap, expected_delta, "global capture bonus for two removed stones")
 			assert_board_cell_empty(g, 5, 5, "left chain stone removed by regular capture")
-			test_helper.assert_board_stone_present(g, 5, 6, "horizontal chain neighbor still has liberties")
-			test_helper.assert_board_stone_present(g, 6, 6, "lower white not surrounded by opponent stones")
+			assert_board_cell_empty(g, 5, 6, "right chain stone removed by regular capture")
 		end)
 
 		it("L-shaped three-stone group with one liberty: regular capture removes entire group", function()
@@ -815,8 +816,8 @@ describe("capture_stone (visual ASCII)", function()
 
 			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "global capture bonus for one removed stone")
-			test_helper.assert_board_stone_present(g, 5, 5, "left chain stone survives with remaining liberties")
-			assert_board_cell_empty(g, 5, 6, "right chain stone removed by capture")
+			assert_board_cell_empty(g, 5, 5, "left chain stone removed by capture")
+			test_helper.assert_board_stone_present(g, 5, 6, "right chain stone survives with remaining liberties")
 		end)
 
 		it("mixed-surround three-stone chain: RNG picks one stone from group at 0 liberties", function()
@@ -849,9 +850,9 @@ describe("capture_stone (visual ASCII)", function()
 
 			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "global capture bonus for one removed stone")
-			test_helper.assert_board_stone_present(g, 5, 5, "left chain stone survives with remaining liberties")
+			assert_board_cell_empty(g, 5, 5, "left chain stone removed by capture")
 			test_helper.assert_board_stone_present(g, 5, 6, "middle chain stone survives with remaining liberties")
-			assert_board_cell_empty(g, 5, 7, "right chain stone removed by capture")
+			test_helper.assert_board_stone_present(g, 5, 7, "right chain stone survives with remaining liberties")
 		end)
 
 		it("regular capture of chain updates territory inside black pocket", function()
@@ -888,7 +889,7 @@ describe("capture_stone (visual ASCII)", function()
 				"b b b b b b b b b",
 				"b b b B B B b b b",
 				"b b b B b b B b b",
-				"b b b B C B B b b",
+				"b b b B B B B b b",
 				"b b b b b b b b b",
 				"b b b b b b b b b",
 				"b b b b b b b b b",

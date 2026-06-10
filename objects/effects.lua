@@ -1229,6 +1229,20 @@ function M.defence_solidity_network(effect)
 	}
 end
 
+--- Placement capture: remove one enemy stone with zero liberties (resolved in ``capture_stone`` module).
+--- @param effect table
+--- @return table
+function M.capture_zero_liberty_enemy(effect)
+	return {
+		type = "CAPTURE_ZERO_LIBERTY_ENEMY",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+	}
+end
+
 --- Registers a survival timer; payout on expiry is handled by ``single_game.resolver.stone_timers``.
 --- @param effect table
 --- @return table

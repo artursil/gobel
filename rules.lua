@@ -142,11 +142,14 @@ end
 --- @param player integer chain color
 --- @param ko_ban table|nil forbidden intersection for this move {row, col}
 --- @param stone_kind integer kind id from stone_kinds
+--- @param stone_level integer|nil
+--- @param opts table|nil ``{ allow_suicide?: boolean }``
 --- @return boolean ok
 --- @return table|nil new_board
 --- @return table|nil new_ko next player's ko ban or nil
 --- @return integer captures number of opponent stones removed
-function M.try_play(b, row, col, player, ko_ban, stone_kind, stone_level)
+--- @return string|nil illegal_reason
+function M.try_play(b, row, col, player, ko_ban, stone_kind, stone_level, opts)
 	local n = config.BOARD_SIZE
 	if row < 1 or row > n or col < 1 or col > n then
 		return false, nil, nil, 0, "out_of_bounds"
@@ -162,7 +165,7 @@ function M.try_play(b, row, col, player, ko_ban, stone_kind, stone_level)
 	trial[row][col] = board.make_stone(player, stone_kind, stone_solidity.stone_max_solidity(stone_kind), stone_level)
 	local captures, ko_coord = M.remove_opponent_captures(trial, row, col, player)
 	local my_group = M.collect_group(trial, row, col)
-	if M.liberty_count(trial, my_group) == 0 and stone_kind ~= "kamikaze_stone" then
+	if M.liberty_count(trial, my_group) == 0 and not (opts and opts.allow_suicide) then
 		return false, nil, nil, 0, "suicide"
 	end
 	local new_ko = nil
