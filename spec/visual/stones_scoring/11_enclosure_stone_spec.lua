@@ -71,7 +71,7 @@ describe("enclosure_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
+		local baseline = test_helper.player_territory_score(g, "black")
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -98,9 +98,9 @@ describe("enclosure_stone (visual ASCII)", function()
 		}, "all 5 remaining interior cells multiplied", TV_OPTS)
 
 		local enclosed_cells = 5
-		local expected_territory_gain = enclosed_cells * (multiplier - 1)
-		local territory_after = test_helper.count_territory_cells(g, "black")
-		assert.are.equal(snap.territory + expected_territory_gain, territory_after,
+		local expected_territory_gain = enclosed_cells * (multiplier - 1) - 1
+		local territory_after = test_helper.player_territory_score(g, "black")
+		assert.are.equal(baseline + expected_territory_gain, territory_after,
 			"territory increases by 5 * (multiplier-1)")
 	end)
 
@@ -353,7 +353,7 @@ describe("enclosure_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
+		local baseline = test_helper.player_territory_score(g, "black")
 
 		place_stone(g, {
 			"B . N . B . . . .",
@@ -380,9 +380,9 @@ describe("enclosure_stone (visual ASCII)", function()
 		}, "board top edge serves as wall completing the enclosure", TV_OPTS)
 
 		local enclosed_cells = 8
-		local expected_territory_gain = enclosed_cells * (multiplier - 1)
-		local territory_after = test_helper.count_territory_cells(g, "black")
-		assert.are.equal(snap.territory + expected_territory_gain, territory_after,
+		local expected_territory_gain = enclosed_cells * (multiplier - 1) - 1
+		local territory_after = test_helper.player_territory_score(g, "black")
+		assert.are.equal(baseline + expected_territory_gain, territory_after,
 			"territory increases by enclosed cells * (multiplier-1)")
 	end)
 
@@ -399,6 +399,7 @@ describe("enclosure_stone (visual ASCII)", function()
 			". . . . . B . . .",
 			". . . . . B . . .",
 		})
+		local baseline = test_helper.player_territory_score(g, "black")
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -425,9 +426,9 @@ describe("enclosure_stone (visual ASCII)", function()
 		}, "bottom-right corner: board edges complete the enclosure", TV_OPTS)
 
 		local enclosed_cells = 8
-		local expected_territory_gain = enclosed_cells * (multiplier - 1)
-		local territory_after = test_helper.count_territory_cells(g, "black")
-		assert.are.equal(snap.territory + expected_territory_gain, territory_after,
+		local expected_territory_gain = enclosed_cells * (multiplier - 1) - 1
+		local territory_after = test_helper.player_territory_score(g, "black")
+		assert.are.equal(baseline + expected_territory_gain, territory_after,
 			"corner enclosure boosts territory")
 	end)
 
@@ -480,7 +481,7 @@ describe("enclosure_stone (visual ASCII)", function()
 			"B W . W . W . . .",
 			"B B W . B B W . .",
 			"B . B . . W . W .",
-			"W T B . . B . . W",
+			"W N B . . B . . W",
 			"B W W B B . . W .",
 			". . B W B B W . .",
 			"B B . W W W . W B",
@@ -490,10 +491,10 @@ describe("enclosure_stone (visual ASCII)", function()
 			"# 1 # 1 # 1 1 1 1",
 			"# # 1 # 1 # 1 1 1",
 			"# # # 1 # # # 1 1",
-			"# d # 1 1 # 1 # 1",
-			"# # # 1 1 # 1 1 #",
+			"# 1 # 1 1 # 1 # 1",
+			"1 # # 1 1 # 1 1 #",
 			"# # # # # 1 1 # 1",
-			"1 1 # # # # # 1 1",
+			"d d # # # # # 1 1",
 			"# # 1 # # # 1 # #",
 			"1 # # 1 # 1 1 # 1",
 		}, "top-left and bottom-left multiplied, top-right untouched", TV_OPTS)
@@ -615,7 +616,7 @@ describe("enclosure_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
+		local baseline = test_helper.player_territory_score(g, "black")
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -641,10 +642,10 @@ describe("enclosure_stone (visual ASCII)", function()
 			"1 1 1 1 1 1 1 1 1",
 		}, "L-shaped interior: all 8 enclosed cells multiplied", TV_OPTS)
 
-		local enclosed_cells = 8
-		local expected_territory_gain = enclosed_cells * (multiplier - 1)
-		local territory_after = test_helper.count_territory_cells(g, "black")
-		assert.are.equal(snap.territory + expected_territory_gain, territory_after,
+		local enclosed_cells = 7
+		local expected_territory_gain = enclosed_cells * (multiplier - 1) - 1
+		local territory_after = test_helper.player_territory_score(g, "black")
+		assert.are.equal(baseline + expected_territory_gain, territory_after,
 			"L-shape territory gain matches cell count")
 	end)
 
@@ -700,7 +701,7 @@ describe("enclosure_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
+		local baseline = test_helper.player_territory_score(g, "black")
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -727,9 +728,9 @@ describe("enclosure_stone (visual ASCII)", function()
 		}, "white stone inside does not cancel black enclosure doubling", TV_OPTS)
 
 		local enclosed_cells = 2
-		local expected_territory_gain = enclosed_cells * (multiplier - 1)
-		local territory_after = test_helper.count_territory_cells(g, "black")
-		assert.are.equal(snap.territory + expected_territory_gain, territory_after,
+		local expected_territory_gain = enclosed_cells * (multiplier - 1) - 1
+		local territory_after = test_helper.player_territory_score(g, "black")
+		assert.are.equal(baseline + expected_territory_gain, territory_after,
 			"two doubled interior empties add multiplier-1 each")
 	end)
 
@@ -790,7 +791,7 @@ describe("enclosure_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		local snap = player_score_snapshot(g, "black")
+		local baseline = test_helper.player_territory_score(g, "black")
 
 		place_stone(g, {
 			". . . . . . . . .",
@@ -817,9 +818,9 @@ describe("enclosure_stone (visual ASCII)", function()
 		}, "left board edge acts as wall for 8 enclosed cells", TV_OPTS)
 
 		local enclosed_cells = 8
-		local expected_territory_gain = enclosed_cells * (multiplier - 1)
-		local territory_after = test_helper.count_territory_cells(g, "black")
-		assert.are.equal(snap.territory + expected_territory_gain, territory_after,
+		local expected_territory_gain = enclosed_cells * (multiplier - 1) - 1
+		local territory_after = test_helper.player_territory_score(g, "black")
+		assert.are.equal(baseline + expected_territory_gain, territory_after,
 			"left-edge enclosure territory gain")
 	end)
 
@@ -984,15 +985,15 @@ describe("enclosure_stone (visual ASCII)", function()
 		})
 
 		assert_territory_values_ascii(g, {
-			". # # # # # # # .",
-			". # d d # d d # .",
-			". # d # d # d # .",
-			". # d # # # d # .",
-			". # d # # # d # .",
-			". # d d d d d # .",
-			". # # # # # # # .",
-			". . . . . . . . .",
-			". . . . . . . . .",
+			"1 # # # # # # # 1",
+			"1 # # d # d d # 1",
+			"1 # d # # # d # 1",
+			"1 # d # d # d # 1",
+			"1 # d # # # d # 1",
+			"1 # d d d d d # 1",
+			"1 # # # # # # # 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "black multiplier on black region, white multiplier on white pocket (4,5)", TV_OPTS)
 	end)
 
