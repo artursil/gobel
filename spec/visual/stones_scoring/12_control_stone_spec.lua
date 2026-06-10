@@ -67,15 +67,15 @@ describe("control_stone (visual ASCII)", function()
 		})
 
 		assert_territory_ascii(g, {
-			"B b b b b b b b b",
-			"b b b b b b b b b",
-			"b b b b b b b b .",
+			"B b b b b b b b .",
 			"b b b b b b b . w",
 			"b b b b b b . w w",
 			"b b b b b . w w w",
 			"b b b b . w w w w",
 			"b b b . w w w w w",
-			"b b . w w w w w W",
+			"b b . w w w w w w",
+			"b . w w w w w w w",
+			". w w w w w w w W",
 		}, "baseline: influence splits board diagonally")
 
 		place_stone(g, {
@@ -92,14 +92,14 @@ describe("control_stone (visual ASCII)", function()
 
 		assert_territory_ascii(g, {
 			"B b b b b b b b b",
-			"b b b b b b b b b",
 			"b b b b b b b b .",
+			"b b b b b b b b .",
+			"b b b b b b b b .",
+			"b b b b b b b b .",
+			"b b b b b B b b .",
 			"b b b b b b b . w",
-			"b b b b b b b w w",
-			"b b b b b B b w w",
-			"b b b b . b w w w",
-			"b b b . w w w w w",
-			"b b . w w w w w W",
+			"b b b b b b . w w",
+			"b . . . . . w w W",
 		}, "control_stone overrides 4 orthogonal neighbors to black, flipping white cells")
 	end)
 
@@ -142,15 +142,15 @@ describe("control_stone (visual ASCII)", function()
 
 		assert_territory_ascii(g, {
 			"b b b b b b b b b",
-			"b B w b b b b b b",
-			"w W w w b b b b b",
+			"b B b b b b b b b",
+			"w W w w w w w w w",
 			"W w w w w w w w w",
 			"w w w w w w w w w",
 			"w w w w w w w w w",
 			"w w w w w w w w w",
 			"w w w w w w w w w",
 			"w w w w w w w w w",
-		}, "white control at (3,2) overrides (2,2), (3,1), (3,3), (4,2) to white")
+		}, "white control at (3,2) overrides (3,1), (3,3), (4,2) to white; (2,2) stays black-influenced")
 	end)
 
 	it("override beats enclosure: flips cell inside opponent's sealed ring", function()
@@ -236,11 +236,11 @@ describe("control_stone (visual ASCII)", function()
 			"w w w w w w w w w",
 			"w w w w w w w w w",
 			"w w w w W w w w w",
-			"w w w b w w w w w",
-			"w w b O b w w w w",
-			"w w w b w w w w w",
-			"w w w w w w w w w",
-		}, "diagonal cells (5,4), (5,6), (7,4), (7,6) remain white-influenced, not overridden")
+			"b b b b w w w w w",
+			"b b b B b b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+		}, "override applies to orthogonals only; diagonals flip via black influence, not override")
 	end)
 
 	it("opposing adjacent controls: influence assigns full board, overrides claim orthogonal neighbors", function()
@@ -321,15 +321,15 @@ describe("control_stone (visual ASCII)", function()
 		}, false)
 
 		assert_territory_ascii(g, {
-			"b b b b b b b . w",
-			"b b b b b b b . w",
 			"b b b b b b . w w",
-			"b b b b b b b w w",
-			"b b b b B B b w W",
-			"b b b b b b b w w",
 			"b b b b b b . w w",
-			"b b b b b b b . w",
-			"b b b b b b b . w",
+			"b b b b b b . w w",
+			"b b b b b b . w w",
+			"b b b b B b . w W",
+			"b b b b b b . w w",
+			"b b b b b b . w w",
+			"b b b b b b . w w",
+			"b b b b b b . w w",
 		}, "overlapping black overrides union to black, no cancellation")
 	end)
 
@@ -389,15 +389,15 @@ describe("control_stone (visual ASCII)", function()
 		})
 
 		assert_territory_ascii(g, {
-			"B b b b b b b . w",
+			"B b b b b b b b .",
+			"b b b b b b b . w",
 			"b b b b b b . w w",
 			"b b b b b . w w w",
 			"b b b b . w w w w",
 			"b b b . w w w w w",
 			"b b . w w w w w w",
 			"b . w w w w w w w",
-			". w w w w w w w w",
-			"w w w w w w w w W",
+			". w w w w w w w W",
 		}, "corner (1,1): only (1,2) and (2,1) overridden to black")
 	end)
 
@@ -428,15 +428,15 @@ describe("control_stone (visual ASCII)", function()
 		})
 
 		assert_territory_ascii(g, {
-			"b b b b b b b . w",
 			"b b b b b b . w w",
+			"b b b b b b . w w",
+			"b b b b b b . w w",
+			"b b b b b b . w w",
+			"B b b b b b . w w",
 			"b b b b b . w w w",
-			"b b b b b . w w w",
-			"B b b b . w w w w",
 			"b b b b . w w w w",
-			"b b b b b . w w w",
-			"b b b b b b . w w",
-			"b b b b b b b . W",
+			"b b b . w w w w w",
+			"b b . w w w w w W",
 		}, "left-edge (5,1): neighbors (4,1), (5,2), (6,1) overridden, no (5,0)")
 	end)
 
@@ -522,7 +522,7 @@ describe("control_stone (visual ASCII)", function()
 			"w w w w w w w w w",
 			"w w W W W W W w w",
 			"w w W b B b W w w",
-			"w w W b b w W w w",
+			"w w W w b w W w w",
 			"w w W w w w W w w",
 			"w w W W W W W w w",
 			"w w w w w w w w w",
@@ -573,7 +573,7 @@ describe("control_stone (visual ASCII)", function()
 			"B w w W w w w w w",
 			"w W W w b b b b b",
 			"W W w b B B b b b",
-			"w w w b W W w w w",
+			"w w w . W W w w w",
 			"w . b B . w w w w",
 			"w . b b . w w w w",
 			"w . b b . w w w w",
@@ -738,15 +738,15 @@ describe("control_stone (visual ASCII)", function()
 
 		assert_territory_ascii(g, {
 			"B b b b . w w w W",
-			"b b b . . . w w w",
-			"b b . . . . . w w",
-			"b . . . . . . . w",
-			". . . . . . . . .",
-			"b . . . . . . . w",
-			"b b . . . . . w w",
-			"b b b . . . w w w",
 			"b b b b . w w w w",
-		}, "baseline: diagonal of neutral '.' cells where influence ties")
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+		}, "baseline: neutral midline where black and white influence tie")
 
 		place_stone(g, {
 			"B . . . . . . . W",
@@ -761,16 +761,16 @@ describe("control_stone (visual ASCII)", function()
 		})
 
 		assert_territory_ascii(g, {
-			"B b b b . w w w W",
-			"b b b . . . w w w",
-			"b b . . . . . w w",
-			"b . . . b . . . w",
-			". . . b B b . . .",
-			"b . . . b . . . w",
-			"b b . . . . . w w",
-			"b b b . . . w w w",
-			"b b b b . w w w w",
-		}, "control at (5,5) overrides neutral neighbors to black, breaks the tie")
+			"B b b b b w w w W",
+			"b b b b b . w w w",
+			"b b b b b b . w w",
+			"b b b b b b b . w",
+			"b b b b B b b b .",
+			"b b b b b b b b .",
+			"b b b b b b b b .",
+			"b b b b b b b b .",
+			"b b b b b b b b .",
+		}, "control at (5,5) overrides orthogonal neighbors to black, breaks the tie")
 	end)
 
 	it("white control inside black enclosure: override beats enclosure for inner cells", function()
