@@ -656,6 +656,45 @@ function M.pattern_plus_mult(effect)
 	}
 end
 
+--- End-of-turn payout from territory owner at the stone cell and that owner's total territory.
+--- @param effect table
+--- @return table
+function M.territory_to_points(effect)
+	return {
+		type = "TERRITORY_TO_POINTS",
+		phase = effect.sub or "points",
+		macro = effect.macro or "end_of_turn",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, _owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			local cell = state.board[row] and state.board[row][col]
+			if not cell or board.is_empty(cell) or cell.kind ~= "territory_to_points_stone" then
+				return
+			end
+			local territory_mod = require("single_game.resolver.territory")
+			local territory_grid, territory_value = territory_mod.territory_map_for_stone_payout(state, row, col)
+			if not territory_grid then
+				return
+			end
+			local recipient = territory_mod.owner_at_cell(territory_grid, row, col)
+			if not recipient then
+				return
+			end
+			local owner_color = recipient == config.OWNER_WHITE and config.STONE_WHITE or config.STONE_BLACK
+			local total_territory = territory_mod.weighted_territory_points(territory_grid, owner_color, territory_value)
+			local payout = territory_mod.territory_to_points_payout(total_territory)
+			if payout <= 0 then
+				return
+			end
+			state.scores.points[recipient] = state.scores.points[recipient] + payout
+		end,
+	}
+end
+
 --- Wall placement: +5 Points per 5 stones in the orthogonal connected group (wall included).
 --- @param effect table
 --- @return table
@@ -791,7 +830,7 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 		return nil
 	end
 	local base_apply = resolved.apply
-	if resolved.type == "WALL_STONE" then
+	if resolved.type == "WALL_STONE" or resolved.type == "TERRITORY_TO_POINTS" then
 		resolved.apply = function(current_state)
 			base_apply(current_state, owner, row, col)
 		end

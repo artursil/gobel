@@ -542,4 +542,128 @@ function M.compute_from_board(b, territory_mode)
 	return territory_grid, decision_sources, temp_state.territory_value
 end
 
+--- Maps a territory grid cell color to a scoring owner token.
+--- @param territory_color integer|nil
+--- @return string|nil ``config.OWNER_BLACK`` | ``config.OWNER_WHITE`` | nil when contested or unowned
+function M.owner_from_territory_color(territory_color)
+	if territory_color == config.STONE_BLACK then
+		return config.OWNER_BLACK
+	end
+	if territory_color == config.STONE_WHITE then
+		return config.OWNER_WHITE
+	end
+	return nil
+end
+
+--- Territory owner at one grid cell from a territory map snapshot.
+--- @param territory_grid table
+--- @param row integer
+--- @param col integer
+--- @return string|nil
+function M.owner_at_cell(territory_grid, row, col)
+	if not territory_grid or not territory_grid[row] then
+		return nil
+	end
+	return M.owner_from_territory_color(territory_grid[row][col])
+end
+
+--- Weighted total controlled territory for one side across the full grid.
+--- @param territory_grid table
+--- @param color integer ``config.STONE_BLACK`` | ``config.STONE_WHITE``
+--- @param territory_value table|nil
+--- @return integer
+function M.weighted_territory_points(territory_grid, color, territory_value)
+	local n = config.BOARD_SIZE
+	local sum = 0
+	for r = 1, n do
+		for c = 1, n do
+			if territory_grid[r][c] == color then
+				if territory_value then
+					local weight = (territory_value[r] and territory_value[r][c]) or 1
+					sum = sum + weight
+				else
+					sum = sum + 1
+				end
+			end
+		end
+	end
+	return sum
+end
+
+local stone_params = require("objects.parameters.stones")
+
+--- Computes end-of-turn territory-to-points payout from total controlled territory.
+--- @param total_territory integer
+--- @return integer
+function M.territory_to_points_payout(total_territory)
+	return math.min(
+		stone_params.t2p_cap,
+		math.floor(total_territory / stone_params.t2p_divisor)
+	)
+end
+
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return table territory_grid
+--- @return table territory_value
+local function territory_map_for_stone_cell(state, row, col)
+	local key = row .. ":" .. col
+	local snapshots = state.territory_placement_snapshots
+	if snapshots and snapshots[key] then
+		local snapshot = snapshots[key]
+		snapshots[key] = nil
+		return snapshot.territory, snapshot.territory_value
+	end
+	local cell = state.board[row] and state.board[row][col]
+	if cell and not board.is_empty(cell) then
+		local cloned = board.clone(state.board)
+		cloned[row][col] = config.STONE_NONE
+		local territory_grid, _, territory_value =
+			M.compute_from_board(cloned, state.territory_mode or "regional")
+		return territory_grid, territory_value
+	end
+	return state.territory, state.territory_value
+end
+
+--- Territory map used by territory-to-points stones at payout time.
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return table territory_grid
+--- @return table territory_value
+function M.territory_map_for_stone_payout(state, row, col)
+	return territory_map_for_stone_cell(state, row, col)
+end
+
+--- Stores the pre-placement territory snapshot for stones that read ownership on their placement turn.
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @param stone_id string
+--- @return nil
+function M.capture_placement_snapshot_if_needed(state, row, col, stone_id)
+	local def = content.get_stone(stone_id)
+	if not def or not def.effects then
+		return
+	end
+	local needs_snapshot = false
+	for i = 1, #def.effects do
+		if def.effects[i].effect_name == "territory_to_points" then
+			needs_snapshot = true
+			break
+		end
+	end
+	if not needs_snapshot then
+		return
+	end
+	local mode = state.territory_mode or "regional"
+	local territory_grid, _, territory_value = M.compute_from_board(state.board, mode)
+	state.territory_placement_snapshots = state.territory_placement_snapshots or {}
+	state.territory_placement_snapshots[row .. ":" .. col] = {
+		territory = territory_grid,
+		territory_value = territory_value,
+	}
+end
+
 return M
