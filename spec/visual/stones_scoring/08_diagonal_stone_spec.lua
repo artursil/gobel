@@ -129,11 +129,11 @@ describe("diagonal_stone (visual ASCII)", function()
 		set_hand(g, "black", { "diagonal_stone" })
 		set_board(g, {
 			". . . . . . . . .",
-			". . . . . . . . .",
+			". . B . . . . . .",
 			". . . B . . . . .",
 			". . . . B . . . .",
+			". . . . . B . . .",
 			". . . . . . . . .",
-			". . . . . . B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -142,11 +142,11 @@ describe("diagonal_stone (visual ASCII)", function()
 
 		place_stone(g, {
 			". . . . . . . . .",
-			". . . . . . . . .",
+			". . B . . . . . .",
 			". . . B . . . . .",
 			". . . . B . . . .",
-			". . . . . D . . .",
-			". . . . . . B . .",
+			". . . . . B . . .",
+			". . . . . . D . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -161,7 +161,7 @@ describe("diagonal_stone (visual ASCII)", function()
 			"B . . . . . . . .",
 			". B . . . . . . .",
 			". . B . . . . . .",
-			". . . B . . . . .",
+			". . . B . B . . .",
 			". . . . . . . . .",
 			". . . . . B . . .",
 			". . . . . . B . .",
@@ -174,7 +174,7 @@ describe("diagonal_stone (visual ASCII)", function()
 			"B . . . . . . . .",
 			". B . . . . . . .",
 			". . B . . . . . .",
-			". . . B . . . . .",
+			". . . B . B . . .",
 			". . . . D . . . .",
 			". . . . . B . . .",
 			". . . . . . B . .",
@@ -253,7 +253,7 @@ describe("diagonal_stone (visual ASCII)", function()
 			". . B . . . . . .",
 			". . . B . . . . .",
 			". . . . . . . . .",
-			". . . . . . . . .",
+			". . . . . B . . .",
 			". . . . . . W . .",
 			". . . . . . . . .",
 			". . . . . . . . W",
@@ -266,7 +266,7 @@ describe("diagonal_stone (visual ASCII)", function()
 			". . B . . . . . .",
 			". . . B . . . . .",
 			". . . . D . . . .",
-			". . . . . . . . .",
+			". . . . . B . . .",
 			". . . . . . W . .",
 			". . . . . . . . .",
 			". . . . . . . . W",
@@ -355,7 +355,7 @@ describe("diagonal_stone (visual ASCII)", function()
 
 		local snap_after_first = player_score_snapshot(g, "black")
 
-		place_stone(g, {
+		test_helper.place_stone_for(g, "black", "diagonal_stone", {
 			"D . . . . . . . .",
 			". B . . . . . . .",
 			". . B . . . . . .",
@@ -367,7 +367,7 @@ describe("diagonal_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		}, false)
 
-		assert_player_points_delta(g, "black", snap, diagonal_bonus(8), "first placement connects full diagonal chain")
+		assert_player_points_delta(g, "black", snap, diagonal_bonus(8) + diagonal_bonus(9), "both placements score their diagonal groups")
 		assert_player_points_delta(g, "black", snap_after_first, diagonal_bonus(9), "second placement extends chain by one")
 	end)
 end)
