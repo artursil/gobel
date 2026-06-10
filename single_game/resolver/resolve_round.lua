@@ -246,6 +246,9 @@ function M.resolve(state, opts)
 	prepare_score_baselines(state, macro)
 	queries.clear_resolution(state)
 	state._resolve_macro = macro
+	if macro == "end_of_turn" then
+		state._tax_enclosure_paid = {}
+	end
 	run_sub_phases(state, macro)
 	sync_player_scores(state)
 	if macro == "playing_cards" then

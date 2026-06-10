@@ -552,7 +552,7 @@ Comment: This is ok but I would increase it to 7 rounds
 **description:** End-of-turn tax payout from enemy stones inside qualifying enclosure.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger at each owner `end_of_turn`.
 - For each qualifying enclosure region containing at least one owner tax stone, count enemy stones in that region.
 - Payout per counted enemy stone is parameterized: `TAX_MONEY_PER_ENEMY` and `TAX_POINTS_PER_ENEMY`.
@@ -569,7 +569,7 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

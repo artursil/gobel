@@ -559,6 +559,121 @@ local function apply_region_owner_from_map(regions, owner_map)
 	end
 end
 
+--- @param wall table
+--- @param row integer
+--- @param col integer
+--- @return boolean
+function M.wall_contains_cell(wall, row, col)
+	local key = cell_key(row, col)
+	for j = 1, #wall.inside_fields do
+		local ir, ic = wall.inside_fields[j][1], wall.inside_fields[j][2]
+		if cell_key(ir, ic) == key then
+			return true
+		end
+	end
+	for j = 1, #wall.boundary_fields do
+		local br, bc = wall.boundary_fields[j][1], wall.boundary_fields[j][2]
+		if cell_key(br, bc) == key then
+			return true
+		end
+	end
+	return false
+end
+
+--- Returns walls of ``owner`` whose region contains ``row,col`` (interior or boundary).
+--- @param walls table[]
+--- @param row integer
+--- @param col integer
+--- @param owner string
+--- @return table[]
+function M.walls_containing_cell(walls, row, col, owner)
+	local out = {}
+	for i = 1, #walls do
+		local wall = walls[i]
+		if wall.owner == owner and M.wall_contains_cell(wall, row, col) then
+			out[#out + 1] = wall
+		end
+	end
+	return out
+end
+
+--- Smallest qualifying owner enclosure containing the cell; nil when none.
+--- @param b table
+--- @param row integer
+--- @param col integer
+--- @param owner string
+--- @return table|nil
+function M.innermost_wall_containing(b, row, col, owner)
+	local walls = M.extract_walls(b)
+	local candidates = M.walls_containing_cell(walls, row, col, owner)
+	if #candidates == 0 then
+		return nil
+	end
+	local best = candidates[1]
+	for i = 2, #candidates do
+		if candidates[i].field_count < best.field_count then
+			best = candidates[i]
+		end
+	end
+	return best
+end
+
+--- @param outer table
+--- @param inner table
+--- @return boolean
+function M.wall_encloses_wall(outer, inner)
+	for i = 1, #inner.inside_fields do
+		local r, c = inner.inside_fields[i][1], inner.inside_fields[i][2]
+		if not M.wall_contains_cell(outer, r, c) then
+			return false
+		end
+	end
+	return true
+end
+
+--- Counts opponent stones in ``wall`` interior, excluding nested opponent enclosures.
+--- @param b table
+--- @param wall table
+--- @param owner string
+--- @return integer
+function M.count_enemy_stones_in_wall(b, wall, owner)
+	local opponent = owner == config.OWNER_BLACK and config.OWNER_WHITE or config.OWNER_BLACK
+	local enemy_color = owner == config.OWNER_BLACK and config.STONE_WHITE or config.STONE_BLACK
+	local all_walls = M.extract_walls(b)
+	local excluded = {}
+	for i = 1, #all_walls do
+		local nested = all_walls[i]
+		if nested.owner == opponent and M.wall_encloses_wall(wall, nested) then
+			for j = 1, #nested.inside_fields do
+				local r, c = nested.inside_fields[j][1], nested.inside_fields[j][2]
+				excluded[cell_key(r, c)] = true
+			end
+			for j = 1, #nested.boundary_fields do
+				local r, c = nested.boundary_fields[j][1], nested.boundary_fields[j][2]
+				excluded[cell_key(r, c)] = true
+			end
+		end
+	end
+	local count = 0
+	for i = 1, #wall.inside_fields do
+		local r, c = wall.inside_fields[i][1], wall.inside_fields[i][2]
+		if not excluded[cell_key(r, c)] then
+			local cell = b[r][c]
+			if not board.is_empty(cell) and cell.color == enemy_color then
+				count = count + 1
+			end
+		end
+	end
+	return count
+end
+
+--- Stable dedupe key for an enclosure payout region.
+--- @param wall table
+--- @return string
+function M.wall_region_key(wall)
+	return wall.owner .. ":" .. boundary_signature(wall.boundary_fields)
+end
+
 function M.detect_regions_and_ownership(b, tiles)
 	local n = config.BOARD_SIZE
 	local regions = collect_empty_regions(b, tiles, n)
