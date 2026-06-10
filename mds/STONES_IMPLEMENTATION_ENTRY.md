@@ -438,7 +438,7 @@ Comment: This stone prevents opponent to place a stone on an empty field that wo
 **description:** Temporary capture immunity stone.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Immunity duration parameter: `ANTI_CAPTURE_DURATION_ROUNDS`.
 - Applies to snapshot scope at trigger time: placed stone + connected own stones.
 - New stones connected later are not included unless re-triggered.
@@ -454,7 +454,7 @@ Comment: This stone prevents opponent to place a stone on an empty field that wo
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

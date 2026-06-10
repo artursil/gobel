@@ -28,6 +28,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	kamikaze_sacrifice = true,
 	blockade_adjacent = true,
 	money_field_enclosure_payout = true,
+	anti_capture_immunity = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {

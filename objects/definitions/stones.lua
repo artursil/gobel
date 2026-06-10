@@ -295,6 +295,30 @@ M.money_field_stone = {
 	},
 }
 
+M.anti_capture_stone = {
+	id = "anti_capture_stone",
+	type = "stone",
+	name = "Anti-Capture Stone",
+	description = "On placement, grants temporary capture immunity to this stone and orthogonally connected own stones.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Shield ring mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.55, 0.68, 0.82 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "anti_capture_immunity",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.stone_special = {
 	id = "stone_special",
 	type = "stone",
@@ -625,7 +649,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"anti_capture_stone",
 	"delay_reward_stone",
 	"capture_stone",
 	"tax_stone",

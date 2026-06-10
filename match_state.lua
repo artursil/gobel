@@ -5,6 +5,7 @@ local content = require("content")
 local deck = require("deck")
 local pouch = require("pouch")
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
 
 local M = {}
 
@@ -194,6 +195,7 @@ function M.new_match(match_kind, territory_mode, seed)
 		pending_turn_after_ui = false,
 	}
 	require("single_game.resolver.blocked_cells").ensure(state)
+	require("single_game.resolver.anti_capture_immunity").ensure_map(state)
 	return state
 end
 

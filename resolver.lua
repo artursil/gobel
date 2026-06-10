@@ -14,6 +14,7 @@ local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
 local defence_solidity_network = require("objects.defence_solidity_network")
 local blocked_cells = require("single_game.resolver.blocked_cells")
+local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
 
 local M = {}
 
@@ -438,6 +439,27 @@ local function is_valid_resolved_stone_effect(resolved)
 		return true
 	end
 	return false
+end
+
+--- @param state table
+--- @param stone_def table
+--- @param board_snapshot table
+--- @param row integer
+--- @param col integer
+--- @return nil
+local function apply_placement_state_effects(state, stone_def, board_snapshot, row, col)
+	if not stone_def.effects then
+		return
+	end
+	for i = 1, #stone_def.effects do
+		local effect = stone_def.effects[i]
+		if effect.effect_name == "anti_capture_immunity" then
+			local resolved = Effects.stones.resolve(effect)
+			if resolved and resolved.apply then
+				resolved.apply(state, nil, row, col, board_snapshot)
+			end
+		end
+	end
 end
 
 --- @param stone_def table
@@ -877,6 +899,10 @@ local function compile_place_stone_events(state, action)
 	if blocked_cells.is_blocked_for_actor(state, row, col, action.actor) then
 		return nil, "Illegal move: cell is blockaded for this player"
 	end
+	local player_color = color_to_stone(action.actor)
+	if anti_capture_immunity.move_would_capture_immune_group(state, row, col, player_color, stone_id) then
+		return nil, "Illegal move: capture blocked by immunity"
+	end
 	local ok, new_board, new_ko, captures, illegal_reason = rules.try_play(
 		state.board,
 		row,
@@ -901,6 +927,7 @@ local function compile_place_stone_events(state, action)
 		end
 		return nil, "Illegal move: rule violation"
 	end
+	apply_placement_state_effects(state, stone_def, new_board, row, col)
 	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor, row, col)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
