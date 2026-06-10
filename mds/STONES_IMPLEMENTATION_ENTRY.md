@@ -696,7 +696,7 @@ Comment: similar to the last stone it should generate more money each round, but
 **description:** Per-round money generator with capture penalty multiplier.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - While on board, each owner `end_of_turn` adds `EMS_ROUND_MONEY` to owner money and tracks cumulative received total `EMS_TOTAL_RECEIVED`.
 - On capture, captured owner pays penalty `EMS_CAPTURE_MULTIPLIER * EMS_TOTAL_RECEIVED`.
 - Penalty is applied to captured owner's money with clamp at global min if defined.
@@ -712,7 +712,7 @@ Comment: similar to the last stone it should generate more money each round, but
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

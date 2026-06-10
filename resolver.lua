@@ -390,6 +390,7 @@ local function stone_placement_message(stone_def, resolved_effects)
 end
 
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+local stone_removal = require("single_game.resolver.stone_removal")
 
 local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
@@ -535,10 +536,14 @@ local function run_event_queue(state, event_queue)
 	for i = 1, #event_queue do
 		local event = event_queue[i]
 		if event.kind == "BOARD_APPLY" then
+			stone_removal.apply_board_replacement_diff(state, state.board, event.board, { capturer = event.actor })
+			stone_removal.preserve_cell_metadata(state.board, event.board)
 			state.board = event.board
+			stone_removal.install_board_hooks(state)
 			state.ko_ban = event.ko_ban
 			if event.row and event.col then
 				territory_control_rounds.clear_cell(state, event.row, event.col)
+				stone_removal.mark_placed_via_play(state, event.row, event.col)
 			end
 			state.last_played_stone = event.stone_id
 			state.last_opponent_move = { stone_id = event.stone_id, row = event.row, col = event.col, actor = event.actor }
@@ -603,7 +608,9 @@ local function push_place_stone_score_events(state, actor, points_before, mult_b
 			value = mult_stones_delta,
 		}
 	end
+	state._skip_board_end_of_turn_effects = true
 	recalc_all_scores(state, "end_of_turn")
+	state._skip_board_end_of_turn_effects = nil
 	local points_after = actor_state.score.points or 0
 	local mult_after = actor_state.score.plus_mult or 1
 	local eot_points_delta = points_after - points_after_stones
