@@ -1637,6 +1637,42 @@ function M.territory_to_multiplier(effect)
 	}
 end
 
+--- Each ``end_of_turn``, add ``eps_round_points`` to this cell bank and owner points.
+--- @param effect table
+--- @return table
+function M.escalating_points_bank(effect)
+	local round_points = effect.value or stone_params.eps_round_points
+	return {
+		type = "ESCALATING_POINTS_BANK",
+		phase = effect.sub or "points",
+		macro = effect.macro or "end_of_turn",
+		sub = effect.sub or "points",
+		value = round_points,
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner, row, col)
+			if state._suppress_recurring_end_of_turn then
+				return
+			end
+			if row == nil or col == nil then
+				return
+			end
+			local cell = state.board[row] and state.board[row][col]
+			if not cell or board.is_empty(cell) or cell.kind ~= "escalating_points_stone" then
+				return
+			end
+			local stone_owner = cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
+			if stone_owner ~= owner then
+				return
+			end
+			local bank = helpers.stone_stored_value(state, row, col) or 0
+			local next_bank = bank + round_points
+			helpers.set_stone_stored_value(state, row, col, next_bank)
+			state.scores.points[owner] = state.scores.points[owner] + round_points
+		end,
+	}
+end
+
 --- Double corner nearby territory effect: corner tower adds ``1`` to ``territory_value`` on every cell in the
 --- board-aligned ``3×3`` block anchored at that corner (excluding the tower cell). Stacks with prior cell values.
 --- @param row integer
@@ -1737,7 +1773,8 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 		or resolved.type == "CONTROL_TERRITORY_OVERRIDE"
 		or resolved.type == "TAX_ENCLOSURE_ENEMIES"
 		or resolved.type == "TERRITORY_TO_POINTS"
-		or resolved.type == "TERRITORY_TO_MULTIPLIER" then
+		or resolved.type == "TERRITORY_TO_MULTIPLIER"
+		or resolved.type == "ESCALATING_POINTS_BANK" then
 		resolved.apply = function(current_state)
 			base_apply(current_state, owner, row, col)
 		end

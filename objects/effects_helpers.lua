@@ -181,6 +181,47 @@ function H.stone_key(row, col)
 	return row * 100 + col
 end
 
+--- @param row integer
+--- @param col integer
+--- @return string
+function H.stone_cell_key(row, col)
+	return row .. ":" .. col
+end
+
+--- Reads per-cell stored value used by escalating bank stones.
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return number|nil
+function H.stone_stored_value(state, row, col)
+	local key = H.stone_cell_key(row, col)
+	local cell = state.board and state.board[row] and state.board[row][col]
+	if type(cell) == "table" and cell.stored_value ~= nil then
+		return cell.stored_value
+	end
+	if state.stone_stored_values then
+		return state.stone_stored_values[key]
+	end
+	return nil
+end
+
+--- Writes per-cell stored value used by escalating bank stones.
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @param value number
+--- @return nil
+function H.set_stone_stored_value(state, row, col, value)
+	state.stone_stored_values = state.stone_stored_values or {}
+	local key = H.stone_cell_key(row, col)
+	state.stone_stored_values[key] = value
+	local row_cells = state.board and state.board[row]
+	local cell = row_cells and row_cells[col]
+	if type(cell) == "table" then
+		cell.stored_value = value
+	end
+end
+
 --- Adds permanent per-cell point bonus for board stone scoring.
 --- @param state table
 --- @param row integer

@@ -64,6 +64,7 @@ local function ensure_state_fields(state)
 		end,
 	}
 	state.last_played_stone = state.last_played_stone or nil
+	state.stone_stored_values = state.stone_stored_values or {}
 	territory_control_rounds.ensure_grid(state)
 	queries.ensure_resolution(state)
 	state.scores = state.scores or {
