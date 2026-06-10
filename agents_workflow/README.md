@@ -15,12 +15,20 @@ cp agents_workflow/secrets.example agents_workflow/secrets
 # edit agents_workflow/secrets — set CURSOR_API_KEY from Cursor account settings
 ```
 
-Also requires:
+Also requires (**Linux/WSL only** — do not run workflows from Windows PowerShell):
 
-- `gh` CLI authenticated (`winget install GitHub.cli` on Windows; restart the terminal or run `& "C:\Program Files\GitHub CLI\gh.exe" auth login` if `gh` is not on PATH yet)
-- On Windows, agents run via the SDK's **async** bridge (sync local bridge is broken on pipe I/O)
+- WSL2 with the repo at a Linux path (e.g. `/mnt/c/Users/.../gobel` or `~/gobel`)
+- `gh` CLI authenticated (`gh auth login`)
 - `busted` for Lua tests
 - Git repo with `main` as integration branch
+
+```bash
+# WSL example
+cd /mnt/c/Users/Artur/Documents/gobel
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r agents_workflow/requirements.txt
+cp agents_workflow/secrets.example agents_workflow/secrets
+```
 
 ## Agent roles
 
@@ -75,7 +83,7 @@ python agents_workflow/workflows/single_feature.py --issue 42 --visual
 ### `parallel_tests_exist.py`
 
 1. **Planner** (`plan-prompt.md`) → unblocked issues, **or** explicit `--process` list
-2. Parallel `tests_exist` runs (default max **8**)
+2. **Parallel** `tests_exist` runs (default max **8**; set `--max-parallel 1` for sequential)
 3. **Merger** merges into a new integration branch, **pushes**, and **opens a PR** for your review (does not merge to `main` directly)
 
 ```bash
@@ -84,6 +92,9 @@ python agents_workflow/workflows/parallel_tests_exist.py
 
 # Run issues 6-15; PR merges successful completions into agent/merge-issues-6-15
 python agents_workflow/workflows/parallel_tests_exist.py --process 6-15
+
+# Fresh start: remove worktrees + local agent/issue-N branches, then process
+python agents_workflow/workflows/parallel_tests_exist.py --process 8-15 --clear
 
 # Run 8-12, then PR-merge a different already-done set
 python agents_workflow/workflows/parallel_tests_exist.py --process 8-12 --merge 4-7
@@ -101,10 +112,11 @@ Default integration branch: `agent/merge-issues-4-6` (from the `--merge` issue l
 
 ### `parallel_features.py`
 
-Same as above but runs **`single_feature`** per issue.
+Same batch pattern but runs **`single_feature`** per issue in parallel (default max **4**), then opens a review PR.
 
 ```bash
-python agents_workflow/workflows/parallel_features.py
+python agents_workflow/workflows/parallel_features.py --process 6-10
+python agents_workflow/workflows/parallel_features.py --merge 4-6
 ```
 
 ## Delegator output contract
@@ -133,7 +145,7 @@ Parsed by `lib/delegator_parser.py`.
 
 If the loop does not converge in 4 iterations, `lib/workflow_common.py` creates a GitHub issue `[agent-escalation] #N: …` and comments on the source issue.
 
-Parallel runs use **git worktrees** under `.agent-worktrees/issue-{N}` so each issue gets an isolated checkout.
+Batch runs use **git worktrees** under `.agent-worktrees/issue-{N}` so each issue gets an isolated checkout. Issues run in parallel via a thread pool (Linux/WSL only).
 
 ## Run logs
 

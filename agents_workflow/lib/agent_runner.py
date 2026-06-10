@@ -1,15 +1,13 @@
-"""Run a Cursor agent with a rendered prompt."""
+"""Run a Cursor agent with a rendered prompt (Linux/WSL)."""
 
 from __future__ import annotations
 
-import asyncio
 import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from cursor_sdk import Agent, AgentOptions, CursorAgentError, LocalAgentOptions
-from cursor_sdk.types import RunResult
 
 
 @dataclass(frozen=True)
@@ -19,6 +17,15 @@ class AgentRunResult:
     text: str
     agent_id: str | None
     run_id: str | None
+
+
+def require_linux() -> None:
+    """Agent workflows are supported on Linux/WSL only."""
+    if sys.platform == "win32":
+        raise RuntimeError(
+            "Agent workflows must run in WSL/Linux. "
+            "Open the repo in WSL and run: python agents_workflow/workflows/..."
+        )
 
 
 def repo_root() -> Path:
@@ -51,45 +58,6 @@ def default_model() -> str:
     return os.environ.get("AGENT_MODEL") or secrets.get("AGENT_MODEL") or "composer-2.5"
 
 
-def _agent_options(api_key: str, model: str, workdir: Path) -> AgentOptions:
-    return AgentOptions(
-        api_key=api_key,
-        model=model,
-        local=LocalAgentOptions(cwd=str(workdir)),
-    )
-
-
-async def _run_agent_async(
-    prompt: str,
-    *,
-    api_key: str,
-    model: str,
-    workdir: Path,
-) -> RunResult:
-    """Use async bridge on Windows; sync ``select()`` cannot watch pipe stderr."""
-    from cursor_sdk.asyncio import AsyncAgent, AsyncClient
-
-    async with await AsyncClient.launch_bridge(
-        workspace=str(workdir),
-        local=LocalAgentOptions(cwd=str(workdir)),
-    ) as client:
-        return await AsyncAgent.prompt(
-            prompt,
-            _agent_options(api_key, model, workdir),
-            client=client,
-        )
-
-
-def _run_agent_sync(
-    prompt: str,
-    *,
-    api_key: str,
-    model: str,
-    workdir: Path,
-) -> RunResult:
-    return Agent.prompt(prompt, _agent_options(api_key, model, workdir))
-
-
 def run_agent(
     agent_name: str,
     prompt: str,
@@ -98,6 +66,7 @@ def run_agent(
     model: str | None = None,
 ) -> AgentRunResult:
     """Launch a one-shot local Cursor agent and return the final assistant text."""
+    require_linux()
     secrets = read_secrets()
     api_key = os.environ.get("CURSOR_API_KEY") or secrets.get("CURSOR_API_KEY")
     if not api_key:
@@ -110,22 +79,14 @@ def run_agent(
     chosen_model = model or default_model()
 
     try:
-        if sys.platform == "win32":
-            result = asyncio.run(
-                _run_agent_async(
-                    prompt,
-                    api_key=api_key,
-                    model=chosen_model,
-                    workdir=workdir,
-                )
-            )
-        else:
-            result = _run_agent_sync(
-                prompt,
+        result = Agent.prompt(
+            prompt,
+            AgentOptions(
                 api_key=api_key,
                 model=chosen_model,
-                workdir=workdir,
-            )
+                local=LocalAgentOptions(cwd=str(workdir)),
+            ),
+        )
     except CursorAgentError as err:
         print(
             f"[{agent_name}] startup failed: {err.message} "

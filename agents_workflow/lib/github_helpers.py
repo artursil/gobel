@@ -18,23 +18,13 @@ class PlannedIssue:
     labels: list[str] | None = None
 
 
-def _gh_windows_candidates() -> list[Path]:
-    program_files = Path(r"C:\Program Files\GitHub CLI\gh.exe")
-    local_app = Path.home() / "AppData" / "Local" / "Programs" / "GitHub CLI" / "gh.exe"
-    return [program_files, local_app]
-
-
 def _gh_executable() -> str:
     gh = shutil.which("gh")
     if gh is not None:
         return gh
-    for candidate in _gh_windows_candidates():
-        if candidate.is_file():
-            return str(candidate)
     raise RuntimeError(
         "GitHub CLI (`gh`) not found on PATH. "
-        "Install: https://cli.github.com/ "
-        "(Windows: `winget install GitHub.cli`), then run `gh auth login`."
+        "Install: https://cli.github.com/ then run `gh auth login`."
     )
 
 
@@ -69,7 +59,29 @@ def list_ready_issues(limit: int = 100) -> list[dict]:
 
 
 def view_issue(number: int) -> str:
-    return _run_gh(["issue", "view", str(number)])
+    """Fetch issue text via ``--json`` (default ``gh issue view`` can fail on projectCards)."""
+    raw = _run_gh(
+        [
+            "issue",
+            "view",
+            str(number),
+            "--json",
+            "number,title,body,labels",
+        ]
+    )
+    data = json.loads(raw)
+    labels = ", ".join(label["name"] for label in data.get("labels", []))
+    lines = [
+        f"# {data['title']}",
+        "",
+        f"Issue #{data['number']}",
+    ]
+    if labels:
+        lines.extend(["", f"Labels: {labels}"])
+    body = (data.get("body") or "").strip()
+    if body:
+        lines.extend(["", body])
+    return "\n".join(lines)
 
 
 def issue_title(number: int) -> str:
