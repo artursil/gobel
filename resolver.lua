@@ -12,6 +12,7 @@ local card_play_memory = require("single_game.resolver.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
+local defence_solidity_network = require("objects.defence_solidity_network")
 
 local M = {}
 
@@ -545,6 +546,7 @@ local function run_event_queue(state, event_queue)
 		local event = event_queue[i]
 		if event.kind == "BOARD_APPLY" then
 			state.board = event.board
+			defence_solidity_network.recompute_board(state.board)
 			state.ko_ban = event.ko_ban
 			if event.row and event.col then
 				territory_control_rounds.clear_cell(state, event.row, event.col)

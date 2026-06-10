@@ -193,7 +193,7 @@ describe("defence_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			place_stone(g, {
+			test_helper.place_stone_for(g, "black", "defence_stone", {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -204,7 +204,7 @@ describe("defence_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
-			place_stone(g, {
+			test_helper.place_stone_for(g, "black", "defence_stone", {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -447,8 +447,8 @@ describe("defence_stone (visual ASCII)", function()
 		it("defence_stone scenario 15: corner defence buffs only in-bounds neighbors", function()
 			set_hand(g, "black", { "defence_stone" })
 			set_board(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
+				". B . . . . . . .",
+				"B . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -458,8 +458,8 @@ describe("defence_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			place_stone(g, {
-				"D B . . . . . . .",
-				"B . . . . . . . .",
+				"D . . . . . . . .",
+				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",

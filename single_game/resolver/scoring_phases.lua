@@ -23,6 +23,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	add_mult = true,
 	add_energy = true,
 	mult_control_streak = true,
+	defence_solidity_network = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {

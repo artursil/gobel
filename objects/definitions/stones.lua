@@ -329,6 +329,32 @@ M.energy_stone = {
 	},
 }
 
+M.defence_stone = {
+	id = "defence_stone",
+	type = "stone",
+	name = "Defence Stone",
+	description = "Adds "
+		.. tostring(P.defence_solidity_bonus)
+		.. " solidity to itself and connected own stones while the defence network holds.",
+	rarity = "uncommon",
+	probability = 0.8,
+	cost = 1,
+	depiction = "Shield mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.55, 0.62, 0.72 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "defence_solidity_network",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.points_stone = {
 	id = "points_stone",
 	type = "stone",
@@ -370,7 +396,8 @@ M.points_stone = {
 			effect_name = "add_points",
 			macro = "playing_stones",
 			sub = "points",
-			value = P.points_stone_t1,			priority = P.default_effect_priority,
+			value = P.points_stone_t1,
+			priority = P.default_effect_priority,
 		},
 	},
 }
@@ -450,7 +477,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 	"enclosure_stone",
 	"control_stone",
 	"blockade_stone",
-	"defence_stone",
 	"money_field_stone",
 	"anti_capture_stone",
 	"delay_reward_stone",
