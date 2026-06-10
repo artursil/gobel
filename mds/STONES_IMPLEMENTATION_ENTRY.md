@@ -88,7 +88,7 @@ Visual specs assert resolver-visible game state only.
 **description:** Territory-distance modifier with three tiers.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Tier distance bonuses are parameters: `INFLUENCE_T1`, `INFLUENCE_T2`, `INFLUENCE_T3`.
 - Applies in `playing_stones.territory` with `territory_step=distance`.
 - Stacks additively with other distance effects.
@@ -103,7 +103,7 @@ Visual specs assert resolver-visible game state only.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

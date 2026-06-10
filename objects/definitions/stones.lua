@@ -91,6 +91,55 @@ M.stone_focus = {
 	},
 }
 
+M.influence_stone = {
+	id = "influence_stone",
+	type = "stone",
+	name = "Influence Stone",
+	description = "Extends territory reach by tier when calculating distance-based ownership.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	max_level = 3,
+	upgrade_levels = {
+		[1] = {},
+		[2] = {
+			effect_deltas = {
+				distance_bonus = {
+					macro = "playing_stones",
+					sub = "territory",
+					delta = P.influence_t2 - P.influence_t1,
+				},
+			},
+		},
+		[3] = {
+			effect_deltas = {
+				distance_bonus = {
+					macro = "playing_stones",
+					sub = "territory",
+					delta = P.influence_t3 - P.influence_t2,
+				},
+			},
+		},
+	},
+	depiction = "Chevron mark",
+	graphic = { draw_key = "diamond" },
+	visual = {
+		color = { 0.5, 0.45, 0.62 },
+		sprite = "sprites/stones/lieutenant.png",
+	},
+	effects = {
+		{
+			effect_name = "distance_bonus",
+			macro = "playing_stones",
+			sub = "territory",
+			territory_step = "distance",
+			territory_scope = "board",
+			value = P.influence_t1,
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.stone_influence = {
 	id = "stone_influence",
 	type = "stone",
@@ -320,7 +369,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"influence_stone",
 	"tower_stone",
 	"energy_stone",
 	"diagonal_stone",
