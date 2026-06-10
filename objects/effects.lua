@@ -656,6 +656,22 @@ function M.pattern_plus_mult(effect)
 	}
 end
 
+--- Registers a survival timer; payout on expiry is handled by ``single_game.resolver.stone_timers``.
+--- @param effect table
+--- @return table
+function M.delay_reward_survival(effect)
+	return {
+		type = "DELAY_REWARD_SURVIVAL",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		rounds = effect.rounds or stone_params.points_delay_rounds,
+		payout = effect.payout or stone_params.points_delay_payout,
+	}
+end
+
 --- Wall placement: +5 Points per 5 stones in the orthogonal connected group (wall included).
 --- @param effect table
 --- @return table

@@ -175,7 +175,7 @@ describe("delay_reward_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			test_helper.advance_rounds(g, 3)
-			test_helper.capture_stone_at(g, 5, 5, "white")
+			test_helper.capture_stone_at(g, 5, 5, "black")
 			test_helper.advance_rounds(g, S.points_delay_rounds)
 			local expected_delta = 0
 			assert_player_points_delta(g, "black", snap, expected_delta, "captured stone pays nothing")
@@ -262,12 +262,24 @@ describe("delay_reward_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
+				". . . P . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			}, false)
+			test_helper.ensure_actor_turn(g, "black")
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
 				". . . P P . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-			})
+			}, false)
 			test_helper.advance_rounds(g, S.points_delay_rounds)
 			local expected_delta = S.points_delay_payout * 2
 			assert_player_points_delta(g, "black", snap, expected_delta, "each surviving stone pays once")
@@ -282,14 +294,26 @@ describe("delay_reward_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
+				". . . P . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+			}, false)
+			test_helper.ensure_actor_turn(g, "black")
+			place_stone(g, {
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
 				". . . P P . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-			})
+			}, false)
 			test_helper.advance_rounds(g, 2)
-			test_helper.capture_stone_at(g, 5, 4, "white")
+			test_helper.capture_stone_at(g, 5, 4, "black")
 			test_helper.advance_rounds(g, S.points_delay_rounds)
 			local expected_delta = S.points_delay_payout
 			assert_player_points_delta(g, "black", snap, expected_delta, "surviving stone still pays on expiry")
@@ -373,6 +397,7 @@ describe("delay_reward_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			}, false)
 			test_helper.advance_rounds(g, 2)
+			test_helper.ensure_actor_turn(g, "black")
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",

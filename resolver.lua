@@ -12,6 +12,7 @@ local card_play_memory = require("single_game.resolver.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
+local stone_timers = require("single_game.resolver.stone_timers")
 
 local M = {}
 
@@ -535,10 +536,29 @@ local function run_event_queue(state, event_queue)
 	for i = 1, #event_queue do
 		local event = event_queue[i]
 		if event.kind == "BOARD_APPLY" then
+			stone_timers.clear_removed_stones(state, state.board, event.board)
 			state.board = event.board
 			state.ko_ban = event.ko_ban
 			if event.row and event.col then
 				territory_control_rounds.clear_cell(state, event.row, event.col)
+				local stone_def = content.get_stone(event.stone_id)
+				if stone_def and stone_def.effects then
+					local placement_owner = owner_for_side(event.actor)
+					for i = 1, #stone_def.effects do
+						local placement_effect = stone_def.effects[i]
+						if placement_effect.effect_name == "delay_reward_survival" then
+							stone_timers.register_delay_reward(
+								state,
+								event.row,
+								event.col,
+								placement_owner,
+								placement_effect.rounds,
+								placement_effect.payout
+							)
+						end
+					end
+					state.stone_timer_skip_tick = { row = event.row, col = event.col }
+				end
 			end
 			state.last_played_stone = event.stone_id
 			state.last_opponent_move = { stone_id = event.stone_id, row = event.row, col = event.col, actor = event.actor }
@@ -682,6 +702,8 @@ local function begin_next_turn(state)
 			target_index = drawn[i].target_index,
 		}
 	end
+	stone_timers.tick_on_turn_advance(state, state.stone_timer_skip_tick ~= nil)
+	state.stone_timer_skip_tick = nil
 	state.turn_number = state.turn_number + 1
 	state.round_number = match_state.round_number_from_turn(state.turn_number)
 	state.to_play = opponent_color(state.to_play)
