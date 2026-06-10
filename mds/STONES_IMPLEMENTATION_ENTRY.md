@@ -330,7 +330,7 @@ Comment: Implementation details I don't like, during the territory resolution si
 **description:** Territory assignment override stone resolved last.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Control assignment runs after normal territory ownership assignment.
 - For affected cells, latest control override wins over previous assignment.
 - If both players apply control to same cell in same resolve, cell becomes contested.
@@ -346,7 +346,7 @@ Comment: Implementation details I don't like, during the territory resolution si
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

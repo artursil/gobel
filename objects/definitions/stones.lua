@@ -342,7 +342,21 @@ M.energy_stone = {
 	depiction = "Bolt center mark",
 	graphic = { draw_key = "star" },
 	visual = {
-		color = { 0.85, 0.78, 0.35 },M.kamikaze_stone = {
+		color = { 0.85, 0.78, 0.35 },
+		sprite = "sprites/stones/special.png",
+	},
+	effects = {
+		{
+			effect_name = "add_energy",
+			macro = "playing_stones",
+			sub = "points",
+			value = P.energy_stone_gain,
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
+M.kamikaze_stone = {
 	id = "kamikaze_stone",
 	type = "stone",
 	name = "Kamikaze Stone",
@@ -355,14 +369,15 @@ M.energy_stone = {
 	depiction = "Burst mark",
 	graphic = { draw_key = "star" },
 	visual = {
-		color = { 0.85, 0.35, 0.3 },		sprite = "sprites/stones/special.png",
+		color = { 0.85, 0.35, 0.3 },
+		sprite = "sprites/stones/special.png",
 	},
 	effects = {
 		{
-			effect_name = "add_energy",
+			effect_name = "kamikaze_sacrifice",
 			macro = "playing_stones",
 			sub = "points",
-			value = P.energy_stone_gain,
+			value = P.kamikaze_points_bonus,
 			priority = P.default_effect_priority,
 		},
 	},
@@ -389,6 +404,32 @@ M.defence_stone = {
 			effect_name = "defence_solidity_network",
 			macro = "playing_stones",
 			sub = "points",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
+M.control_stone = {
+	id = "control_stone",
+	type = "stone",
+	name = "Control Stone",
+	description = "Overrides orthogonal adjacent empty cells to your color after enclosure and influence; still counts for regular distance assignment.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Control ring mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.58, 0.42, 0.62 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "control_territory_override",
+			macro = "playing_stones",
+			sub = "territory",
+			territory_step = "override",
+			territory_scope = "board",
 			priority = P.default_effect_priority,
 		},
 	},
@@ -435,10 +476,8 @@ M.points_stone = {
 			effect_name = "add_points",
 			macro = "playing_stones",
 			sub = "points",
-			value = P.points_stone_t1,			effect_name = "kamikaze_sacrifice",
-			macro = "playing_stones",
-			sub = "points",
-			value = P.kamikaze_points_bonus,			priority = P.default_effect_priority,
+			value = P.points_stone_t1,
+			priority = P.default_effect_priority,
 		},
 	},
 }
@@ -487,7 +526,11 @@ M.diagonal_stone = {
 		sprite = "sprites/stones/basic.png",
 	},
 	effects = {
-		shared.diagonal_group_points,M.line_stone = {
+		shared.diagonal_group_points,
+	},
+}
+
+M.line_stone = {
 	id = "line_stone",
 	type = "stone",
 	name = "Line Stone",
@@ -506,7 +549,8 @@ M.diagonal_stone = {
 		sprite = "sprites/stones/focus.png",
 	},
 	effects = {
-		shared.line_group_points,	},
+		shared.line_group_points,
+	},
 }
 
 --- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
@@ -531,9 +575,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"energy_stone",
-	"diagonal_stone",
-	"control_stone",
 	"blockade_stone",
 	"money_field_stone",
 	"anti_capture_stone",

@@ -1244,11 +1244,6 @@ function M.wall_stone(effect)
 	}
 end
 
-			state.scores.points[owner] = state.scores.points[owner] + bonus
-		end,
-	}
-end
-
 --- Line stone placement: points per full block of orthogonal connected group (line stone included).
 --- @param effect table
 --- @return table
@@ -1285,6 +1280,74 @@ function M.line_group_points(effect)
 				return
 			end
 			state.scores.points[owner] = state.scores.points[owner] + bonus
+		end,
+	}
+end
+
+local ORTHOGONAL_OFFSETS = {
+	{ -1, 0 },
+	{ 1, 0 },
+	{ 0, -1 },
+	{ 0, 1 },
+}
+
+--- Marks one empty tile with a control-stone override owner; opposing claims on the same cell become contested.
+--- @param tile table
+--- @param owner "B"|"W"
+--- @return nil
+local function apply_control_override_to_tile(tile, owner)
+	if tile.override_contested then
+		return
+	end
+	if tile.override_owner == nil then
+		tile.override_owner = owner
+		return
+	end
+	if tile.override_owner == owner then
+		return
+	end
+	tile.override_owner = nil
+	tile.override_contested = true
+end
+
+--- Sets override ownership on orthogonal adjacent empty cells for one control stone.
+--- @param state table
+--- @param owner "B"|"W"
+--- @param row integer
+--- @param col integer
+--- @return nil
+local function apply_control_territory_override_at(state, owner, row, col)
+	local tiles = state.territory_tiles
+	if not tiles then
+		return
+	end
+	local n = config.BOARD_SIZE
+	for i = 1, #ORTHOGONAL_OFFSETS do
+		local nr = row + ORTHOGONAL_OFFSETS[i][1]
+		local nc = col + ORTHOGONAL_OFFSETS[i][2]
+		if nr >= 1 and nr <= n and nc >= 1 and nc <= n and board.is_empty(state.board[nr][nc]) then
+			apply_control_override_to_tile(tiles[nr][nc], owner)
+		end
+	end
+end
+
+--- Control stone override: orthogonal adjacent empty cells resolve to the stone owner after enclosure and influence.
+--- @param effect table
+--- @return table
+function M.control_territory_override(effect)
+	return {
+		type = "CONTROL_TERRITORY_OVERRIDE",
+		phase = "territory",
+		macro = effect.macro or "playing_stones",
+		sub = "territory",
+		territory_step = effect.territory_step or "override",
+		priority = effect.priority or 10,
+		conditions = effect.conditions,
+		apply = function(state, owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			apply_control_territory_override_at(state, owner, row, col)
 		end,
 	}
 end
@@ -1432,7 +1495,11 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 		return nil
 	end
 	local base_apply = resolved.apply
-	if resolved.type == "WALL_STONE" or resolved.type == "DIAGONAL_GROUP_POINTS" then	if resolved.type == "WALL_STONE" or resolved.type == "LINE_GROUP_POINTS" then		resolved.apply = function(current_state)
+	if resolved.type == "WALL_STONE"
+		or resolved.type == "DIAGONAL_GROUP_POINTS"
+		or resolved.type == "LINE_GROUP_POINTS"
+		or resolved.type == "CONTROL_TERRITORY_OVERRIDE" then
+		resolved.apply = function(current_state)
 			base_apply(current_state, owner, row, col)
 		end
 	else
