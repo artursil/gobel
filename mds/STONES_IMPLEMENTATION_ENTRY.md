@@ -607,7 +607,7 @@ Comment: This needs to be totally differently implemented. Conversion formula I 
 **description:** End-of-turn points generator based on current owner of the stone cell and that owner's total controlled territory.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger each `end_of_turn` while stone remains on board.
 - **Pre-recompute territory snapshot (placement turn):** on the turn the stone is placed, read territory owner at the stone cell and `T_OWNER` total controlled territory from the territory map **before** placement recomputes territory. Payout uses that snapshot; the new stone must not inflate/deflate the counted territory on its placement turn.
 - **Later turns:** at each subsequent `end_of_turn`, use the territory map at trigger time (after any prior recomputation) the same way: owner at stone cell → `T_OWNER` → payout from `T_OWNER` total controlled territory.
@@ -626,7 +626,7 @@ Comment: This needs to be totally differently implemented. Conversion formula I 
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

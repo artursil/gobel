@@ -247,6 +247,30 @@ M.enclosure_stone = {
 	},
 }
 
+M.territory_to_points_stone = {
+	id = "territory_to_points_stone",
+	type = "stone",
+	name = "Territory to Points Stone",
+	description = "Each end of turn, pays points to the territory owner at this cell based on that owner's total controlled territory.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Territory yield mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.52, 0.68, 0.42 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "territory_to_points",
+			macro = "end_of_turn",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.control_territory_stone = {
 	id = "control_territory_stone",
 	type = "stone",
@@ -761,7 +785,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"territory_to_points_stone",
 	"territory_to_multiplier_stone",
 	"escalating_points_stone",
 	"escalating_money_stone",

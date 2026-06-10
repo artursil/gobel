@@ -401,6 +401,7 @@ local function stone_placement_message(stone_def, resolved_effects)
 end
 
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+local territory_resolver = require("single_game.resolver.territory")
 
 local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	add_points = true,
@@ -654,6 +655,9 @@ local function run_event_queue(state, event_queue)
 		local event = event_queue[i]
 		if event.kind == "BOARD_APPLY" then
 			stone_timers.clear_removed_stones(state, state.board, event.board)
+			if event.row and event.col and event.stone_id then
+				territory_resolver.capture_placement_snapshot_if_needed(state, event.row, event.col, event.stone_id)
+			end
 			state.board = event.board
 			defence_solidity_network.recompute_board(state.board)
 			state.ko_ban = event.ko_ban
