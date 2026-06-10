@@ -194,6 +194,32 @@ M.stone_tower = {
 	},
 }
 
+M.tower_stone = {
+	id = "tower_stone",
+	type = "stone",
+	name = "Tower Stone",
+	description = "Corner-only territory value amplifier. In a board corner, surrounding cells score higher territory value.",
+	rarity = "rare",
+	probability = 0.6,
+	cost = 1,
+	depiction = "Square tower outline",
+	graphic = { draw_key = "tower" },
+	visual = {
+		color = { 0.45, 0.32, 0.22 },
+		sprite = "sprites/stones/tower.png",
+	},
+	effects = {
+		{
+			effect_name = "double_corner_nearby_territory",
+			macro = "playing_stones",
+			sub = "territory",
+			territory_step = "value",
+			territory_scope = "board",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.control_territory_stone = {
 	id = "control_territory_stone",
 	type = "stone",
@@ -369,7 +395,6 @@ local function stub_stone(id)
 end
 
 local UNIMPLEMENTED_STONE_IDS = {
-	"tower_stone",
 	"energy_stone",
 	"diagonal_stone",
 	"line_stone",
