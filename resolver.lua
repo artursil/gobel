@@ -18,8 +18,6 @@ local anti_capture_immunity = require("single_game.resolver.anti_capture_immunit
 local effect_placement_lifecycle = require("single_game.resolver.effect_placement_lifecycle")
 local effect_tick_lifecycle = require("single_game.resolver.effect_tick_lifecycle")
 local stone_timers = require("single_game.resolver.stone_timers")
-local capture_stone_resolver = require("single_game.resolver.capture_stone")
-local kamikaze_stone_resolver = require("single_game.resolver.kamikaze_stone")
 local stone_removal_effects = require("single_game.resolver.stone_removal_effects")
 local effects_helpers = require("objects.effects_helpers")
 local placement_lifecycle = require("single_game.resolver.placement_lifecycle")
@@ -786,18 +784,18 @@ local function compile_place_stone_events(state, action)
 	if blocked_cells.is_blocked_for_actor(state, row, col, action.actor) then
 		return nil, "Illegal move: cell is blockaded for this player"
 	end
-	if capture_stone_resolver.is_cell_blocked_for_actor(state, row, col, action.actor, stone_id) then
+	if effects_helpers.is_cell_blocked_for_capture_cooldown(state, row, col, action.actor, stone_id) then
 		return nil, "Illegal move: cell blocked"
 	end
 	local player_chain_color = color_to_stone(action.actor)
 	if anti_capture_immunity.move_would_capture_immune_group(state, row, col, player_chain_color, stone_id) then
 		return nil, "Illegal move: capture blocked by immunity"
 	end
-	local allow_suicide = kamikaze_stone_resolver.allows_suicide_placement(stone_id)
-	local on_capture_cooldown_cell = capture_stone_resolver.is_cell_on_capture_cooldown(state, row, col)
-		and capture_stone_resolver.is_cell_blocked_for_actor(state, row, col, action.actor, "stone_basic")
+	local allow_suicide = rules.allows_suicide_placement(stone_id)
+	local on_capture_cooldown_cell = effects_helpers.is_cell_on_capture_cooldown(state, row, col)
+		and effects_helpers.is_cell_blocked_for_capture_cooldown(state, row, col, action.actor, "stone_basic")
 	local empty_cell_had_no_empty_neighbors = board.is_empty(state.board[row][col])
-		and kamikaze_stone_resolver.empty_cell_has_no_empty_neighbors(state.board, row, col)
+		and rules.empty_cell_has_no_empty_neighbors(state.board, row, col)
 	local ok_without_override, _trial_no_override = rules.try_play(
 		state.board,
 		row,
@@ -808,6 +806,7 @@ local function compile_place_stone_events(state, action)
 		placement_level
 	)
 	local required_suicide_override = allow_suicide and not ok_without_override
+	local old_board = board.clone(state.board)
 	local ok, new_board, new_ko, captures, illegal_reason = rules.try_play(
 		state.board,
 		row,
@@ -833,6 +832,13 @@ local function compile_place_stone_events(state, action)
 		end
 		return nil, "Illegal move: rule violation"
 	end
+	local kamikaze_sacrifice_ctx = {
+		required_suicide_override = required_suicide_override,
+		on_capture_cooldown_cell = on_capture_cooldown_cell,
+		empty_cell_had_no_empty_neighbors = empty_cell_had_no_empty_neighbors,
+		ok_without_override = ok_without_override,
+		had_former_capture_cooldown = effects_helpers.had_former_capture_cooldown(state, row, col),
+	}
 	local placement_ctx = {
 		state = state,
 		actor = action.actor,
@@ -840,12 +846,20 @@ local function compile_place_stone_events(state, action)
 		row = row,
 		col = col,
 		board_snapshot = new_board,
+		kamikaze_sacrifice_ctx = stone_id == "kamikaze_stone" and kamikaze_sacrifice_ctx or nil,
 	}
 	local pre_capture_resolved = placement_lifecycle.resolve_from_stone_def(stone_def, placement_ctx)
 	placement_lifecycle.run_commit_hooks(pre_capture_resolved, placement_ctx)
-	if capture_stone_resolver.stone_def_has_effect(stone_def) then
+	if effects_helpers.stone_def_has_capture_zero_liberty_effect(stone_def) then
+		effects_helpers.apply_capture_cooldowns_for_removals(
+			state,
+			old_board,
+			new_board,
+			action.actor,
+			player_chain_color
+		)
 		local extra_captures
-		new_board, extra_captures = capture_stone_resolver.apply_extra_capture(
+		new_board, extra_captures = effects_helpers.apply_zero_liberty_enemy_capture(
 			new_board,
 			state,
 			action.actor,
@@ -853,27 +867,9 @@ local function compile_place_stone_events(state, action)
 		)
 		captures = captures + extra_captures
 	end
-	local kamikaze_opts = {
-		required_suicide_override = required_suicide_override,
-		on_capture_cooldown_cell = on_capture_cooldown_cell,
-		empty_cell_had_no_empty_neighbors = empty_cell_had_no_empty_neighbors,
-	}
-	local kamikaze_sacrifice_applies = false
-	if kamikaze_stone_resolver.is_kamikaze_stone(stone_id) then
-		local sacrifice, _bonus = kamikaze_stone_resolver.resolve_placement(kamikaze_opts)
-		local former_cooldown = capture_stone_resolver.had_former_capture_cooldown(state, row, col)
-		kamikaze_sacrifice_applies = sacrifice or not (ok_without_override and former_cooldown)
-	end
+	local kamikaze_sacrifice_applies = stone_id == "kamikaze_stone"
+		and rules.kamikaze_sacrifice_triggers(kamikaze_sacrifice_ctx)
 	local resolved_effects = pre_capture_resolved
-	if kamikaze_sacrifice_applies then
-		resolved_effects[#resolved_effects + 1] = Effects.stones.resolve({
-			effect_name = "kamikaze_sacrifice",
-			macro = "playing_stones",
-			sub = "points",
-			value = stone_params.kamikaze_points_bonus,
-			priority = stone_params.default_effect_priority,
-		})
-	end
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]

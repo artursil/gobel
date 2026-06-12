@@ -499,7 +499,7 @@ function M.add_energy(effect)
 	}
 end
 
---- Kamikaze sacrifice effect builder: immediate points on placement (board self-removal handled in resolver).
+--- Kamikaze sacrifice effect builder: immediate points when sacrifice triggers; board self-removal handled in resolver.
 --- @param effect table: {effect_name, macro?, sub?, value?, priority?, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
 function M.kamikaze_sacrifice(effect)
@@ -1286,7 +1286,7 @@ function M.defence_solidity_network(effect)
 	}
 end
 
---- Placement capture: remove one enemy stone with zero liberties (resolved in ``capture_stone`` module).
+--- Placement capture: remove one enemy stone with zero empty neighbors (see ``effects_helpers.apply_zero_liberty_enemy_capture``).
 --- @param effect table
 --- @return table
 function M.capture_zero_liberty_enemy(effect)

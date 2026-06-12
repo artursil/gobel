@@ -17,8 +17,8 @@ local territory_control_rounds = require("single_game.resolver.territory_control
 local board_cell_timers = require("single_game.resolver.board_cell_timers")
 local card_play_memory = require("single_game.resolver.card_play_memory")
 local scoring_phases = require("single_game.resolver.scoring_phases")
-local capture_stone = require("single_game.resolver.capture_stone")
 local effect_tick_lifecycle = require("single_game.resolver.effect_tick_lifecycle")
+local effects_helpers = require("objects.effects_helpers")
 local stone_timers = require("single_game.resolver.stone_timers")
 
 local M = {}
@@ -278,7 +278,7 @@ function M.resolve(state, opts)
 		end
 		state._blockade_registered_this_action = nil
 		tick_timed_effects(state)
-		capture_stone.tick_capture_cooldowns(state)
+		effects_helpers.tick_capture_cooldowns(state)
 		tick_temporary_stances(state)
 		if (state.turn_number or 1) % 2 == 0 then
 			territory_control_rounds.tick(state)

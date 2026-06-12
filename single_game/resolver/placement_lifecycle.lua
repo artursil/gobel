@@ -2,6 +2,7 @@
 --- @module single_game.resolver.placement_lifecycle
 
 local effect_registry = require("effect_registry")
+local rules = require("rules")
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
 local resolved_type_registry = require("single_game.resolver.resolved_type_registry")
 
@@ -64,7 +65,14 @@ function M.resolve_from_stone_def(stone_def, ctx)
 	end
 	for i = 1, #stone_def.effects do
 		local effect_def = stone_def.effects[i]
-		if effect_def.effect_name ~= "kamikaze_sacrifice" and M.is_placement_effect(effect_def) then
+		if effect_def.effect_name == "kamikaze_sacrifice" then
+			if ctx.kamikaze_sacrifice_ctx and rules.kamikaze_sacrifice_triggers(ctx.kamikaze_sacrifice_ctx) then
+				local resolved = resolve_placement_effect(effect_def, ctx)
+				if resolved then
+					out[#out + 1] = resolved
+				end
+			end
+		elseif M.is_placement_effect(effect_def) then
 			local resolved = resolve_placement_effect(effect_def, ctx)
 			if resolved then
 				out[#out + 1] = resolved

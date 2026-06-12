@@ -10,7 +10,7 @@ local board = require("board")
 local config = require("config")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
-local capture_stone = require("single_game.resolver.capture_stone")
+local effects_helpers = require("objects.effects_helpers")
 
 local M = {}
 
@@ -74,7 +74,7 @@ end
 local function sync_zone_marker(state, key)
 	local entry = state.placement_blocks[key]
 	if not entry then
-		if capture_stone.is_active_capture_cooldown_key(state, key) then
+		if effects_helpers.is_active_capture_cooldown_key(state, key) then
 			return
 		end
 		state.blocked_cells[key] = nil
@@ -195,13 +195,14 @@ function M.tick(state)
 	state.placement_blocks = next_blocks
 	state._blocked_cells_sync = {}
 	for key in pairs(state.blocked_cells) do
-		if type(key) == "string" and not capture_stone.is_active_capture_cooldown_key(state, key) then
+		if type(key) == "string" and not effects_helpers.is_active_capture_cooldown_key(state, key) then
 			state.blocked_cells[key] = nil
 		end
 	end
 	for key in pairs(state.placement_blocks) do
 		sync_entry(state, key)
 	end
+	effects_helpers.sync_capture_cooldown_blocked_cells(state)
 end
 
 return M
