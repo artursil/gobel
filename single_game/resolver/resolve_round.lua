@@ -20,7 +20,6 @@ local scoring_phases = require("single_game.resolver.scoring_phases")
 local capture_stone = require("single_game.resolver.capture_stone")
 local effect_tick_lifecycle = require("single_game.resolver.effect_tick_lifecycle")
 local stone_timers = require("single_game.resolver.stone_timers")
-local stone_stored_values = require("single_game.resolver.stone_stored_values")
 
 local M = {}
 
@@ -66,7 +65,6 @@ local function ensure_state_fields(state)
 		end,
 	}
 	state.last_played_stone = state.last_played_stone or nil
-	stone_stored_values.ensure_bag(state)
 	territory_control_rounds.ensure_grid(state)
 	queries.ensure_resolution(state)
 	state.scores = state.scores or {

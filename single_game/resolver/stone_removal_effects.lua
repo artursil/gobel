@@ -6,7 +6,6 @@ local board = require("board")
 local match_state = require("match_state")
 local stone_params = require("objects.parameters.stones")
 local effects_helpers = require("objects.effects_helpers")
-local stone_removal = require("single_game.resolver.stone_removal")
 
 local M = {}
 
@@ -64,7 +63,6 @@ function M.on_stone_removed(state, row, col, cell, captor_side)
 		return
 	end
 	M.apply_escalating_points_capture(state, row, col, cell, captor_side)
-	stone_removal.on_removed(state, row, col, cell, nil)
 end
 
 --- Finds stones present on ``old_board`` but absent on ``new_board``.

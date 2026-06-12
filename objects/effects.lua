@@ -993,14 +993,45 @@ function M.escalating_money_tracker(effect)
 			if state._skip_board_end_of_turn_effects then
 				return
 			end
-			local stone_stored_values = require("single_game.resolver.stone_stored_values")
 			local economy = require("economy")
 			local side = owner == config.OWNER_WHITE and "white" or "black"
 			local player = require("match_state").player_for_color(state, side)
 			local round_money = stone_params.ems_round_money
 			economy.gain(player.resources, round_money)
-			local next_total = stone_stored_values.get(state, row, col) + round_money
-			stone_stored_values.set(state, row, col, next_total)
+			local next_total = (helpers.stone_stored_value(state, row, col) or 0) + round_money
+			helpers.set_stone_stored_value(state, row, col, next_total)
+		end,
+	}
+end
+
+--- On removal: stone owner pays ``ems_capture_multiplier`` times cumulative received unless self-removal exempt.
+--- @param effect table
+--- @return table
+function M.escalating_money_capture_penalty(effect)
+	return {
+		type = "ESCALATING_MONEY_CAPTURE_PENALTY",
+		macro = effect.macro or "on_removed",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, row, col, cell, _opts)
+			if not cell or board.is_empty(cell) then
+				return
+			end
+			local received = helpers.stone_stored_value(state, row, col) or 0
+			if cell.placed_via_play and received <= stone_params.ems_round_money then
+				helpers.set_stone_stored_value(state, row, col, 0)
+				return
+			end
+			if received <= 0 then
+				helpers.set_stone_stored_value(state, row, col, 0)
+				return
+			end
+			local side = cell.color == config.STONE_WHITE and "white" or "black"
+			local player = require("match_state").player_for_color(state, side)
+			local penalty = stone_params.ems_capture_multiplier * received
+			require("economy").deduct_clamped(player.resources, penalty)
+			helpers.set_stone_stored_value(state, row, col, 0)
 		end,
 	}
 end
@@ -1925,6 +1956,34 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active
 	end
 
 	return out
+end
+
+--- Runs stone-declared ``on_removed`` effects for a cell being cleared from the board.
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @param cell table
+--- @param opts table|nil ``capturer`` optional ``"black"`` | ``"white"`` removing side
+--- @return nil
+function M.apply_on_removed_effects(state, row, col, cell, opts)
+	if board.is_empty(cell) then
+		return
+	end
+	local content = require("content")
+	local stone_ref = cell.level and { def_id = cell.kind, level = cell.level } or cell.kind
+	local stone_def = content.resolve_stone(stone_ref)
+	if not stone_def or not stone_def.effects then
+		return
+	end
+	for i = 1, #stone_def.effects do
+		local effect_def = stone_def.effects[i]
+		if effect_def.macro == "on_removed" then
+			local resolved = M.resolve(effect_def)
+			if resolved and resolved.apply then
+				resolved.apply(state, row, col, cell, opts)
+			end
+		end
+	end
 end
 
 --- Resolves card definition effects.

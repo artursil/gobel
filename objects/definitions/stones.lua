@@ -857,6 +857,12 @@ M.escalating_money_stone = {
 			sub = "points",
 			priority = P.default_effect_priority,
 		},
+		{
+			effect_name = "escalating_money_capture_penalty",
+			macro = "on_removed",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
 	},
 }
 

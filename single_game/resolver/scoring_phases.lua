@@ -10,6 +10,7 @@ M.MACRO_ORDER = {
 	"playing_cards",
 	"playing_stones",
 	"end_of_turn",
+	"on_removed",
 	"game_end",
 }
 

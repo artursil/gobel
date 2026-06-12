@@ -15,6 +15,7 @@ local VALID_MACROS = {
 	playing_stones = true,
 	board_reconcile = true,
 	end_of_turn = true,
+	on_removed = true,
 	game_end = true,
 }
 

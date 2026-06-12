@@ -195,13 +195,9 @@ end
 --- @param col integer
 --- @return number|nil
 function H.stone_stored_value(state, row, col)
-	local key = H.stone_cell_key(row, col)
 	local cell = state.board and state.board[row] and state.board[row][col]
 	if type(cell) == "table" and cell.stored_value ~= nil then
 		return cell.stored_value
-	end
-	if state.stone_stored_values then
-		return state.stone_stored_values[key]
 	end
 	return nil
 end
@@ -213,9 +209,6 @@ end
 --- @param value number
 --- @return nil
 function H.set_stone_stored_value(state, row, col, value)
-	state.stone_stored_values = state.stone_stored_values or {}
-	local key = H.stone_cell_key(row, col)
-	state.stone_stored_values[key] = value
 	local row_cells = state.board and state.board[row]
 	local cell = row_cells and row_cells[col]
 	if type(cell) == "table" then
