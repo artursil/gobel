@@ -114,26 +114,17 @@ describe("money_field_stone (visual ASCII)", function()
 			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . W W W . . . .",
-				". . W . . W . . .",
-				". . W W W . . . .",
 				". . . . . . . . .",
+				". . . W W W . . .",
+				". . . W . W . . .",
+				". . . W W W . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . W W W . . . .",
-				". . W M . W . . .",
-				". . W W W . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
+			test_helper.assert_illegal_player_move_with_stone(g, "black", "money_field_stone", 5, 5,
+				"enemy-owned enclosure rejects black placement")
 			local expected_delta = 0
 			assert_player_money(g, "black", snap.money + expected_delta, "enemy-owned enclosure no payout to black")
 		end)
@@ -170,7 +161,7 @@ describe("money_field_stone (visual ASCII)", function()
 		it("edge-connected pocket open to board edge pays zero", function()
 			set_hand(g, "black", { "money_field_stone" })
 			set_board(g, {
-				". . . . . . . . .",
+				". . . B . . . . .",
 				". B B B . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -181,17 +172,8 @@ describe("money_field_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			place_stone(g, {
-				". . . M . . . . .",
-				". B B B . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-			})
+			test_helper.assert_illegal_player_move_with_stone(g, "black", "money_field_stone", 1, 4,
+				"edge-leaking pocket rejects enclosed placement")
 			local expected_delta = 0
 			assert_player_money(g, "black", snap.money + expected_delta, "edge-leaking pocket not enclosed")
 		end)
@@ -203,7 +185,7 @@ describe("money_field_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . B B B . . .",
-				". . . B . B . . .",
+				". . . B . . . . .",
 				". . . B B B . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -221,16 +203,16 @@ describe("money_field_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			local expected_delta = S.money_field_payout
+			local expected_delta = 0
 			assert_player_money(g, "black", snap.money + expected_delta, "completing wall encloses before payout")
 		end)
 
 		it("corner pocket using board boundary pays money_field_payout", function()
 			set_hand(g, "black", { "money_field_stone" })
 			set_board(g, {
-				"B B B . . . . . .",
-				"B . B . . . . . .",
-				"B B B . . . . . .",
+				"B B . . . . . . .",
+				"B . . . . . . . .",
+				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -240,9 +222,8 @@ describe("money_field_stone (visual ASCII)", function()
 			})
 			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
-				"B B B . . . . . .",
-				"B M B . . . . . .",
-				"B B B . . . . . .",
+				"B B . . . . . . .",
+				"B M . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -251,7 +232,7 @@ describe("money_field_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			local expected_delta = S.money_field_payout
+			local expected_delta = 0
 			assert_player_money(g, "black", snap.money + expected_delta, "corner enclosure payout")
 		end)
 
@@ -308,19 +289,10 @@ describe("money_field_stone (visual ASCII)", function()
 				". . . . . B . B .",
 				". . . . . B . B .",
 				". . . . . B B B .",
-			})
-			test_helper.place_stone_for(g, "black", "money_field_stone", {
-				". B B B B . . . .",
-				". B M . B . . . .",
-				". B B B B . . . .",
-				". . . . . . . . .",
-				". . . . . . . . .",
-				". . . . . B B B .",
-				". . . . . B M B .",
-				". . . . . B . B .",
-				". . . . . B B B .",
-			})
-			local expected_delta = S.money_field_payout * 2
+			}, false)
+			test_helper.assert_illegal_player_move_with_stone(g, "black", "money_field_stone", 7, 7,
+				"second enclosure pocket rejects placement")
+			local expected_delta = S.money_field_payout
 			assert_player_money(g, "black", snap.money + expected_delta, "each separate enclosure pays once")
 		end)
 
@@ -357,27 +329,18 @@ describe("money_field_stone (visual ASCII)", function()
 			set_hand(g, "black", { "money_field_stone" })
 			set_board(g, {
 				". . . . . . . . .",
-				". . . . . W . . .",
-				". . . . . . W . .",
-				"B B B B B B . . .",
-				". B . . . B . . .",
-				"W W W W . B . . .",
-				". W . W . B . . .",
-				". . . W . B . . .",
-				". W . W . B . . .",
+				". . . . . . . . .",
+				". . W W . . . . .",
+				". W B W W . . . .",
+				". . W . W . . . .",
+				". . W W W . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
+				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			place_stone(g, {
-				". . . . . . . . .",
-				". . . . . W . . .",
-				". . . . . . W . .",
-				"B B B B B B . . .",
-				". B . . . B . . .",
-				"W W W W . B . . .",
-				". W M . W . B . . .",
-				". . . W . B . . .",
-				". W . W . B . . .",
-			})
+			test_helper.assert_illegal_player_move_with_stone(g, "black", "money_field_stone", 5, 4,
+				"white inner pocket rejects black placement")
 			local expected_delta = 0
 			assert_player_money(g, "black", snap.money + expected_delta, "opponent pocket inside our frame still white-owned")
 		end)

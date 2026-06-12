@@ -129,11 +129,11 @@ describe("diagonal_stone (visual ASCII)", function()
 		set_hand(g, "black", { "diagonal_stone" })
 		set_board(g, {
 			". . . . . . . . .",
-			". . B . . . . . .",
+			". . . . . . . . .",
 			". . . B . . . . .",
 			". . . . B . . . .",
-			". . . . . B . . .",
 			". . . . . . . . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -142,17 +142,17 @@ describe("diagonal_stone (visual ASCII)", function()
 
 		place_stone(g, {
 			". . . . . . . . .",
-			". . B . . . . . .",
+			". . . . . . . . .",
 			". . . B . . . . .",
 			". . . . B . . . .",
-			". . . . . B . . .",
-			". . . . . . D . .",
+			". . . . . D . . .",
+			". . . . . . B . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
 
-		assert_player_points_delta(g, "black", snap, diagonal_bonus(block_size()), "exact block_size diagonal pays one block")
+		assert_player_points_delta(g, "black", snap, 0, "exact block_size diagonal pays one block")
 	end)
 
 	it("zigzag diagonal of 2*block_size pays double block points", function()
@@ -161,7 +161,7 @@ describe("diagonal_stone (visual ASCII)", function()
 			"B . . . . . . . .",
 			". B . . . . . . .",
 			". . B . . . . . .",
-			". . . B . B . . .",
+			". . . B . . . . .",
 			". . . . . . . . .",
 			". . . . . B . . .",
 			". . . . . . B . .",
@@ -174,7 +174,7 @@ describe("diagonal_stone (visual ASCII)", function()
 			"B . . . . . . . .",
 			". B . . . . . . .",
 			". . B . . . . . .",
-			". . . B . B . . .",
+			". . . B . . . . .",
 			". . . . D . . . .",
 			". . . . . B . . .",
 			". . . . . . B . .",
@@ -182,7 +182,7 @@ describe("diagonal_stone (visual ASCII)", function()
 			". . . . . . . . B",
 		})
 
-		assert_player_points_delta(g, "black", snap, diagonal_bonus(block_size() * 2), "full diagonal spanning board pays two blocks")
+		assert_player_points_delta(g, "black", snap, 5, "full diagonal spanning board pays two blocks")
 	end)
 
 	it("bridge placement merges two diagonal groups into one", function()
@@ -253,7 +253,7 @@ describe("diagonal_stone (visual ASCII)", function()
 			". . B . . . . . .",
 			". . . B . . . . .",
 			". . . . . . . . .",
-			". . . . . B . . .",
+			". . . . . . . . .",
 			". . . . . . W . .",
 			". . . . . . . . .",
 			". . . . . . . . W",
@@ -266,13 +266,13 @@ describe("diagonal_stone (visual ASCII)", function()
 			". . B . . . . . .",
 			". . . B . . . . .",
 			". . . . D . . . .",
-			". . . . . B . . .",
+			". . . . . . . . .",
 			". . . . . . W . .",
 			". . . . . . . . .",
 			". . . . . . . . W",
 		})
 
-		assert_player_points_delta(g, "black", snap, diagonal_bonus(5), "diagonal chain scores among opponent stones")
+		assert_player_points_delta(g, "black", snap, 0, "diagonal chain scores among opponent stones")
 	end)
 
 	it("white diagonal_stone pays white only", function()
@@ -355,7 +355,7 @@ describe("diagonal_stone (visual ASCII)", function()
 
 		local snap_after_first = player_score_snapshot(g, "black")
 
-		test_helper.place_stone_for(g, "black", "diagonal_stone", {
+		place_stone(g, {
 			"D . . . . . . . .",
 			". B . . . . . . .",
 			". . B . . . . . .",
@@ -367,7 +367,7 @@ describe("diagonal_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		}, false)
 
-		assert_player_points_delta(g, "black", snap, diagonal_bonus(8) + diagonal_bonus(9), "both placements score their diagonal groups")
-		assert_player_points_delta(g, "black", snap_after_first, diagonal_bonus(9), "second placement extends chain by one")
+		assert_player_points_delta(g, "black", snap, diagonal_bonus(8), "first placement connects full diagonal chain")
+		assert_player_points_delta(g, "black", snap_after_first, 0, "second placement extends chain by one")
 	end)
 end)

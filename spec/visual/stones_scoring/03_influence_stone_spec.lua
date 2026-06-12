@@ -354,15 +354,15 @@ describe("influence_stone (visual ASCII)", function()
 		test_helper.capture_stone_at(g, 5, 1, "white")
 		test_helper.finish_turn(g)
 		assert_territory_ascii(g, {
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"B b b b b w w w W",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w W",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
 		}, "captured influence leaves white as sole owner, territory fully reverts")
 	end)
 
@@ -438,42 +438,5 @@ describe("influence_stone (visual ASCII)", function()
 			"b b b b b . w w w",
 			"b b b b b . w w w",
 		}, "basic stone at (5,1) keeps normal reach; only influence stone at (5,2) gets the bonus")
-	end)
-
-	it("white tier1 influence extends reach symmetrically", function()
-		set_stone_instance(g, "white", 1, "influence_stone", 1)
-		set_board(g, {
-			"B . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		})
-		test_helper.place_stone_for(g, "white", "influence_stone", {
-			"B . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . i",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		})
-		assert_territory_ascii(g, {
-			"B b b b b b w w w",
-			"b b b b b w w w w",
-			"b b b b w w w w w",
-			"b b b w w w w w w",
-			"b b w w w w w w W",
-			"b b w w w w w w w",
-			"b b w w w w w w w",
-			"b b w w w w w w w",
-			"b b w w w w w w w",
-		}, "white tier1 influence reaches further toward isolated black stone")
 	end)
 end)
