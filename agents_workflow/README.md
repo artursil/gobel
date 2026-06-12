@@ -18,6 +18,7 @@ cp agents_workflow/secrets.example agents_workflow/secrets
 Also requires (**Linux/WSL only** — do not run workflows from Windows PowerShell):
 
 - WSL2 with the repo at a Linux path (e.g. `/mnt/c/Users/.../gobel` or `~/gobel`)
+- **Git operations from WSL only** — commit, merge, and `merge_issues.py` from a WSL shell. The repo uses LF line endings (see root `.gitattributes`); mixing Windows PowerShell git with WSL causes phantom `M` files on every file.
 - `gh` CLI authenticated (`gh auth login`)
 - `busted` for Lua tests
 - Git repo with `main` as integration branch
