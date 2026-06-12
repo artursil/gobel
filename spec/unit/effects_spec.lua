@@ -2,6 +2,8 @@ require("spec.test_helper")
 
 local effects = require("objects.effects")
 local conditions = require("objects.conditions")
+local match_state = require("match_state")
+local P = require("spec.parameters_helper")
 
 describe("T-100 effects system", function()
 	it("resolves add_points effect", function()
@@ -57,6 +59,55 @@ describe("T-100 effects system", function()
 		}
 		local resolved = effects.resolve(effect_def)
 		assert.is_nil(resolved)
+	end)
+
+	it("resolves add_energy effect", function()
+		local effect_def = {
+			effect_name = "add_energy",
+			macro = "playing_stones",
+			sub = "points",
+			value = P.stone.energy_stone_gain,
+			priority = 10,
+		}
+		local resolved = effects.resolve(effect_def)
+		assert.is_not_nil(resolved)
+		assert.are.equal("ADD_ENERGY", resolved.type)
+		assert.are.equal("points", resolved.sub)
+		assert.are.equal(P.stone.energy_stone_gain, resolved.value)
+		assert.are.equal(10, resolved.priority)
+		assert.is_not_nil(resolved.apply)
+	end)
+
+	it("applies add_energy effect to player energy", function()
+		local state = match_state.new_match("pvp", 1)
+		local player = state.players.black
+		player.energy = 0
+		player.energy_max = P.energy_max_default()
+		player.resources.energy_current = 0
+		player.resources.energy_max = P.energy_max_default()
+		local effect_def = {
+			effect_name = "add_energy",
+			value = P.stone.energy_stone_gain,
+		}
+		local resolved = effects.resolve(effect_def)
+		resolved.apply(state, "B")
+		assert.are.equal(P.stone.energy_stone_gain, player.energy)
+	end)
+
+	it("clamps add_energy at player energy_max", function()
+		local state = match_state.new_match("pvp", 2)
+		local player = state.players.black
+		player.energy = P.energy_max_default()
+		player.energy_max = P.energy_max_default()
+		player.resources.energy_current = P.energy_max_default()
+		player.resources.energy_max = P.energy_max_default()
+		local effect_def = {
+			effect_name = "add_energy",
+			value = P.stone.energy_stone_gain,
+		}
+		local resolved = effects.resolve(effect_def)
+		resolved.apply(state, "B")
+		assert.are.equal(P.energy_max_default(), player.energy)
 	end)
 
 	it("applies add_points effect to state", function()

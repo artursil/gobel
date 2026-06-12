@@ -111,7 +111,7 @@ describe("vertical slice features", function()
 		state_fail.rng.seed = 1
 		state_fail.board[4][4] = board.make_stone(config.STONE_WHITE, "stone_basic")
 		state_fail.players.black.cards.hand.ids = { "card_destroy_enemy_stone" }
-		state_fail.players.black.resources.energy_current = 10
+		state_fail.players.black.energy = 10
 		assert.is_true(game.select_board_target(state_fail, 4, 4))
 		assert.is_true(game.play_card(state_fail, 1))
 		assert.is_false(board.is_empty(state_fail.board[4][4]))
@@ -120,7 +120,7 @@ describe("vertical slice features", function()
 		state_pass.rng.seed = 4
 		state_pass.board[4][4] = board.make_stone(config.STONE_WHITE, "stone_basic")
 		state_pass.players.black.cards.hand.ids = { "card_destroy_enemy_stone" }
-		state_pass.players.black.resources.energy_current = 10
+		state_pass.players.black.energy = 10
 		assert.is_true(game.select_board_target(state_pass, 4, 4))
 		assert.is_true(game.play_card(state_pass, 1))
 		assert.is_true(board.is_empty(state_pass.board[4][4]))
@@ -128,7 +128,7 @@ describe("vertical slice features", function()
 		local state_invalid = game.new("pvp", "vertical_slice_test")
 		state_invalid.board[4][4] = board.make_stone(config.STONE_WHITE, "stone_basic")
 		state_invalid.players.black.cards.hand.ids = { "card_destroy_enemy_stone" }
-		state_invalid.players.black.resources.energy_current = 10
+		state_invalid.players.black.energy = 10
 		assert.is_true(game.select_board_target(state_invalid, 4, 4))
 		state_invalid.board[4][4] = config.STONE_NONE
 		assert.is_false(game.play_card(state_invalid, 1))
@@ -167,7 +167,7 @@ describe("vertical slice features", function()
 		local state = game.new("pvp", "vertical_slice_test")
 		state.board[4][4] = board.make_stone(config.STONE_BLACK, "stone_basic")
 		state.players.black.cards.hand.ids = { "card_forge_mark" }
-		state.players.black.resources.energy_current = 10
+		state.players.black.energy = 10
 		assert.is_true(game.select_board_target(state, 4, 4))
 		assert.is_true(game.play_card(state, 1))
 		assert.are.equal(P.card.card_forge_mark_points, state.board_stone_modifiers["4:4"].points_bonus)
@@ -180,7 +180,7 @@ describe("vertical slice features", function()
 	it("integration: target selection payload is required for targeted cards", function()
 		local state = game.new("pvp", "vertical_slice_test")
 		state.players.black.cards.hand.ids = { "card_destroy_enemy_stone" }
-		state.players.black.resources.energy_current = 10
+		state.players.black.energy = 10
 		local fail_result = resolver.submit_action(state, {
 			actor = "black",
 			type = "PLAY_CARD",

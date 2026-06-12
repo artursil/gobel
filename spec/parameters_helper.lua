@@ -112,6 +112,12 @@ end
 
 --- @param stone_id string
 --- @return number
+function M.stone_energy_gain(stone_id)
+	return M.stone_effect_value(stone_id, "add_energy") or 0
+end
+
+--- @param stone_id string
+--- @return number
 function M.stone_plus_mult(stone_id)
 	return M.stone_effect_value(stone_id, "add_mult") or 0
 end

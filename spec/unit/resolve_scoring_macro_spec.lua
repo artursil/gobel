@@ -49,7 +49,7 @@ describe("resolve scoring macro", function()
 		g.phase = "MAIN_PHASE"
 		g.to_play = "black"
 		local player = match_state.player_for_color(g, "black")
-		player.resources.energy_current = 3
+		player.energy = 3
 		player.cards.hand.ids = { "card_point_tap" }
 		player.stones.playable_stones = { "stone_basic" }
 		player.stones.selected_stone = "stone_basic"
@@ -60,6 +60,7 @@ describe("resolve scoring macro", function()
 			payload = { hand_index = 1 },
 		})
 		assert.is_true(played.ok)
+		assert.are.equal(2, player.energy, "card spend uses player.energy")
 		local points_after_card = P.starting_points() + P.card_points("card_point_tap")
 		assert.are.equal(points_after_card, player.score.points, "after card")
 		assert.are.equal(points_after_card, g.scores.points.B, "state after card")

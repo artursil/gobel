@@ -26,6 +26,8 @@ describe("T-015 unified match state", function()
 			local player = state.players[side]
 			assert.are.equal(P.energy_max_default(), player.energy_max)
 			assert.are.equal(P.energy_max_default(), player.energy)
+			assert.are.equal(player.energy, player.resources.energy_current)
+			assert.are.equal(player.energy_max, player.resources.energy_max)
 			assert.are.equal(0, player.resources.money)
 			assert.are.equal(4, player.cards.hand_target_size)
 			assert.is_true(type(player.stones.selected_stone) == "string" or player.stones.selected_stone == nil)
