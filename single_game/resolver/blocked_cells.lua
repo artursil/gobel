@@ -170,13 +170,16 @@ function M.is_blocked_for_actor(state, row, col, actor)
 	return remaining > 0
 end
 
+--- Decrements blockade zone durations; only clears ``blocked_cells`` keys owned by blockade (capture cooldown markers are preserved).
 --- @param state table
 --- @return nil
 function M.tick(state)
 	M.ensure(state)
 	M.bootstrap_from_board_if_needed(state)
 	local next_blocks = {}
+	local prev_keys = {}
 	for key, entry in pairs(state.placement_blocks) do
+		prev_keys[key] = true
 		local white = math.max(0, (entry.white or 0) - 1)
 		local black = math.max(0, (entry.black or 0) - 1)
 		if white > 0 or black > 0 then
@@ -185,10 +188,9 @@ function M.tick(state)
 	end
 	state.placement_blocks = next_blocks
 	state._blocked_cells_sync = {}
-	for key in pairs(state.blocked_cells) do
-		if type(key) == "string" then
-			state.blocked_cells[key] = nil
-		end
+	for key in pairs(prev_keys) do
+		state.blocked_cells[key] = nil
+		state._blocked_cells_sync[key] = nil
 	end
 	for key in pairs(state.placement_blocks) do
 		sync_entry(state, key)
