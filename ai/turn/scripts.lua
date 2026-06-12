@@ -54,7 +54,7 @@ local function can_play_hand_index(view, hand_index)
 	if not card_def then
 		return false
 	end
-	return energy.can_spend(view:player().resources, card_def.energy_cost or 0)
+	return energy.can_spend(view:player(), card_def.energy_cost or 0)
 end
 
 --- @param view table

@@ -2,6 +2,7 @@
 --- @module objects.effects_helpers
 
 local config = require("config")
+local energy = require("energy")
 local queries = require("single_game.resolver.state_queries")
 
 local H = {}
@@ -220,6 +221,20 @@ function H.set_stone_stored_value(state, row, col, value)
 	if type(cell) == "table" then
 		cell.stored_value = value
 	end
+end
+
+--- Grant energy to the player identified by owner token (clamped to energy_max).
+--- @param state table
+--- @param owner string config owner token (B/W)
+--- @param amount number
+--- @return nil
+function H.gain_player_energy(state, owner, amount)
+	local side = owner == config.OWNER_WHITE and "white" or "black"
+	local player = require("match_state").player_for_color(state, side)
+	if not player then
+		return
+	end
+	energy.gain(player, amount)
 end
 
 --- Adds permanent per-cell point bonus for board stone scoring.

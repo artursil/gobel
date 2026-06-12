@@ -805,7 +805,7 @@ end
 --- @return nil
 local function on_turn_start(state, actor)
 	local actor_state = match_state.player_for_color(state, actor)
-	energy.refresh(actor_state.resources)
+	energy.refresh(actor_state)
 	state.just_played = {}
 	state.selected_card_target = nil
 	if not actor_state.stones.selected_stone or not actor_state.stones.selected_stone_index then
@@ -907,7 +907,7 @@ local function compile_play_card_events(state, action)
 	if not card_def then
 		return nil, "Unknown card id"
 	end
-	if not energy.can_spend(actor_state.resources, card_def.energy_cost) then
+	if not energy.can_spend(actor_state, card_def.energy_cost) then
 		return nil, "Insufficient energy"
 	end
 	local selected_targets = normalize_selected_targets(action.payload, state)
@@ -1188,7 +1188,7 @@ local function apply_non_effect_event(state, event)
 		if not discard_selected_card_targets(state, event.selected_targets or {}) then
 			return false, "Failed to discard selected targets"
 		end
-		local spent = energy.spend(actor_state.resources, event.energy_cost)
+		local spent = energy.spend(actor_state, event.energy_cost)
 		if not spent then
 			return false, "Insufficient energy"
 		end

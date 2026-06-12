@@ -100,11 +100,15 @@ function M.apply_game_type(state, game_type_id)
 	end
 
 	if game_type.black_energy_max then
+		black.energy_max = game_type.black_energy_max
+		black.energy = game_type.black_energy_max
 		black.resources.energy_max = game_type.black_energy_max
 		black.resources.energy_current = game_type.black_energy_max
 	end
 
 	if game_type.white_energy_max then
+		white.energy_max = game_type.white_energy_max
+		white.energy = game_type.white_energy_max
 		white.resources.energy_max = game_type.white_energy_max
 		white.resources.energy_current = game_type.white_energy_max
 	end

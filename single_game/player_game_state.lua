@@ -11,6 +11,9 @@ function M.new(owner)
 	return {
 		owner = owner,
 
+		energy = 3,
+		energy_max = 3,
+
 		resources = {
 			energy_current = 3,
 			energy_max = 3,

@@ -172,7 +172,7 @@ end
 
 --- @return integer
 function MatchView:energy_current()
-	return self:player().resources.energy_current or 0
+	return self:player().energy or 0
 end
 
 --- @return table
