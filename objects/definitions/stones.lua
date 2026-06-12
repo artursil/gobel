@@ -576,6 +576,7 @@ M.points_stone = {
 	effects = {
 		{
 			effect_name = "add_points",
+			lifecycle = "placement",
 			macro = "playing_stones",
 			sub = "points",
 			value = P.points_stone_t1,

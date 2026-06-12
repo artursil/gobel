@@ -459,6 +459,8 @@ local function resolve_enclosure_multiply_targets(walls, b, owner, row, col, sto
 	return empty_cells_in_set(b, targets)
 end
 
+local add_points_helper = require("objects.helper_effects.add_points")
+
 --- Add points effect builder.
 --- @param effect table: {effect_name, phase, value, priority, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
@@ -466,6 +468,7 @@ function M.add_points(effect)
 	local sub = effect.sub or effect.phase or "points"
 	return {
 		type = "ADD_POINTS",
+		lifecycle = "placement",
 		phase = sub,
 		macro = effect.macro,
 		sub = sub,
@@ -473,7 +476,7 @@ function M.add_points(effect)
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
 		apply = function(state, owner)
-			state.scores.points[owner] = state.scores.points[owner] + effect.value
+			add_points_helper.apply(state, owner, effect.value)
 		end,
 	}
 end
@@ -1308,16 +1311,17 @@ end
 function M.anti_capture_immunity(effect)
 	return {
 		type = "ANTI_CAPTURE_IMMUNITY",
+		lifecycle = "placement",
 		phase = effect.sub or "points",
 		macro = effect.macro or "playing_stones",
 		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
-		apply = function(state, _owner, row, col, board_snapshot)
-			if row == nil or col == nil then
+		on_placement = function(ctx)
+			if ctx.row == nil or ctx.col == nil then
 				return
 			end
-			anti_capture_immunity.grant_at_placement(state, board_snapshot, row, col)
+			anti_capture_immunity.grant_at_placement(ctx.state, ctx.board_snapshot, ctx.row, ctx.col)
 		end,
 	}
 end
