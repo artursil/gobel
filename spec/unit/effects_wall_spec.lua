@@ -14,6 +14,13 @@ local function state_with_board(rows, letter_map)
 	local b = spec_helper.parse_board_ascii_kinds(rows, letter_map)
 	return {
 		board = b,
+		players = {
+			black = { stances = { fixed = {}, swappable = {} } },
+			white = { stances = { fixed = {}, swappable = {} } },
+		},
+		temporary_stances = {},
+		just_played = {},
+		active_effects = {},
 		scores = {
 			turn_bonus = { B = 1, W = 1 },
 			territory = { B = 0, W = 0 },

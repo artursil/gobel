@@ -9,7 +9,6 @@
 --- 6. Register pouch/deck counts in ``game_types`` / ``content.starters`` as needed.
 --- @module objects.definitions.stones
 
-local shared = require("objects.definitions.shared_stones_effects")
 local stone_params = require("objects.parameters.stones")
 
 local P = stone_params
@@ -628,7 +627,13 @@ M.wall = {
 		sprite = "sprites/stones/wall.png",
 	},
 	effects = {
-		shared.wall_stone,
+		{
+			effect_name = "wall_stone",
+			lifecycle = "placement",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.wall_effect_priority,
+		},
 	},
 }
 
@@ -652,7 +657,13 @@ M.diagonal_stone = {
 		sprite = "sprites/stones/basic.png",
 	},
 	effects = {
-		shared.diagonal_group_points,
+		{
+			effect_name = "diagonal_group_points",
+			lifecycle = "placement",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.wall_effect_priority,
+		},
 	},
 }
 
@@ -675,7 +686,14 @@ M.line_stone = {
 		sprite = "sprites/stones/focus.png",
 	},
 	effects = {
-		shared.line_group_points,
+		{
+			effect_name = "line_group_points",
+			lifecycle = "placement",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.wall_effect_priority,
+			stone_kind = "line_stone",
+		},
 	},
 }
 

@@ -23,6 +23,10 @@ local VALID_SUBS = {
 	mult = true,
 }
 
+local VALID_LIFECYCLES = {
+	placement = true,
+}
+
 local VALID_SCOPES = {
 	self = true,
 	board = true,
@@ -141,6 +145,17 @@ local function validate_effect(effect, object_id)
 				object_id,
 				effect.scope,
 				list_valid(VALID_SCOPES)
+			)
+	end
+
+	if effect.lifecycle and not VALID_LIFECYCLES[effect.lifecycle] then
+		return false,
+			string.format(
+				"Effect '%s' in %s has invalid lifecycle '%s' (valid: %s)",
+				effect.effect_name,
+				object_id,
+				effect.lifecycle,
+				list_valid(VALID_LIFECYCLES)
 			)
 	end
 

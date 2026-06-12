@@ -3,6 +3,7 @@
 
 local content = require("content")
 local effect_registry = require("effect_registry")
+local placement_effects = require("single_game.resolver.placement_effects")
 
 local M = {}
 
@@ -75,14 +76,21 @@ function M.resolved_for_stone_ref(stone_ref, state, actor)
 	return M.resolved_stone_effects_from_def(stone_def, state, actor)
 end
 
---- @param resolved_effects table
+--- @param stone_def table
 --- @return table
-function M.round_effect_defs(resolved_effects)
+function M.placement_round_defs(stone_def)
+	return placement_effects.collect_defs(stone_def)
+end
+
+--- @param resolved_effects table
+--- @param stone_def table|nil
+--- @return table
+function M.round_effect_defs(resolved_effects, stone_def)
 	local round = {}
 	for i = 1, #resolved_effects do
 		local r = resolved_effects[i]
 		if r.type == "ADD_POINTS" then
-			round[i] = {
+			round[#round + 1] = {
 				effect_name = "add_points",
 				macro = "playing_stones",
 				sub = "points",
@@ -90,7 +98,7 @@ function M.round_effect_defs(resolved_effects)
 				priority = r.priority or 10,
 			}
 		elseif r.type == "KAMIKAZE_SACRIFICE" then
-			round[i] = {
+			round[#round + 1] = {
 				effect_name = "kamikaze_sacrifice",
 				macro = "playing_stones",
 				sub = "points",
@@ -98,7 +106,7 @@ function M.round_effect_defs(resolved_effects)
 				priority = r.priority or 10,
 			}
 		elseif r.type == "ADD_MULT" then
-			round[i] = {
+			round[#round + 1] = {
 				effect_name = "add_mult",
 				macro = "playing_stones",
 				sub = "mult",
@@ -106,13 +114,19 @@ function M.round_effect_defs(resolved_effects)
 				priority = r.priority or 10,
 			}
 		elseif r.type == "ADD_MONEY" then
-			round[i] = {
+			round[#round + 1] = {
 				effect_name = "add_money",
 				macro = "playing_stones",
 				sub = "points",
 				value = r.value,
 				priority = r.priority or 10,
 			}
+		end
+	end
+	if stone_def then
+		local placement_defs = placement_effects.collect_defs(stone_def)
+		for i = 1, #placement_defs do
+			round[#round + 1] = placement_defs[i]
 		end
 	end
 	return round
