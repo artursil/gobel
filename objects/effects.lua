@@ -912,11 +912,11 @@ function M.damage_selected_stone(effect)
 			local next_intrinsic = math.max(0, intrinsic - amount)
 			if next_intrinsic <= 0 then
 				state.board[row][col] = config.STONE_NONE
-				require("objects.defence_solidity_network").recompute_board(state.board)
+				require("single_game.resolver.board_reconcile").run(state)
 				return
 			end
 			cell.solidity = next_intrinsic + previous_bonus
-			require("objects.defence_solidity_network").recompute_board(state.board)
+			require("single_game.resolver.board_reconcile").run(state)
 		end,
 	}
 end
@@ -1239,18 +1239,18 @@ function M.diagonal_group_points(effect)
 end
 
 --- Board connectivity effect: defence stones buff solidity for connected own stones.
---- Actual recompute runs from resolver hooks; this builder registers the effect name only.
 --- @param effect table
 --- @return table
 function M.defence_solidity_network(effect)
 	return {
 		type = "DEFENCE_SOLIDITY_NETWORK",
 		phase = effect.sub or "points",
-		macro = effect.macro or "playing_stones",
+		macro = effect.macro or "board_reconcile",
 		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
-		apply = function(_state)
+		apply = function(state)
+			require("objects.defence_solidity_network").apply(state)
 		end,
 	}
 end

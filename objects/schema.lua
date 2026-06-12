@@ -13,6 +13,7 @@ local VALID_MACROS = {
 	before_turn = true,
 	playing_cards = true,
 	playing_stones = true,
+	board_reconcile = true,
 	end_of_turn = true,
 	game_end = true,
 }

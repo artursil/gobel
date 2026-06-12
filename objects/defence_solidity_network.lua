@@ -93,6 +93,12 @@ function M.defence_solidity_bonus_for_cell(b, row, col)
 end
 
 --- Reapply defence bonuses on every occupied cell after board connectivity changes.
+--- @param state table
+--- @return nil
+function M.apply(state)
+	M.recompute_board(state.board)
+end
+
 --- @param b table
 --- @return nil
 function M.recompute_board(b)

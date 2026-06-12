@@ -503,7 +503,7 @@ M.defence_stone = {
 	effects = {
 		{
 			effect_name = "defence_solidity_network",
-			macro = "playing_stones",
+			macro = "board_reconcile",
 			sub = "points",
 			priority = P.default_effect_priority,
 		},

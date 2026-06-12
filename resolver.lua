@@ -12,7 +12,7 @@ local card_play_memory = require("single_game.resolver.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
-local defence_solidity_network = require("objects.defence_solidity_network")
+local board_reconcile = require("single_game.resolver.board_reconcile")
 local blocked_cells = require("single_game.resolver.blocked_cells")
 local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
 local stone_timers = require("single_game.resolver.stone_timers")
@@ -513,7 +513,7 @@ local function run_event_queue(state, event_queue)
 			end
 			state.board = event.board
 			stone_removal.install_board_hooks(state)
-			defence_solidity_network.recompute_board(state.board)
+			board_reconcile.run(state)
 			state.ko_ban = event.ko_ban
 			if event.row and event.col then
 				territory_control_rounds.clear_cell(state, event.row, event.col)
@@ -1277,6 +1277,7 @@ local function wire_visual_test_capture_stone_at()
 		end
 		M.apply_board_stone_removal(g, row, col, captor_side)
 		g.board[row][col] = config.STONE_NONE
+		board_reconcile.run(g)
 		g.territory, g.territory_decision_sources, g.territory_value =
 			spec_helper.territory_map(g.board, g.territory_mode or "regional")
 		effects_helpers.set_stone_stored_value(g, row, col, 0)
