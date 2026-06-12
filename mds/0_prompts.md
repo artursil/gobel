@@ -101,15 +101,9 @@ workflows:
 Please take inspiration from run.ts for workflows and from prompts/.md for writing md prompts
 
 
-- how counters for stones are updated
 - combination of stones
-- UI for controlled territory
-- UI for territory value
-- stone effects when held in hand?
 - capture stone
 - finish turn / advance_round / complete_full_round
-- energy not the state of the game, energy stone doesn't work as it supposed.
-- energy max, after run
 
 
 
@@ -128,6 +122,31 @@ This is literally all wrong and should be handled all in apply.
 5. on_placement - apply should start the timer, we don't need it
 6. macro/sub - again why do we need it when we already have phases, which determine the order?
 7. lifecycle - we don't need it
+
+Debugger:
+- change value of territory fields
+
+
+1. Fix stones PR
+    - energy not the state of the game, energy stone doesn't work as it supposed.
+    - energy max, after run
+2. how counters for stones are updated
+3. Debugger.
+4. UI
+    - UI for controlled territory
+    - UI for territory value
+5. More stones
+    - stone effects when held in hand?
+    - gold stones
+6. Automatic sprite generation + display of stones.
+7. Animations improvements.
+8. Animations
+9. Heuristics
+10. Combination of stones
+11. Stone testing
+12. Finish all stones.
+13. Simulation
+14. Tweaking heuristic
 
 
 
@@ -182,3 +201,12 @@ We are almost there .
 I'm just not sure how to handle if we have multiple values for effects or conditions
 
 2. I'm stiil not sure how do you define conditions inside conditions.lua
+
+1. I don't like if and elseif in ai/scoring/stone_placement_effects.lua it is a bad design, should be refactored.
+2. In objects/definitions/shared_stones_effects.lua we shouldn't have values for wall_stone, diagonal_group_points, line_group_points because those shapes should be only triggered on placement of a given stone.
+3. energy should be part of the state of the game and energy_stone similar like other stones should modify a state of the game.
+4. functions that are not directly used as effects in stones definitions should be in effects_helpers.lua not effects.lua
+5. Docstrings are missing for some effects and effects_helpers.
+6. I don't understand defence_solidity_network why it doesn't modify stones in the state of the game?
+7. There are so many new files added in the resolver however I don't understand why those are not just added as effects. The purpose of effect was to have be how a clear entry point of what a specific stone does by modifying the state of the game. I guess for stone removal we need a specific action on the board but board is a still a part of the state so I don't understand why we cannot simply have all those newly added files in resolver moved to objects/helper_effects/ and then use them in effects. For me the navigation of the code should be very clear. If I have a stone I should look at it's effect and see what exactly is happening, right now it doesn't seem to work like that.
+8. Even though agents were instructed to not modify tests, just asserts if necessary, unfortunately some tests were modified. We place different stones, we have different initial boards this is unacceptable and needs to be reverted ASAP!!!!

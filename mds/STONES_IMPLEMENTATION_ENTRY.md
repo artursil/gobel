@@ -70,11 +70,12 @@ Visual specs assert resolver-visible game state only.
 
 ### animations_details
 - [ ] not implemented
-- Show tier-based points float text.
+- Show tier-based points float text, over the placed stone and then added to the points in general.
 
 ### heuristics_details
 - [ ] not implemented
-- Prefer higher tier instances.
+- Our: Treated as basic_stones just played first. It means if we have those and basic_stones we only evaluate those.
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -95,11 +96,12 @@ Visual specs assert resolver-visible game state only.
 
 ### animations_details
 - [ ] not implemented
-- Territory pulse around influence source.
+- No extra animation
 
 ### heuristics_details
 - [ ] not implemented
-- Prefer contested areas.
+- Our: None
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -120,11 +122,13 @@ Visual specs assert resolver-visible game state only.
 
 ### animations_details
 - [ ] not implemented
-- Corner area highlight when active.
+- All territoried that are empty and their value increase blink one after the other. The fields should permanently change color, so by default they are black than goldish and get more and more gold when the value of territory gets closer to 10.
 
 ### heuristics_details
 - [x] implemented (basic)
 - Prefer legal corners.
+- Our: value for the corner fields have extra value for tower_stones.
+- Oponnent: If opponent has a tower stone in hand in order to block him corner fields have extra value.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -145,11 +149,13 @@ Visual specs assert resolver-visible game state only.
 
 ### animations_details
 - [ ] not implemented
-- Energy gain feedback.
+- We get gold +number over the stone and then over the energy field
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer when current energy is low.
+- Our: None
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -226,11 +232,13 @@ Comment: should work more like wall_stone, because there is not much to be compl
 
 ### animations_details
 - [ ] not implemented
-- Placement reward feedback.
+- Each stone forming the shape bounces one after the other and then we display the +points over the stone and the +points over points box.
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer placements joining larger own groups.
+- Our: Depending how big is current diagonal shape, if we can complete we add a special value to fields that can finish diagonal shape for diagonal_stone.
+- Oponnent: Depending how big is current diagonal shape, if we opponent can complete it and has diagonal stone in hand we add a special value to fields that can block them.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -255,11 +263,13 @@ Comment: should work the same way wall stone does, so we get points only placeme
 
 ### animations_details
 - [ ] not implemented
-- Placement reward feedback.
+- Each stone forming the shape bounces one after the other and then we display the +points over the stone and the +points over points box.
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer merges that cross block thresholds.
+- Our: Depending how big is current line shape, if we can complete we add a special value to fields that can finish diagonal shape for line_stone.
+- Oponnent: Depending how big is current line shape, if we opponent can complete it and has line stone in hand we add a special value to fields that can block them.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -281,11 +291,13 @@ Comment: should work the same way wall stone does, so we get points only placeme
 
 ### animations_details
 - [ ] not implemented
-- Placement and self-removal feedback.
+- Displays the skull sprite over the placed kamikaze_stone then stone destroy animation.
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer positive immediate swing.
+- Our: Extra value for the fields which would trigger kamikaze_stone.
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -310,11 +322,14 @@ Comment: implementation details don't really match this description "if placed i
 
 ### animations_details
 - [ ] not implemented
-- Enclosure region emphasis when active.
+- All territoried that are empty and their value increase blink one after the other. The fields should permanently change color, so by default they are black than goldish and get more and more gold when the value of territory gets closer to 10.
+
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer enclosed high-value regions.
+- Our: No extra heuristic needed, because it has a direct impact on the score.
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -338,11 +353,13 @@ Comment: Implementation details I don't like, during the territory resolution si
 
 ### animations_details
 - [ ] not implemented
-- Control zone feedback.
+- Each empty field controlled by control_stone should blink one after the other with silver color and then the those fileds should stay silver and the lins connecting those fields and stone should be also silver.
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer contested conversion opportunities.
+- Our: No extra heuristic needed.
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -364,11 +381,14 @@ Comment: Implementation details I don't like, during the territory resolution si
 
 ### animations_details
 - [ ] not implemented
-- Blocked-cell indicator.
+- Each empty field controlled by control_stone should blink one after the other with brown color and then the those fileds should stay silver and the lines connecting those fields and stone should be also brown. The color should return to default after the blockade duration passes.
+
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer denying high-value opponent candidates.
+- Our: There should be a heuristic for every stone that if we block enemies shapes, enclosures etc it is more valuable, in case of blockade_stone the
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -392,11 +412,13 @@ Comment: stones have solidity parameter so defense stone should increase solidit
 
 ### animations_details
 - [ ] not implemented
-- Solidity/defence feedback marker.
+- fade in and fade out of shield sprite over all stones connected to the defence stone.
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer protecting high-value clusters.
+- Our: If there is a stone with less than half of the health then we placing a defence stone next to it is extra valuable.
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -422,6 +444,8 @@ Comment: stones have solidity parameter so defense stone should increase solidit
 ### heuristics_details
 - [ ] not implemented
 - Prefer enclosed placements.
+- Our: None
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -451,6 +475,8 @@ Comment: This stone prevents opponent to place a stone on an empty field that wo
 ### heuristics_details
 - [ ] not implemented
 - Prefer threatened groups.
+- Our: None
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -481,6 +507,8 @@ Comment: I would change it to 2 * number of rounds controlled. For this and othe
 ### heuristics_details
 - [ ] not implemented
 - Prefer high absolute owner-control streak cells; avoid enemy-controlled cells (penalty).
+- Our: None
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=8 scenarios; payout formula only — grid tick tests in `spec/unit/territory_control_rounds_spec.lua`)
@@ -511,6 +539,8 @@ Comment: This is ok but I would increase it to 7 rounds
 ### heuristics_details
 - [ ] not implemented
 - Prefer safe longevity placements.
+- Our: placing this stone should be simply more valuable in general.
+- Oponnent: If we can capture delay_reward_stone then the fields that would capture it get extra value.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -534,11 +564,13 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### animations_details
 - [ ] not implemented
-- Target-capture feedback.
+- No extra animation
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer high-value captures.
+- Our: There should be in general a heuristic for capturing an enemy stone, this stone simply allows us to capture stones, that ususally wouldn't be captured, so it doesn't necessarily need a special heuristic if the regular capture heuristic is handled properly.
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -561,11 +593,13 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### animations_details
 - [ ] not implemented
-- Region payout feedback.
+- Blink over enemy stone in enclosure and then gold +money over the tax stone
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer dense enemy-enclosure regions.
+- Our: None
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -587,11 +621,13 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### animations_details
 - [ ] not implemented
-- Timer and removal feedback.
+- on placement +points over the stone -> + points over the points box, on expiry shaking clock sprite animation and then destroy stone animation
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer immediate swing opportunities.
+- Our: Simply valued more than other stones, the longer the game the value increases so 2 parameters
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -618,11 +654,13 @@ Comment: This needs to be totally differently implemented. Conversion formula I 
 
 ### animations_details
 - [ ] not implemented
-- Territory-to-points feedback.
+- All empty fields in controlled territory shine and the +points over the t2p stone
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer stable territory ownership around the stone cell.
+- Our: Extra value if placed in enclosure.
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -649,11 +687,13 @@ Comment: should act exactly like the previous stone just with mult
 
 ### animations_details
 - [ ] not implemented
-- Territory-to-mult feedback.
+- All empty fields in controlled territory shine and the +mult over the t2p stone
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer stable high-territory states.
+- Our: Extra value if placed in enclosure.
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -678,11 +718,13 @@ Comment: this stone should give some number of points every round, but then when
 
 ### animations_details
 - [ ] not implemented
-- Accumulation and capture-transfer feedback.
+- end of each round displayed +EPS_ROUND_POINTS over the stone, when capture -(EPS_CAPTURE_MULTIPLIER * accumulated_bank) in red over the stone and then +(EPS_CAPTURE_MULTIPLIER * accumulated_bank) over points of opponent
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer safe growth positions.
+- Our: Valued more than basic_stone but just when placed in enclosed territory, otherwise just slightly more than basic_stone, 2 parameters
+- Oponnent: Extra value if we can capture the stone are we are close to capturing the stone, 2 parameters.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -706,11 +748,13 @@ Comment: similar to the last stone it should generate more money each round, but
 
 ### animations_details
 - [ ] not implemented
-- Money growth and penalty feedback.
+- end of each round displayed +EPS_ROUND_MONEY over the stone in gold, when capture -(EPS_CAPTURE_MULTIPLIER * EMS_TOTAL_RECEIVED) in red over the stone and then over our money
 
 ### heuristics_details
 - [ ] not implemented
 - Prefer early safe placements.
+- Our: Valued more than basic_stone but just when placed in enclosed territory, otherwise just slightly more than basic_stone, 2 parameters
+- Oponnent: Extra value if we can capture the stone are we are close to capturing the stone, 2 parameters.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -737,6 +781,8 @@ Comment: similar to the last stone it should generate more money each round, but
 ### heuristics_details
 - [x] implemented (none required)
 - Wall value evaluated through direct scoring.
+- Our:
+- Oponnent:
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -762,6 +808,8 @@ Comment: similar to the last stone it should generate more money each round, but
 ### heuristics_details
 - [ ] not implemented
 - Prefer in long economy-positive games.
+- Our:
+- Oponnent:
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -787,6 +835,8 @@ Comment: similar to the last stone it should generate more money each round, but
 ### heuristics_details
 - [ ] not implemented
 - High priority on final round only.
+- Our:
+- Oponnent:
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -807,11 +857,13 @@ Comment: similar to the last stone it should generate more money each round, but
 
 ### animations_details
 - [ ] not implemented
-- Combined gain/loss feedback.
+- Plus points over stone, +points over points bar, -money over money
 
 ### heuristics_details
 - [ ] not implemented
 - Penalize low-money states.
+- Our: None
+- Oponnent: None
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -837,6 +889,8 @@ Comment: similar to the last stone it should generate more money each round, but
 ### heuristics_details
 - [ ] not implemented
 - Prefer when near threshold.
+- Our:
+- Oponnent:
 
 ### tests
 - [x] tests specified (>=10 scenarios)
@@ -864,6 +918,8 @@ Comment: similar to the last stone it should generate more money each round, but
 ### heuristics_details
 - [ ] not implemented
 - Prefer after high-impact effect has just resolved.
+- Our:
+- Oponnent:
 
 ### tests
 - [x] tests specified (>=10 scenarios)
