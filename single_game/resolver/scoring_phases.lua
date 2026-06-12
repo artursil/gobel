@@ -29,6 +29,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	kamikaze_sacrifice = true,
 	blockade_adjacent = true,
 	money_field_enclosure_payout = true,
+	copper_threshold_plus_mult = true,
 	anti_capture_immunity = true,
 	delay_reward_survival = true,
 	capture_zero_liberty_enemy = true,

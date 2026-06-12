@@ -1588,6 +1588,55 @@ local function apply_control_territory_override_at(state, owner, row, col)
 	end
 end
 
+--- Adds plus_mult when owner copper count on board already meets ``copper_threshold`` before this placement.
+--- @param effect table
+--- @return table
+function M.copper_threshold_plus_mult(effect)
+	local sub = effect.sub or "mult"
+	return {
+		type = "COPPER_THRESHOLD_PLUS_MULT",
+		phase = sub,
+		macro = effect.macro or "playing_stones",
+		sub = sub,
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			local row, col = placement_coords(state)
+			if not row or not col then
+				return
+			end
+			local copper_stone = require("single_game.resolver.copper_stone")
+			local delta = copper_stone.placement_threshold_plus_mult(state.board, row, col, owner)
+			if delta ~= 0 then
+				state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + delta
+			end
+		end,
+	}
+end
+
+--- Adds plus_mult from territory control streak at the placed cell (snapshot taken before occupancy clears streak).
+--- @param effect table
+--- @return table
+function M.mult_control_streak(effect)
+	local sub = effect.sub or "mult"
+	local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+	return {
+		type = "MULT_CONTROL_STREAK",
+		phase = sub,
+		macro = effect.macro or "playing_stones",
+		sub = sub,
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			local streak = territory_control_rounds.placement_streak_snapshot(state)
+			local delta = territory_control_rounds.plus_mult_delta_for_streak(streak, state, owner)
+			if delta ~= 0 then
+				state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + delta
+			end
+		end,
+	}
+end
+
 --- Control stone override: orthogonal adjacent empty cells resolve to the stone owner after enclosure and influence.
 --- @param effect table
 --- @return table

@@ -415,6 +415,7 @@ local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	mult_control_streak = true,
 	kamikaze_sacrifice = true,
 	money_field_enclosure_payout = true,
+	copper_threshold_plus_mult = true,
 	self_destruct_timed = true,
 }
 
@@ -451,6 +452,9 @@ local function is_valid_resolved_stone_effect(resolved)
 		return type(resolved.value) == "table" and type(resolved.value.amount) == "number"
 	end
 	if resolved.type == "MONEY_FIELD_ENCLOSURE_PAYOUT" then
+		return true
+	end
+	if resolved.type == "MULT_CONTROL_STREAK" or resolved.type == "COPPER_THRESHOLD_PLUS_MULT" then
 		return true
 	end
 	return false
@@ -491,25 +495,7 @@ local function resolved_stone_effects_from_def(stone_def, state, actor, row, col
 	if stone_def.effects then
 		for i = 1, #stone_def.effects do
 			local effect = stone_def.effects[i]
-			if effect.effect_name == "mult_control_streak" then
-				local delta = territory_control_rounds.placement_plus_mult_delta(
-					state,
-					row,
-					col,
-					owner_for_side(actor)
-				)
-				if delta ~= 0 then
-					out[#out + 1] = Effects.stones.resolve({
-						effect_name = "add_mult",
-						macro = effect.macro or "playing_stones",
-						sub = effect.sub or "mult",
-						value = delta,
-						priority = effect.priority or 10,
-					})
-				end
-			elseif effect.effect_name == "money_field_enclosure_payout" then
-				out[#out + 1] = Effects.stones.resolve(effect)
-			elseif IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
+			if IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
 				out[#out + 1] = Effects.stones.resolve(effect)
 			end
 		end
@@ -606,6 +592,22 @@ local function round_effects_from_resolved(resolved_effects)
 				value = def.value,
 				priority = r.priority or def.priority or 10,
 			}
+		elseif r.type == "MULT_CONTROL_STREAK" then
+			local def = r._effect_def or {}
+			round[i] = {
+				effect_name = "mult_control_streak",
+				macro = def.macro or "playing_stones",
+				sub = def.sub or "mult",
+				priority = r.priority or def.priority or 10,
+			}
+		elseif r.type == "COPPER_THRESHOLD_PLUS_MULT" then
+			local def = r._effect_def or {}
+			round[i] = {
+				effect_name = "copper_threshold_plus_mult",
+				macro = def.macro or "playing_stones",
+				sub = def.sub or "mult",
+				priority = r.priority or def.priority or 10,
+			}
 		end
 	end
 	return round
@@ -673,6 +675,7 @@ local function run_event_queue(state, event_queue)
 			defence_solidity_network.recompute_board(state.board)
 			state.ko_ban = event.ko_ban
 			if event.row and event.col then
+				territory_control_rounds.record_placement_streak_snapshot(state, event.row, event.col)
 				territory_control_rounds.clear_cell(state, event.row, event.col)
 				stone_removal.mark_placed_via_play(state, event.row, event.col)
 				local stone_def = content.get_stone(event.stone_id)

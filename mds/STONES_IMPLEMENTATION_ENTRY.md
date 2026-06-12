@@ -825,7 +825,7 @@ Comment: similar to the last stone it should generate more money each round, but
 **description:** Low baseline stone with synergy threshold behavior.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Base placement payout is `COPPER_BASE_POINTS` (default may be zero).
 - Copper tag is available for external synergies.
 - Built-in threshold rule: if owner copper count on board is `>= COPPER_THRESHOLD`, add `COPPER_THRESHOLD_PLUS_MULT_BONUS` on new copper placement.
@@ -840,7 +840,7 @@ Comment: similar to the last stone it should generate more money each round, but
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

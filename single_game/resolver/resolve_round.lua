@@ -268,6 +268,7 @@ function M.resolve(state, opts)
 		end
 	elseif macro == "playing_stones" then
 		state.round_stone_effects = {}
+		territory_control_rounds.clear_placement_streak_snapshot(state)
 	end
 	if macro == "end_of_turn" then
 		if state._decrement_board_cell_timers_on_eot then

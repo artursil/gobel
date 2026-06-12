@@ -148,6 +148,27 @@ function M.tick(state)
 	end
 end
 
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return nil
+function M.record_placement_streak_snapshot(state, row, col)
+	M.ensure_grid(state)
+	state.placement_control_streak = M.get(state, row, col)
+end
+
+--- Streak captured at the last stone placement before the cell was cleared for occupancy.
+--- @param state table
+--- @return integer
+function M.placement_streak_snapshot(state)
+	return state.placement_control_streak or 0
+end
+
+--- @return nil
+function M.clear_placement_streak_snapshot(state)
+	state.placement_control_streak = nil
+end
+
 --- @param streak integer
 --- @param owner string ``"B"`` | ``"W"``
 --- @return integer raw delta before plus_mult floor
@@ -172,13 +193,11 @@ local function raw_plus_mult_delta(streak, owner)
 	return 0
 end
 
+--- @param streak integer
 --- @param state table
---- @param row integer
---- @param col integer
 --- @param owner string ``"B"`` | ``"W"``
 --- @return integer
-function M.placement_plus_mult_delta(state, row, col, owner)
-	local streak = M.get(state, row, col)
+function M.plus_mult_delta_for_streak(streak, state, owner)
 	local raw = raw_plus_mult_delta(streak, owner)
 	if raw >= 0 then
 		return raw
@@ -188,6 +207,15 @@ function M.placement_plus_mult_delta(state, row, col, owner)
 	local player = match_state.player_for_color(state, side)
 	local current = (player and player.score.plus_mult) or 0
 	return math.max(-current, raw)
+end
+
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @param owner string ``"B"`` | ``"W"``
+--- @return integer
+function M.placement_plus_mult_delta(state, row, col, owner)
+	return M.plus_mult_delta_for_streak(M.get(state, row, col), state, owner)
 end
 
 return M
