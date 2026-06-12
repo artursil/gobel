@@ -62,6 +62,7 @@ return {
 
 	unlimited_upgrades_points_per_level = 1,
 	unlimited_upgrades_plus_mult_per_level = 1,
+	unlimited_upgrades_upgrade_cost_base = 1,
 
 	tax_money_per_enemy = 1,
 	tax_points_per_enemy = 1,

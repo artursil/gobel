@@ -145,9 +145,13 @@ function M.resolve_stone(stone_ref)
 	if not def then
 		return nil
 	end
-	local max_level = def.max_level or 1
 	local level = stone_ref.level or 1
-	level = math.max(1, math.min(level, max_level))
+	level = math.max(1, level)
+	if def.unlimited_levels then
+		return stone_resolve.resolve_unlimited_upgrades_at_level(def, level)
+	end
+	local max_level = def.max_level or 1
+	level = math.min(level, max_level)
 	return stone_resolve.resolve_stone_def_at_level(def, level)
 end
 

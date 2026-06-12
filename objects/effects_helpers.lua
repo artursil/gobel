@@ -222,6 +222,21 @@ function H.set_stone_stored_value(state, row, col, value)
 	end
 end
 
+--- Whether the active match is on its final round (explicit test flag or round limit).
+--- @param state table
+--- @return boolean
+function H.is_final_round(state)
+	if state.is_final_round == true then
+		return true
+	end
+	local round_number = state.round_number or 1
+	local max_rounds = state.max_rounds or state.round_limit
+	if type(max_rounds) == "number" and max_rounds > 0 then
+		return round_number >= max_rounds
+	end
+	return false
+end
+
 --- Adds permanent per-cell point bonus for board stone scoring.
 --- @param state table
 --- @param row integer

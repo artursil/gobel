@@ -1061,6 +1061,9 @@ end
 --- @param key string
 --- @return boolean already_seen
 local function pattern_key_seen(state, key)
+	if state._retrigger_replay_depth and state._retrigger_replay_depth > 0 then
+		return false
+	end
 	local keys = pattern_apply_keys(state)
 	if keys[key] then
 		return true
@@ -1681,15 +1684,34 @@ function M.territory_to_multiplier(effect)
 end
 
 --- Each ``end_of_turn``, add ``eps_round_points`` to this cell bank and owner points.
+--- When ``macro`` is ``playing_stones``, initializes the per-cell bank to zero on placement.
 --- @param effect table
 --- @return table
 function M.escalating_points_bank(effect)
 	local round_points = effect.value or stone_params.eps_round_points
+	local macro = effect.macro or "end_of_turn"
+	local sub = effect.sub or "points"
+	if macro == "playing_stones" then
+		return {
+			type = "ESCALATING_POINTS_INIT",
+			phase = sub,
+			macro = macro,
+			sub = sub,
+			priority = effect.priority or stone_params.default_effect_priority,
+			conditions = effect.conditions,
+			apply = function(state)
+				local row, col = placement_coords(state)
+				if row and col then
+					helpers.set_stone_stored_value(state, row, col, 0)
+				end
+			end,
+		}
+	end
 	return {
 		type = "ESCALATING_POINTS_BANK",
-		phase = effect.sub or "points",
-		macro = effect.macro or "end_of_turn",
-		sub = effect.sub or "points",
+		phase = sub,
+		macro = macro,
+		sub = sub,
 		value = round_points,
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
@@ -1712,6 +1734,48 @@ function M.escalating_points_bank(effect)
 			local next_bank = bank + round_points
 			helpers.set_stone_stored_value(state, row, col, next_bank)
 			state.scores.points[owner] = state.scores.points[owner] + round_points
+		end,
+	}
+end
+
+--- Final-round placement payout; non-final rounds grant fallback points only.
+--- @param effect table
+--- @return table
+function M.final_blow_placement(effect)
+	local sub = effect.sub or "points"
+	return {
+		type = "FINAL_BLOW_PLACEMENT",
+		phase = sub,
+		macro = effect.macro or "playing_stones",
+		sub = sub,
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			if helpers.is_final_round(state) then
+				state.scores.points[owner] = state.scores.points[owner] + stone_params.final_blow_points
+				state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + stone_params.final_blow_plus_mult
+				return
+			end
+			state.scores.points[owner] = state.scores.points[owner] + stone_params.final_blow_nonfinal_points
+		end,
+	}
+end
+
+--- Replays the placing owner's most recent retriggerable same-turn stone effect, or fallback points.
+--- @param effect table
+--- @return table
+function M.retrigger_prior_stone_effect(effect)
+	local sub = effect.sub or "points"
+	return {
+		type = "RETRIGGER_PRIOR_STONE_EFFECT",
+		phase = sub,
+		macro = effect.macro or "playing_stones",
+		sub = sub,
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, owner)
+			local retrigger = require("single_game.resolver.retrigger_stone")
+			retrigger.apply_retrigger_or_fallback(state, owner)
 		end,
 	}
 end
@@ -1818,6 +1882,7 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 		or resolved.type == "TERRITORY_TO_POINTS"
 		or resolved.type == "TERRITORY_TO_MULTIPLIER"
 		or resolved.type == "ESCALATING_POINTS_BANK"
+		or resolved.type == "ESCALATING_POINTS_INIT"
 		or resolved.type == "ESCALATING_MONEY_TRACKER" then
 		resolved.apply = function(current_state)
 			base_apply(current_state, owner, row, col)

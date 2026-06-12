@@ -266,8 +266,6 @@ function M.resolve(state, opts)
 		for _, stance in ipairs(state.temporary_stances or {}) do
 			stance.created_this_turn = nil
 		end
-	elseif macro == "playing_stones" then
-		state.round_stone_effects = {}
 	end
 	if macro == "end_of_turn" then
 		if state._decrement_board_cell_timers_on_eot then

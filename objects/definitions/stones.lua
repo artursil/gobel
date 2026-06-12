@@ -745,6 +745,7 @@ M.self_destruct_timed_stone = {
 	rarity = "uncommon",
 	probability = 0.8,
 	cost = 1,
+	defer_turn_after_placement = true,
 	depiction = "Cracked core with timer ring",
 	graphic = { draw_key = "ring" },
 	visual = {
@@ -800,6 +801,7 @@ M.escalating_points_stone = {
 	rarity = "uncommon",
 	probability = 0.8,
 	cost = 1,
+	defer_turn_after_placement = true,
 	depiction = "Stacked point tiers",
 	graphic = { draw_key = "diamond" },
 	visual = {
@@ -807,6 +809,12 @@ M.escalating_points_stone = {
 		sprite = "sprites/stones/power.png",
 	},
 	effects = {
+		{
+			effect_name = "escalating_points_bank",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
 		{
 			effect_name = "escalating_points_bank",
 			macro = "end_of_turn",
@@ -886,6 +894,97 @@ M.high_power_money_loss_stone = {
 	},
 }
 
+M.unlimited_upgrades_stone = {
+	id = "unlimited_upgrades_stone",
+	type = "stone",
+	name = "Unlimited Upgrades Stone",
+	description = "Upgradeable stone with no level cap; placement payout scales with instance level.",
+	rarity = "rare",
+	probability = 0.5,
+	cost = 1,
+	unlimited_levels = true,
+	depiction = "Stacked upgrade tiers",
+	graphic = { draw_key = "diamond" },
+	visual = {
+		color = { 0.62, 0.55, 0.78 },
+		sprite = "sprites/stones/power.png",
+	},
+	effects = {
+		{
+			effect_name = "add_points",
+			macro = "playing_stones",
+			sub = "points",
+			value = P.unlimited_upgrades_points_per_level,
+			priority = P.default_effect_priority,
+		},
+		{
+			effect_name = "add_mult",
+			macro = "playing_stones",
+			sub = "mult",
+			value = P.unlimited_upgrades_plus_mult_per_level,
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
+M.final_blow_stone = {
+	id = "final_blow_stone",
+	type = "stone",
+	name = "Final Blow Stone",
+	description = "On the final round grants "
+		.. tostring(P.final_blow_points)
+		.. " points and +"
+		.. tostring(P.final_blow_plus_mult)
+		.. " plus mult; otherwise "
+		.. tostring(P.final_blow_nonfinal_points)
+		.. " fallback points.",
+	rarity = "rare",
+	probability = 0.5,
+	cost = 1,
+	defer_turn_after_placement = true,
+	depiction = "Final strike sigil",
+	graphic = { draw_key = "star" },
+	visual = {
+		color = { 0.82, 0.32, 0.28 },
+		sprite = "sprites/stones/special.png",
+	},
+	effects = {
+		{
+			effect_name = "final_blow_placement",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
+M.retrigger_stone = {
+	id = "retrigger_stone",
+	type = "stone",
+	name = "Retrigger Stone",
+	description = "On placement replays the owner's most recent same-turn stone effect, or "
+		.. tostring(P.retrigger_fallback_points)
+		.. " fallback points.",
+	rarity = "rare",
+	probability = 0.5,
+	cost = 1,
+	defer_turn_after_placement = true,
+	depiction = "Loop arrow mark",
+	graphic = { draw_key = "ring" },
+	visual = {
+		color = { 0.55, 0.62, 0.82 },
+		sprite = "sprites/stones/focus.png",
+	},
+	effects = {
+		{
+			effect_name = "retrigger_prior_stone_effect",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 --- Placeholder stone def for unimplemented stones (no gameplay wiring yet).
 --- @param id string
 --- @return table
@@ -911,10 +1010,7 @@ local UNIMPLEMENTED_STONE_IDS = {
 }
 
 local TO_BE_IMPL_LATER_STONE_IDS = {
-	"unlimited_upgrades_stone",
-	"final_blow_stone",
 	"copper_stone",
-	"retrigger_stone",
 }
 
 for i = 1, #UNIMPLEMENTED_STONE_IDS do

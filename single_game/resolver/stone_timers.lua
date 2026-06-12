@@ -138,9 +138,9 @@ function M.process_expirations(state)
 						if owner and payout > 0 then
 							state.scores.points[owner] = (state.scores.points[owner] or 1) + payout
 						end
+						M.clear(state, row, col)
 					end
 				end
-				M.clear(state, row, col)
 			end
 		end
 	end

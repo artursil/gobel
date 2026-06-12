@@ -121,29 +121,32 @@ local function append_stone_round_effects(state, active_macro, active_sub, terri
 	if active_macro ~= "playing_stones" or active_sub == "territory" then
 		return
 	end
-	for _, stone_event in ipairs(state.round_stone_effects or {}) do
-		for _, stone_effect in ipairs(stone_event.effects or {}) do
-			if def_matches(stone_effect, active_macro, active_sub, territory_step) then
-				local resolved = effects_registry.stones.resolve(stone_effect)
-				if resolved then
-					local owner = stone_event.owner
-					table.insert(out, {
-						owner = owner,
-						phase = resolved.sub or resolved.phase,
-						sub = resolved.sub or sub_from_payload(resolved),
-						macro = active_macro,
-						priority = resolved.priority or 10,
-						conditions = resolved.conditions,
-						apply = function(current_state)
-							resolved.apply(current_state, owner)
-						end,
-						meta = {
-							source_owner = owner,
-							source_object_type = "stone",
-							source_def_id = stone_event.stone_type,
-						},
-					})
-				end
+	local events = state.round_stone_effects or {}
+	local stone_event = events[#events]
+	if not stone_event then
+		return
+	end
+	for _, stone_effect in ipairs(stone_event.effects or {}) do
+		if def_matches(stone_effect, active_macro, active_sub, territory_step) then
+			local resolved = effects_registry.stones.resolve(stone_effect)
+			if resolved then
+				local owner = stone_event.owner
+				table.insert(out, {
+					owner = owner,
+					phase = resolved.sub or resolved.phase,
+					sub = resolved.sub or sub_from_payload(resolved),
+					macro = active_macro,
+					priority = resolved.priority or 10,
+					conditions = resolved.conditions,
+					apply = function(current_state)
+						resolved.apply(current_state, owner)
+					end,
+					meta = {
+						source_owner = owner,
+						source_object_type = "stone",
+						source_def_id = stone_event.stone_type,
+					},
+				})
 			end
 		end
 	end

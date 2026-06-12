@@ -416,6 +416,8 @@ local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	kamikaze_sacrifice = true,
 	money_field_enclosure_payout = true,
 	self_destruct_timed = true,
+	final_blow_placement = true,
+	retrigger_prior_stone_effect = true,
 }
 
 --- @param resolved table|nil
@@ -446,6 +448,12 @@ local function is_valid_resolved_stone_effect(resolved)
 	end
 	if resolved.type == "KAMIKAZE_SACRIFICE" or resolved.type == "SELF_DESTRUCT_TIMED" then
 		return type(resolved.value) == "number"
+	end
+	if resolved.type == "FINAL_BLOW_PLACEMENT" or resolved.type == "RETRIGGER_PRIOR_STONE_EFFECT" then
+		return true
+	end
+	if resolved.type == "ESCALATING_POINTS_INIT" then
+		return true
 	end
 	if resolved.type == "ADD_MONEY" then
 		return type(resolved.value) == "table" and type(resolved.value.amount) == "number"
@@ -510,6 +518,8 @@ local function resolved_stone_effects_from_def(stone_def, state, actor, row, col
 			elseif effect.effect_name == "money_field_enclosure_payout" then
 				out[#out + 1] = Effects.stones.resolve(effect)
 			elseif IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
+				out[#out + 1] = Effects.stones.resolve(effect)
+			elseif effect.effect_name == "escalating_points_bank" and (effect.macro or "playing_stones") == "playing_stones" then
 				out[#out + 1] = Effects.stones.resolve(effect)
 			end
 		end
@@ -605,6 +615,27 @@ local function round_effects_from_resolved(resolved_effects)
 				sub = def.sub or "points",
 				value = def.value,
 				priority = r.priority or def.priority or 10,
+			}
+		elseif r.type == "FINAL_BLOW_PLACEMENT" then
+			round[i] = {
+				effect_name = "final_blow_placement",
+				macro = "playing_stones",
+				sub = "points",
+				priority = r.priority or 10,
+			}
+		elseif r.type == "RETRIGGER_PRIOR_STONE_EFFECT" then
+			round[i] = {
+				effect_name = "retrigger_prior_stone_effect",
+				macro = "playing_stones",
+				sub = "points",
+				priority = r.priority or 10,
+			}
+		elseif r.type == "ESCALATING_POINTS_INIT" then
+			round[i] = {
+				effect_name = "escalating_points_bank",
+				macro = "playing_stones",
+				sub = "points",
+				priority = r.priority or 10,
 			}
 		end
 	end
@@ -723,15 +754,14 @@ local function run_event_queue(state, event_queue)
 			state.round_stone_effects[#state.round_stone_effects + 1] = {
 				owner = owner_for_side(event.actor),
 				stone_type = event.stone_id,
+				row = event.row,
+				col = event.col,
 				effects = event.stone_effects or {},
 			}
 			local def = content.get_stone(event.stone_id)
 			if def and event.resolved_stone_effects then
 				messages.push(state.messages, stone_placement_message(def, event.resolved_stone_effects))
 				push_status_from_messages(state)
-			end
-			if event.stone_id == "escalating_points_stone" and event.row and event.col then
-				effects_helpers.set_stone_stored_value(state, event.row, event.col, 0)
 			end
 		elseif event.kind == "PASS" then
 			state.consecutive_passes = state.consecutive_passes + 1
@@ -1356,7 +1386,6 @@ function M.submit_action(state, action)
 	if action.type == "PLACE_STONE" then
 		push_place_stone_score_events(state, action.actor, actor_points_before, actor_mult_before, capture_bonus_points)
 	end
-	state.phase = "TURN_END"
 	if finish_match_if_needed(state) then
 		return {
 			ok = true,
@@ -1366,9 +1395,22 @@ function M.submit_action(state, action)
 		}
 	end
 	local ev = state.ui_animation_events
-	if type(ev) == "table" and #ev > 0 then
+	local should_defer = type(ev) == "table" and #ev > 0
+	if not should_defer and action.type == "PLACE_STONE" and state.last_played_stone then
+		local stone_def = content.get_stone(state.last_played_stone)
+		if stone_def and stone_def.defer_turn_after_placement then
+			should_defer = true
+		end
+	end
+	if should_defer then
 		state.pending_turn_after_ui = true
+		if action.type == "PLACE_STONE" then
+			state.phase = "PLACE_PHASE"
+		else
+			state.phase = "TURN_END"
+		end
 	else
+		state.phase = "TURN_END"
 		begin_next_turn(state)
 	end
 	return {
