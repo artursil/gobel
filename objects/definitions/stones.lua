@@ -780,6 +780,12 @@ M.territory_to_multiplier_stone = {
 	},
 	effects = {
 		{
+			effect_name = "territory_to_multiplier_snapshot",
+			macro = "playing_stones",
+			sub = "mult",
+			priority = P.default_effect_priority,
+		},
+		{
 			effect_name = "territory_to_multiplier",
 			macro = "end_of_turn",
 			sub = "mult",
@@ -820,6 +826,12 @@ M.escalating_points_stone = {
 			value = P.eps_round_points,
 			priority = P.default_effect_priority,
 		},
+		{
+			effect_name = "escalating_points_capture_transfer",
+			macro = "on_removed",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
 	},
 }
 
@@ -841,6 +853,12 @@ M.escalating_money_stone = {
 		{
 			effect_name = "escalating_money_tracker",
 			macro = "end_of_turn",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+		{
+			effect_name = "escalating_money_capture_penalty",
+			macro = "on_removed",
 			sub = "points",
 			priority = P.default_effect_priority,
 		},

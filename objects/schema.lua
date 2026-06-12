@@ -15,6 +15,7 @@ local VALID_MACROS = {
 	playing_stones = true,
 	end_of_turn = true,
 	game_end = true,
+	on_removed = true,
 }
 
 local VALID_SUBS = {

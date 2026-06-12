@@ -1,10 +1,9 @@
---- Board stone removal hooks (capture penalties and stored-value cleanup).
+--- Board stone removal orchestration (dispatches on_removed effect factories).
 --- @module single_game.resolver.stone_removal
 
 local board = require("board")
 local config = require("config")
-local economy = require("economy")
-local stone_params = require("objects.parameters.stones")
+local content = require("content")
 local stone_stored_values = require("single_game.resolver.stone_stored_values")
 
 local M = {}
@@ -15,70 +14,47 @@ local function is_escalating_money_stone(cell)
 	return cell.kind == "escalating_money_stone"
 end
 
---- @param state table
---- @param cell table
---- @param row integer
---- @param col integer
---- @return boolean
-local function is_self_removal(state, cell, row, col)
-	if not cell.placed_via_play then
-		return false
-	end
-	local received = stone_stored_values.get(state, row, col)
-	return received <= stone_params.ems_round_money
+--- @return fun(effect: table): table|nil
+local function stone_effect_resolve_fn()
+	return require("effect_registry").stones.resolve
 end
 
 --- @param state table
 --- @param row integer
 --- @param col integer
 --- @param cell table
+--- @param opts table|nil
 --- @return nil
-local function apply_escalating_money_capture_penalty(state, row, col, cell)
-	if not is_escalating_money_stone(cell) then
-		return
-	end
-	if is_self_removal(state, cell, row, col) then
-		stone_stored_values.clear(state, row, col)
-		return
-	end
-	local received = stone_stored_values.get(state, row, col)
-	if received <= 0 then
-		stone_stored_values.clear(state, row, col)
-		return
-	end
-	local side = cell.color == config.STONE_WHITE and "white" or "black"
-	local player = require("match_state").player_for_color(state, side)
-	local penalty = stone_params.ems_capture_multiplier * received
-	economy.deduct_clamped(player.resources, penalty)
-	stone_stored_values.clear(state, row, col)
-end
-
---- @param state table
---- @param row integer
---- @param col integer
---- @param cell table
---- @param _opts table|nil
---- @return nil
-function M.on_removed(state, row, col, cell, _opts)
+function M.on_removed(state, row, col, cell, opts)
 	if board.is_empty(cell) then
 		return
 	end
-	apply_escalating_money_capture_penalty(state, row, col, cell)
+	local stone_def = content.get_stone(cell.kind)
+	local captor_side = opts and opts.capturer or nil
+	require("objects.placement_effect_registry").apply_on_removed_effects(
+		stone_def,
+		state,
+		row,
+		col,
+		cell,
+		captor_side,
+		stone_effect_resolve_fn()
+	)
 end
 
 --- @param state table
 --- @param old_board table
 --- @param new_board table
---- @param _opts table|nil
+--- @param opts table|nil
 --- @return nil
-function M.apply_board_replacement_diff(state, old_board, new_board, _opts)
+function M.apply_board_replacement_diff(state, old_board, new_board, opts)
 	local n = config.BOARD_SIZE
 	for r = 1, n do
 		for c = 1, n do
 			local old_cell = old_board[r][c]
 			local new_cell = new_board[r][c]
 			if not board.is_empty(old_cell) and (board.is_empty(new_cell) or old_cell.color ~= new_cell.color or old_cell.kind ~= new_cell.kind) then
-				M.on_removed(state, r, c, old_cell, _opts)
+				M.on_removed(state, r, c, old_cell, opts)
 			end
 		end
 	end

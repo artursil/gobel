@@ -18,7 +18,7 @@ local anti_capture_immunity = require("single_game.resolver.anti_capture_immunit
 local stone_timers = require("single_game.resolver.stone_timers")
 local capture_stone_resolver = require("single_game.resolver.capture_stone")
 local kamikaze_stone_resolver = require("single_game.resolver.kamikaze_stone")
-local stone_removal_effects = require("single_game.resolver.stone_removal_effects")
+local stone_removal = require("single_game.resolver.stone_removal")
 local effects_helpers = require("objects.effects_helpers")
 
 local M = {}
@@ -404,8 +404,6 @@ end
 
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
 local territory_resolver = require("single_game.resolver.territory")
-local territory_stone_payout = require("single_game.resolver.territory_stone_payout")
-local stone_removal = require("single_game.resolver.stone_removal")
 
 
 --- @param stone_def table
@@ -503,12 +501,10 @@ local function run_event_queue(state, event_queue)
 		if event.kind == "BOARD_APPLY" then
 			local old_board = state.board
 			stone_removal.apply_board_replacement_diff(state, old_board, event.board, { capturer = event.actor })
-			stone_removal_effects.apply_for_board_replacement(state, old_board, event.board, event.actor)
 			stone_removal.preserve_cell_metadata(old_board, event.board)
 			stone_timers.clear_removed_stones(state, old_board, event.board)
 			if event.row and event.col and event.stone_id then
 				territory_resolver.capture_placement_snapshot_if_needed(state, event.row, event.col, event.stone_id)
-				territory_stone_payout.record_placement_snapshot(state, event.row, event.col, event.stone_id)
 			end
 			state.board = event.board
 			stone_removal.install_board_hooks(state)
@@ -846,6 +842,14 @@ local function compile_place_stone_events(state, action)
 	if placement_registry.has_kamikaze_sacrifice_effect(resolved_effects) then
 		new_board[row][col] = config.STONE_NONE
 	end
+	placement_registry.apply_placement_snapshot_effects(
+		stone_def,
+		state,
+		owner_for_side(action.actor),
+		row,
+		col,
+		Effects.stones.resolve
+	)
 	local placement_round = placement_registry.round_effect_defs_from_resolved(resolved_effects)
 	local events = {
 		{
@@ -1200,7 +1204,7 @@ function M.apply_board_stone_removal(state, row, col, captor_side)
 	if not cell or board.is_empty(cell) then
 		return
 	end
-	stone_removal_effects.on_stone_removed(state, row, col, cell, captor_side)
+	stone_removal.on_removed(state, row, col, cell, { capturer = captor_side })
 end
 
 --- Visual specs remove stones via ``capture_stone_at``; wire removal hooks when test helper is loaded.

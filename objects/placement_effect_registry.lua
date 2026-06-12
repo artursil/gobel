@@ -2,10 +2,10 @@
 --- Used by resolver placement compile and AI placement scoring (read-only mirror).
 --- @module objects.placement_effect_registry
 
+local board = require("board")
 local config = require("config")
-local rules = require("rules")
+local content = require("content")
 local capture_stone = require("single_game.resolver.capture_stone")
-local kamikaze_stone = require("single_game.resolver.kamikaze_stone")
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
 
 local M = {}
@@ -29,6 +29,11 @@ M.PLACEMENT_COMMIT_EFFECT_NAMES = {
 	escalating_points_bank_init = true,
 }
 
+--- Snapshot hooks captured before ``BOARD_APPLY`` (pre-placement territory reads).
+M.PLACEMENT_SNAPSHOT_EFFECT_NAMES = {
+	territory_to_multiplier_snapshot = true,
+}
+
 --- Placement compile hooks that run after ``try_play`` with a board snapshot (before ``BOARD_APPLY``).
 M.PLACEMENT_COMPILE_EFFECT_NAMES = {
 	anti_capture_immunity = true,
@@ -39,6 +44,12 @@ M.PLACEMENT_COMPILE_EFFECT_NAMES = {
 --- @return boolean
 function M.is_immediate_placement_effect_name(effect_name)
 	return effect_name ~= nil and M.IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect_name] == true
+end
+
+--- @param effect_name string|nil
+--- @return boolean
+function M.is_placement_snapshot_effect_name(effect_name)
+	return effect_name ~= nil and M.PLACEMENT_SNAPSHOT_EFFECT_NAMES[effect_name] == true
 end
 
 --- @param effect_name string|nil
@@ -73,47 +84,6 @@ local function owner_for_side(actor)
 	return config.OWNER_BLACK
 end
 
---- @param actor string
---- @return integer
-local function chain_color_for_actor(actor)
-	if actor == "black" then
-		return config.STONE_BLACK
-	end
-	return config.STONE_WHITE
-end
-
---- Skip kamikaze sacrifice on post-capture-cooldown cells with liberties (regular placement).
---- @param state table
---- @param stone_id string|nil
---- @param actor string
---- @param row integer|nil
---- @param col integer|nil
---- @return boolean
-function M.kamikaze_sacrifice_suppressed(state, stone_id, actor, row, col)
-	if not stone_id or not kamikaze_stone.is_kamikaze_stone(stone_id) then
-		return false
-	end
-	if row == nil or col == nil then
-		return false
-	end
-	if not capture_stone.is_post_capture_cooldown_site(state, row, col) then
-		return false
-	end
-	if capture_stone.is_cell_on_capture_cooldown(state, row, col) then
-		return false
-	end
-	local ok_without_override = rules.try_play(
-		state.board,
-		row,
-		col,
-		chain_color_for_actor(actor),
-		state.ko_ban,
-		stone_id
-	)
-	local required_suicide_override = kamikaze_stone.allows_suicide_placement(stone_id) and not ok_without_override
-	return not required_suicide_override
-end
-
 --- @param effect table
 --- @param state table
 --- @param actor string
@@ -122,13 +92,7 @@ end
 --- @param resolve_fn fun(effect: table): table|nil
 --- @param stone_id string|nil
 --- @return table|nil
-function M.resolve_immediate_placement_effect(effect, state, actor, row, col, resolve_fn, stone_id)
-	if effect.effect_name == "kamikaze_sacrifice" then
-		if M.kamikaze_sacrifice_suppressed(state, stone_id, actor, row, col) then
-			return nil
-		end
-		return resolve_fn(effect)
-	end
+function M.resolve_immediate_placement_effect(effect, state, actor, row, col, resolve_fn, _stone_id)
 	if effect.effect_name == "mult_control_streak" then
 		if row == nil or col == nil then
 			return nil
@@ -329,6 +293,29 @@ function M.apply_placement_compile_effects(stone_def, state, board, row, col, ac
 	return board, extra_captures
 end
 
+--- Runs placement snapshot factories before board apply (pre-placement territory reads).
+--- @param stone_def table
+--- @param state table
+--- @param owner string
+--- @param row integer
+--- @param col integer
+--- @param resolve_fn fun(effect: table): table|nil
+--- @return nil
+function M.apply_placement_snapshot_effects(stone_def, state, owner, row, col, resolve_fn)
+	if not stone_def or not stone_def.effects then
+		return
+	end
+	for i = 1, #stone_def.effects do
+		local effect_def = stone_def.effects[i]
+		if M.is_placement_snapshot_effect_name(effect_def.effect_name) then
+			local resolved = resolve_fn(effect_def)
+			if resolved and resolved.apply then
+				resolved.apply(state, owner, row, col)
+			end
+		end
+	end
+end
+
 --- Runs placement-commit factories at board apply (timers, blockade, bank init).
 --- When the stone has effects, sets ``stone_timer_skip_tick`` so survival timers do not
 --- decrement on the placement turn (self-destruct, delay-reward, and shared timer map).
@@ -359,6 +346,68 @@ function M.apply_placement_commit_effects(stone_def, state, owner, row, col, act
 		end
 	end
 	state.stone_timer_skip_tick = { row = row, col = col }
+end
+
+--- Runs ``macro = "on_removed"`` factories when a stone leaves the board.
+--- @param stone_def table|nil
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @param cell table
+--- @param captor_side string|nil ``"black"`` | ``"white"`` removing side; nil skips enemy transfer
+--- @param resolve_fn fun(effect: table): table|nil
+--- @return nil
+function M.apply_on_removed_effects(stone_def, state, row, col, cell, captor_side, resolve_fn)
+	if not stone_def or not stone_def.effects then
+		return
+	end
+	for i = 1, #stone_def.effects do
+		local effect_def = stone_def.effects[i]
+		if effect_def.macro == "on_removed" then
+			local resolved = resolve_fn(effect_def)
+			if resolved and resolved.apply then
+				resolved.apply(state, row, col, cell, captor_side)
+			end
+		end
+	end
+end
+
+--- @param old_board table
+--- @param new_board table
+--- @return table[]
+local function removed_stones_between_boards(old_board, new_board)
+	local n = #old_board
+	local removed = {}
+	for row = 1, n do
+		for col = 1, n do
+			local old_cell = old_board[row][col]
+			local new_cell = new_board[row][col]
+			if not board.is_empty(old_cell) and board.is_empty(new_cell) then
+				removed[#removed + 1] = { row = row, col = col, cell = old_cell }
+			elseif not board.is_empty(old_cell) and not board.is_empty(new_cell) then
+				if old_cell.color ~= new_cell.color or old_cell.kind ~= new_cell.kind then
+					removed[#removed + 1] = { row = row, col = col, cell = old_cell }
+				end
+			end
+		end
+	end
+	return removed
+end
+
+--- Runs on_removed hooks for every stone cleared by a board replacement.
+--- @param state table
+--- @param old_board table
+--- @param new_board table
+--- @param captor_side string|nil
+--- @param resolve_fn fun(effect: table): table|nil
+--- @return nil
+function M.apply_on_removed_for_board_replacement(state, old_board, new_board, captor_side, resolve_fn)
+	local removed = removed_stones_between_boards(old_board, new_board)
+	for i = 1, #removed do
+		local entry = removed[i]
+		local stone_def = content.get_stone(entry.cell.kind)
+		M.apply_on_removed_effects(stone_def, state, entry.row, entry.col, entry.cell, captor_side, resolve_fn)
+	end
 end
 
 return M
