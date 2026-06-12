@@ -21,6 +21,7 @@ end
 --- @return nil
 function M.ensure_state(state)
 	state.capture_cooldown_cells = state.capture_cooldown_cells or {}
+	state.capture_cooldown_sites = state.capture_cooldown_sites or {}
 	state.blocked_cells = state.blocked_cells or {}
 end
 
@@ -130,6 +131,9 @@ local function set_capture_cooldown(state, row, col, captor_side)
 		remaining = remaining,
 		captor = captor_side,
 	}
+	state.capture_cooldown_sites[key] = {
+		captor = captor_side,
+	}
 	state.blocked_cells[key] = remaining
 end
 
@@ -163,6 +167,17 @@ function M.is_cell_on_capture_cooldown(state, row, col)
 	local key = cell_key(row, col)
 	local remaining = state.blocked_cells[key]
 	return remaining ~= nil and remaining > 0
+end
+
+--- Cell previously captured under mixed-surround cooldown (persists after cooldown expires).
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return boolean
+function M.is_post_capture_cooldown_site(state, row, col)
+	M.ensure_state(state)
+	local key = cell_key(row, col)
+	return state.capture_cooldown_sites[key] ~= nil
 end
 
 --- @param state table

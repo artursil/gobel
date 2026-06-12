@@ -3,6 +3,9 @@
 --- @module objects.placement_effect_registry
 
 local config = require("config")
+local rules = require("rules")
+local capture_stone = require("single_game.resolver.capture_stone")
+local kamikaze_stone = require("single_game.resolver.kamikaze_stone")
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
 
 local M = {}
@@ -58,14 +61,62 @@ local function owner_for_side(actor)
 	return config.OWNER_BLACK
 end
 
+--- @param actor string
+--- @return integer
+local function chain_color_for_actor(actor)
+	if actor == "black" then
+		return config.STONE_BLACK
+	end
+	return config.STONE_WHITE
+end
+
+--- Skip kamikaze sacrifice on post-capture-cooldown cells with liberties (regular placement).
+--- @param state table
+--- @param stone_id string|nil
+--- @param actor string
+--- @param row integer|nil
+--- @param col integer|nil
+--- @return boolean
+function M.kamikaze_sacrifice_suppressed(state, stone_id, actor, row, col)
+	if not stone_id or not kamikaze_stone.is_kamikaze_stone(stone_id) then
+		return false
+	end
+	if row == nil or col == nil then
+		return false
+	end
+	if not capture_stone.is_post_capture_cooldown_site(state, row, col) then
+		return false
+	end
+	if capture_stone.is_cell_on_capture_cooldown(state, row, col) then
+		return false
+	end
+	local ok_without_override = rules.try_play(
+		state.board,
+		row,
+		col,
+		chain_color_for_actor(actor),
+		state.ko_ban,
+		stone_id
+	)
+	local required_suicide_override = kamikaze_stone.allows_suicide_placement(stone_id) and not ok_without_override
+	return not required_suicide_override
+end
+
 --- @param effect table
 --- @param state table
 --- @param actor string
 --- @param row integer|nil
 --- @param col integer|nil
 --- @param resolve_fn fun(effect: table): table|nil
+--- @param stone_id string|nil
 --- @return table|nil
-function M.resolve_immediate_placement_effect(effect, state, actor, row, col, resolve_fn)
+function M.resolve_immediate_placement_effect(effect, state, actor, row, col, resolve_fn, stone_id)
+	if effect.effect_name == "kamikaze_sacrifice" then
+		if M.kamikaze_sacrifice_suppressed(state, stone_id, actor, row, col) then
+			return nil
+		end
+		return resolve_fn(effect)
+	end
 	if effect.effect_name == "mult_control_streak" then
 		if row == nil or col == nil then
 			return nil
@@ -108,6 +159,7 @@ function M.resolved_stone_effects_from_def(stone_def, state, actor, row, col, re
 	if not stone_def.effects then
 		return out
 	end
+	local stone_id = stone_def.id
 	for i = 1, #stone_def.effects do
 		local resolved = M.resolve_immediate_placement_effect(
 			stone_def.effects[i],
@@ -115,7 +167,8 @@ function M.resolved_stone_effects_from_def(stone_def, state, actor, row, col, re
 			actor,
 			row,
 			col,
-			resolve_fn
+			resolve_fn,
+			stone_id
 		)
 		if resolved then
 			out[#out + 1] = resolved

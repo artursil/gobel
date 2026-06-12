@@ -819,20 +819,6 @@ local function compile_place_stone_events(state, action)
 		return nil, "Illegal move: capture blocked by immunity"
 	end
 	local allow_suicide = kamikaze_stone_resolver.allows_suicide_placement(stone_id)
-	local on_capture_cooldown_cell = capture_stone_resolver.is_cell_on_capture_cooldown(state, row, col)
-		and capture_stone_resolver.is_cell_blocked_for_actor(state, row, col, action.actor, "stone_basic")
-	local empty_cell_had_no_empty_neighbors = board.is_empty(state.board[row][col])
-		and kamikaze_stone_resolver.empty_cell_has_no_empty_neighbors(state.board, row, col)
-	local ok_without_override, _trial_no_override = rules.try_play(
-		state.board,
-		row,
-		col,
-		player_chain_color,
-		state.ko_ban,
-		stone_id,
-		placement_level
-	)
-	local required_suicide_override = allow_suicide and not ok_without_override
 	local ok, new_board, new_ko, captures, illegal_reason = rules.try_play(
 		state.board,
 		row,
@@ -869,29 +855,7 @@ local function compile_place_stone_events(state, action)
 		)
 		captures = captures + extra_captures
 	end
-	local kamikaze_opts = {
-		required_suicide_override = required_suicide_override,
-		on_capture_cooldown_cell = on_capture_cooldown_cell,
-		empty_cell_had_no_empty_neighbors = empty_cell_had_no_empty_neighbors,
-	}
-	local kamikaze_self_remove = false
-	local kamikaze_bonus = 0
-	if kamikaze_stone_resolver.is_kamikaze_stone(stone_id) then
-		kamikaze_self_remove, kamikaze_bonus = kamikaze_stone_resolver.resolve_placement(kamikaze_opts)
-		if kamikaze_self_remove then
-			new_board[row][col] = config.STONE_NONE
-		end
-	end
 	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor, row, col)
-	if kamikaze_bonus > 0 then
-		resolved_effects[#resolved_effects + 1] = Effects.stones.resolve({
-			effect_name = "add_points",
-			macro = "playing_stones",
-			sub = "points",
-			value = kamikaze_bonus,
-			priority = stone_params.default_effect_priority,
-		})
-	end
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]

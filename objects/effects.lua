@@ -502,7 +502,7 @@ function M.add_energy(effect)
 	}
 end
 
---- Kamikaze sacrifice effect builder: immediate points on placement (board self-removal handled in resolver).
+--- Kamikaze sacrifice effect builder: immediate points when sacrifice triggers (self-removal via placement registry).
 --- @param effect table: {effect_name, macro?, sub?, value?, priority?, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
 function M.kamikaze_sacrifice(effect)
