@@ -1406,6 +1406,7 @@ function M.apply_board_stone_removal(state, row, col, captor_side)
 	if not cell or board.is_empty(cell) then
 		return
 	end
+	stone_removal.on_removed(state, row, col, cell, { capturer = captor_side })
 	stone_removal_effects.on_stone_removed(state, row, col, cell, captor_side)
 end
 
@@ -1426,8 +1427,10 @@ local function wire_visual_test_capture_stone_at()
 		g.board[row][col] = config.STONE_NONE
 		g.territory, g.territory_decision_sources, g.territory_value =
 			spec_helper.territory_map(g.board, g.territory_mode or "regional")
-		effects_helpers.set_stone_stored_value(g, row, col, 0)
 		local key = row .. ":" .. col
+		if g.stone_stored_values then
+			g.stone_stored_values[key] = 0
+		end
 		if g.board_cell_timers then
 			g.board_cell_timers[key] = nil
 		end

@@ -14,6 +14,7 @@ local VALID_MACROS = {
 	playing_cards = true,
 	playing_stones = true,
 	end_of_turn = true,
+	on_removed = true,
 	game_end = true,
 }
 
