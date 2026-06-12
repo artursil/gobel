@@ -84,40 +84,52 @@ python agents_workflow/workflows/single_feature.py --issue 42 --visual
 
 1. **Planner** (`plan-prompt.md`) → unblocked issues, **or** explicit `--process` list
 2. **Parallel** `tests_exist` runs (default max **8**; set `--max-parallel 1` for sequential)
-3. **Merger** merges into a new integration branch, **pushes**, and **opens a PR** for your review (does not merge to `main` directly)
 
 ```bash
 # Planner picks ready-for-agent / unblocked tests_exist issues
 python agents_workflow/workflows/parallel_tests_exist.py
 
-# Run issues 6-15; PR merges successful completions into agent/merge-issues-6-15
+# Run issues 6-15
 python agents_workflow/workflows/parallel_tests_exist.py --process 6-15
 
 # Fresh start: remove worktrees + local agent/issue-N branches, then process
 python agents_workflow/workflows/parallel_tests_exist.py --process 8-15 --clear
+```
 
-# Run 8-12, then PR-merge a different already-done set
-python agents_workflow/workflows/parallel_tests_exist.py --process 8-12 --merge 4-7
+When processing finishes, the script prints a suggested `merge_issues.py` command for successful issues.
 
-# Merge only (no new agent runs) → opens review PR
-python agents_workflow/workflows/parallel_tests_exist.py --merge 4-6
+### `parallel_features.py`
 
-# Custom integration branch name
-python agents_workflow/workflows/parallel_tests_exist.py --merge 4-6 --merge-branch agent/merge-stones-batch-1
+Same batch pattern but runs **`single_feature`** per issue in parallel (default max **4**).
+
+```bash
+python agents_workflow/workflows/parallel_features.py --process 6-10
+```
+
+### `merge_issues.py`
+
+Sequentially merges `agent/issue-N` branches into a new integration branch — **one branch at a time**, closing each GitHub issue after its merge succeeds, then **pushes** and **opens a review PR** (does not merge to `main` directly).
+
+```bash
+# Merge issues 4-25 into agent/merge-issues-4-25, close each issue, open PR
+python agents_workflow/workflows/merge_issues.py 4-25
+
+# Non-contiguous list
+python agents_workflow/workflows/merge_issues.py 4,6,8-10
+
+# Custom integration branch
+python agents_workflow/workflows/merge_issues.py 4-6 --merge-branch agent/merge-stones-batch-1
+
+# Merge locally without opening a PR
+python agents_workflow/workflows/merge_issues.py 4-6 --no-pr
+
+# Keep issues open (e.g. for a dry run)
+python agents_workflow/workflows/merge_issues.py 4-6 --no-close
 ```
 
 Issue lists use ranges and commas: `3-15`, `4,6,8-10`, `4, 6, 8-10`.
 
-Default integration branch: `agent/merge-issues-4-6` (from the `--merge` issue list). PR targets `main` unless `--base-branch` is set. Issues are linked with `Closes #N` in the PR body; they close when **you** merge the PR on GitHub.
-
-### `parallel_features.py`
-
-Same batch pattern but runs **`single_feature`** per issue in parallel (default max **4**), then opens a review PR.
-
-```bash
-python agents_workflow/workflows/parallel_features.py --process 6-10
-python agents_workflow/workflows/parallel_features.py --merge 4-6
-```
+Default integration branch: `agent/merge-issues-4-6` (from the issue list). PR targets `main` unless `--base-branch` is set.
 
 ## Delegator output contract
 

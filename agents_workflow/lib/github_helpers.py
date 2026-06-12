@@ -118,6 +118,14 @@ def comment_on_issue(number: int, body: str) -> None:
     _run_gh(["issue", "comment", str(number), "--body", body])
 
 
+def close_issue(number: int, *, reason: str | None = None) -> None:
+    """Close a GitHub issue (e.g. after its agent branch is merged locally)."""
+    args = ["issue", "close", str(number)]
+    if reason:
+        args.extend(["--comment", reason])
+    _run_gh(args)
+
+
 def create_pull_request(
     *,
     title: str,

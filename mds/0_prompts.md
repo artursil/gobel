@@ -92,9 +92,10 @@ prompts:
 workflows:
 - tests_exist.py - In this workflow for a single issue, we ask code-writer to implement a functionality, then we ask delegator to check if the implemenation is correct and if code-writer correctly raises concerns about the tests, visual-test-writer is asked to correct things. This loop runs until delegator has no further remarks or we run the loop already 4 times. If it doesn't finish in 4 attempts it has to be reported, by creating a new issue.
 
-- parallel_tests_exist.py - Firstly evokes planner then runs in parallel tests_exist for each issue and then merges.
+- parallel_tests_exist.py - Planner (or explicit issue list) then parallel tests_exist per issue.
+- merge_issues.py - Sequentially merges agent/issue-N branches into an integration branch; closes each issue after its merge; opens a review PR at the end.
 - single_feature.py - Acts similar like test_exist.py but here we use test-writer or visual-test-writer to write test first, then code-writer implements then delegator checks everything else is the same.
-- parallel_features.py - This works the same as parallel_tests_exist.py just for single_feature.
+- parallel_features.py - Same batch pattern as parallel_tests_exist.py but for single_feature (no merge step).
 
 
 Please take inspiration from run.ts for workflows and from prompts/.md for writing md prompts

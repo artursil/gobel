@@ -14,7 +14,7 @@ Issues:
 
 # TASK
 
-For each branch:
+Merge **only the branch(es) listed above** (the workflow invokes you once per branch, in issue order).
 
 1. `git fetch origin`
 2. `git merge <branch> --no-edit`
@@ -25,14 +25,14 @@ For each branch:
 busted spec/unit spec/integration spec/visual
 ```
 
-5. Fix merge breakages before the next branch
+5. Fix merge breakages before finishing
 
-After all merges, one commit if needed summarizing the merge.
+Commit the merge when conflicts are resolved and tests pass.
 
 # DO NOT
 
 - Do **not** push to `origin`
 - Do **not** create a pull request
-- Do **not** close issues (the PR links them; the human merges after review)
+- Do **not** close GitHub issues (the workflow closes each issue after a successful merge)
 
 <promise>MERGE_COMPLETE</promise>

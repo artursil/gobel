@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 from lib.agent_runner import run_agent
-from lib.github_helpers import PlannedIssue, create_pull_request
+from lib.github_helpers import PlannedIssue, close_issue, create_pull_request
 from lib.prompt_loader import load_prompt
 
 
@@ -82,7 +82,7 @@ def merge_pr_body(issues: list[PlannedIssue], *, merge_branch: str, base_branch:
         lines.append(f"- `{issue.branch}` — #{issue.number} {issue.title}")
     lines.extend(["", "## Issues", ""])
     for issue in sorted(issues, key=lambda row: row.number):
-        lines.append(f"Closes #{issue.number}")
+        lines.append(f"- #{issue.number} {issue.title} (closed after branch merge)")
     lines.extend(
         [
             "",
@@ -127,6 +127,63 @@ def run_merge_with_pr(
     return publish_merge_pr(
         repo,
         issues,
+        merge_branch=merge_branch,
+        base_branch=base_branch,
+    )
+
+
+def run_sequential_merge(
+    issues: list[PlannedIssue],
+    repo: Path,
+    *,
+    merge_branch: str,
+    base_branch: str,
+    close_issues: bool = True,
+) -> list[PlannedIssue]:
+    """Merge agent branches one at a time and optionally close each issue."""
+    if not issues:
+        raise ValueError("No issues to merge")
+
+    ordered = sorted(issues, key=lambda row: row.number)
+    prepare_merge_branch(repo, merge_branch, base_branch=base_branch)
+    merged: list[PlannedIssue] = []
+
+    for issue in ordered:
+        print(f"[merge] #{issue.number} ← {issue.branch}")
+        run_merge_agent([issue], repo, merge_branch=merge_branch, base_branch=base_branch)
+        merged.append(issue)
+        if close_issues:
+            close_issue(
+                issue.number,
+                reason=(
+                    f"Merged `{issue.branch}` into `{merge_branch}` "
+                    f"(integration branch for review against `{base_branch}`)."
+                ),
+            )
+            print(f"[merge] closed #{issue.number}")
+
+    return merged
+
+
+def run_sequential_merge_with_pr(
+    issues: list[PlannedIssue],
+    repo: Path,
+    *,
+    merge_branch: str,
+    base_branch: str,
+    close_issues: bool = True,
+) -> str:
+    """Merge sequentially, close issues, then push and open a review PR."""
+    merged = run_sequential_merge(
+        issues,
+        repo,
+        merge_branch=merge_branch,
+        base_branch=base_branch,
+        close_issues=close_issues,
+    )
+    return publish_merge_pr(
+        repo,
+        merged,
         merge_branch=merge_branch,
         base_branch=base_branch,
     )
