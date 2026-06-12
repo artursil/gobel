@@ -18,6 +18,7 @@ local board_cell_timers = require("single_game.resolver.board_cell_timers")
 local card_play_memory = require("single_game.resolver.card_play_memory")
 local scoring_phases = require("single_game.resolver.scoring_phases")
 local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
+local capture_stone = require("single_game.resolver.capture_stone")
 local stone_timers = require("single_game.resolver.stone_timers")
 local stone_stored_values = require("single_game.resolver.stone_stored_values")
 
@@ -282,6 +283,7 @@ function M.resolve(state, opts)
 		end
 		state._blockade_registered_this_action = nil
 		tick_timed_effects(state)
+		capture_stone.tick_capture_cooldowns(state)
 		anti_capture_immunity.tick(state)
 		tick_temporary_stances(state)
 		if (state.turn_number or 1) % 2 == 0 then

@@ -509,7 +509,8 @@ local function resolved_stone_effects_from_def(stone_def, state, actor, row, col
 				end
 			elseif effect.effect_name == "money_field_enclosure_payout" then
 				out[#out + 1] = Effects.stones.resolve(effect)
-			elseif IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
+			elseif IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name]
+				and effect.effect_name ~= "kamikaze_sacrifice" then
 				out[#out + 1] = Effects.stones.resolve(effect)
 			end
 		end
@@ -1024,21 +1025,19 @@ local function compile_place_stone_events(state, action)
 		on_capture_cooldown_cell = on_capture_cooldown_cell,
 		empty_cell_had_no_empty_neighbors = empty_cell_had_no_empty_neighbors,
 	}
-	local kamikaze_self_remove = false
-	local kamikaze_bonus = 0
+	local kamikaze_sacrifice_applies = false
 	if kamikaze_stone_resolver.is_kamikaze_stone(stone_id) then
-		kamikaze_self_remove, kamikaze_bonus = kamikaze_stone_resolver.resolve_placement(kamikaze_opts)
-		if kamikaze_self_remove then
-			new_board[row][col] = config.STONE_NONE
-		end
+		local sacrifice, _bonus = kamikaze_stone_resolver.resolve_placement(kamikaze_opts)
+		local former_cooldown = capture_stone_resolver.had_former_capture_cooldown(state, row, col)
+		kamikaze_sacrifice_applies = sacrifice or not (ok_without_override and former_cooldown)
 	end
 	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor, row, col)
-	if kamikaze_bonus > 0 then
+	if kamikaze_sacrifice_applies then
 		resolved_effects[#resolved_effects + 1] = Effects.stones.resolve({
-			effect_name = "add_points",
+			effect_name = "kamikaze_sacrifice",
 			macro = "playing_stones",
 			sub = "points",
-			value = kamikaze_bonus,
+			value = stone_params.kamikaze_points_bonus,
 			priority = stone_params.default_effect_priority,
 		})
 	end
@@ -1049,7 +1048,7 @@ local function compile_place_stone_events(state, action)
 			return nil, "Stone behavior produced invalid effect"
 		end
 	end
-	if has_kamikaze_sacrifice_effect(resolved_effects) then
+	if kamikaze_sacrifice_applies then
 		new_board[row][col] = config.STONE_NONE
 	end
 	local placement_round = round_effects_from_resolved(resolved_effects)

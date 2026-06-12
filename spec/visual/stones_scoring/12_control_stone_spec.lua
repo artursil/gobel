@@ -150,7 +150,7 @@ describe("control_stone (visual ASCII)", function()
 			"w w w w w w w w w",
 			"w w w w w w w w w",
 			"w w w w w w w w w",
-		}, "white control at (3,2) overrides (3,1), (3,3), (4,2) to white; (2,2) stays black-influenced")
+		}, "white control at (3,2) overrides (2,2), (3,1), (3,3), (4,2) to white")
 	end)
 
 	it("override beats enclosure: flips cell inside opponent's sealed ring", function()
@@ -240,7 +240,7 @@ describe("control_stone (visual ASCII)", function()
 			"b b b B b b b b b",
 			"b b b b b b b b b",
 			"b b b b b b b b b",
-		}, "override applies to orthogonals only; diagonals flip via black influence, not override")
+		}, "diagonal cells (5,4), (5,6), (7,4), (7,6) remain white-influenced, not overridden")
 	end)
 
 	it("opposing adjacent controls: influence assigns full board, overrides claim orthogonal neighbors", function()
@@ -746,7 +746,7 @@ describe("control_stone (visual ASCII)", function()
 			"b b b b . w w w w",
 			"b b b b . w w w w",
 			"b b b b . w w w w",
-		}, "baseline: neutral midline where black and white influence tie")
+		}, "baseline: diagonal of neutral '.' cells where influence ties")
 
 		place_stone(g, {
 			"B . . . . . . . W",
@@ -770,7 +770,7 @@ describe("control_stone (visual ASCII)", function()
 			"b b b b b b b b .",
 			"b b b b b b b b .",
 			"b b b b b b b b .",
-		}, "control at (5,5) overrides orthogonal neighbors to black, breaks the tie")
+		}, "control at (5,5) overrides neutral neighbors to black, breaks the tie")
 	end)
 
 	it("white control inside black enclosure: override beats enclosure for inner cells", function()

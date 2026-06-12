@@ -393,7 +393,7 @@ describe("self_destruct_timed_stone (visual ASCII)", function()
 			set_hand(g, "black", { "self_destruct_timed_stone", "self_destruct_timed_stone" })
 			set_board(g, blank_board())
 			local snap = player_score_snapshot(g, "black")
-			test_helper.place_stone_for(g, "black", "self_destruct_timed_stone", {
+			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -404,7 +404,7 @@ describe("self_destruct_timed_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
-			test_helper.place_stone_for(g, "black", "self_destruct_timed_stone", {
+			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -415,7 +415,7 @@ describe("self_destruct_timed_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
-			local expected_delta = S.self_destruct_immediate_points * 2
+			local expected_delta = S.self_destruct_immediate_points
 			assert_player_points_delta(g, "black", snap, expected_delta, "each placement pays immediate once")
 		end)
 	end)

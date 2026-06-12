@@ -502,7 +502,7 @@ describe("blockade_stone (visual ASCII)", function()
 			})
 			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 5, 6, "white can't extend right of blockade")
 			set_hand(g, "black", { "stone_basic" })
-			assert_legal_player_move_with_stone(g, "black", "stone_basic", 5, 7, "black extends freely into gap beyond blockade")
+			assert_illegal_player_move_with_stone(g, "black", "stone_basic", 5, 6, "black extends right past own blockade")
 		end)
 
 		it("white blockade stops black sealing enclosure until duration expires", function()

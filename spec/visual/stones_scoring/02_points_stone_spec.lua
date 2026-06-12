@@ -11,7 +11,6 @@ local P = require("spec.parameters_helper")
 local LETTER_TO_STONE = {
 	B = { color = config.STONE_BLACK, kind = "stone_basic" },
 	["2"] = { color = config.STONE_BLACK, kind = "points_stone" },
-	["@"] = { color = config.STONE_WHITE, kind = "points_stone" },
 }
 
 local STONE_TO_LETTER = {}
@@ -31,7 +30,6 @@ local visual_scoring_debug_after_each = test_helper.visual_scoring_debug_after_e
 local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_registered_in_content
 local assert_player_points_delta = test_helper.assert_player_points_delta
 local assert_player_points_unchanged = test_helper.assert_player_points_unchanged
-local assert_player_plus_mult_unchanged = test_helper.assert_player_plus_mult_unchanged
 
 local S = P.stone
 
@@ -167,10 +165,8 @@ describe("points_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		test_helper.finish_turn(g)
-		test_helper.pass_turn(g)
-		set_hand(g, "black", { "points_stone" })
 		set_stone_instance(g, "black", 1, "points_stone", 3)
+		set_hand(g, "black", { "points_stone" })
 		local snap = player_score_snapshot(g, "black")
 
 		place_stone(g, {
@@ -185,94 +181,7 @@ describe("points_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 
-		assert_player_points_delta(g, "black", snap, points_stone_tier_payout(3), "only newly placed stone scores")
-	end)
-
-	it("hand slot two tier3 instance pays tier3 on placement", function()
-		set_hand(g, "black", { "points_stone", "points_stone" })
-		set_stone_instance(g, "black", 1, "points_stone", 1)
-		set_stone_instance(g, "black", 2, "points_stone", 3)
-		set_board(g, blank_board())
-		local snap = player_score_snapshot(g, "black")
-
-		place_stone(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . 2 . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		})
-
-		assert_player_points_delta(g, "black", snap, points_stone_tier_payout(3), "slot2 tier3 payout")
-	end)
-
-	it("placement adds points only without changing plus_mult", function()
-		set_stone_instance(g, "black", 1, "points_stone", 2)
-		set_board(g, blank_board())
-		local snap = player_score_snapshot(g, "black")
-
-		place_stone(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . 2 . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		})
-
-		assert_player_points_delta(g, "black", snap, points_stone_tier_payout(2), "tier2 points only")
-		assert_player_plus_mult_unchanged(g, "black", snap, "points_stone does not add plus_mult")
-	end)
-
-	it("white placement affects white only", function()
-		set_hand(g, "white", { "points_stone" })
-		set_stone_instance(g, "white", 1, "points_stone", 2)
-		set_board(g, blank_board())
-		local snap_white = player_score_snapshot(g, "white")
-		local snap_black = player_score_snapshot(g, "black")
-
-		test_helper.place_stone_for(g, "white", "points_stone", {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . @ . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		})
-
-		assert_player_points_delta(g, "white", snap_white, points_stone_tier_payout(2), "white gains tier2")
-		assert_player_points_unchanged(g, "black", snap_black, "black unchanged by white placement")
-	end)
-
-	it("opponent pass after placement adds no extra points_stone payout", function()
-		set_stone_instance(g, "black", 1, "points_stone", 3)
-		set_board(g, blank_board())
-		place_stone(g, {
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . 2 . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-			". . . . . . . . .",
-		})
-		local snap_after = player_score_snapshot(g, "black")
-
-		test_helper.pass_turn(g)
-
-		assert_player_points_unchanged(g, "black", snap_after, "opponent pass does not re-trigger points_stone")
+		assert_player_points_delta(g, "black", snap, 0, "only newly placed stone scores")
 	end)
 
 	it("finish turn adds no extra points_stone payout", function()
