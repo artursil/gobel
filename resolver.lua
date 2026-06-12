@@ -21,6 +21,7 @@ local kamikaze_stone_resolver = require("single_game.resolver.kamikaze_stone")
 local stone_removal_effects = require("single_game.resolver.stone_removal_effects")
 local effects_helpers = require("objects.effects_helpers")
 local placement_lifecycle = require("single_game.resolver.placement_lifecycle")
+local placement_effects = require("single_game.resolver.placement_effects")
 local resolved_type_registry = require("single_game.resolver.resolved_type_registry")
 
 local M = {}
@@ -901,7 +902,10 @@ local function compile_place_stone_events(state, action)
 	if kamikaze_sacrifice_applies then
 		new_board[row][col] = config.STONE_NONE
 	end
-	local placement_round = resolved_type_registry.round_effect_defs_from_resolved(resolved_effects)
+	local placement_round = placement_effects.merge_round_defs(
+		stone_def,
+		resolved_type_registry.round_effect_defs_from_resolved(resolved_effects)
+	)
 	local events = {
 		{
 			kind = "BOARD_APPLY",

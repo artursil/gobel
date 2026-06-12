@@ -4,6 +4,7 @@
 
 local board = require("board")
 local config = require("config")
+local content = require("content")
 local conditions = require("objects.conditions")
 local effect_registry = require("effect_registry")
 local match_scoring = require("ai.scoring")
@@ -85,6 +86,7 @@ local function build_projection_state(view, trial_board, stone_id)
 	local game = view:raw_game()
 	local actor = view:actor()
 	local owner = view:owner_key()
+	local stone_def = content.resolve_stone(stone_id)
 	local resolved = stone_placement_effects.resolved_for_stone_id(stone_id, game, actor)
 	return {
 		board = trial_board,
@@ -102,7 +104,7 @@ local function build_projection_state(view, trial_board, stone_id)
 			{
 				owner = owner,
 				stone_type = stone_id,
-				effects = stone_placement_effects.round_effect_defs(resolved),
+				effects = stone_placement_effects.round_effect_defs(resolved, stone_def),
 			},
 		},
 		resolution = {},

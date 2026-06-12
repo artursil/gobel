@@ -22,7 +22,7 @@ local PLACEMENT_RESOLVE_EFFECT_NAMES = {
 --- @return boolean
 function M.is_placement_effect(effect_def)
 	if effect_def.lifecycle == "placement" then
-		return true
+		return false
 	end
 	return PLACEMENT_RESOLVE_EFFECT_NAMES[effect_def.effect_name] == true
 end

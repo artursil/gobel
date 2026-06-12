@@ -2,8 +2,11 @@ require("spec.test_helper")
 
 local board = require("board")
 local config = require("config")
+local content = require("content")
 local effects = require("objects.effects")
 local shape_patterns = require("game.patterns.shape_patterns")
+local effect_manager = require("single_game.resolver.effect_manager")
+local placement_effects = require("single_game.resolver.placement_effects")
 local spec_helper = require("spec.spec_helper")
 local P = require("spec.parameters_helper")
 
@@ -11,6 +14,13 @@ local function state_with_board(rows, letter_map)
 	local b = spec_helper.parse_board_ascii_kinds(rows, letter_map)
 	return {
 		board = b,
+		players = {
+			black = { stances = { fixed = {}, swappable = {} } },
+			white = { stances = { fixed = {}, swappable = {} } },
+		},
+		temporary_stances = {},
+		just_played = {},
+		active_effects = {},
 		scores = {
 			turn_bonus = { B = 1, W = 1 },
 			territory = { B = 0, W = 0 },
@@ -21,8 +31,23 @@ local function state_with_board(rows, letter_map)
 		board_stone_modifiers = {},
 		run_state = { pattern_apply_keys = {} },
 		last_opponent_move = nil,
+		round_stone_effects = {},
 		ui_animation_events = {},
 	}
+end
+
+--- Issue #31 / mds/STONES_IMPLEMENTATION_ENTRY.md §26: wall bonus runs only on placement via round_stone_effects, never board scan.
+--- @param st table
+local function apply_wall_placement_effects(st)
+	local wall_def = content.resolve_stone("wall")
+	st.round_stone_effects = {
+		{
+			owner = "B",
+			stone_type = "wall",
+			effects = placement_effects.collect_defs(wall_def),
+		},
+	}
+	effect_manager.apply_sub_phase(st, "playing_stones", "points", nil)
 end
 
 describe("wall stone effects", function()
@@ -66,13 +91,7 @@ describe("wall stone effects", function()
 			B = { color = config.STONE_BLACK, kind = "stone_basic" },
 		})
 		st.last_opponent_move = { row = 4, col = 4, stone_id = "wall", actor = "black" }
-		local cell = st.board[4][4]
-		local resolved_list = effects.resolve_board_stone(cell, 4, 4, st, "playing_stones", "points", nil)
-		for i = 1, #resolved_list do
-			if resolved_list[i].type == "WALL_STONE" then
-				resolved_list[i].apply(st)
-			end
-		end
+		apply_wall_placement_effects(st)
 		assert.are.equal(P.points_after_wall_bonus(P.starting_points(), 5), st.scores.points.B)
 		assert.is_true(#st.ui_animation_events >= 1)
 	end)
@@ -96,13 +115,7 @@ describe("wall stone effects", function()
 		local group = shape_patterns.group_connected(st.board, wall_r, wall_c)
 		assert.are.equal(10, #group)
 		st.last_opponent_move = { row = wall_r, col = wall_c, stone_id = "wall", actor = "black" }
-		local cell = st.board[wall_r][wall_c]
-		local resolved_list = effects.resolve_board_stone(cell, wall_r, wall_c, st, "playing_stones", "points", nil)
-		for i = 1, #resolved_list do
-			if resolved_list[i].type == "WALL_STONE" then
-				resolved_list[i].apply(st)
-			end
-		end
+		apply_wall_placement_effects(st)
 		assert.are.equal(P.points_after_wall_bonus(P.starting_points(), 10), st.scores.points.B)
 	end)
 
@@ -121,17 +134,11 @@ describe("wall stone effects", function()
 			W = { color = config.STONE_BLACK, kind = "wall" },
 		})
 		st.last_opponent_move = { row = 3, col = 4, stone_id = "wall", actor = "black" }
-		local cell = st.board[3][4]
-		local resolved_list = effects.resolve_board_stone(cell, 3, 4, st, "playing_stones", "points", nil)
-		for i = 1, #resolved_list do
-			if resolved_list[i].type == "WALL_STONE" then
-				resolved_list[i].apply(st)
-			end
-		end
+		apply_wall_placement_effects(st)
 		assert.are.equal(P.starting_points(), st.scores.points.B)
 	end)
 
-	it("resolve_board_stone on wall cell includes wall_stone effect", function()
+	it("resolve_board_stone on wall cell does not emit wall_stone effect", function()
 		local st = state_with_board({
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -148,13 +155,9 @@ describe("wall stone effects", function()
 		st.last_opponent_move = { row = 3, col = 4, stone_id = "wall", actor = "black" }
 		local cell = st.board[3][4]
 		local generated = effects.resolve_board_stone(cell, 3, 4, st, "playing_stones", "points", nil)
-		local has_wall = false
 		for i = 1, #generated do
-			if generated[i].type == "WALL_STONE" then
-				has_wall = true
-			end
+			assert.are_not.equal("WALL_STONE", generated[i].type)
 		end
-		assert.is_true(has_wall)
 	end)
 
 	it("wall_points_for_connected_group_size", function()

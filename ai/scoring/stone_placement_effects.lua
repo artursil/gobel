@@ -3,6 +3,7 @@
 
 local content = require("content")
 local placement_lifecycle = require("single_game.resolver.placement_lifecycle")
+local placement_effects = require("single_game.resolver.placement_effects")
 local resolved_type_registry = require("single_game.resolver.resolved_type_registry")
 
 local M = {}
@@ -53,10 +54,21 @@ function M.resolved_for_stone_ref(stone_ref, state, actor)
 	return M.resolved_stone_effects_from_def(stone_def, state, actor)
 end
 
---- @param resolved_effects table
+--- @param stone_def table
 --- @return table
-function M.round_effect_defs(resolved_effects)
-	return resolved_type_registry.round_effect_defs_from_resolved(resolved_effects)
+function M.placement_round_defs(stone_def)
+	return placement_effects.collect_defs(stone_def)
+end
+
+--- @param resolved_effects table
+--- @param stone_def table|nil
+--- @return table
+function M.round_effect_defs(resolved_effects, stone_def)
+	local round = resolved_type_registry.round_effect_defs_from_resolved(resolved_effects)
+	if stone_def then
+		return placement_effects.merge_round_defs(stone_def, round)
+	end
+	return round
 end
 
 return M

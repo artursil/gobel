@@ -9,12 +9,12 @@ local queries = require("single_game.resolver.state_queries")
 local helpers = require("objects.effects_helpers")
 local animations = require("objects.animations")
 local shape_patterns = require("game.patterns.shape_patterns")
-local shared_stones_effects = require("objects.definitions.shared_stones_effects")
 local stone_params = require("objects.parameters.stones")
 local stance_params = require("objects.parameters.stances")
 local card_params = require("objects.parameters.cards")
 local enclosure = require("single_game.resolver.enclosure")
 local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
+local connected_group_points = require("objects.effect_helpers.connected_group_points")
 
 local M = {}
 
@@ -1053,7 +1053,7 @@ local function pattern_apply_keys(state)
 	return state.run_state.pattern_apply_keys
 end
 
---- Match-lifetime dedupe for pattern and wall placement bonuses (not cleared each resolve).
+--- Match-lifetime dedupe for pattern placement bonuses (not cleared each resolve).
 --- @param state table
 --- @param key string
 --- @return boolean already_seen
@@ -1226,28 +1226,14 @@ function M.diagonal_group_points(effect)
 		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.wall_effect_priority,
 		conditions = effect.conditions,
-		apply = function(state, owner, row, col)
-			if row == nil or col == nil then
-				return
-			end
-			local place_r, place_c = placement_coords(state)
-			if place_r and place_c and (place_r ~= row or place_c ~= col) then
-				return
-			end
-			local cell = state.board[row] and state.board[row][col]
-			if not cell or board.is_empty(cell) or cell.kind ~= "diagonal_stone" then
-				return
-			end
-			local dedupe = "diagonal:" .. row .. ":" .. col
-			if pattern_key_seen(state, dedupe) then
-				return
-			end
-			local group = shape_patterns.group_diagonal_connected(state.board, row, col)
-			local bonus = shape_patterns.diagonal_group_points_for_connected_group_size(#group)
-			if bonus <= 0 then
-				return
-			end
-			state.scores.points[owner] = state.scores.points[owner] + bonus
+		apply = function(state, owner)
+			local row, col = placement_coords(state)
+			connected_group_points.apply_group_size_bonus(state, owner, row, col, {
+				stone_kind = "diagonal_stone",
+				connectivity = "diagonal",
+				block_size = stone_params.diagonal_stone_block_size,
+				points_per_block = stone_params.diagonal_stone_points_per_block,
+			})
 		end,
 	}
 end
@@ -1466,34 +1452,14 @@ function M.wall_stone(effect)
 		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.wall_effect_priority,
 		conditions = effect.conditions,
-		apply = function(state, owner, row, col)
-			if row == nil or col == nil then
-				return
-			end
-			local place_r, place_c = placement_coords(state)
-			if place_r and place_c and (place_r ~= row or place_c ~= col) then
-				return
-			end
-			local cell = state.board[row] and state.board[row][col]
-			if not cell or board.is_empty(cell) or cell.kind ~= "wall" then
-				return
-			end
-			local dedupe = "wall:" .. row .. ":" .. col
-			if pattern_key_seen(state, dedupe) then
-				return
-			end
-			local group = shape_patterns.group_connected(state.board, row, col)
-			local bonus = shape_patterns.wall_points_for_connected_group_size(#group)
-			if bonus <= 0 then
-				return
-			end
-			state.scores.points[owner] = state.scores.points[owner] + bonus
-			animations.add_animation("wall_stone_bounce")(state, {
-				owner = owner,
-				cells = group,
-				bonus = bonus,
-				anchor_row = row,
-				anchor_col = col,
+		apply = function(state, owner)
+			local row, col = placement_coords(state)
+			connected_group_points.apply_group_size_bonus(state, owner, row, col, {
+				stone_kind = "wall",
+				connectivity = "orthogonal",
+				block_size = stone_params.wall_stones_per_block,
+				points_per_block = stone_params.wall_points_per_block,
+				animation = "wall_stone_bounce",
 			})
 		end,
 	}
@@ -1511,30 +1477,14 @@ function M.line_group_points(effect)
 		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.wall_effect_priority,
 		conditions = effect.conditions,
-		apply = function(state, owner, row, col)
-			if row == nil or col == nil then
-				return
-			end
-			local place_r, place_c = placement_coords(state)
-			if place_r and place_c and (place_r ~= row or place_c ~= col) then
-				return
-			end
-			local cell = state.board[row] and state.board[row][col]
-			if not cell or board.is_empty(cell) or cell.kind ~= stone_kind then
-				return
-			end
-			local dedupe = "line:" .. row .. ":" .. col
-			if pattern_key_seen(state, dedupe) then
-				return
-			end
-			local group = shape_patterns.group_connected(state.board, row, col)
-			local block = stone_params.line_stone_block_size
-			local per_block = stone_params.line_stone_points_per_block
-			local bonus = math.floor(#group / block) * per_block
-			if bonus <= 0 then
-				return
-			end
-			state.scores.points[owner] = state.scores.points[owner] + bonus
+		apply = function(state, owner)
+			local row, col = placement_coords(state)
+			connected_group_points.apply_group_size_bonus(state, owner, row, col, {
+				stone_kind = stone_kind,
+				connectivity = "orthogonal",
+				block_size = stone_params.line_stone_block_size,
+				points_per_block = stone_params.line_stone_points_per_block,
+			})
 		end,
 	}
 end
@@ -1808,10 +1758,7 @@ local function resolve_board_effect_entry(effect_def, row, col, owner)
 		return nil
 	end
 	local base_apply = resolved.apply
-	if resolved.type == "WALL_STONE"
-		or resolved.type == "DIAGONAL_GROUP_POINTS"
-		or resolved.type == "LINE_GROUP_POINTS"
-		or resolved.type == "CONTROL_TERRITORY_OVERRIDE"
+	if resolved.type == "CONTROL_TERRITORY_OVERRIDE"
 		or resolved.type == "TAX_ENCLOSURE_ENEMIES"
 		or resolved.type == "TERRITORY_TO_POINTS"
 		or resolved.type == "TERRITORY_TO_MULTIPLIER"
@@ -1854,15 +1801,9 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active
 			effect_defs[#effect_defs + 1] = stone_def.effects[i]
 		end
 	end
-	for i = 1, #shared_stones_effects.all_stone_board_effects do
-		local shared_def = shared_stones_effects.all_stone_board_effects[i]
-		if shared_def.effect_name ~= "pattern_x_mult" and shared_def.effect_name ~= "pattern_plus_mult" then
-			effect_defs[#effect_defs + 1] = shared_def
-		end
-	end
 
 	for _, effect_def in ipairs(effect_defs) do
-		if scoring_phases.is_placement_only_effect_name(effect_def.effect_name) then
+		if scoring_phases.skips_board_scan(effect_def) then
 		elseif not scoring_phases.matches(effect_def, active_macro, active_sub, territory_step) then
 		elseif effect_def.effect_name == "distance_bonus" then
 			out[#out + 1] = {

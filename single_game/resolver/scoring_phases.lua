@@ -33,6 +33,9 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	delay_reward_survival = true,
 	capture_zero_liberty_enemy = true,
 	self_destruct_timed = true,
+	wall_stone = true,
+	diagonal_group_points = true,
+	line_group_points = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {
@@ -140,8 +143,27 @@ end
 --- On-place point/mult effects must not run from board scan.
 --- @param effect_def table
 --- @return boolean
+function M.is_placement_lifecycle(effect_def)
+	return effect_def ~= nil and effect_def.lifecycle == "placement"
+end
+
+--- @param effect_name string|nil
+--- @return boolean
 function M.is_placement_only_effect_name(effect_name)
 	return M.PLACEMENT_ONLY_EFFECT_NAMES[effect_name] == true
+end
+
+--- Board scan must skip on-place effects declared with ``lifecycle = placement`` or by effect name.
+--- @param effect_def table
+--- @return boolean
+function M.skips_board_scan(effect_def)
+	if not effect_def then
+		return false
+	end
+	if M.is_placement_lifecycle(effect_def) then
+		return true
+	end
+	return M.is_placement_only_effect_name(effect_def.effect_name)
 end
 
 return M

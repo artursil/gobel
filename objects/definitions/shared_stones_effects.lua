@@ -1,4 +1,4 @@
---- Reusable stone effect definition tables (pattern + wall placement).
+--- Reusable stone effect definition tables (pattern board-scan mult).
 --- @module objects.definitions.shared_stones_effects
 
 local stone_params = require("objects.parameters.stones")
@@ -17,28 +17,6 @@ M.pattern_plus_mult = {
 	macro = "playing_stones",
 	sub = "mult",
 	priority = stone_params.pattern_effect_priority,
-}
-
-M.wall_stone = {
-	effect_name = "wall_stone",
-	macro = "playing_stones",
-	sub = "points",
-	priority = stone_params.wall_effect_priority,
-}
-
-M.diagonal_group_points = {
-	effect_name = "diagonal_group_points",
-	macro = "playing_stones",
-	sub = "points",
-	priority = stone_params.wall_effect_priority,
-}
-
-M.line_group_points = {
-	effect_name = "line_group_points",
-	macro = "playing_stones",
-	sub = "points",
-	priority = stone_params.wall_effect_priority,
-	stone_kind = "line_stone",
 }
 
 M.all_stone_board_effects = {
