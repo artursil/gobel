@@ -21,6 +21,7 @@ end
 --- @return nil
 function M.ensure_state(state)
 	state.capture_cooldown_cells = state.capture_cooldown_cells or {}
+	state.former_capture_cooldown_cells = state.former_capture_cooldown_cells or {}
 	state.blocked_cells = state.blocked_cells or {}
 end
 
@@ -131,6 +132,26 @@ local function set_capture_cooldown(state, row, col, captor_side)
 		captor = captor_side,
 	}
 	state.blocked_cells[key] = remaining
+	state.former_capture_cooldown_cells[key] = true
+	state._capture_cooldown_set_turn = state.turn_number or 1
+end
+
+--- @param state table
+--- @param key string
+--- @return boolean
+function M.is_active_capture_cooldown_key(state, key)
+	M.ensure_state(state)
+	local entry = state.capture_cooldown_cells[key]
+	return entry ~= nil and (entry.remaining or 0) > 0
+end
+
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return boolean
+function M.had_former_capture_cooldown(state, row, col)
+	M.ensure_state(state)
+	return state.former_capture_cooldown_cells[cell_key(row, col)] == true
 end
 
 --- @param state table
@@ -143,12 +164,11 @@ function M.is_cell_blocked_for_actor(state, row, col, actor, stone_id)
 	end
 	M.ensure_state(state)
 	local key = cell_key(row, col)
-	local remaining = state.blocked_cells[key]
-	if not remaining or remaining <= 0 then
+	local entry = state.capture_cooldown_cells[key]
+	if not entry or (entry.remaining or 0) <= 0 then
 		return false
 	end
-	local entry = state.capture_cooldown_cells[key]
-	if entry and entry.captor == actor then
+	if entry.captor == actor then
 		return false
 	end
 	return true
@@ -161,14 +181,17 @@ end
 function M.is_cell_on_capture_cooldown(state, row, col)
 	M.ensure_state(state)
 	local key = cell_key(row, col)
-	local remaining = state.blocked_cells[key]
-	return remaining ~= nil and remaining > 0
+	local entry = state.capture_cooldown_cells[key]
+	return entry ~= nil and (entry.remaining or 0) > 0
 end
 
 --- @param state table
 --- @return nil
 function M.tick_capture_cooldowns(state)
 	M.ensure_state(state)
+	if (state.turn_number or 1) <= (state._capture_cooldown_set_turn or 0) then
+		return
+	end
 	for key, entry in pairs(state.capture_cooldown_cells) do
 		entry.remaining = entry.remaining - 1
 		if entry.remaining <= 0 then
