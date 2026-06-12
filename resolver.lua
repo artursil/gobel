@@ -12,7 +12,7 @@ local card_play_memory = require("single_game.resolver.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
-local defence_solidity_network = require("objects.defence_solidity_network")
+local placement_registry = require("objects.placement_effect_registry")
 local blocked_cells = require("single_game.resolver.blocked_cells")
 local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
 local stone_timers = require("single_game.resolver.stone_timers")
@@ -407,54 +407,6 @@ local territory_resolver = require("single_game.resolver.territory")
 local territory_stone_payout = require("single_game.resolver.territory_stone_payout")
 local stone_removal = require("single_game.resolver.stone_removal")
 
-local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
-	add_points = true,
-	add_mult = true,
-	add_energy = true,
-	add_money = true,
-	mult_control_streak = true,
-	kamikaze_sacrifice = true,
-	money_field_enclosure_payout = true,
-	self_destruct_timed = true,
-}
-
---- @param resolved table|nil
---- @return boolean
-local function is_kamikaze_sacrifice_resolved(resolved)
-	return resolved ~= nil and resolved.type == "KAMIKAZE_SACRIFICE"
-end
-
---- @param resolved_effects table
---- @return boolean
-local function has_kamikaze_sacrifice_effect(resolved_effects)
-	for i = 1, #resolved_effects do
-		if is_kamikaze_sacrifice_resolved(resolved_effects[i]) then
-			return true
-		end
-	end
-	return false
-end
-
---- @param resolved table
---- @return boolean
-local function is_valid_resolved_stone_effect(resolved)
-	if not resolved or type(resolved) ~= "table" then
-		return false
-	end
-	if resolved.type == "ADD_POINTS" or resolved.type == "ADD_MULT" or resolved.type == "ADD_ENERGY" then
-		return type(resolved.value) == "number"
-	end
-	if resolved.type == "KAMIKAZE_SACRIFICE" or resolved.type == "SELF_DESTRUCT_TIMED" then
-		return type(resolved.value) == "number"
-	end
-	if resolved.type == "ADD_MONEY" then
-		return type(resolved.value) == "table" and type(resolved.value.amount) == "number"
-	end
-	if resolved.type == "MONEY_FIELD_ENCLOSURE_PAYOUT" then
-		return true
-	end
-	return false
-end
 
 --- @param state table
 --- @param stone_def table
@@ -484,37 +436,14 @@ end
 --- @param col integer
 --- @return table
 local function resolved_stone_effects_from_def(stone_def, state, actor, row, col)
-	if type(stone_def.behavior) == "function" then
-		return stone_def.behavior(state, actor)
-	end
-	local out = {}
-	if stone_def.effects then
-		for i = 1, #stone_def.effects do
-			local effect = stone_def.effects[i]
-			if effect.effect_name == "mult_control_streak" then
-				local delta = territory_control_rounds.placement_plus_mult_delta(
-					state,
-					row,
-					col,
-					owner_for_side(actor)
-				)
-				if delta ~= 0 then
-					out[#out + 1] = Effects.stones.resolve({
-						effect_name = "add_mult",
-						macro = effect.macro or "playing_stones",
-						sub = effect.sub or "mult",
-						value = delta,
-						priority = effect.priority or 10,
-					})
-				end
-			elseif effect.effect_name == "money_field_enclosure_payout" then
-				out[#out + 1] = Effects.stones.resolve(effect)
-			elseif IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
-				out[#out + 1] = Effects.stones.resolve(effect)
-			end
-		end
-	end
-	return out
+	return placement_registry.resolved_stone_effects_from_def(
+		stone_def,
+		state,
+		actor,
+		row,
+		col,
+		Effects.stones.resolve
+	)
 end
 
 --- @param captures integer
@@ -544,72 +473,6 @@ local function append_capture_bonus_resolved_effects(resolved_effects, captures)
 	return bonus
 end
 
-local function round_effects_from_resolved(resolved_effects)
-	local round = {}
-	for i = 1, #resolved_effects do
-		local r = resolved_effects[i]
-		if r.type == "SELF_DESTRUCT_TIMED" then
-			round[i] = {
-				effect_name = "self_destruct_timed",
-				macro = "playing_stones",
-				sub = "points",
-				immediate_points = r.value,
-				delay_rounds = r.delay_rounds,
-				priority = r.priority or 10,
-			}
-		elseif r.type == "ADD_POINTS" then
-			round[i] = {
-				effect_name = "add_points",
-				macro = "playing_stones",
-				sub = "points",
-				value = r.value,
-				priority = r.priority or 10,
-			}
-		elseif r.type == "KAMIKAZE_SACRIFICE" then
-			round[i] = {
-				effect_name = "kamikaze_sacrifice",
-				macro = "playing_stones",
-				sub = "points",
-				value = r.value,
-				priority = r.priority or 10,
-			}
-		elseif r.type == "ADD_MULT" then
-			round[i] = {
-				effect_name = "add_mult",
-				macro = "playing_stones",
-				sub = "mult",
-				value = r.value,
-				priority = r.priority or 10,
-			}
-		elseif r.type == "ADD_ENERGY" then
-			round[i] = {
-				effect_name = "add_energy",
-				macro = r.macro or "playing_stones",
-				sub = r.sub or "points",
-				value = r.value,
-				priority = r.priority or 10,
-			}
-		elseif r.type == "ADD_MONEY" then
-			round[i] = {
-				effect_name = "add_money",
-				macro = "playing_stones",
-				sub = "points",
-				value = r.value,
-				priority = r.priority or 10,
-			}
-		elseif r.type == "MONEY_FIELD_ENCLOSURE_PAYOUT" then
-			local def = r._effect_def or {}
-			round[i] = {
-				effect_name = "money_field_enclosure_payout",
-				macro = def.macro or "playing_stones",
-				sub = def.sub or "points",
-				value = def.value,
-				priority = r.priority or def.priority or 10,
-			}
-		end
-	end
-	return round
-end
 
 local function contains_stone_id(ids, stone_id)
 	for i = 1, #ids do
@@ -670,39 +533,29 @@ local function run_event_queue(state, event_queue)
 			end
 			state.board = event.board
 			stone_removal.install_board_hooks(state)
-			defence_solidity_network.recompute_board(state.board)
+			local defence_reconcile = Effects.stones.resolve({
+				effect_name = "defence_solidity_network",
+				macro = "playing_stones",
+				sub = "points",
+			})
+			if defence_reconcile and defence_reconcile.apply then
+				defence_reconcile.apply(state)
+			end
 			state.ko_ban = event.ko_ban
-			if event.row and event.col then
+			if event.row and event.col and event.stone_id then
 				territory_control_rounds.clear_cell(state, event.row, event.col)
 				stone_removal.mark_placed_via_play(state, event.row, event.col)
 				local stone_def = content.get_stone(event.stone_id)
-				if stone_def and stone_def.effects then
-					local placement_owner = owner_for_side(event.actor)
-					for i = 1, #stone_def.effects do
-						local placement_effect = stone_def.effects[i]
-						if placement_effect.effect_name == "delay_reward_survival" then
-							stone_timers.register_delay_reward(
-								state,
-								event.row,
-								event.col,
-								placement_owner,
-								placement_effect.rounds,
-								placement_effect.payout
-							)
-						end
-					end
-					state.stone_timer_skip_tick = { row = event.row, col = event.col }
-				end
-			end
-			if event.row and event.col and event.stone_id then
-				local stone_def = content.get_stone(event.stone_id)
-				if stone_def and stone_def.effects then
-					for ei = 1, #stone_def.effects do
-						if stone_def.effects[ei].effect_name == "blockade_adjacent" then
-							blocked_cells.register_adjacent_from_blockade(state, event.row, event.col, event.actor)
-							state._blockade_registered_this_action = true
-						end
-					end
+				if stone_def then
+					placement_registry.apply_placement_commit_effects(
+						stone_def,
+						state,
+						owner_for_side(event.actor),
+						event.row,
+						event.col,
+						event.actor,
+						Effects.stones.resolve
+					)
 				end
 			end
 			state.last_played_stone = event.stone_id
@@ -729,9 +582,6 @@ local function run_event_queue(state, event_queue)
 			if def and event.resolved_stone_effects then
 				messages.push(state.messages, stone_placement_message(def, event.resolved_stone_effects))
 				push_status_from_messages(state)
-			end
-			if event.stone_id == "escalating_points_stone" and event.row and event.col then
-				effects_helpers.set_stone_stored_value(state, event.row, event.col, 0)
 			end
 		elseif event.kind == "PASS" then
 			state.consecutive_passes = state.consecutive_passes + 1
@@ -1045,14 +895,14 @@ local function compile_place_stone_events(state, action)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
-		if not is_valid_resolved_stone_effect(resolved) then
+		if not placement_registry.is_valid_resolved_placement_effect(resolved) then
 			return nil, "Stone behavior produced invalid effect"
 		end
 	end
-	if has_kamikaze_sacrifice_effect(resolved_effects) then
+	if placement_registry.has_kamikaze_sacrifice_effect(resolved_effects) then
 		new_board[row][col] = config.STONE_NONE
 	end
-	local placement_round = round_effects_from_resolved(resolved_effects)
+	local placement_round = placement_registry.round_effect_defs_from_resolved(resolved_effects)
 	local events = {
 		{
 			kind = "BOARD_APPLY",
@@ -1067,7 +917,7 @@ local function compile_place_stone_events(state, action)
 			col = col,
 			stone_effects = placement_round,
 			resolved_stone_effects = resolved_effects,
-			kamikaze_opponent_prisoner = has_kamikaze_sacrifice_effect(resolved_effects)
+			kamikaze_opponent_prisoner = placement_registry.has_kamikaze_sacrifice_effect(resolved_effects)
 				and stone_params.kamikaze_self_removal_counts_as_prisoner,
 		},
 	}
@@ -1436,5 +1286,11 @@ local function wire_visual_test_capture_stone_at()
 end
 
 wire_visual_test_capture_stone_at()
+
+--- Sorted immediate-placement effect names (shared with AI placement scoring).
+--- @return string[]
+function M.immediate_placement_effect_name_keys()
+	return placement_registry.immediate_placement_effect_name_keys()
+end
 
 return M

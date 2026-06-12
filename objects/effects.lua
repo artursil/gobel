@@ -1255,8 +1255,7 @@ function M.diagonal_group_points(effect)
 	}
 end
 
---- Board connectivity effect: defence stones buff solidity for connected own stones.
---- Actual recompute runs from resolver hooks; this builder registers the effect name only.
+--- Board reconcile effect: recompute defence solidity bonuses across the full board.
 --- @param effect table
 --- @return table
 function M.defence_solidity_network(effect)
@@ -1267,7 +1266,8 @@ function M.defence_solidity_network(effect)
 		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
-		apply = function(_state)
+		apply = function(state)
+			require("objects.defence_solidity_network").recompute_board(state.board)
 		end,
 	}
 end
@@ -1286,10 +1286,13 @@ function M.capture_zero_liberty_enemy(effect)
 	}
 end
 
---- Registers a survival timer; payout on expiry is handled by ``single_game.resolver.stone_timers``.
+--- Registers a survival timer on placement; payout on expiry is handled by ``single_game.resolver.stone_timers``.
 --- @param effect table
 --- @return table
 function M.delay_reward_survival(effect)
+	local rounds = effect.rounds or stone_params.points_delay_rounds
+	local payout = effect.payout or stone_params.points_delay_payout
+	local stone_timers = require("single_game.resolver.stone_timers")
 	return {
 		type = "DELAY_REWARD_SURVIVAL",
 		phase = effect.sub or "points",
@@ -1297,8 +1300,14 @@ function M.delay_reward_survival(effect)
 		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
-		rounds = effect.rounds or stone_params.points_delay_rounds,
-		payout = effect.payout or stone_params.points_delay_payout,
+		rounds = rounds,
+		payout = payout,
+		apply = function(state, owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			stone_timers.register_delay_reward(state, row, col, owner, rounds, payout)
+		end,
 	}
 end
 
@@ -1676,6 +1685,26 @@ function M.territory_to_multiplier(effect)
 				return
 			end
 			territory_stone_payout.apply_multiplier_payout(state, row, col)
+		end,
+	}
+end
+
+--- Zeros the per-cell bank when an escalating points stone is first placed.
+--- @param effect table
+--- @return table
+function M.escalating_points_bank_init(effect)
+	return {
+		type = "ESCALATING_POINTS_BANK_INIT",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, _owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			helpers.set_stone_stored_value(state, row, col, 0)
 		end,
 	}
 end

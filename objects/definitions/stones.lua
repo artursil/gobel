@@ -40,7 +40,7 @@ M.stone_power = {
 	rarity = "uncommon",
 	probability = 0.8,
 	cost = 1,
-	max_level = 1,
+	max_level = 3,
 	upgrade_levels = {
 		[1] = {},
 		[2] = {
@@ -808,6 +808,12 @@ M.escalating_points_stone = {
 	},
 	effects = {
 		{
+			effect_name = "escalating_points_bank_init",
+			macro = "playing_stones",
+			sub = "points",
+			priority = P.default_effect_priority,
+		},
+		{
 			effect_name = "escalating_points_bank",
 			macro = "end_of_turn",
 			sub = "points",
@@ -894,7 +900,8 @@ local function stub_stone(id)
 		id = id,
 		type = "stone",
 		name = id,
-		description = "",
+		description = "Reserved stone definition; gameplay not wired yet.",
+		depiction = "Placeholder mark",
 		rarity = "common",
 		probability = 1.0,
 		cost = 1,

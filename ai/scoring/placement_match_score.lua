@@ -80,12 +80,14 @@ end
 --- @param view table
 --- @param trial_board table
 --- @param stone_id string
+--- @param row integer
+--- @param col integer
 --- @return table
-local function build_projection_state(view, trial_board, stone_id)
+local function build_projection_state(view, trial_board, stone_id, row, col)
 	local game = view:raw_game()
 	local actor = view:actor()
 	local owner = view:owner_key()
-	local resolved = stone_placement_effects.resolved_for_stone_id(stone_id, game, actor)
+	local resolved = stone_placement_effects.resolved_for_stone_id(stone_id, game, actor, row, col)
 	return {
 		board = trial_board,
 		to_play = actor,
@@ -146,13 +148,20 @@ end
 --- @param view table
 --- @param trial_board table
 --- @param stone_id string
+--- @param row integer
+--- @param col integer
 --- @return number
-local function projected_match_score(view, trial_board, stone_id)
+local function projected_match_score(view, trial_board, stone_id, row, col)
 	local owner = view:owner_key()
-	local game = view:raw_game()
-	local scratch = build_projection_state(view, trial_board, stone_id)
+	local scratch = build_projection_state(view, trial_board, stone_id, row, col)
 	scratch.scores.territory[owner] = weighted_territory_for_owner(trial_board, view:territory_mode(), owner)
-	local resolved = stone_placement_effects.resolved_for_stone_id(stone_id, game, view:actor())
+	local resolved = stone_placement_effects.resolved_for_stone_id(
+		stone_id,
+		view:raw_game(),
+		view:actor(),
+		row,
+		col
+	)
 	apply_resolved_stone_effects(resolved, scratch, owner)
 	apply_placement_stance_effects(view, scratch, owner)
 	return match_scoring.match_score_total(player_score_from_scores(scratch.scores, owner))
@@ -170,7 +179,7 @@ function M.score_delta(view, stone_id, row, col)
 		return nil
 	end
 	local baseline = match_scoring.match_score_total(view:player())
-	local post = projected_match_score(view, trial_board, stone_id)
+	local post = projected_match_score(view, trial_board, stone_id, row, col)
 	return post - baseline
 end
 

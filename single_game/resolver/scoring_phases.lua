@@ -33,6 +33,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	delay_reward_survival = true,
 	capture_zero_liberty_enemy = true,
 	self_destruct_timed = true,
+	escalating_points_bank_init = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {
