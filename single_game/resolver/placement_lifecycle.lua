@@ -15,7 +15,6 @@ local PLACEMENT_RESOLVE_EFFECT_NAMES = {
 	mult_control_streak = true,
 	money_field_enclosure_payout = true,
 	self_destruct_timed = true,
-	anti_capture_immunity = true,
 }
 
 --- @param effect_def table

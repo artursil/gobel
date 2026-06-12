@@ -13,8 +13,8 @@ local stone_params = require("objects.parameters.stones")
 local stance_params = require("objects.parameters.stances")
 local card_params = require("objects.parameters.cards")
 local enclosure = require("single_game.resolver.enclosure")
-local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
 local connected_group_points = require("objects.effect_helpers.connected_group_points")
+local rules = require("rules")
 
 local M = {}
 
@@ -1269,10 +1269,12 @@ function M.capture_zero_liberty_enemy(effect)
 	}
 end
 
---- Registers a survival timer; payout on expiry is handled by ``single_game.resolver.stone_timers``.
+--- Delayed payout after ``survival_rounds_remaining`` on the stone cell reaches zero.
 --- @param effect table
 --- @return table
 function M.delay_reward_survival(effect)
+	local rounds = effect.rounds or stone_params.points_delay_rounds
+	local payout = effect.payout or stone_params.points_delay_payout
 	return {
 		type = "DELAY_REWARD_SURVIVAL",
 		phase = effect.sub or "points",
@@ -1280,33 +1282,104 @@ function M.delay_reward_survival(effect)
 		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
-		rounds = effect.rounds or stone_params.points_delay_rounds,
-		payout = effect.payout or stone_params.points_delay_payout,
+		rounds = rounds,
+		payout = payout,
+		on_placement = function(state, _owner, row, col, cell, effect_def)
+			if row == nil or col == nil or not cell then
+				return
+			end
+			cell.survival_rounds_remaining = effect_def.rounds or rounds
+			cell.delay_payout = effect_def.payout or payout
+			cell.timer_remaining_rounds = cell.survival_rounds_remaining
+			state._effect_tick_skip_cell = { row = row, col = col }
+		end,
+		on_tick = function(state, row, col, cell)
+			local remaining = cell.survival_rounds_remaining
+			if type(remaining) ~= "number" or remaining <= 0 then
+				return
+			end
+			remaining = remaining - 1
+			cell.survival_rounds_remaining = remaining
+			cell.timer_remaining_rounds = remaining > 0 and remaining or nil
+			if remaining > 0 then
+				return
+			end
+			cell.survival_rounds_remaining = nil
+			cell.timer_remaining_rounds = nil
+			local payout_amount = cell.delay_payout or payout
+			cell.delay_payout = nil
+			if board.is_empty(cell) then
+				return
+			end
+			if payout_amount <= 0 then
+				return
+			end
+			local owner = cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
+			state.scores = state.scores or {}
+			state.scores.points = state.scores.points or { B = 1, W = 1 }
+			state.scores.points[owner] = (state.scores.points[owner] or 1) + payout_amount
+		end,
 	}
+end
+
+--- @param board_snapshot table
+--- @param row integer
+--- @param col integer
+--- @param duration integer
+--- @return nil
+local function grant_group_immunity_on_cells(board_snapshot, row, col, duration)
+	local group = rules.collect_group(board_snapshot, row, col)
+	for i = 1, #group do
+		local r, c = group[i][1], group[i][2]
+		local cell = board_snapshot[r][c]
+		if cell and not board.is_empty(cell) then
+			cell.immunity_remaining = duration
+		end
+	end
 end
 
 --- Grants temporary capture immunity to the placed stone and its orthogonally connected own group.
 --- @param effect table
 --- @return table
 function M.anti_capture_immunity(effect)
+	local duration = effect.duration or stone_params.anti_capture_duration_rounds
 	return {
 		type = "ANTI_CAPTURE_IMMUNITY",
-		lifecycle = "placement",
 		phase = effect.sub or "points",
 		macro = effect.macro or "playing_stones",
 		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
-		on_placement = function(ctx)
-			if ctx.row == nil or ctx.col == nil then
+		duration = duration,
+		on_placement = function(state, _owner, row, col, _cell, effect_def, board_snapshot)
+			if row == nil or col == nil then
 				return
 			end
-			anti_capture_immunity.grant_at_placement(ctx.state, ctx.board_snapshot, ctx.row, ctx.col)
+			state._anti_capture_board_snapshot_seeded = true
+			grant_group_immunity_on_cells(
+				board_snapshot or state.board,
+				row,
+				col,
+				effect_def.duration or duration
+			)
+		end,
+		on_tick = function(_state, _row, _col, cell)
+			local remaining = cell.immunity_remaining
+			if type(remaining) ~= "number" or remaining <= 0 then
+				return
+			end
+			remaining = remaining - 1
+			if remaining <= 0 then
+				cell.immunity_remaining = nil
+				return
+			end
+			cell.immunity_remaining = remaining
 		end,
 	}
 end
 
 --- On placement, block opponent on orthogonally adjacent empty cells for ``blockade_duration_rounds``.
+--- Board-zone durations live in ``placement_blocks`` (see ``blocked_cells`` module).
 --- @param effect table
 --- @return table
 function M.blockade_adjacent(effect)
@@ -1317,13 +1390,18 @@ function M.blockade_adjacent(effect)
 		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
-		apply = function(state, owner, row, col)
+		on_placement = function(state, owner, row, col)
 			if row == nil or col == nil then
 				return
 			end
 			local actor = owner == config.OWNER_BLACK and "black" or "white"
 			local blocked_cells = require("single_game.resolver.blocked_cells")
 			blocked_cells.register_adjacent_from_blockade(state, row, col, actor)
+			state._blockade_registered_this_action = true
+		end,
+		on_tick = function(state)
+			local blocked_cells = require("single_game.resolver.blocked_cells")
+			blocked_cells.tick(state)
 		end,
 	}
 end
@@ -1708,12 +1786,25 @@ function M.double_corner_nearby_territory(row, col, effect_def)
 	}
 end
 
+--- Board effect builders registry (require row/col context; not valid for ``M.resolve``).
+local BOARD_EFFECT_BUILDERS = {
+	double_corner_nearby_territory = function(row, col, effect_def)
+		return M.double_corner_nearby_territory(row, col, effect_def)
+	end,
+	enclosure_territory_multiply = function(row, col, effect_def)
+		return M.enclosure_territory_multiply(row, col, effect_def)
+	end,
+}
+
 --- Generic effect resolver: dispatch by effect_name.
 --- Returns resolved effect with type, phase, priority, and apply function.
 --- @param effect table: {effect_name, ...}
 --- @return table|nil: resolved effect, or nil if unknown
 function M.resolve(effect)
 	if not effect or not effect.effect_name then
+		return nil
+	end
+	if BOARD_EFFECT_BUILDERS[effect.effect_name] then
 		return nil
 	end
 	local builder = M[effect.effect_name]
@@ -1726,16 +1817,6 @@ function M.resolve(effect)
 	end
 	return resolved
 end
-
---- Board effect builders registry.
-local BOARD_EFFECT_BUILDERS = {
-	double_corner_nearby_territory = function(row, col, effect_def)
-		return M.double_corner_nearby_territory(row, col, effect_def)
-	end,
-	enclosure_territory_multiply = function(row, col, effect_def)
-		return M.enclosure_territory_multiply(row, col, effect_def)
-	end,
-}
 
 --- Emit effects for a concrete stone instance on the board.
 --- Handles distance-phase and territory-phase effects.

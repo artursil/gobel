@@ -100,6 +100,18 @@ function M.preserve_cell_metadata(old_board, new_board)
 				if old_cell.stored_value ~= nil then
 					new_cell.stored_value = old_cell.stored_value
 				end
+				if old_cell.survival_rounds_remaining ~= nil then
+					new_cell.survival_rounds_remaining = old_cell.survival_rounds_remaining
+				end
+				if old_cell.timer_remaining_rounds ~= nil then
+					new_cell.timer_remaining_rounds = old_cell.timer_remaining_rounds
+				end
+				if old_cell.delay_payout ~= nil then
+					new_cell.delay_payout = old_cell.delay_payout
+				end
+				if old_cell.immunity_remaining ~= nil then
+					new_cell.immunity_remaining = old_cell.immunity_remaining
+				end
 			end
 		end
 	end

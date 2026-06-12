@@ -17,8 +17,8 @@ local territory_control_rounds = require("single_game.resolver.territory_control
 local board_cell_timers = require("single_game.resolver.board_cell_timers")
 local card_play_memory = require("single_game.resolver.card_play_memory")
 local scoring_phases = require("single_game.resolver.scoring_phases")
-local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
 local capture_stone = require("single_game.resolver.capture_stone")
+local effect_tick_lifecycle = require("single_game.resolver.effect_tick_lifecycle")
 local stone_timers = require("single_game.resolver.stone_timers")
 local stone_stored_values = require("single_game.resolver.stone_stored_values")
 
@@ -258,9 +258,6 @@ function M.resolve(state, opts)
 		state._tax_enclosure_paid = {}
 	end
 	run_sub_phases(state, macro)
-	if macro == "end_of_turn" then
-		stone_timers.process_expirations(state)
-	end
 	sync_player_scores(state)
 	if macro == "playing_cards" then
 		card_play_memory.flush_just_played_to_history(state)
@@ -276,19 +273,19 @@ function M.resolve(state, opts)
 		end
 		board_cell_timers.expire(state)
 		card_play_memory.flush_just_played_to_history(state)
-		local blocked_cells = require("single_game.resolver.blocked_cells")
-		blocked_cells.bootstrap_from_board_if_needed(state)
-		if not state._blockade_registered_this_action and (state.turn_number or 1) % 2 == 0 then
-			blocked_cells.tick(state)
+		require("single_game.resolver.blocked_cells").bootstrap_from_board_if_needed(state)
+		if not state._skip_board_end_of_turn_effects then
+			local tick_blockade = not state._blockade_registered_this_action and (state.turn_number or 1) % 2 == 0
+			effect_tick_lifecycle.tick(state, { tick_blockade = tick_blockade })
 		end
 		state._blockade_registered_this_action = nil
 		tick_timed_effects(state)
 		capture_stone.tick_capture_cooldowns(state)
-		anti_capture_immunity.tick(state)
 		tick_temporary_stances(state)
 		if (state.turn_number or 1) % 2 == 0 then
 			territory_control_rounds.tick(state)
 		end
+		sync_player_scores(state)
 	end
 	queries.clear_resolution(state)
 	state._resolve_macro = nil

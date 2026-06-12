@@ -8,8 +8,12 @@
 local test_helper = require("spec.test_helper")
 test_helper.install_love_test_stubs()
 
+local board = require("board")
 local config = require("config")
+local match_state = require("match_state")
+local resolver = require("resolver")
 local P = require("spec.parameters_helper")
+local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
 
 local LETTER_TO_STONE = {
 	B = { color = config.STONE_BLACK, kind = "stone_basic" },
@@ -30,11 +34,58 @@ local set_board = test_helper.set_board
 local visual_scoring_debug_after_each = test_helper.visual_scoring_debug_after_each
 local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_registered_in_content
 local assert_legal_player_move_with_stone = test_helper.assert_legal_player_move_with_stone
-local assert_illegal_player_move_with_stone = test_helper.assert_illegal_player_move_with_stone
-local assert_stone_immune = test_helper.assert_stone_immune
-local assert_stone_not_immune = test_helper.assert_stone_not_immune
-
 local S = P.stone
+
+local function stone_immunity_remaining(g, row, col)
+	return anti_capture_immunity.remaining(g, row, col)
+end
+
+local function assert_stone_immune(g, row, col, expected, context)
+	assert.are.equal(expected, stone_immunity_remaining(g, row, col), context)
+end
+
+local function assert_stone_not_immune(g, row, col, context)
+	assert.are.equal(0, stone_immunity_remaining(g, row, col), context)
+end
+
+local function try_player_move_at_board_snapshot(g, side, stone_id, row, col)
+	test_helper.set_hand(g, side, { stone_id })
+	g.to_play = side
+	g.phase = "PLACE_PHASE"
+	local player = match_state.player_for_color(g, side)
+	player.stones.selected_stone = stone_id
+	player.stones.selected_stone_index = 1
+	local result = resolver.submit_action(g, {
+		actor = side,
+		type = "PLACE_STONE",
+		payload = { row = row, col = col },
+	})
+	test_helper.finish_ui_animations_for_turn(g)
+	return result.ok
+end
+
+local function assert_illegal_player_move_at_snapshot(g, side, stone_id, row, col, context)
+	local before = board.clone(g.board)
+	local points_before = match_state.player_for_color(g, side).score.points
+	local ok = try_player_move_at_board_snapshot(g, side, stone_id, row, col)
+	assert.is_false(ok, context)
+	local after = g.board
+	for r = 1, config.BOARD_SIZE do
+		for c = 1, config.BOARD_SIZE do
+			local b_cell = before[r][c]
+			local a_cell = after[r][c]
+			local b_empty = board.is_empty(b_cell)
+			local a_empty = board.is_empty(a_cell)
+			if b_empty ~= a_empty then
+				error((context or "illegal move") .. ": board mutated on rejected placement")
+			end
+			if not b_empty and not a_empty and (b_cell.kind ~= a_cell.kind or b_cell.color ~= a_cell.color) then
+				error((context or "illegal move") .. ": board mutated on rejected placement")
+			end
+		end
+	end
+	assert.are.equal(points_before, match_state.player_for_color(g, side).score.points, context)
+end
 
 describe("anti_capture_stone (visual ASCII)", function()
 	local g
@@ -62,7 +113,7 @@ describe("anti_capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			assert_stone_immune(g, 4, 5, S.anti_capture_duration_rounds, "A immune from placement")
-			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 5, 5,
+			assert_illegal_player_move_at_snapshot(g, "white", "stone_basic", 5, 5,
 				"white cannot fill last liberty while A is immune")
 			test_helper.assert_board_stone_present(g, 4, 5, "A survives rejected capture attempt")
 		end)
@@ -101,7 +152,7 @@ describe("anti_capture_stone (visual ASCII)", function()
 			})
 			assert_stone_immune(g, 5, 5, S.anti_capture_duration_rounds, "A in chain immune")
 			assert_stone_immune(g, 4, 5, S.anti_capture_duration_rounds, "connected B immune")
-			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 6, 5,
+			assert_illegal_player_move_at_snapshot(g, "white", "stone_basic", 6, 5,
 				"white cannot capture connected B+A group")
 			test_helper.assert_board_stone_present(g, 4, 5, "B survives")
 			test_helper.assert_board_stone_present(g, 5, 5, "A survives")
@@ -122,7 +173,7 @@ describe("anti_capture_stone (visual ASCII)", function()
 			assert_stone_immune(g, 4, 5, S.anti_capture_duration_rounds, "center A immune")
 			assert_stone_immune(g, 3, 5, S.anti_capture_duration_rounds, "top B immune")
 			assert_stone_immune(g, 5, 5, S.anti_capture_duration_rounds, "bottom B immune")
-			assert_illegal_player_move_with_stone(g, "white", "stone_basic", 6, 5,
+			assert_illegal_player_move_at_snapshot(g, "white", "stone_basic", 6, 5,
 				"white cannot capture entire ring at last liberty")
 			test_helper.assert_board_stone_present(g, 3, 5, "top B survives")
 			test_helper.assert_board_stone_present(g, 4, 5, "center A survives")
