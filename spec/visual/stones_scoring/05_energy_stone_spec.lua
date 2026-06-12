@@ -113,7 +113,7 @@ describe("energy_stone (visual ASCII)", function()
 
 	it("energy clamped at energy_max when placement would exceed cap", function()
 		set_hand(g, "black", { "energy_stone" })
-		local max_e = match_state.player_for_color(g, "black").resources.energy_max
+		local max_e = match_state.player_for_color(g, "black").energy_max
 		set_energy(g, "black", max_e)
 		set_board(g, blank_board())
 
@@ -208,7 +208,7 @@ describe("energy_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 
-		local max_e = match_state.player_for_color(g, "black").resources.energy_max
+		local max_e = match_state.player_for_color(g, "black").energy_max
 		assert_player_energy(
 			g,
 			"black",
@@ -234,7 +234,7 @@ describe("energy_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 
-		local max_e = match_state.player_for_color(g, "black").resources.energy_max
+		local max_e = match_state.player_for_color(g, "black").energy_max
 		test_helper.finish_turn(g)
 		test_helper.pass_turn(g)
 		test_helper.finish_turn(g)

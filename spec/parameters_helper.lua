@@ -20,6 +20,12 @@ function M.starting_points()
 	return 1
 end
 
+--- Starting and maximum energy for each player at match init (matches match_state).
+--- @return integer
+function M.energy_max_default()
+	return 3
+end
+
 --- @return integer
 function M.base_plus_mult()
 	return 1
