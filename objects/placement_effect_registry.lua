@@ -29,6 +29,12 @@ M.PLACEMENT_COMMIT_EFFECT_NAMES = {
 	escalating_points_bank_init = true,
 }
 
+--- Placement compile hooks that run after ``try_play`` with a board snapshot (before ``BOARD_APPLY``).
+M.PLACEMENT_COMPILE_EFFECT_NAMES = {
+	anti_capture_immunity = true,
+	capture_zero_liberty_enemy = true,
+}
+
 --- @param effect_name string|nil
 --- @return boolean
 function M.is_immediate_placement_effect_name(effect_name)
@@ -39,6 +45,12 @@ end
 --- @return boolean
 function M.is_placement_commit_effect_name(effect_name)
 	return effect_name ~= nil and M.PLACEMENT_COMMIT_EFFECT_NAMES[effect_name] == true
+end
+
+--- @param effect_name string|nil
+--- @return boolean
+function M.is_placement_compile_effect_name(effect_name)
+	return effect_name ~= nil and M.PLACEMENT_COMPILE_EFFECT_NAMES[effect_name] == true
 end
 
 --- Sorted keys for registry parity checks (resolver ↔ AI).
@@ -283,6 +295,38 @@ function M.round_effect_defs_from_resolved(resolved_effects)
 		end
 	end
 	return round
+end
+
+--- Runs placement compile factories after legality check (immunity grant, extra capture).
+--- @param stone_def table
+--- @param state table
+--- @param board table
+--- @param row integer
+--- @param col integer
+--- @param actor string
+--- @param chain_color integer
+--- @param resolve_fn fun(effect: table): table|nil
+--- @return table
+--- @return integer
+function M.apply_placement_compile_effects(stone_def, state, board, row, col, actor, chain_color, resolve_fn)
+	local extra_captures = 0
+	if not stone_def or not stone_def.effects then
+		return board, extra_captures
+	end
+	for i = 1, #stone_def.effects do
+		local effect_def = stone_def.effects[i]
+		if effect_def.effect_name == "anti_capture_immunity" then
+			local resolved = resolve_fn(effect_def)
+			if resolved and resolved.apply then
+				resolved.apply(state, nil, row, col, board)
+			end
+		elseif effect_def.effect_name == "capture_zero_liberty_enemy" then
+			local new_board, captures = capture_stone.apply_extra_capture(board, state, actor, chain_color)
+			board = new_board
+			extra_captures = extra_captures + captures
+		end
+	end
+	return board, extra_captures
 end
 
 --- Runs placement-commit factories at board apply (timers, blockade, bank init).

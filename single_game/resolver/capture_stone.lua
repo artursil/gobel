@@ -25,20 +25,6 @@ function M.ensure_state(state)
 	state.blocked_cells = state.blocked_cells or {}
 end
 
---- @param stone_def table|nil
---- @return boolean
-function M.stone_def_has_effect(stone_def)
-	if not stone_def or not stone_def.effects then
-		return false
-	end
-	for i = 1, #stone_def.effects do
-		if stone_def.effects[i].effect_name == "capture_zero_liberty_enemy" then
-			return true
-		end
-	end
-	return false
-end
-
 --- @param b table
 --- @param row integer
 --- @param col integer

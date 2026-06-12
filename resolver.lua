@@ -408,27 +408,6 @@ local territory_stone_payout = require("single_game.resolver.territory_stone_pay
 local stone_removal = require("single_game.resolver.stone_removal")
 
 
---- @param state table
---- @param stone_def table
---- @param board_snapshot table
---- @param row integer
---- @param col integer
---- @return nil
-local function apply_placement_state_effects(state, stone_def, board_snapshot, row, col)
-	if not stone_def.effects then
-		return
-	end
-	for i = 1, #stone_def.effects do
-		local effect = stone_def.effects[i]
-		if effect.effect_name == "anti_capture_immunity" then
-			local resolved = Effects.stones.resolve(effect)
-			if resolved and resolved.apply then
-				resolved.apply(state, nil, row, col, board_snapshot)
-			end
-		end
-	end
-end
-
 --- @param stone_def table
 --- @param state table
 --- @param actor string
@@ -844,17 +823,18 @@ local function compile_place_stone_events(state, action)
 		end
 		return nil, "Illegal move: rule violation"
 	end
-	apply_placement_state_effects(state, stone_def, new_board, row, col)
-	if capture_stone_resolver.stone_def_has_effect(stone_def) then
-		local extra_captures
-		new_board, extra_captures = capture_stone_resolver.apply_extra_capture(
-			new_board,
-			state,
-			action.actor,
-			player_chain_color
-		)
-		captures = captures + extra_captures
-	end
+	local extra_captures
+	new_board, extra_captures = placement_registry.apply_placement_compile_effects(
+		stone_def,
+		state,
+		new_board,
+		row,
+		col,
+		action.actor,
+		player_chain_color,
+		Effects.stones.resolve
+	)
+	captures = captures + extra_captures
 	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor, row, col)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do

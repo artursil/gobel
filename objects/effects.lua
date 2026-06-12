@@ -1272,7 +1272,8 @@ function M.defence_solidity_network(effect)
 	}
 end
 
---- Placement capture: remove one enemy stone with zero liberties (resolved in ``capture_stone`` module).
+--- Placement capture: remove one enemy stone with zero liberties.
+--- Board mutation runs at compile time via ``placement_effect_registry.apply_placement_compile_effects``.
 --- @param effect table
 --- @return table
 function M.capture_zero_liberty_enemy(effect)
