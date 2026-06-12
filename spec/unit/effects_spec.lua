@@ -83,8 +83,6 @@ describe("T-100 effects system", function()
 		local player = state.players.black
 		player.energy = 0
 		player.energy_max = P.energy_max_default()
-		player.resources.energy_current = 0
-		player.resources.energy_max = P.energy_max_default()
 		local effect_def = {
 			effect_name = "add_energy",
 			value = P.stone.energy_stone_gain,
@@ -92,6 +90,7 @@ describe("T-100 effects system", function()
 		local resolved = effects.resolve(effect_def)
 		resolved.apply(state, "B")
 		assert.are.equal(P.stone.energy_stone_gain, player.energy)
+		assert.are.equal(player.energy, player.resources.energy_current)
 	end)
 
 	it("clamps add_energy at player energy_max", function()
@@ -99,8 +98,6 @@ describe("T-100 effects system", function()
 		local player = state.players.black
 		player.energy = P.energy_max_default()
 		player.energy_max = P.energy_max_default()
-		player.resources.energy_current = P.energy_max_default()
-		player.resources.energy_max = P.energy_max_default()
 		local effect_def = {
 			effect_name = "add_energy",
 			value = P.stone.energy_stone_gain,
@@ -108,6 +105,7 @@ describe("T-100 effects system", function()
 		local resolved = effects.resolve(effect_def)
 		resolved.apply(state, "B")
 		assert.are.equal(P.energy_max_default(), player.energy)
+		assert.are.equal(player.energy, player.resources.energy_current)
 	end)
 
 	it("applies add_points effect to state", function()

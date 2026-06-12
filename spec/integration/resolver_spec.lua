@@ -18,6 +18,20 @@ local function new_started_state(seed)
 end
 
 describe("T-050 resolver and core system correctness", function()
+	it("refreshes player.energy to energy_max at turn start", function()
+		local state = match_state.new_match("pvp", 10)
+		local black = state.players.black
+		black.stances.fixed = {}
+		black.stances.swappable = {}
+		black.energy = 0
+
+		local started = resolver.begin_turn(state, "black")
+
+		assert.is_true(started.ok)
+		assert.are.equal(P.energy_max_default(), black.energy)
+		assert.are.equal(black.energy, black.resources.energy_current)
+	end)
+
 	it("plays card from hand, spends energy, and enqueues effect message", function()
 		local state = new_started_state(11)
 		local black = state.players.black
