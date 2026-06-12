@@ -2,19 +2,6 @@ local M = {}
 
 --- @param player table
 --- @return nil
-local function adopt_resources_energy(player)
-	if not player.resources or player.energy == nil then
-		return
-	end
-	if player.resources.energy_current ~= player.energy
-		or player.resources.energy_max ~= player.energy_max then
-		player.energy = player.resources.energy_current
-		player.energy_max = player.resources.energy_max
-	end
-end
-
---- @param player table
---- @return nil
 local function sync_resources_from_player(player)
 	if not player.resources or player.energy == nil then
 		return
@@ -28,7 +15,6 @@ end
 --- @return number max
 local function energy_values(player)
 	if player.energy ~= nil then
-		adopt_resources_energy(player)
 		return player.energy, player.energy_max
 	end
 	return player.energy_current, player.energy_max
