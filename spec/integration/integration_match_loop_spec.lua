@@ -18,13 +18,14 @@ describe("T-051 integration minimal playable loop", function()
 		assert.are.equal(1, g.turn_number)
 		assert.are.equal(4, #black.cards.hand.ids)
 
-		local energy_before_card = black.resources.energy_current
+		local energy_before_card = black.energy
 		local discard_before = #black.cards.discard.ids
 		local card_id = black.cards.hand.ids[1]
 		local card_def = content.get_card(card_id)
 		local played = game.play_card(g, 1)
 		assert.is_true(played)
-		assert.are.equal(energy_before_card - card_def.energy_cost, black.resources.energy_current)
+		assert.are.equal(energy_before_card - card_def.energy_cost, black.energy)
+		assert.are.equal(black.energy, black.resources.energy_current)
 		assert.are.equal(discard_before + 1, #black.cards.discard.ids)
 
 		local selection = black.stones.playable_stones[2] or black.stones.playable_stones[1]

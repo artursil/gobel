@@ -104,7 +104,7 @@ describe("AI bot integration", function()
 		g.phase = "MAIN_PHASE"
 		g.to_play = bot_actor()
 		g.players[bot_actor()].cards.hand.ids = { "card_point_tap" }
-		g.players[bot_actor()].resources.energy_current = 3
+		g.players[bot_actor()].energy = 3
 		local saw_play = false
 		for _ = 1, 20 do
 			if g.phase ~= "MAIN_PHASE" or g.to_play ~= bot_actor() then
@@ -133,7 +133,7 @@ describe("AI bot integration", function()
 		g.to_play = bot_actor()
 		local bot = bot_actor()
 		g.players[bot].cards.hand.ids = { "card_point_tap" }
-		g.players[bot].resources.energy_current = 3
+		g.players[bot].energy = 3
 		g.players[bot].stones.selected_stone = nil
 		g.players[bot].stones.selected_stone_index = nil
 		local action = ai_controller.decide(g)
@@ -156,7 +156,7 @@ describe("AI bot integration", function()
 		g.phase = "MAIN_PHASE"
 		g.to_play = bot_actor()
 		g.players[bot_actor()].cards.hand.ids = { "card_point_tap" }
-		g.players[bot_actor()].resources.energy_current = 3
+		g.players[bot_actor()].energy = 3
 		local main_steps = 0
 		while g.phase == "MAIN_PHASE" and g.to_play == bot_actor() and main_steps < 20 do
 			local action, signal = ai_controller.decide(g)

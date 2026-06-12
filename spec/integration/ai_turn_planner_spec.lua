@@ -15,7 +15,7 @@ describe("ai.turn.planner", function()
 		g.phase = "MAIN_PHASE"
 		g.to_play = "white"
 		g.players.white.cards.hand.ids = { "card_point_tap" }
-		g.players.white.resources.energy_current = 3
+		g.players.white.energy = 3
 		local view = match_view.for_bot(g)
 		local steps = planner.build_plan(view)
 		assert.is_true(#steps >= 1)

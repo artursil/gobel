@@ -4,7 +4,6 @@
 --- @module objects.effects
 
 local config = require("config")
-local energy = require("energy")
 local board = require("board")
 local queries = require("single_game.resolver.state_queries")
 local helpers = require("objects.effects_helpers")
@@ -495,12 +494,7 @@ function M.add_energy(effect)
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
 		apply = function(state, owner)
-			local side = owner == config.OWNER_BLACK and "black" or "white"
-			local player = require("match_state").player_for_color(state, side)
-			if not player then
-				return
-			end
-			energy.gain(player.resources, effect.value)
+			helpers.gain_player_energy(state, owner, effect.value)
 		end,
 	}
 end

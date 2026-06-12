@@ -613,7 +613,7 @@ local function draw_side_columns(game, layout)
 	draw_icon_or_fallback("prison", stat_rects[3])
 	lg.setColor(config.COLOR_UI[1], config.COLOR_UI[2], config.COLOR_UI[3], 1)
 	lg.printf(
-		string.format("%d/%d", player.resources.energy_current, player.resources.energy_max),
+		string.format("%d/%d", player.energy, player.energy_max),
 		stat_rects[1].x,
 		stat_rects[1].y + stat_rects[1].h + 2,
 		stat_rects[1].w,
@@ -717,7 +717,7 @@ local function draw_hand(game, layout)
 		if not card then
 			return
 		end
-		local can_afford = player.resources.energy_current >= card.energy_cost
+		local can_afford = player.energy >= card.energy_cost
 		lg.push()
 		local cx = slot.x + slot.w * 0.5
 		local cy = slot.y + slot.h * 0.5

@@ -20,6 +20,12 @@ function M.starting_points()
 	return 1
 end
 
+--- Starting and maximum energy for each player at match init (matches match_state).
+--- @return integer
+function M.energy_max_default()
+	return 3
+end
+
 --- @return integer
 function M.base_plus_mult()
 	return 1
@@ -102,6 +108,12 @@ end
 --- @return number
 function M.stone_points(stone_id)
 	return M.stone_effect_value(stone_id, "add_points") or 0
+end
+
+--- @param stone_id string
+--- @return number
+function M.stone_energy_gain(stone_id)
+	return M.stone_effect_value(stone_id, "add_energy") or 0
 end
 
 --- @param stone_id string

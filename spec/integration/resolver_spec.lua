@@ -18,12 +18,26 @@ local function new_started_state(seed)
 end
 
 describe("T-050 resolver and core system correctness", function()
+	it("refreshes player.energy to energy_max at turn start", function()
+		local state = match_state.new_match("pvp", 10)
+		local black = state.players.black
+		black.stances.fixed = {}
+		black.stances.swappable = {}
+		black.energy = 0
+
+		local started = resolver.begin_turn(state, "black")
+
+		assert.is_true(started.ok)
+		assert.are.equal(P.energy_max_default(), black.energy)
+		assert.are.equal(black.energy, black.resources.energy_current)
+	end)
+
 	it("plays card from hand, spends energy, and enqueues effect message", function()
 		local state = new_started_state(11)
 		local black = state.players.black
 		black.cards.hand.ids = { "card_point_tap" }
 		black.cards.discard.ids = {}
-		black.resources.energy_current = 1
+		black.energy = 1
 
 		local result = resolver.submit_action(state, {
 			actor = "black",
@@ -33,7 +47,8 @@ describe("T-050 resolver and core system correctness", function()
 
 		assert.is_true(result.ok)
 		assert.are.equal("MAIN_PHASE", state.phase)
-		assert.are.equal(0, black.resources.energy_current)
+		assert.are.equal(0, black.energy)
+		assert.are.equal(black.energy, black.resources.energy_current)
 		assert.are.same({}, black.cards.hand.ids)
 		assert.are.same({ "card_point_tap" }, black.cards.discard.ids)
 		assert.are.equal(P.starting_points() + P.card_points("card_point_tap"), black.score.points)
@@ -45,7 +60,7 @@ describe("T-050 resolver and core system correctness", function()
 		local black = state.players.black
 		black.cards.hand.ids = { "card_point_push" }
 		black.cards.discard.ids = {}
-		black.resources.energy_current = 1
+		black.energy = 1
 
 		local result = resolver.submit_action(state, {
 			actor = "black",
@@ -57,7 +72,7 @@ describe("T-050 resolver and core system correctness", function()
 		assert.are.equal("Insufficient energy", result.error)
 		assert.are.same({ "card_point_push" }, black.cards.hand.ids)
 		assert.are.same({}, black.cards.discard.ids)
-		assert.are.equal(1, black.resources.energy_current)
+		assert.are.equal(1, black.energy)
 		assert.are.equal(P.starting_points(), black.score.points)
 	end)
 
@@ -118,7 +133,7 @@ describe("T-050 resolver and core system correctness", function()
 		local black = state.players.black
 		black.resources.money = 0
 		black.cards.hand.ids = { "card_point_tap" }
-		black.resources.energy_current = 3
+		black.energy = 3
 
 		local play_result = resolver.submit_action(state, {
 			actor = "black",
@@ -147,7 +162,7 @@ describe("T-050 resolver and core system correctness", function()
 		local black = state.players.black
 		black.cards.hand.ids = { "card_attack_1" }
 		black.cards.discard.ids = {}
-		black.resources.energy_current = 3
+		black.energy = 3
 		state.board[4][4] = require("board").make_stone(config.STONE_BLACK, "stone_basic", 4)
 
 		local result = resolver.submit_action(state, {
@@ -172,7 +187,7 @@ describe("T-050 resolver and core system correctness", function()
 		local black = state.players.black
 		black.cards.hand.ids = { "card_money_discard_2", "card_point_tap", "card_small_mult", "card_big_mult" }
 		black.cards.discard.ids = {}
-		black.resources.energy_current = 3
+		black.energy = 3
 		black.resources.money = 0
 
 		local result = resolver.submit_action(state, {

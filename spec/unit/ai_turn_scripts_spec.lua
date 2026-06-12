@@ -28,13 +28,13 @@ describe("ai.turn.scripts", function()
 		g.phase = "MAIN_PHASE"
 		g.to_play = "white"
 		g.players.white.cards.hand.ids = { "card_point_tap" }
-		g.players.white.resources.energy_current = 0
+		g.players.white.energy = 0
 		local view = match_view.for_bot(g)
 		local list = scripts.enumerate(view, 12)
 		for i = 1, #list do
 			assert.is_not.equal("play_card:1", list[i].script_id)
 		end
-		g.players.white.resources.energy_current = 2
+		g.players.white.energy = 2
 		list = scripts.enumerate(view, 12)
 		local found_play = false
 		for i = 1, #list do
@@ -63,7 +63,7 @@ describe("ai.turn.scripts", function()
 		g.phase = "MAIN_PHASE"
 		g.to_play = "white"
 		g.players.white.cards.hand.ids = { "card_destroy_enemy_stone" }
-		g.players.white.resources.energy_current = 5
+		g.players.white.energy = 5
 		local view = match_view.for_bot(g)
 		local list = scripts.enumerate(view, 12)
 		local enemy_only = true

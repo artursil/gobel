@@ -46,7 +46,7 @@ function M.score(view, hand_index)
 	if not card_def then
 		return 0
 	end
-	if not energy.can_spend(view:player().resources, card_def.energy_cost or 0) then
+	if not energy.can_spend(view:player(), card_def.energy_cost or 0) then
 		return 0
 	end
 	local override = CARD_OVERRIDES[card_id]

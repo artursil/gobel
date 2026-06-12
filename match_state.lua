@@ -80,6 +80,8 @@ local function build_player(side, starter, rng_next_int)
 	local deck_seed_ids = build_deck_seed_ids(starter.deck, CARD_DECK_TARGET_SIZE, rng_next_int)
 	return {
 		side = side,
+		energy = ENERGY_MAX_DEFAULT,
+		energy_max = ENERGY_MAX_DEFAULT,
 		score = {
 			turn_bonus = 1,
 			territory = 0,
