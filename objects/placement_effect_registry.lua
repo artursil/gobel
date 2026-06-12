@@ -233,6 +233,8 @@ function M.round_effect_defs_from_resolved(resolved_effects)
 end
 
 --- Runs placement-commit factories at board apply (timers, blockade, bank init).
+--- When the stone has effects, sets ``stone_timer_skip_tick`` so survival timers do not
+--- decrement on the placement turn (self-destruct, delay-reward, and shared timer map).
 --- @param stone_def table
 --- @param state table
 --- @param owner string
@@ -253,15 +255,13 @@ function M.apply_placement_commit_effects(stone_def, state, owner, row, col, act
 				if effect_def.effect_name == "blockade_adjacent" then
 					resolved.apply(state, owner, row, col)
 					state._blockade_registered_this_action = true
-				elseif effect_def.effect_name == "delay_reward_survival" then
-					resolved.apply(state, owner, row, col)
-					state.stone_timer_skip_tick = { row = row, col = col }
 				else
 					resolved.apply(state, owner, row, col)
 				end
 			end
 		end
 	end
+	state.stone_timer_skip_tick = { row = row, col = col }
 end
 
 return M

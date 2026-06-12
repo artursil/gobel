@@ -114,6 +114,8 @@ function M.clear_removed_stones(state, old_board, new_board)
 	end
 end
 
+--- Pays out and clears delay-reward survival timers at zero. Self-destruct and other
+--- removal timers without ``stone_timer_meta`` are handled by ``board_cell_timers.expire``.
 --- @param state table
 --- @return nil
 function M.process_expirations(state)
@@ -130,17 +132,17 @@ function M.process_expirations(state)
 				local row = tonumber(row_s)
 				local col = tonumber(col_s)
 				local meta_entry = state.stone_timer_meta[key]
-				local cell = state.board[row] and state.board[row][col]
-				if meta_entry and not board.is_empty(cell) then
-					if meta_entry.kind == "delay_reward_survival" then
+				if meta_entry then
+					local cell = state.board[row] and state.board[row][col]
+					if not board.is_empty(cell) and meta_entry.kind == "delay_reward_survival" then
 						local payout = meta_entry.meta.payout or stone_params.points_delay_payout
 						local owner = meta_entry.owner
 						if owner and payout > 0 then
 							state.scores.points[owner] = (state.scores.points[owner] or 1) + payout
 						end
 					end
+					M.clear(state, row, col)
 				end
-				M.clear(state, row, col)
 			end
 		end
 	end
