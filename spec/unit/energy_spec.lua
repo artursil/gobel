@@ -18,6 +18,23 @@ local function new_player(current, max)
 	}
 end
 
+--- Player with stale resources.energy_current to guard against adopting buried resource energy.
+--- @param energy number
+--- @param resource_current number
+--- @param max number|nil
+--- @return table
+local function new_divergent_player(energy, resource_current, max)
+	max = max or P.energy_max_default()
+	return {
+		energy = energy,
+		energy_max = max,
+		resources = {
+			energy_current = resource_current,
+			energy_max = max,
+		},
+	}
+end
+
 describe("T-011 energy", function()
 	it("refreshes current energy to max", function()
 		local player = new_player(0)
@@ -88,5 +105,29 @@ describe("T-011 energy", function()
 		energy.refresh(player)
 		assert.are.equal(player.energy, player.resources.energy_current)
 		assert.are.equal(player.energy_max, player.resources.energy_max)
+	end)
+
+	it("uses player.energy when resources.energy_current diverges", function()
+		local max = P.energy_max_default()
+		local stale = max + 10
+
+		local can_spend_player = new_divergent_player(1, stale, max)
+		assert.is_true(energy.can_spend(can_spend_player, 1))
+		assert.is_false(energy.can_spend(can_spend_player, 2))
+
+		local spend_player = new_divergent_player(2, 0, max)
+		assert.is_true(energy.spend(spend_player, 1))
+		assert.are.equal(1, spend_player.energy)
+		assert.are.equal(1, spend_player.resources.energy_current)
+
+		local gain_player = new_divergent_player(1, stale, max)
+		energy.gain(gain_player, 1)
+		assert.are.equal(2, gain_player.energy)
+		assert.are.equal(2, gain_player.resources.energy_current)
+
+		local refresh_player = new_divergent_player(0, stale, max)
+		energy.refresh(refresh_player)
+		assert.are.equal(max, refresh_player.energy)
+		assert.are.equal(max, refresh_player.resources.energy_current)
 	end)
 end)
