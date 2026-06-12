@@ -33,7 +33,7 @@ local visual_scoring_debug_after_each = test_helper.visual_scoring_debug_after_e
 local assert_stone_ids_registered_in_content = test_helper.assert_stone_ids_registered_in_content
 local assert_player_points_delta = test_helper.assert_player_points_delta
 local assert_player_points_unchanged = test_helper.assert_player_points_unchanged
-local assert_legal_player_move_with_stone = test_helper.assert_legal_player_move_with_stone
+local assert_illegal_player_move_with_stone = test_helper.assert_illegal_player_move_with_stone
 
 local S = P.stone
 
@@ -342,7 +342,7 @@ describe("line_stone (visual ASCII)", function()
 			})
 			local snap = player_score_snapshot(g, "black")
 
-			assert_legal_player_move_with_stone(g, "black", "line_stone", 4, 4, "occupied rejects line_stone")
+			assert_illegal_player_move_with_stone(g, "black", "line_stone", 5, 5, "occupied rejects line_stone")
 			assert_player_points_unchanged(g, "black", snap, "no payout on illegal line placement")
 		end)
 	end)
