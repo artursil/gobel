@@ -143,12 +143,11 @@ function M.is_cell_blocked_for_actor(state, row, col, actor, stone_id)
 	end
 	M.ensure_state(state)
 	local key = cell_key(row, col)
-	local remaining = state.blocked_cells[key]
-	if not remaining or remaining <= 0 then
+	local entry = state.capture_cooldown_cells[key]
+	if not entry or entry.remaining <= 0 then
 		return false
 	end
-	local entry = state.capture_cooldown_cells[key]
-	if entry and entry.captor == actor then
+	if entry.captor == actor then
 		return false
 	end
 	return true
@@ -161,8 +160,8 @@ end
 function M.is_cell_on_capture_cooldown(state, row, col)
 	M.ensure_state(state)
 	local key = cell_key(row, col)
-	local remaining = state.blocked_cells[key]
-	return remaining ~= nil and remaining > 0
+	local entry = state.capture_cooldown_cells[key]
+	return entry ~= nil and entry.remaining > 0
 end
 
 --- @param state table

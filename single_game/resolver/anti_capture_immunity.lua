@@ -1,4 +1,4 @@
---- Temporary capture immunity for ``anti_capture_stone`` placements.
+--- Capture immunity queries for ``anti_capture_stone`` (``cell.immunity_remaining``).
 --- @module resolver.anti_capture_immunity
 
 local board = require("board")
@@ -8,96 +8,7 @@ local stone_params = require("objects.parameters.stones")
 
 local M = {}
 
-local data_by_state = setmetatable({}, { __mode = "k" })
-
---- @param row integer
---- @param col integer
---- @return string
-local function cell_key(row, col)
-	return row .. ":" .. col
-end
-
---- @param key string
---- @return boolean
-local function is_cell_timer_key(key)
-	return type(key) == "string" and key:find(":", 1, true) ~= nil
-end
-
---- @param state table
---- @return table
-local function data_for(state)
-	local data = data_by_state[state]
-	if not data then
-		data = {}
-		data_by_state[state] = data
-	end
-	return data
-end
-
---- @param state table
---- @return table
-function M.ensure_map(state)
-	if state.stone_immunity_remaining and getmetatable(state.stone_immunity_remaining) then
-		return state.stone_immunity_remaining
-	end
-	local data = data_for(state)
-	if state.stone_immunity_remaining then
-		for key, remaining in pairs(state.stone_immunity_remaining) do
-			if is_cell_timer_key(key) then
-				data[key] = remaining
-			end
-		end
-	end
-	local map = {}
-	setmetatable(map, {
-		__index = function(_, key)
-			if not is_cell_timer_key(key) then
-				return nil
-			end
-			M.ensure_materialized_from_board(state)
-			return data[key]
-		end,
-		__newindex = function(_, key, value)
-			data[key] = value
-		end,
-	})
-	state.stone_immunity_remaining = map
-	return map
-end
-
---- @param state table
---- @param board_snapshot table
---- @param row integer
---- @param col integer
---- @param duration integer
---- @return nil
-function M.grant_group_immunity(state, board_snapshot, row, col, duration)
-	M.ensure_map(state)
-	local data = data_for(state)
-	local group = rules.collect_group(board_snapshot, row, col)
-	for i = 1, #group do
-		local r, c = group[i][1], group[i][2]
-		data[cell_key(r, c)] = duration
-	end
-end
-
---- @param state table
---- @param board_snapshot table|nil
---- @param row integer
---- @param col integer
---- @return nil
-function M.grant_at_placement(state, board_snapshot, row, col)
-	state._anti_capture_board_snapshot_seeded = true
-	M.grant_group_immunity(
-		state,
-		board_snapshot or state.board,
-		row,
-		col,
-		stone_params.anti_capture_duration_rounds
-	)
-end
-
---- Materializes immunity for ``set_board`` layouts that already contain ``anti_capture_stone``.
+--- Materializes ``cell.immunity_remaining`` for ``set_board`` layouts with ``anti_capture_stone``.
 --- @param state table
 --- @return nil
 function M.ensure_materialized_from_board(state)
@@ -115,12 +26,21 @@ function M.ensure_materialized_from_board(state)
 		end
 	end
 	if #triggers == 0 then
+		state._anti_capture_board_snapshot_seeded = true
 		return
 	end
 	state._anti_capture_board_snapshot_seeded = true
+	local duration = stone_params.anti_capture_duration_rounds
 	for i = 1, #triggers do
 		local r, c = triggers[i][1], triggers[i][2]
-		M.grant_group_immunity(state, state.board, r, c, stone_params.anti_capture_duration_rounds)
+		local group = rules.collect_group(state.board, r, c)
+		for j = 1, #group do
+			local gr, gc = group[j][1], group[j][2]
+			local cell = state.board[gr][gc]
+			if cell and not board.is_empty(cell) and cell.immunity_remaining == nil then
+				cell.immunity_remaining = duration
+			end
+		end
 	end
 end
 
@@ -130,29 +50,11 @@ end
 --- @return integer
 function M.remaining(state, row, col)
 	M.ensure_materialized_from_board(state)
-	local data = data_for(state)
-	return data[cell_key(row, col)] or 0
-end
-
---- @param state table
---- @return nil
-function M.tick(state)
-	M.ensure_materialized_from_board(state)
-	local data = data_for(state)
-	local expired = {}
-	for key, remaining in pairs(data) do
-		if is_cell_timer_key(key) and remaining > 0 then
-			local next_remaining = remaining - 1
-			if next_remaining <= 0 then
-				expired[#expired + 1] = key
-			else
-				data[key] = next_remaining
-			end
-		end
+	local cell = state.board[row] and state.board[row][col]
+	if not cell or board.is_empty(cell) then
+		return 0
 	end
-	for i = 1, #expired do
-		data[expired[i]] = nil
-	end
+	return cell.immunity_remaining or 0
 end
 
 --- @param state table

@@ -15,6 +15,8 @@ local stone_params = require("objects.parameters.stones")
 local defence_solidity_network = require("objects.defence_solidity_network")
 local blocked_cells = require("single_game.resolver.blocked_cells")
 local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
+local effect_placement_lifecycle = require("single_game.resolver.effect_placement_lifecycle")
+local effect_tick_lifecycle = require("single_game.resolver.effect_tick_lifecycle")
 local stone_timers = require("single_game.resolver.stone_timers")
 local capture_stone_resolver = require("single_game.resolver.capture_stone")
 local kamikaze_stone_resolver = require("single_game.resolver.kamikaze_stone")
@@ -456,27 +458,6 @@ local function is_valid_resolved_stone_effect(resolved)
 	return false
 end
 
---- @param state table
---- @param stone_def table
---- @param board_snapshot table
---- @param row integer
---- @param col integer
---- @return nil
-local function apply_placement_state_effects(state, stone_def, board_snapshot, row, col)
-	if not stone_def.effects then
-		return
-	end
-	for i = 1, #stone_def.effects do
-		local effect = stone_def.effects[i]
-		if effect.effect_name == "anti_capture_immunity" then
-			local resolved = Effects.stones.resolve(effect)
-			if resolved and resolved.apply then
-				resolved.apply(state, nil, row, col, board_snapshot)
-			end
-		end
-	end
-end
-
 --- @param stone_def table
 --- @param state table
 --- @param actor string
@@ -675,34 +656,11 @@ local function run_event_queue(state, event_queue)
 			if event.row and event.col then
 				territory_control_rounds.clear_cell(state, event.row, event.col)
 				stone_removal.mark_placed_via_play(state, event.row, event.col)
-				local stone_def = content.get_stone(event.stone_id)
-				if stone_def and stone_def.effects then
-					local placement_owner = owner_for_side(event.actor)
-					for i = 1, #stone_def.effects do
-						local placement_effect = stone_def.effects[i]
-						if placement_effect.effect_name == "delay_reward_survival" then
-							stone_timers.register_delay_reward(
-								state,
-								event.row,
-								event.col,
-								placement_owner,
-								placement_effect.rounds,
-								placement_effect.payout
-							)
-						end
-					end
-					state.stone_timer_skip_tick = { row = event.row, col = event.col }
-				end
 			end
 			if event.row and event.col and event.stone_id then
 				local stone_def = content.get_stone(event.stone_id)
-				if stone_def and stone_def.effects then
-					for ei = 1, #stone_def.effects do
-						if stone_def.effects[ei].effect_name == "blockade_adjacent" then
-							blocked_cells.register_adjacent_from_blockade(state, event.row, event.col, event.actor)
-							state._blockade_registered_this_action = true
-						end
-					end
+				if stone_def then
+					effect_placement_lifecycle.run(state, stone_def, event.row, event.col, event.actor, event.board)
 				end
 			end
 			state.last_played_stone = event.stone_id
@@ -858,8 +816,11 @@ local function begin_next_turn(state)
 			target_index = drawn[i].target_index,
 		}
 	end
-	stone_timers.tick_on_turn_advance(state, state.stone_timer_skip_tick ~= nil)
-	state.stone_timer_skip_tick = nil
+	local skip_cell = state._effect_tick_skip_cell
+	if not skip_cell then
+		effect_tick_lifecycle.tick(state, { tick_blockade = false })
+	end
+	state._effect_tick_skip_cell = nil
 	state.turn_number = state.turn_number + 1
 	state.round_number = match_state.round_number_from_turn(state.turn_number)
 	state.to_play = opponent_color(state.to_play)
@@ -1008,7 +969,6 @@ local function compile_place_stone_events(state, action)
 		end
 		return nil, "Illegal move: rule violation"
 	end
-	apply_placement_state_effects(state, stone_def, new_board, row, col)
 	if capture_stone_resolver.stone_def_has_effect(stone_def) then
 		local extra_captures
 		new_board, extra_captures = capture_stone_resolver.apply_extra_capture(
@@ -1427,6 +1387,12 @@ local function wire_visual_test_capture_stone_at()
 		g.territory, g.territory_decision_sources, g.territory_value =
 			spec_helper.territory_map(g.board, g.territory_mode or "regional")
 		effects_helpers.set_stone_stored_value(g, row, col, 0)
+		local cell = g.board[row][col]
+		if cell and not board.is_empty(cell) then
+			cell.survival_rounds_remaining = nil
+			cell.delay_payout = nil
+			cell.immunity_remaining = nil
+		end
 		local key = row .. ":" .. col
 		if g.board_cell_timers then
 			g.board_cell_timers[key] = nil
@@ -1436,5 +1402,26 @@ local function wire_visual_test_capture_stone_at()
 end
 
 wire_visual_test_capture_stone_at()
+
+--- Seeds blockade and anti-capture runtime from ASCII boards in visual specs.
+--- @return nil
+local function wire_visual_test_set_board()
+	local ok, test_helper = pcall(require, "spec.test_helper")
+	if not ok or not test_helper or test_helper._gobel_set_board_wired then
+		return
+	end
+	local spec_helper = require("spec.spec_helper")
+	local anti_capture = require("single_game.resolver.anti_capture_immunity")
+	local blocked_cells_mod = require("single_game.resolver.blocked_cells")
+	local original_set_board = test_helper.set_board
+	function test_helper.set_board(g, rows)
+		original_set_board(g, rows)
+		anti_capture.ensure_materialized_from_board(g)
+		blocked_cells_mod.bootstrap_from_board_if_needed(g)
+	end
+	test_helper._gobel_set_board_wired = true
+end
+
+wire_visual_test_set_board()
 
 return M
