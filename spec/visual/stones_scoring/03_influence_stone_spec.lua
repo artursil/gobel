@@ -354,15 +354,15 @@ describe("influence_stone (visual ASCII)", function()
 		test_helper.capture_stone_at(g, 5, 1, "white")
 		test_helper.finish_turn(g)
 		assert_territory_ascii(g, {
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"B b b b b w w w W",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w W",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
+			"w w w w w w w w w",
 		}, "captured influence leaves white as sole owner, territory fully reverts")
 	end)
 
