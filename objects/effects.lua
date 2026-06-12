@@ -10,7 +10,6 @@ local queries = require("single_game.resolver.state_queries")
 local helpers = require("objects.effects_helpers")
 local animations = require("objects.animations")
 local shape_patterns = require("game.patterns.shape_patterns")
-local shared_stones_effects = require("objects.definitions.shared_stones_effects")
 local stone_params = require("objects.parameters.stones")
 local stance_params = require("objects.parameters.stances")
 local card_params = require("objects.parameters.cards")
@@ -1057,7 +1056,7 @@ local function pattern_apply_keys(state)
 	return state.run_state.pattern_apply_keys
 end
 
---- Match-lifetime dedupe for pattern and wall placement bonuses (not cleared each resolve).
+--- Match-lifetime dedupe for pattern placement bonuses (not cleared each resolve).
 --- @param state table
 --- @param key string
 --- @return boolean already_seen
@@ -1802,12 +1801,6 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active
 	if stone_def and stone_def.effects then
 		for i = 1, #stone_def.effects do
 			effect_defs[#effect_defs + 1] = stone_def.effects[i]
-		end
-	end
-	for i = 1, #shared_stones_effects.all_stone_board_effects do
-		local shared_def = shared_stones_effects.all_stone_board_effects[i]
-		if shared_def.effect_name ~= "pattern_x_mult" and shared_def.effect_name ~= "pattern_plus_mult" then
-			effect_defs[#effect_defs + 1] = shared_def
 		end
 	end
 
