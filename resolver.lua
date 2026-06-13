@@ -18,7 +18,7 @@ local anti_capture_immunity = require("single_game.resolver.anti_capture_immunit
 local effect_placement_lifecycle = require("single_game.resolver.effect_placement_lifecycle")
 local effect_tick_lifecycle = require("single_game.resolver.effect_tick_lifecycle")
 local stone_timers = require("single_game.resolver.stone_timers")
-local stone_removal_effects = require("single_game.resolver.stone_removal_effects")
+local placement_registry = require("objects.placement_effect_registry")
 local effects_helpers = require("objects.effects_helpers")
 local placement_lifecycle = require("single_game.resolver.placement_lifecycle")
 local placement_effects = require("single_game.resolver.placement_effects")
@@ -407,7 +407,6 @@ end
 
 local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
 local territory_resolver = require("single_game.resolver.territory")
-local territory_stone_payout = require("single_game.resolver.territory_stone_payout")
 local stone_removal = require("single_game.resolver.stone_removal")
 
 --- @param resolved table|nil
@@ -504,12 +503,10 @@ local function run_event_queue(state, event_queue)
 		if event.kind == "BOARD_APPLY" then
 			local old_board = state.board
 			stone_removal.apply_board_replacement_diff(state, old_board, event.board, { capturer = event.actor })
-			stone_removal_effects.apply_for_board_replacement(state, old_board, event.board, event.actor)
 			stone_removal.preserve_cell_metadata(old_board, event.board)
 			stone_timers.clear_removed_stones(state, old_board, event.board)
 			if event.row and event.col and event.stone_id then
 				territory_resolver.capture_placement_snapshot_if_needed(state, event.row, event.col, event.stone_id)
-				territory_stone_payout.record_placement_snapshot(state, event.row, event.col, event.stone_id)
 			end
 			state.board = event.board
 			stone_removal.install_board_hooks(state)
@@ -524,6 +521,15 @@ local function run_event_queue(state, event_queue)
 				local stone_def = content.get_stone(event.stone_id)
 				if stone_def then
 					effect_placement_lifecycle.run(state, stone_def, event.row, event.col, event.actor, event.board)
+					placement_registry.apply_placement_commit_effects(
+						stone_def,
+						state,
+						owner_for_side(event.actor),
+						event.row,
+						event.col,
+						event.actor,
+						Effects.stones.resolve
+					)
 				end
 			end
 			state.last_played_stone = event.stone_id
@@ -867,8 +873,7 @@ local function compile_place_stone_events(state, action)
 		)
 		captures = captures + extra_captures
 	end
-	local kamikaze_sacrifice_applies = stone_id == "kamikaze_stone"
-		and rules.kamikaze_sacrifice_triggers(kamikaze_sacrifice_ctx)
+	local kamikaze_sacrifice_applies = has_kamikaze_sacrifice_effect(pre_capture_resolved)
 	local resolved_effects = pre_capture_resolved
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
@@ -880,6 +885,14 @@ local function compile_place_stone_events(state, action)
 	if kamikaze_sacrifice_applies then
 		new_board[row][col] = config.STONE_NONE
 	end
+	placement_registry.apply_placement_snapshot_effects(
+		stone_def,
+		state,
+		owner_for_side(action.actor),
+		row,
+		col,
+		Effects.stones.resolve
+	)
 	local placement_round = placement_effects.merge_round_defs(
 		stone_def,
 		resolved_type_registry.round_effect_defs_from_resolved(resolved_effects)
@@ -1250,7 +1263,6 @@ function M.apply_board_stone_removal(state, row, col, captor_side)
 		return
 	end
 	stone_removal.on_removed(state, row, col, cell, { capturer = captor_side })
-	stone_removal_effects.on_stone_removed(state, row, col, cell, captor_side)
 end
 
 --- Visual specs remove stones via ``capture_stone_at``; wire removal hooks when test helper is loaded.
@@ -1304,5 +1316,11 @@ local function wire_visual_test_set_board()
 end
 
 wire_visual_test_set_board()
+
+--- Sorted immediate-placement effect names (shared with AI placement scoring).
+--- @return string[]
+function M.immediate_placement_effect_name_keys()
+	return placement_lifecycle.immediate_placement_effect_name_keys()
+end
 
 return M

@@ -71,4 +71,10 @@ function M.round_effect_defs(resolved_effects, stone_def)
 	return round
 end
 
+--- Re-export for registry parity tests.
+--- @return string[]
+function M.immediate_placement_effect_name_keys()
+	return placement_lifecycle.immediate_placement_effect_name_keys()
+end
+
 return M

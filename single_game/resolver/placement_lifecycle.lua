@@ -69,11 +69,9 @@ function M.resolve_from_stone_def(stone_def, ctx)
 	for i = 1, #stone_def.effects do
 		local effect_def = stone_def.effects[i]
 		if effect_def.effect_name == "kamikaze_sacrifice" then
-			if ctx.kamikaze_sacrifice_ctx and rules.kamikaze_sacrifice_triggers(ctx.kamikaze_sacrifice_ctx) then
-				local resolved = resolve_placement_effect(effect_def, ctx)
-				if resolved then
-					out[#out + 1] = resolved
-				end
+			local resolved = resolve_placement_effect(effect_def, ctx)
+			if resolved then
+				out[#out + 1] = resolved
 			end
 		elseif M.is_placement_effect(effect_def) then
 			local resolved = resolve_placement_effect(effect_def, ctx)
@@ -117,6 +115,18 @@ end
 --- @return boolean
 function M.is_valid_resolved(resolved)
 	return resolved_type_registry.is_valid_resolved(resolved)
+end
+
+--- Sorted keys for registry parity checks (resolver ↔ AI).
+--- @return string[]
+function M.immediate_placement_effect_name_keys()
+	local keys = {}
+	for name in pairs(PLACEMENT_RESOLVE_EFFECT_NAMES) do
+		keys[#keys + 1] = name
+	end
+	keys[#keys + 1] = "kamikaze_sacrifice"
+	table.sort(keys)
+	return keys
 end
 
 return M

@@ -17,6 +17,7 @@ local VALID_MACROS = {
 	end_of_turn = true,
 	on_removed = true,
 	game_end = true,
+	on_removed = true,
 }
 
 local VALID_SUBS = {

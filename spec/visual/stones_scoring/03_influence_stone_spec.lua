@@ -351,7 +351,7 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		test_helper.capture_stone_at(g, 5, 1, "white")
+		test_helper.capture_stone_at(g, 5, 1, "black")
 		test_helper.finish_turn(g)
 		assert_territory_ascii(g, {
 			"w w w w w w w w w",

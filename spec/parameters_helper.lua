@@ -166,6 +166,11 @@ function M.capture_bonus_points(capture_count)
 	return stone_params.capture_bonus_points_per_stone * capture_count
 end
 
+--- @return integer
+function M.kamikaze_points_bonus()
+	return stone_params.kamikaze_points_bonus
+end
+
 --- @return string
 function M.wall_points_float_label()
 	return string.format("+%d", stone_params.wall_points_per_block)

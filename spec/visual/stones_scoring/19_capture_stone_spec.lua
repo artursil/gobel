@@ -435,7 +435,7 @@ describe("capture_stone (visual ASCII)", function()
 			assert_board_cell_empty(g, 5, 5, "kamikaze self-removes after payout")
 		end)
 
-		it("after cooldown kamikaze has no sacrifice effect when cell has liberties", function()
+		it("after cooldown pays kamikaze_points_bonus and self-removes on a cell with liberties", function()
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
 				". . . . . . . . .",
@@ -478,8 +478,8 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_unchanged(g, "white", snap, "no kamikaze bonus when regular placement applies")
-			test_helper.assert_board_stone_present(g, 5, 5, "kamikaze stays on board without sacrifice effect")
+			assert_player_points_delta(g, "white", snap, S.kamikaze_points_bonus, "kamikaze pays configured bonus after cooldown even when cell has liberties")
+			assert_board_cell_empty(g, 5, 5, "kamikaze self-removes after payout")
 		end)
 	end)
 

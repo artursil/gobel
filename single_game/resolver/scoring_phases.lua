@@ -39,6 +39,7 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	line_group_points = true,
 	final_blow_placement = true,
 	retrigger_prior_stone_effect = true,
+	escalating_points_bank_init = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {

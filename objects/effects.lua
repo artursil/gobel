@@ -1767,7 +1767,86 @@ function M.enclosure_territory_multiply(row, col, effect_def)
 	}
 end
 
-local territory_stone_payout = require("single_game.resolver.territory_stone_payout")
+--- @return table
+local function territory_module()
+	return require("single_game.resolver.territory")
+end
+
+--- @param row integer
+--- @param col integer
+--- @return string
+local function territory_stone_cell_key(row, col)
+	return row .. ":" .. col
+end
+
+--- @param territory_count integer
+--- @param divisor integer
+--- @param cap integer
+--- @return integer
+local function territory_multiplier_payout_for_count(territory_count, divisor, cap)
+	if divisor <= 0 or territory_count <= 0 then
+		return 0
+	end
+	return math.min(cap, math.floor(territory_count / divisor))
+end
+
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return "B"|"W"|nil owner
+--- @return integer recipient_territory
+local function territory_multiplier_recipient_and_total(state, row, col)
+	local territory = territory_module()
+	local key = territory_stone_cell_key(row, col)
+	local snap = state.territory_stone_snapshots and state.territory_stone_snapshots[key]
+	if snap and snap.placed_turn == (state.turn_number or 1) then
+		if snap.owner == config.OWNER_BLACK then
+			return snap.owner, snap.black_total
+		end
+		if snap.owner == config.OWNER_WHITE then
+			return snap.owner, snap.white_total
+		end
+		return nil, 0
+	end
+	local owner = territory.hypothetical_empty_owner(state, row, col)
+	if not owner then
+		return nil, 0
+	end
+	local total = territory.total_territory_for_owner(state, owner)
+	return owner, total
+end
+
+--- Records pre-placement territory ownership and totals for territory-to-multiplier payout on the placement turn.
+--- @param effect table
+--- @return table
+function M.territory_to_multiplier_snapshot(effect)
+	return {
+		type = "TERRITORY_TO_MULTIPLIER_SNAPSHOT",
+		phase = effect.sub or "mult",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "mult",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, _owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			local territory = territory_module()
+			local territory_grid = state.territory
+			if not territory_grid then
+				return
+			end
+			local owner = territory.owner_at_territory_cell(territory_grid, row, col)
+			state.territory_stone_snapshots = state.territory_stone_snapshots or {}
+			state.territory_stone_snapshots[territory_stone_cell_key(row, col)] = {
+				owner = owner,
+				black_total = territory.total_territory_for_owner(state, config.OWNER_BLACK),
+				white_total = territory.total_territory_for_owner(state, config.OWNER_WHITE),
+				placed_turn = state.turn_number or 1,
+			}
+		end,
+	}
+end
 
 --- End-of-turn plus_mult from territory controlled by the owner of the stone cell.
 --- @param effect table
@@ -1784,40 +1863,53 @@ function M.territory_to_multiplier(effect)
 			if row == nil or col == nil then
 				return
 			end
-			territory_stone_payout.apply_multiplier_payout(state, row, col)
+			local recipient, recipient_territory = territory_multiplier_recipient_and_total(state, row, col)
+			if not recipient then
+				return
+			end
+			local payout = territory_multiplier_payout_for_count(
+				recipient_territory,
+				stone_params.t2m_divisor,
+				stone_params.t2m_cap
+			)
+			if payout <= 0 then
+				return
+			end
+			state.scores.plus_mult[recipient] = state.scores.plus_mult[recipient] + payout
+		end,
+	}
+end
+
+--- Zeros the per-cell bank when an escalating points stone is first placed.
+--- @param effect table
+--- @return table
+function M.escalating_points_bank_init(effect)
+	return {
+		type = "ESCALATING_POINTS_BANK_INIT",
+		phase = effect.sub or "points",
+		macro = effect.macro or "playing_stones",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, _owner, row, col)
+			if row == nil or col == nil then
+				return
+			end
+			helpers.set_stone_stored_value(state, row, col, 0)
 		end,
 	}
 end
 
 --- Each ``end_of_turn``, add ``eps_round_points`` to this cell bank and owner points.
---- When ``macro`` is ``playing_stones``, initializes the per-cell bank to zero on placement.
 --- @param effect table
 --- @return table
 function M.escalating_points_bank(effect)
 	local round_points = effect.value or stone_params.eps_round_points
-	local macro = effect.macro or "end_of_turn"
-	local sub = effect.sub or "points"
-	if macro == "playing_stones" then
-		return {
-			type = "ESCALATING_POINTS_INIT",
-			phase = sub,
-			macro = macro,
-			sub = sub,
-			priority = effect.priority or stone_params.default_effect_priority,
-			conditions = effect.conditions,
-			apply = function(state)
-				local row, col = placement_coords(state)
-				if row and col then
-					helpers.set_stone_stored_value(state, row, col, 0)
-				end
-			end,
-		}
-	end
 	return {
 		type = "ESCALATING_POINTS_BANK",
-		phase = sub,
-		macro = macro,
-		sub = sub,
+		phase = effect.sub or "points",
+		macro = effect.macro or "end_of_turn",
+		sub = effect.sub or "points",
 		value = round_points,
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
@@ -1840,6 +1932,38 @@ function M.escalating_points_bank(effect)
 			local next_bank = bank + round_points
 			helpers.set_stone_stored_value(state, row, col, next_bank)
 			state.scores.points[owner] = state.scores.points[owner] + round_points
+		end,
+	}
+end
+
+--- On removal: transfer banked points to an enemy captor with configured multiplier; clears the cell bank.
+--- @param effect table
+--- @return table
+function M.escalating_points_capture_transfer(effect)
+	return {
+		type = "ESCALATING_POINTS_CAPTURE_TRANSFER",
+		phase = effect.sub or "points",
+		macro = effect.macro or "on_removed",
+		sub = effect.sub or "points",
+		priority = effect.priority or stone_params.default_effect_priority,
+		conditions = effect.conditions,
+		apply = function(state, row, col, cell, opts)
+			if not cell or cell.kind ~= "escalating_points_stone" then
+				return
+			end
+			local captor_side = opts and opts.capturer or nil
+			local bank = helpers.stone_stored_value(state, row, col) or 0
+			local stone_side = cell.color == config.STONE_WHITE and "white" or "black"
+			state.scores = state.scores or {}
+			state.scores.points = state.scores.points or { B = 1, W = 1 }
+			if captor_side and stone_side ~= captor_side and bank > 0 then
+				local captor_owner = captor_side == "white" and config.OWNER_WHITE or config.OWNER_BLACK
+				local transfer = stone_params.eps_capture_multiplier * bank
+				state.scores.points[captor_owner] = state.scores.points[captor_owner] + transfer
+				local captor_player = require("match_state").player_for_color(state, captor_side)
+				captor_player.score.points = (captor_player.score.points or 1) + transfer
+			end
+			helpers.set_stone_stored_value(state, row, col, 0)
 		end,
 	}
 end
