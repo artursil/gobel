@@ -89,6 +89,18 @@ local function round_def_money_field_enclosure_payout(resolved)
 	}
 end
 
+--- @param resolved table
+--- @return table|nil
+local function round_def_copper_threshold_plus_mult(resolved)
+	local def = resolved._effect_def or {}
+	return {
+		effect_name = "copper_threshold_plus_mult",
+		macro = def.macro or "playing_stones",
+		sub = def.sub or "mult",
+		priority = resolved.priority or def.priority or 10,
+	}
+end
+
 M.ROUND_DEF_BY_TYPE = {
 	ADD_POINTS = round_def_add_points,
 	ADD_MULT = round_def_add_mult,
@@ -97,6 +109,7 @@ M.ROUND_DEF_BY_TYPE = {
 	KAMIKAZE_SACRIFICE = round_def_kamikaze_sacrifice,
 	SELF_DESTRUCT_TIMED = round_def_self_destruct_timed,
 	MONEY_FIELD_ENCLOSURE_PAYOUT = round_def_money_field_enclosure_payout,
+	COPPER_THRESHOLD_PLUS_MULT = round_def_copper_threshold_plus_mult,
 }
 
 --- @param resolved table|nil
@@ -141,6 +154,9 @@ function M.is_valid_resolved(resolved)
 		return type(resolved.value) == "table" and type(resolved.value.amount) == "number"
 	end
 	if resolved.type == "MONEY_FIELD_ENCLOSURE_PAYOUT" then
+		return true
+	end
+	if resolved.type == "COPPER_THRESHOLD_PLUS_MULT" then
 		return true
 	end
 	if resolved.type == "ANTI_CAPTURE_IMMUNITY" then

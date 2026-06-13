@@ -15,6 +15,7 @@ local PLACEMENT_RESOLVE_EFFECT_NAMES = {
 	add_money = true,
 	mult_control_streak = true,
 	money_field_enclosure_payout = true,
+	copper_threshold_plus_mult = true,
 	self_destruct_timed = true,
 }
 

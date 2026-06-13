@@ -516,6 +516,7 @@ local function run_event_queue(state, event_queue)
 			board_reconcile.run(state)
 			state.ko_ban = event.ko_ban
 			if event.row and event.col then
+				territory_control_rounds.record_placement_streak_snapshot(state, event.row, event.col)
 				territory_control_rounds.clear_cell(state, event.row, event.col)
 				stone_removal.mark_placed_via_play(state, event.row, event.col)
 			end

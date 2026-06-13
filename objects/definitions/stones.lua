@@ -318,6 +318,38 @@ M.money_field_stone = {
 	},
 }
 
+M.copper_stone = {
+	id = "copper_stone",
+	type = "stone",
+	name = "Copper Stone",
+	description = "Low baseline points; when owner already has enough coppers on board, new placements add threshold plus mult.",
+	rarity = "common",
+	probability = 0.8,
+	cost = 1,
+	tags = { "copper" },
+	depiction = "Copper disc mark",
+	graphic = { draw_key = "solid" },
+	visual = {
+		color = { 0.72, 0.52, 0.28 },
+		sprite = "sprites/stones/basic.png",
+	},
+	effects = {
+		{
+			effect_name = "add_points",
+			macro = "playing_stones",
+			sub = "points",
+			value = P.copper_base_points,
+			priority = P.default_effect_priority,
+		},
+		{
+			effect_name = "copper_threshold_plus_mult",
+			macro = "playing_stones",
+			sub = "mult",
+			priority = P.default_effect_priority,
+		},
+	},
+}
+
 M.anti_capture_stone = {
 	id = "anti_capture_stone",
 	type = "stone",
@@ -938,7 +970,6 @@ local UNIMPLEMENTED_STONE_IDS = {
 local TO_BE_IMPL_LATER_STONE_IDS = {
 	"unlimited_upgrades_stone",
 	"final_blow_stone",
-	"copper_stone",
 	"retrigger_stone",
 }
 
