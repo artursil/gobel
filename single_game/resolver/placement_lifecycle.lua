@@ -17,6 +17,8 @@ local PLACEMENT_RESOLVE_EFFECT_NAMES = {
 	money_field_enclosure_payout = true,
 	copper_threshold_plus_mult = true,
 	self_destruct_timed = true,
+	final_blow_placement = true,
+	retrigger_prior_stone_effect = true,
 }
 
 --- @param effect_def table
@@ -75,6 +77,11 @@ function M.resolve_from_stone_def(stone_def, ctx)
 			end
 		elseif M.is_placement_effect(effect_def) then
 			local resolved = resolve_placement_effect(effect_def, ctx)
+			if resolved then
+				out[#out + 1] = resolved
+			end
+		elseif effect_def.effect_name == "escalating_points_bank" and (effect_def.macro or "playing_stones") == "playing_stones" then
+			local resolved = effect_registry.stones.resolve(effect_def)
 			if resolved then
 				out[#out + 1] = resolved
 			end

@@ -37,6 +37,8 @@ M.PLACEMENT_ONLY_EFFECT_NAMES = {
 	wall_stone = true,
 	diagonal_group_points = true,
 	line_group_points = true,
+	final_blow_placement = true,
+	retrigger_prior_stone_effect = true,
 }
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {

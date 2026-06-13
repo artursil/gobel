@@ -263,7 +263,6 @@ function M.resolve(state, opts)
 			stance.created_this_turn = nil
 		end
 	elseif macro == "playing_stones" then
-		state.round_stone_effects = {}
 		territory_control_rounds.clear_placement_streak_snapshot(state)
 	end
 	if macro == "end_of_turn" then

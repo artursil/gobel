@@ -61,6 +61,23 @@ function M.copy_stone_def(def)
 	return out
 end
 
+--- Scales base per-level stone effects for unlimited_upgrades_stone (no level cap).
+--- @param def table
+--- @param level integer
+--- @return table
+function M.resolve_unlimited_upgrades_at_level(def, level)
+	local resolved = M.copy_stone_def(def)
+	local clamped = math.max(1, level)
+	for i = 1, #resolved.effects do
+		local row = resolved.effects[i]
+		if type(row.value) == "number" then
+			row.value = row.value * clamped
+		end
+	end
+	resolved._level = clamped
+	return resolved
+end
+
 --- Cumulative merge: applies upgrade_levels[2]..upgrade_levels[level] in order.
 --- Missing tier entries contribute no deltas; levels above max_level are clamped by caller.
 --- @param def table

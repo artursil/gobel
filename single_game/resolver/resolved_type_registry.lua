@@ -101,6 +101,33 @@ local function round_def_copper_threshold_plus_mult(resolved)
 	}
 end
 
+local function round_def_final_blow_placement(resolved)
+	return {
+		effect_name = "final_blow_placement",
+		macro = "playing_stones",
+		sub = "points",
+		priority = resolved.priority or 10,
+	}
+end
+
+local function round_def_retrigger_prior_stone_effect(resolved)
+	return {
+		effect_name = "retrigger_prior_stone_effect",
+		macro = "playing_stones",
+		sub = "points",
+		priority = resolved.priority or 10,
+	}
+end
+
+local function round_def_escalating_points_init(resolved)
+	return {
+		effect_name = "escalating_points_bank",
+		macro = "playing_stones",
+		sub = "points",
+		priority = resolved.priority or 10,
+	}
+end
+
 M.ROUND_DEF_BY_TYPE = {
 	ADD_POINTS = round_def_add_points,
 	ADD_MULT = round_def_add_mult,
@@ -110,6 +137,9 @@ M.ROUND_DEF_BY_TYPE = {
 	SELF_DESTRUCT_TIMED = round_def_self_destruct_timed,
 	MONEY_FIELD_ENCLOSURE_PAYOUT = round_def_money_field_enclosure_payout,
 	COPPER_THRESHOLD_PLUS_MULT = round_def_copper_threshold_plus_mult,
+	FINAL_BLOW_PLACEMENT = round_def_final_blow_placement,
+	RETRIGGER_PRIOR_STONE_EFFECT = round_def_retrigger_prior_stone_effect,
+	ESCALATING_POINTS_INIT = round_def_escalating_points_init,
 }
 
 --- @param resolved table|nil
@@ -157,6 +187,12 @@ function M.is_valid_resolved(resolved)
 		return true
 	end
 	if resolved.type == "COPPER_THRESHOLD_PLUS_MULT" then
+		return true
+	end
+	if resolved.type == "FINAL_BLOW_PLACEMENT" or resolved.type == "RETRIGGER_PRIOR_STONE_EFFECT" then
+		return true
+	end
+	if resolved.type == "ESCALATING_POINTS_INIT" then
 		return true
 	end
 	if resolved.type == "ANTI_CAPTURE_IMMUNITY" then
