@@ -1,5 +1,5 @@
---- Placement-time copper threshold counting for copper_stone.
---- @module resolver.copper_stone
+--- Copper threshold counting for copper_stone placement bonus.
+--- @module objects.helper_effects.copper_threshold_plus_mult
 
 local board = require("board")
 local config = require("config")
@@ -50,6 +50,21 @@ function M.placement_threshold_plus_mult(board_after, row, col, owner)
 		return stone_params.copper_threshold_plus_mult_bonus
 	end
 	return 0
+end
+
+--- @param state table
+--- @param owner string
+--- @param row integer|nil
+--- @param col integer|nil
+--- @return nil
+function M.apply(state, owner, row, col)
+	if not row or not col then
+		return
+	end
+	local delta = M.placement_threshold_plus_mult(state.board, row, col, owner)
+	if delta ~= 0 then
+		state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + delta
+	end
 end
 
 return M

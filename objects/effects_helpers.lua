@@ -537,4 +537,15 @@ function H.apply_distance_bonus_for_stone(stone_def, current_state, key, n, dist
 	current_state.distance_modifiers.by_stone[key] = by_tile
 end
 
+--- Row/col of the stone just placed (from ``last_opponent_move``).
+--- @param state table
+--- @return integer|nil, integer|nil
+function H.placement_coords(state)
+	local move = state.last_opponent_move
+	if move and move.row and move.col then
+		return move.row, move.col
+	end
+	return nil, nil
+end
+
 return H

@@ -224,6 +224,7 @@ describe("delay_reward_stone (visual ASCII)", function()
 		it("two stones track independent timers", function()
 			set_hand(g, "black", { "delay_reward_stone", "delay_reward_stone" })
 			set_board(g, blank_board())
+			test_helper.begin_same_turn_placements(g)
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",

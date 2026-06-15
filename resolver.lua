@@ -15,11 +15,10 @@ local stone_params = require("objects.parameters.stones")
 local board_reconcile = require("single_game.resolver.board_reconcile")
 local blocked_cells = require("single_game.resolver.blocked_cells")
 local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
-local effect_placement_lifecycle = require("single_game.resolver.effect_placement_lifecycle")
 local effect_tick_lifecycle = require("single_game.resolver.effect_tick_lifecycle")
 local stone_timers = require("single_game.resolver.stone_timers")
-local placement_registry = require("objects.placement_effect_registry")
 local effects_helpers = require("objects.effects_helpers")
+local placement_pipeline = require("single_game.resolver.placement_pipeline")
 local placement_lifecycle = require("single_game.resolver.placement_lifecycle")
 local placement_effects = require("single_game.resolver.placement_effects")
 local resolved_type_registry = require("single_game.resolver.resolved_type_registry")
@@ -409,23 +408,6 @@ local territory_control_rounds = require("single_game.resolver.territory_control
 local territory_resolver = require("single_game.resolver.territory")
 local stone_removal = require("single_game.resolver.stone_removal")
 
---- @param resolved table|nil
---- @return boolean
-local function is_kamikaze_sacrifice_resolved(resolved)
-	return resolved ~= nil and resolved.type == "KAMIKAZE_SACRIFICE"
-end
-
---- @param resolved_effects table
---- @return boolean
-local function has_kamikaze_sacrifice_effect(resolved_effects)
-	for i = 1, #resolved_effects do
-		if is_kamikaze_sacrifice_resolved(resolved_effects[i]) then
-			return true
-		end
-	end
-	return false
-end
-
 --- @param captures integer
 --- @return integer
 local function capture_bonus_points_for(captures)
@@ -451,6 +433,55 @@ local function append_capture_bonus_resolved_effects(resolved_effects, captures)
 		priority = stone_params.default_effect_priority,
 	})
 	return bonus
+end
+
+--- @param stone_effects table
+--- @param capture_count integer
+--- @return table
+local function append_capture_bonus_stone_effects(stone_effects, capture_count)
+	local bonus = capture_bonus_points_for(capture_count)
+	if bonus <= 0 then
+		return stone_effects
+	end
+	local out = {}
+	for i = 1, #stone_effects do
+		out[i] = stone_effects[i]
+	end
+	out[#out + 1] = {
+		effect_name = "add_points",
+		macro = "playing_stones",
+		sub = "points",
+		value = bonus,
+		priority = stone_params.default_effect_priority,
+	}
+	return out
+end
+
+--- Applies timer/setup hooks when a deferred-turn stone is placed without a full scoring pass.
+--- @param state table
+--- @param stone_effects table
+--- @param resolved_effects table|nil
+--- @param row integer
+--- @param col integer
+--- @param owner string
+--- @return nil
+local function apply_continuation_placement_setup(state, stone_effects, resolved_effects, row, col, owner)
+	local board_cell_timers = require("single_game.resolver.board_cell_timers")
+	for i = 1, #(stone_effects or {}) do
+		local effect_def = stone_effects[i]
+		if effect_def.effect_name == "delay_reward_survival" then
+			local resolved = Effects.stones.resolve(effect_def)
+			if resolved and resolved.apply then
+				resolved.apply(state, owner, row, col)
+			end
+		end
+	end
+	for i = 1, #(resolved_effects or {}) do
+		local resolved = resolved_effects[i]
+		if resolved.type == "SELF_DESTRUCT_TIMED" and resolved.delay_rounds then
+			board_cell_timers.register(state, row, col, resolved.delay_rounds)
+		end
+	end
 end
 
 local function contains_stone_id(ids, stone_id)
@@ -510,6 +541,34 @@ local function run_event_queue(state, event_queue)
 			end
 			state.board = event.board
 			stone_removal.install_board_hooks(state)
+			local stone_def = event.stone_id and content.get_stone(event.stone_id) or nil
+			local remove_ctx = {
+				state = state,
+				actor = event.actor,
+				row = event.row,
+				col = event.col,
+				stone_id = event.stone_id,
+				stone_def = stone_def,
+				old_board = old_board,
+				player_chain_color = color_to_stone(event.actor),
+			}
+			local extra_captures, kamikaze_sacrifice_applies = placement_pipeline.remove_stones(remove_ctx)
+			local stone_effects = event.stone_effects or {}
+			if extra_captures > 0 then
+				stone_effects = append_capture_bonus_stone_effects(stone_effects, extra_captures)
+				event.capture_bonus_points = (event.capture_bonus_points or 0) + capture_bonus_points_for(extra_captures)
+				event.captures = (event.captures or 0) + extra_captures
+			end
+			if state._continuation_deferred_placement then
+				apply_continuation_placement_setup(
+					state,
+					stone_effects,
+					event.resolved_stone_effects,
+					event.row,
+					event.col,
+					owner_for_side(event.actor)
+				)
+			end
 			board_reconcile.run(state)
 			state.ko_ban = event.ko_ban
 			if event.row and event.col then
@@ -517,26 +576,11 @@ local function run_event_queue(state, event_queue)
 				territory_control_rounds.clear_cell(state, event.row, event.col)
 				stone_removal.mark_placed_via_play(state, event.row, event.col)
 			end
-			if event.row and event.col and event.stone_id then
-				local stone_def = content.get_stone(event.stone_id)
-				if stone_def then
-					effect_placement_lifecycle.run(state, stone_def, event.row, event.col, event.actor, event.board)
-					placement_registry.apply_placement_commit_effects(
-						stone_def,
-						state,
-						owner_for_side(event.actor),
-						event.row,
-						event.col,
-						event.actor,
-						Effects.stones.resolve
-					)
-				end
-			end
 			state.last_played_stone = event.stone_id
 			state.last_opponent_move = { stone_id = event.stone_id, row = event.row, col = event.col, actor = event.actor }
 			local actor_state = match_state.player_for_color(state, event.actor)
-			actor_state.prisoners = actor_state.prisoners + event.captures
-			if event.kamikaze_opponent_prisoner then
+			actor_state.prisoners = actor_state.prisoners + event.captures + extra_captures
+			if kamikaze_sacrifice_applies and stone_params.kamikaze_self_removal_counts_as_prisoner then
 				local opp_state = match_state.player_for_color(state, opponent_color(event.actor))
 				opp_state.prisoners = (opp_state.prisoners or 0) + 1
 			end
@@ -552,7 +596,7 @@ local function run_event_queue(state, event_queue)
 				stone_type = event.stone_id,
 				row = event.row,
 				col = event.col,
-				effects = event.stone_effects or {},
+				effects = stone_effects,
 			}
 			local def = content.get_stone(event.stone_id)
 			if def and event.resolved_stone_effects then
@@ -603,9 +647,11 @@ local function push_place_stone_score_events(state, actor, points_before, mult_b
 	end
 	state._suppress_recurring_end_of_turn = true
 	state._skip_board_end_of_turn_effects = true
+	state._skip_end_of_turn_effect_tick = true
 	recalc_all_scores(state, "end_of_turn", owner_for_side(actor))
 	state._suppress_recurring_end_of_turn = nil
 	state._skip_board_end_of_turn_effects = nil
+	state._skip_end_of_turn_effect_tick = nil
 	local points_after = actor_state.score.points or 0
 	local mult_after = actor_state.score.plus_mult or 1
 	local eot_points_delta = points_after - points_after_stones
@@ -685,9 +731,7 @@ local function begin_next_turn(state)
 		}
 	end
 	local skip_cell = state._effect_tick_skip_cell
-	if not skip_cell then
-		effect_tick_lifecycle.tick(state, { tick_blockade = false })
-	end
+	effect_tick_lifecycle.tick(state, { tick_blockade = false, skip_cell = skip_cell })
 	state._effect_tick_skip_cell = nil
 	state.turn_number = state.turn_number + 1
 	state.round_number = match_state.round_number_from_turn(state.turn_number)
@@ -798,20 +842,6 @@ local function compile_place_stone_events(state, action)
 		return nil, "Illegal move: capture blocked by immunity"
 	end
 	local allow_suicide = rules.allows_suicide_placement(stone_id)
-	local on_capture_cooldown_cell = effects_helpers.is_cell_on_capture_cooldown(state, row, col)
-		and effects_helpers.is_cell_blocked_for_capture_cooldown(state, row, col, action.actor, "stone_basic")
-	local empty_cell_had_no_empty_neighbors = board.is_empty(state.board[row][col])
-		and rules.empty_cell_has_no_empty_neighbors(state.board, row, col)
-	local ok_without_override, _trial_no_override = rules.try_play(
-		state.board,
-		row,
-		col,
-		player_chain_color,
-		state.ko_ban,
-		stone_id,
-		placement_level
-	)
-	local required_suicide_override = allow_suicide and not ok_without_override
 	local old_board = board.clone(state.board)
 	local ok, new_board, new_ko, captures, illegal_reason = rules.try_play(
 		state.board,
@@ -838,43 +868,14 @@ local function compile_place_stone_events(state, action)
 		end
 		return nil, "Illegal move: rule violation"
 	end
-	local kamikaze_sacrifice_ctx = {
-		required_suicide_override = required_suicide_override,
-		on_capture_cooldown_cell = on_capture_cooldown_cell,
-		empty_cell_had_no_empty_neighbors = empty_cell_had_no_empty_neighbors,
-		ok_without_override = ok_without_override,
-		had_former_capture_cooldown = effects_helpers.had_former_capture_cooldown(state, row, col),
-	}
 	local placement_ctx = {
 		state = state,
 		actor = action.actor,
 		owner = owner_for_side(action.actor),
 		row = row,
 		col = col,
-		board_snapshot = new_board,
-		kamikaze_sacrifice_ctx = stone_id == "kamikaze_stone" and kamikaze_sacrifice_ctx or nil,
 	}
-	local pre_capture_resolved = placement_lifecycle.resolve_from_stone_def(stone_def, placement_ctx)
-	placement_lifecycle.run_commit_hooks(pre_capture_resolved, placement_ctx)
-	if effects_helpers.stone_def_has_capture_zero_liberty_effect(stone_def) then
-		effects_helpers.apply_capture_cooldowns_for_removals(
-			state,
-			old_board,
-			new_board,
-			action.actor,
-			player_chain_color
-		)
-		local extra_captures
-		new_board, extra_captures = effects_helpers.apply_zero_liberty_enemy_capture(
-			new_board,
-			state,
-			action.actor,
-			player_chain_color
-		)
-		captures = captures + extra_captures
-	end
-	local kamikaze_sacrifice_applies = has_kamikaze_sacrifice_effect(pre_capture_resolved)
-	local resolved_effects = pre_capture_resolved
+	local resolved_effects = placement_lifecycle.resolve_from_stone_def(stone_def, placement_ctx)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
@@ -882,17 +883,6 @@ local function compile_place_stone_events(state, action)
 			return nil, "Stone behavior produced invalid effect"
 		end
 	end
-	if kamikaze_sacrifice_applies then
-		new_board[row][col] = config.STONE_NONE
-	end
-	placement_registry.apply_placement_snapshot_effects(
-		stone_def,
-		state,
-		owner_for_side(action.actor),
-		row,
-		col,
-		Effects.stones.resolve
-	)
 	local placement_round = placement_effects.merge_round_defs(
 		stone_def,
 		resolved_type_registry.round_effect_defs_from_resolved(resolved_effects)
@@ -911,8 +901,6 @@ local function compile_place_stone_events(state, action)
 			col = col,
 			stone_effects = placement_round,
 			resolved_stone_effects = resolved_effects,
-			kamikaze_opponent_prisoner = has_kamikaze_sacrifice_effect(resolved_effects)
-				and stone_params.kamikaze_self_removal_counts_as_prisoner,
 		},
 	}
 	return events, nil
@@ -1126,7 +1114,9 @@ function M.submit_action(state, action)
 	local compile_error
 	local actor_points_before = nil
 	local actor_mult_before = nil
+	local continuation_deferred_placement = action.type == "PLACE_STONE" and state.pending_turn_after_ui == true
 	if action.type == "PLACE_STONE" then
+		state._continuation_deferred_placement = continuation_deferred_placement
 		local actor_state = match_state.player_for_color(state, action.actor)
 		actor_points_before = actor_state.score.points or 0
 		actor_mult_before = actor_state.score.plus_mult or 1
@@ -1194,11 +1184,16 @@ function M.submit_action(state, action)
 		state._decrement_board_cell_timers_on_eot = true
 		recalc_all_scores(state, "end_of_turn", owner_for_side(action.actor))
 		state._decrement_board_cell_timers_on_eot = nil
-	elseif action.type == "PLACE_STONE" then
+	elseif action.type == "PLACE_STONE" and not continuation_deferred_placement then
 		recalc_all_scores(state, "playing_stones")
 	end
-	if action.type == "PLACE_STONE" then
+	if action.type == "PLACE_STONE" and not continuation_deferred_placement then
 		push_place_stone_score_events(state, action.actor, actor_points_before, actor_mult_before, capture_bonus_points)
+		placement_pipeline.recalculate_legal_moves(state)
+	elseif action.type == "PLACE_STONE" and continuation_deferred_placement then
+		recalc_all_scores(state, "playing_stones")
+		push_place_stone_score_events(state, action.actor, actor_points_before, actor_mult_before, capture_bonus_points)
+		placement_pipeline.recalculate_legal_moves(state)
 	end
 	if finish_match_if_needed(state) then
 		return {
@@ -1208,17 +1203,17 @@ function M.submit_action(state, action)
 			emitted_events = #event_queue,
 		}
 	end
-	local ev = state.ui_animation_events
-	local should_defer = type(ev) == "table" and #ev > 0
-	if not should_defer and action.type == "PLACE_STONE" and state.last_played_stone then
+	local defer_for_stone = false
+	if action.type == "PLACE_STONE" and state.last_played_stone then
 		local stone_def = content.get_stone(state.last_played_stone)
-		if stone_def and stone_def.defer_turn_after_placement then
-			should_defer = true
-		end
+		defer_for_stone = stone_def ~= nil and stone_def.defer_turn_after_placement == true
 	end
-	if should_defer then
+	local ev = state.ui_animation_events
+	local should_defer_ui = type(ev) == "table" and #ev > 0
+	local test_defer = state._test_defer_turn_advance == true and action.type == "PLACE_STONE"
+	if should_defer_ui or defer_for_stone or test_defer then
 		state.pending_turn_after_ui = true
-		if action.type == "PLACE_STONE" then
+		if (defer_for_stone or test_defer) and action.type == "PLACE_STONE" then
 			state.phase = "PLACE_PHASE"
 		else
 			state.phase = "TURN_END"
@@ -1227,6 +1222,7 @@ function M.submit_action(state, action)
 		state.phase = "TURN_END"
 		begin_next_turn(state)
 	end
+	state._continuation_deferred_placement = nil
 	return {
 		ok = true,
 		error = nil,
@@ -1247,7 +1243,13 @@ function M.flush_pending_turn_if_ready(state)
 		return
 	end
 	state.pending_turn_after_ui = false
+	state._test_defer_turn_advance = nil
 	score_display.end_rollout(state)
+	if state._pending_deferred_placement_score then
+		recalc_all_scores(state, "playing_stones")
+		recalc_all_scores(state, "end_of_turn")
+		state._pending_deferred_placement_score = nil
+	end
 	begin_next_turn(state)
 end
 

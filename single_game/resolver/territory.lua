@@ -760,7 +760,10 @@ function M.capture_placement_snapshot_if_needed(state, row, col, stone_id)
 	end
 	local needs_snapshot = false
 	for i = 1, #def.effects do
-		if def.effects[i].effect_name == "territory_to_points" then
+		local effect_name = def.effects[i].effect_name
+		if effect_name == "territory_to_points"
+			or effect_name == "territory_to_multiplier_snapshot"
+			or effect_name == "territory_to_multiplier" then
 			needs_snapshot = true
 			break
 		end

@@ -6,38 +6,39 @@ describe("stone_resolve.apply_effect_deltas", function()
 	local base_effects = {
 		{
 			effect_name = "add_points",
-			macro = "playing_stones",
-			sub = "points",
+			when = "playing_stones",
+			phase = "points",
 			value = 2,
 			priority = 10,
 		},
 		{
 			effect_name = "add_mult",
-			macro = "playing_stones",
-			sub = "mult",
+			when = "playing_stones",
+			phase = "mult",
 			value = 1,
 			priority = 10,
 		},
 	}
 
-	it("adds delta when effect_name macro and sub match", function()
+	it("adds delta when effect_name matches", function()
 		local out = stone_resolve.apply_effect_deltas(base_effects, {
-			add_points = { macro = "playing_stones", sub = "points", delta = 1 },
+			add_points = { delta = 1 },
 		})
 		assert.are.equal(3, out[1].value)
 		assert.are.equal(1, out[2].value)
 	end)
 
-	it("leaves non-matching macro or sub unchanged", function()
+	it("ignores delta keys that do not match an effect_name", function()
 		local out = stone_resolve.apply_effect_deltas(base_effects, {
-			add_points = { macro = "playing_stones", sub = "mult", delta = 5 },
+			add_mult = { delta = 5 },
 		})
 		assert.are.equal(2, out[1].value)
+		assert.are.equal(6, out[2].value)
 	end)
 
 	it("applies delta to only one effect when multiple are present", function()
 		local out = stone_resolve.apply_effect_deltas(base_effects, {
-			add_mult = { macro = "playing_stones", sub = "mult", delta = 2 },
+			add_mult = { delta = 2 },
 		})
 		assert.are.equal(2, out[1].value)
 		assert.are.equal(3, out[2].value)
@@ -45,7 +46,7 @@ describe("stone_resolve.apply_effect_deltas", function()
 
 	it("does not mutate the original effect rows", function()
 		stone_resolve.apply_effect_deltas(base_effects, {
-			add_points = { macro = "playing_stones", sub = "points", delta = 1 },
+			add_points = { delta = 1 },
 		})
 		assert.are.equal(2, base_effects[1].value)
 	end)

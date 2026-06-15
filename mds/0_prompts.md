@@ -110,3 +110,22 @@ Please take inspiration from run.ts for workflows and from prompts/.md for writi
 - finish turn / advance_round / complete_full_round
 - energy not the state of the game, energy stone doesn't work as it supposed.
 - energy max, after run
+
+
+
+
+on_removed
+CONTEXT
+sub macro
+lifecycle
+
+
+This is literally all wrong and should be handled all in apply.
+1. on_compile - capture_stone should actually not special effect just in resolver/stages there should be file remove_stones.lua which examines state of the board and removes the stones and gives points for capture. for anti-capture we also don't need a special effect, we need however in state of the game state.recalculate_legal_moves which contains a state of the legal moves on the board and in resolver/stages/legality_of_moves.lua we update this based on the state of the board.
+2. resolve_immediate - this should be just in apply with a right phase, we always calculate scores in apply.
+3. on_finalize_compile - kamikaze_stone should be removed in remove_stones.lua stage where we remove all stones that don't belong.
+4. on_snapshot - totally unnecessary, apply should just in the mult phase assign right number of points, remember that we already store information about territory control look here for the tests -> spec\visual\territory_control_rounds_spec.lua
+5. on_placement - apply should start the timer, we don't need it
+6. macro/sub - again why do we need it when we already have phases, which determine the order?
+7. lifecycle - we don't need it
+

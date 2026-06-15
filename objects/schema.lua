@@ -1,5 +1,5 @@
 --- Schema validation for unified game objects.
---- Effect definitions use ``macro`` (lifecycle) and ``sub`` (territory | points | mult).
+--- Stone effects declare ``when`` + ``phase`` (legacy ``macro`` / ``sub`` / ``lifecycle`` accepted during migration).
 --- @module objects.schema
 
 local M = {}
@@ -8,7 +8,7 @@ local VALID_TYPES = { stone = true, card = true, stance = true }
 
 local VALID_RARITIES = { common = true, uncommon = true, rare = true, epic = true, legendary = true }
 
-local VALID_MACROS = {
+local VALID_WHEN = {
 	game_start = true,
 	before_turn = true,
 	playing_cards = true,
@@ -17,8 +17,16 @@ local VALID_MACROS = {
 	end_of_turn = true,
 	on_removed = true,
 	game_end = true,
-	on_removed = true,
+	tick = true,
 }
+
+local VALID_PHASES = {
+	territory = true,
+	points = true,
+	mult = true,
+}
+
+local VALID_MACROS = VALID_WHEN
 
 local VALID_SUBS = {
 	territory = true,
@@ -28,6 +36,7 @@ local VALID_SUBS = {
 
 local VALID_LIFECYCLES = {
 	placement = true,
+	board_reconcile = true,
 }
 
 local VALID_SCOPES = {
@@ -93,7 +102,28 @@ local function validate_effect(effect, object_id)
 		return false, string.format("Effect in %s missing effect_name or not string", object_id)
 	end
 
-	if effect.macro and effect.sub then
+	if effect.when and effect.phase then
+		if not VALID_WHEN[effect.when] then
+			return false,
+				string.format(
+					"Effect '%s' in %s has invalid when '%s' (valid: %s)",
+					effect.effect_name,
+					object_id,
+					effect.when,
+					list_valid(VALID_WHEN)
+				)
+		end
+		if not VALID_PHASES[effect.phase] then
+			return false,
+				string.format(
+					"Effect '%s' in %s has invalid phase '%s' (valid: %s)",
+					effect.effect_name,
+					object_id,
+					effect.phase,
+					list_valid(VALID_PHASES)
+				)
+		end
+	elseif effect.macro and effect.sub then
 		if not VALID_MACROS[effect.macro] then
 			return false,
 				string.format(
@@ -290,6 +320,7 @@ function M.validate_all(definitions, object_type)
 end
 
 M.VALID_MACROS = VALID_MACROS
-M.VALID_SUBS = VALID_SUBS
+M.VALID_WHEN = VALID_WHEN
+M.VALID_PHASES = VALID_PHASES
 
 return M

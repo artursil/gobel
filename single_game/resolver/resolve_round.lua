@@ -272,7 +272,7 @@ function M.resolve(state, opts)
 		board_cell_timers.expire(state)
 		card_play_memory.flush_just_played_to_history(state)
 		require("single_game.resolver.blocked_cells").bootstrap_from_board_if_needed(state)
-		if not state._skip_board_end_of_turn_effects then
+		if not state._skip_end_of_turn_effect_tick then
 			local tick_blockade = not state._blockade_registered_this_action and (state.turn_number or 1) % 2 == 0
 			effect_tick_lifecycle.tick(state, { tick_blockade = tick_blockade })
 		end

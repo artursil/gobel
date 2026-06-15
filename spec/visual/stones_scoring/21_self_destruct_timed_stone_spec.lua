@@ -415,7 +415,7 @@ describe("self_destruct_timed_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
-			local expected_delta = S.self_destruct_immediate_points
+			local expected_delta = 2 * S.self_destruct_immediate_points
 			assert_player_points_delta(g, "black", snap, expected_delta, "each placement pays immediate once")
 		end)
 	end)

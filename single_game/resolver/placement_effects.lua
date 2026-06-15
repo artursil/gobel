@@ -1,12 +1,15 @@
---- Placement lifecycle helpers: collect stone effect defs that run once on placement, not from board scan.
+--- Placement lifecycle helpers: collect stone effect defs for the placement record.
 --- @module resolver.placement_effects
+
+local effect_schedule = require("objects.effect_schedule")
+local placement_lifecycle = require("single_game.resolver.placement_lifecycle")
 
 local M = {}
 
 --- @param effect_def table|nil
 --- @return boolean
 function M.is_placement_lifecycle(effect_def)
-	return effect_def ~= nil and effect_def.lifecycle == "placement"
+	return effect_schedule.is_placement_record(effect_def)
 end
 
 --- @param stone_def table|nil
@@ -18,7 +21,8 @@ function M.collect_defs(stone_def)
 	end
 	for i = 1, #stone_def.effects do
 		local effect_def = stone_def.effects[i]
-		if M.is_placement_lifecycle(effect_def) then
+		if M.is_placement_lifecycle(effect_def)
+			and not placement_lifecycle.is_immediate_placement_effect(effect_def) then
 			out[#out + 1] = effect_def
 		end
 	end

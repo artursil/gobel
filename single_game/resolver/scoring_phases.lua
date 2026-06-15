@@ -2,6 +2,8 @@
 --- Macros: when in the match lifecycle. Subs: territory, points, mult (mult applies plus_mult then x_mult by priority).
 --- @module resolver.scoring_phases
 
+local effect_schedule = require("objects.effect_schedule")
+
 local M = {}
 
 M.MACRO_ORDER = {
@@ -19,28 +21,6 @@ M.SUB_ORDER = { "territory", "points", "mult" }
 M.TERRITORY_STEP_DISTANCE = "distance"
 M.TERRITORY_STEP_VALUE = "value"
 M.TERRITORY_STEP_OVERRIDE = "override"
-
-M.PLACEMENT_ONLY_EFFECT_NAMES = {
-	add_points = true,
-	add_mult = true,
-	add_energy = true,
-	add_money = true,
-	mult_control_streak = true,
-	kamikaze_sacrifice = true,
-	blockade_adjacent = true,
-	money_field_enclosure_payout = true,
-	copper_threshold_plus_mult = true,
-	anti_capture_immunity = true,
-	delay_reward_survival = true,
-	capture_zero_liberty_enemy = true,
-	self_destruct_timed = true,
-	wall_stone = true,
-	diagonal_group_points = true,
-	line_group_points = true,
-	final_blow_placement = true,
-	retrigger_prior_stone_effect = true,
-	escalating_points_bank_init = true,
-}
 
 M.BOARD_TERRITORY_EFFECT_NAMES = {
 	distance_bonus = true,
@@ -90,6 +70,10 @@ end
 function M.parse_effect_phase(effect_def)
 	if not effect_def then
 		return nil, nil, nil
+	end
+	if effect_def.when and effect_def.phase then
+		local macro = effect_schedule.when_to_resolve_macro(effect_def.when)
+		return macro, effect_def.phase, effect_def.territory_step
 	end
 	if effect_def.macro and effect_def.sub then
 		return effect_def.macro, effect_def.sub, effect_def.territory_step
@@ -148,26 +132,14 @@ end
 --- @param effect_def table
 --- @return boolean
 function M.is_placement_lifecycle(effect_def)
-	return effect_def ~= nil and effect_def.lifecycle == "placement"
+	return effect_schedule.is_placement_record(effect_def)
 end
 
---- @param effect_name string|nil
---- @return boolean
-function M.is_placement_only_effect_name(effect_name)
-	return M.PLACEMENT_ONLY_EFFECT_NAMES[effect_name] == true
-end
-
---- Board scan must skip on-place effects declared with ``lifecycle = placement`` or by effect name.
+--- Board scan must skip placement-record effects.
 --- @param effect_def table
 --- @return boolean
 function M.skips_board_scan(effect_def)
-	if not effect_def then
-		return false
-	end
-	if M.is_placement_lifecycle(effect_def) then
-		return true
-	end
-	return M.is_placement_only_effect_name(effect_def.effect_name)
+	return effect_schedule.skips_board_scan(effect_def)
 end
 
 return M

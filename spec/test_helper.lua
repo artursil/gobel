@@ -514,6 +514,13 @@ function M.play_cards(g, hand_indices)
 	end
 end
 
+--- Marks the next ``place_stone(..., false)`` calls as same-turn chain (turn advance deferred until ``finish_turn``).
+--- @param g table
+--- @return nil
+function M.begin_same_turn_placements(g)
+	g._test_defer_turn_advance = true
+end
+
 --- @param g table
 --- @param board_rows table
 --- @param finish_animations boolean|nil
@@ -553,6 +560,9 @@ function M.place_stone(g, board_rows, finish_animations)
 		local idx = player.stones.selected_stone_index or 1
 		if player.stones.playable_stones[idx] then
 			player.stones.playable_stones[idx] = stone_kind
+		end
+		if not finish_animations and (g._test_defer_turn_advance == true or g.pending_turn_after_ui == true) then
+			g._test_defer_turn_advance = true
 		end
 		M.assert_legal_player_move(g, r, c, "place_stone at row " .. r .. " col " .. c)
 		if finish_animations then

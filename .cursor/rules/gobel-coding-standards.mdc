@@ -38,8 +38,8 @@ if not v.ok then return end
 
 ## Effects & scoring
 
-- Effects use **`macro` + `sub`** (`territory`, `points`, `mult`); do not add one-off scoring branches in `resolve_round`.
-- New card/stone behavior = new **effect_name** + `objects/effects.lua` factory + registry wiring + spec.
+- Stone/card effects declare **`when` + `phase`**; resolver stages schedule **`apply`** — no hook model.
+- New card/stone behavior = new **effect_name** + `objects/effects.lua` factory + `objects/helper_effects/*` apply logic + spec.
 
 ## Tests
 

@@ -119,6 +119,7 @@ describe("retrigger_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
+			test_helper.begin_same_turn_placements(g)
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . w w w w w .",
@@ -255,6 +256,7 @@ describe("retrigger_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
+			test_helper.begin_same_turn_placements(g)
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . w w w w w .",

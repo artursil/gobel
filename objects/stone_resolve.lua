@@ -21,9 +21,9 @@ local function copy_effects(effects)
 	return out
 end
 
---- Shallow-copy effect rows; add delta when effect_name, macro, and sub match.
+--- Shallow-copy effect rows; add ``delta`` to the matching ``effect_name`` row value.
 --- @param effects table[]
---- @param deltas table<string, { macro: string, sub: string, delta: number }>|nil
+--- @param deltas table<string, { delta: number }>|nil
 --- @return table[]
 function M.apply_effect_deltas(effects, deltas)
 	if not effects then
@@ -40,7 +40,7 @@ function M.apply_effect_deltas(effects, deltas)
 			copy[k] = v
 		end
 		local delta = deltas[copy.effect_name]
-		if delta and delta.macro == copy.macro and delta.sub == copy.sub and type(copy.value) == "number" then
+		if delta and type(copy.value) == "number" then
 			copy.value = copy.value + (delta.delta or 0)
 		end
 		out[i] = copy

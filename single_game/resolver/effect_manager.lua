@@ -131,6 +131,7 @@ local function append_stone_round_effects(state, active_macro, active_sub, terri
 			local resolved = effects_registry.stones.resolve(stone_effect)
 			if resolved then
 				local owner = stone_event.owner
+				local row, col = stone_event.row, stone_event.col
 				table.insert(out, {
 					owner = owner,
 					phase = resolved.sub or resolved.phase,
@@ -139,7 +140,9 @@ local function append_stone_round_effects(state, active_macro, active_sub, terri
 					priority = resolved.priority or 10,
 					conditions = resolved.conditions,
 					apply = function(current_state)
-						resolved.apply(current_state, owner)
+						if resolved.apply then
+							resolved.apply(current_state, owner, row, col)
+						end
 					end,
 					meta = {
 						source_owner = owner,

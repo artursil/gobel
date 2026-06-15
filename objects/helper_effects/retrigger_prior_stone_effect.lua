@@ -1,11 +1,9 @@
 --- Retrigger stone: replay prior same-turn stone payout for the placing owner.
---- @module single_game.resolver.retrigger_stone
+--- @module objects.helper_effects.retrigger_prior_stone_effect
 
 local config = require("config")
 local content = require("content")
 local stone_params = require("objects.parameters.stones")
-local objects_effects = require("objects.effects")
-local scoring_phases = require("single_game.resolver.scoring_phases")
 
 local M = {}
 
@@ -89,6 +87,8 @@ local function replay_effect_def(state, owner, event, effect_def)
 	if not M.is_retriggerable_effect_name(effect_def.effect_name) then
 		return
 	end
+	local objects_effects = require("objects.effects")
+	local scoring_phases = require("single_game.resolver.scoring_phases")
 	local row = event.row
 	local col = event.col
 	local prev_move = state.last_opponent_move

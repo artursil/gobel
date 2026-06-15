@@ -13,8 +13,24 @@ local stone_params = require("objects.parameters.stones")
 local stance_params = require("objects.parameters.stances")
 local card_params = require("objects.parameters.cards")
 local enclosure = require("single_game.resolver.enclosure")
-local connected_group_points = require("objects.effect_helpers.connected_group_points")
 local rules = require("rules")
+local effect_factory = require("objects.effect_factory")
+local add_points_helper = require("objects.helper_effects.add_points")
+local add_mult_helper = require("objects.helper_effects.add_mult")
+local add_energy_helper = require("objects.helper_effects.add_energy")
+local kamikaze_helper = require("objects.helper_effects.kamikaze_sacrifice")
+local money_field_helper = require("objects.helper_effects.money_field_enclosure_payout")
+local self_destruct_helper = require("objects.helper_effects.self_destruct_timed")
+local delay_reward_helper = require("objects.helper_effects.delay_reward_survival")
+local anti_capture_helper = require("objects.helper_effects.anti_capture_immunity")
+local blockade_helper = require("objects.helper_effects.blockade_adjacent")
+local tax_helper = require("objects.helper_effects.tax_enclosure_enemies")
+local connected_group_placement_helper = require("objects.helper_effects.connected_group_placement")
+local copper_helper = require("objects.helper_effects.copper_threshold_plus_mult")
+local mult_control_streak_helper = require("objects.helper_effects.mult_control_streak")
+local territory_to_multiplier_helper = require("objects.helper_effects.territory_to_multiplier")
+local escalating_points_helper = require("objects.helper_effects.escalating_points")
+local final_blow_helper = require("objects.helper_effects.final_blow_placement")
 
 local M = {}
 
@@ -458,84 +474,63 @@ local function resolve_enclosure_multiply_targets(walls, b, owner, row, col, sto
 	return empty_cells_in_set(b, targets)
 end
 
-local add_points_helper = require("objects.helper_effects.add_points")
-
 --- Add points effect builder.
 --- @param effect table: {effect_name, phase, value, priority, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
 function M.add_points(effect)
-	local sub = effect.sub or effect.phase or "points"
-	return {
+	return effect_factory.build(effect, {
 		type = "ADD_POINTS",
-		lifecycle = "placement",
-		phase = sub,
-		macro = effect.macro,
-		sub = sub,
-		value = effect.value,
-		priority = effect.priority or 10,
-		conditions = effect.conditions,
+		default_sub = "points",
+		extra = { value = effect.value },
 		apply = function(state, owner)
 			add_points_helper.apply(state, owner, effect.value)
 		end,
-	}
+	})
 end
 
 --- Add energy effect builder (on placement; clamped to energy_max).
 --- @param effect table: {effect_name, phase, value, priority, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
 function M.add_energy(effect)
-	local sub = effect.sub or effect.phase or "points"
-	return {
+	return effect_factory.build(effect, {
 		type = "ADD_ENERGY",
-		phase = sub,
-		macro = effect.macro,
-		sub = sub,
-		value = effect.value,
-		priority = effect.priority or 10,
-		conditions = effect.conditions,
+		default_sub = "points",
+		extra = { value = effect.value },
 		apply = function(state, owner)
-			helpers.gain_player_energy(state, owner, effect.value)
+			add_energy_helper.apply(state, owner, effect.value)
 		end,
-	}
+	})
 end
 
---- Kamikaze sacrifice effect builder: immediate points when sacrifice triggers; board self-removal handled in resolver.
+--- Kamikaze sacrifice: points in apply; removal in ``remove_stones`` stage.
 --- @param effect table: {effect_name, macro?, sub?, value?, priority?, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
 function M.kamikaze_sacrifice(effect)
-	local sub = effect.sub or effect.phase or "points"
 	local value = effect.value or stone_params.kamikaze_points_bonus
-	return {
+	return effect_factory.build(effect, {
 		type = "KAMIKAZE_SACRIFICE",
-		phase = sub,
-		macro = effect.macro or "playing_stones",
-		sub = sub,
-		value = value,
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
+		extra = { value = value },
 		apply = function(state, owner)
-			state.scores.points[owner] = state.scores.points[owner] + value
+			kamikaze_helper.apply(state, owner, value)
 		end,
-	}
+	})
 end
 
 --- Add multiplier effect builder.
 --- @param effect table: {effect_name, phase, value, priority, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
 function M.add_mult(effect)
-	local sub = effect.sub or effect.phase or "mult"
-	return {
+	return effect_factory.build(effect, {
 		type = "ADD_MULT",
-		phase = sub,
-		macro = effect.macro,
-		sub = sub,
-		value = effect.value,
-		priority = effect.priority or 10,
-		conditions = effect.conditions,
+		default_sub = "mult",
+		extra = { value = effect.value },
 		apply = function(state, owner)
-			state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + effect.value
+			add_mult_helper.apply(state, owner, effect.value)
 		end,
-	}
+	})
 end
 
 --- Distance bonus effect builder (no apply; used for state precomputation).
@@ -1036,44 +1031,24 @@ function M.escalating_money_capture_penalty(effect)
 	}
 end
 
---- @param state table
---- @return integer|nil, integer|nil
-local function placement_coords(state)
-	local move = state.last_opponent_move
-	if move and move.row and move.col then
-		return move.row, move.col
-	end
-	return nil, nil
-end
-
 --- Adds money when the last placement cell is owner-enclosed on the post-placement board.
 --- @param effect table
 --- @return table
 function M.money_field_enclosure_payout(effect)
-	local sub = effect.sub or "points"
-	return {
+	return effect_factory.build(effect, {
 		type = "MONEY_FIELD_ENCLOSURE_PAYOUT",
-		phase = sub,
-		macro = effect.macro or "playing_stones",
-		sub = sub,
-		value = effect.value or {},
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
+		extra = { value = effect.value or {} },
 		apply = function(state, owner)
-			local row, col = placement_coords(state)
+			local row, col = helpers.placement_coords(state)
 			if not row or not col then
 				return
 			end
-			local enclosure_placement = require("single_game.resolver.enclosure_placement")
-			local amount = enclosure_placement.placement_money_payout(state.board, row, col, owner)
-			if amount <= 0 then
-				return
-			end
-			local side = owner == config.OWNER_BLACK and "black" or "white"
-			local player = require("match_state").player_for_color(state, side)
-			player.resources.money = (player.resources.money or 0) + amount
+			money_field_helper.apply(state, owner, row, col)
 		end,
-	}
+	})
 end
 
 --- @param state table
@@ -1129,7 +1104,7 @@ function M.pattern_x_mult(effect)
 			local board_after = state.board
 			local board_before = board_before_last_placement(state)
 			local newly_completed = shape_patterns.detect_newly_completed_x_patterns(board_before, board_after, color)
-			local place_r, place_c = placement_coords(state)
+			local place_r, place_c = helpers.placement_coords(state)
 			for i = 1, #newly_completed do
 				local pattern = newly_completed[i]
 				local dedupe = "x:"
@@ -1204,7 +1179,7 @@ function M.pattern_plus_mult(effect)
 			local board_after = state.board
 			local board_before = board_before_last_placement(state)
 			local newly_completed = shape_patterns.detect_newly_completed_plus_patterns(board_before, board_after, color)
-			local place_r, place_c = placement_coords(state)
+			local place_r, place_c = helpers.placement_coords(state)
 			local placed_plus = false
 			if place_r and place_c then
 				local placed = board_after[place_r][place_c]
@@ -1253,23 +1228,15 @@ end
 --- @param effect table
 --- @return table
 function M.diagonal_group_points(effect)
-	return {
+	return effect_factory.build(effect, {
 		type = "DIAGONAL_GROUP_POINTS",
-		phase = effect.sub or "points",
-		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "points",
-		priority = effect.priority or stone_params.wall_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.wall_effect_priority,
 		apply = function(state, owner)
-			local row, col = placement_coords(state)
-			connected_group_points.apply_group_size_bonus(state, owner, row, col, {
-				stone_kind = "diagonal_stone",
-				connectivity = "diagonal",
-				block_size = stone_params.diagonal_stone_block_size,
-				points_per_block = stone_params.diagonal_stone_points_per_block,
-			})
+			connected_group_placement_helper.apply_diagonal(state, owner)
 		end,
-	}
+	})
 end
 
 --- Board connectivity effect: defence stones buff solidity for connected own stones.
@@ -1289,7 +1256,7 @@ function M.defence_solidity_network(effect)
 	}
 end
 
---- Placement capture: remove one enemy stone with zero empty neighbors (see ``effects_helpers.apply_zero_liberty_enemy_capture``).
+--- Marker for capture stone; removal handled in ``remove_stones`` stage.
 --- @param effect table
 --- @return table
 function M.capture_zero_liberty_enemy(effect)
@@ -1309,107 +1276,36 @@ end
 function M.delay_reward_survival(effect)
 	local rounds = effect.rounds or stone_params.points_delay_rounds
 	local payout = effect.payout or stone_params.points_delay_payout
-	return {
+	return effect_factory.build(effect, {
 		type = "DELAY_REWARD_SURVIVAL",
-		phase = effect.sub or "points",
-		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "points",
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
-		rounds = rounds,
-		payout = payout,
-		on_placement = function(state, _owner, row, col, cell, effect_def)
-			if row == nil or col == nil or not cell then
-				return
-			end
-			cell.survival_rounds_remaining = effect_def.rounds or rounds
-			cell.delay_payout = effect_def.payout or payout
-			cell.timer_remaining_rounds = cell.survival_rounds_remaining
-			state._effect_tick_skip_cell = { row = row, col = col }
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
+		extra = { rounds = rounds, payout = payout },
+		apply = function(state, _owner, row, col, _cell, effect_def)
+			delay_reward_helper.apply(state, row, col, rounds, payout, effect_def)
 		end,
 		on_tick = function(state, row, col, cell)
-			local remaining = cell.survival_rounds_remaining
-			if type(remaining) ~= "number" or remaining <= 0 then
-				return
-			end
-			remaining = remaining - 1
-			cell.survival_rounds_remaining = remaining
-			cell.timer_remaining_rounds = remaining > 0 and remaining or nil
-			if remaining > 0 then
-				return
-			end
-			cell.survival_rounds_remaining = nil
-			cell.timer_remaining_rounds = nil
-			local payout_amount = cell.delay_payout or payout
-			cell.delay_payout = nil
-			if board.is_empty(cell) then
-				return
-			end
-			if payout_amount <= 0 then
-				return
-			end
-			local owner = cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
-			state.scores = state.scores or {}
-			state.scores.points = state.scores.points or { B = 1, W = 1 }
-			state.scores.points[owner] = (state.scores.points[owner] or 1) + payout_amount
+			delay_reward_helper.on_tick(state, row, col, cell, payout)
 		end,
-	}
+	})
 end
 
---- @param board_snapshot table
---- @param row integer
---- @param col integer
---- @param duration integer
---- @return nil
-local function grant_group_immunity_on_cells(board_snapshot, row, col, duration)
-	local group = rules.collect_group(board_snapshot, row, col)
-	for i = 1, #group do
-		local r, c = group[i][1], group[i][2]
-		local cell = board_snapshot[r][c]
-		if cell and not board.is_empty(cell) then
-			cell.immunity_remaining = duration
-		end
-	end
-end
-
---- Grants temporary capture immunity to the placed stone and its orthogonally connected own group.
---- @param effect table
---- @return table
 function M.anti_capture_immunity(effect)
 	local duration = effect.duration or stone_params.anti_capture_duration_rounds
-	return {
+	return effect_factory.build(effect, {
 		type = "ANTI_CAPTURE_IMMUNITY",
-		phase = effect.sub or "points",
-		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "points",
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
-		duration = duration,
-		on_placement = function(state, _owner, row, col, _cell, effect_def, board_snapshot)
-			if row == nil or col == nil then
-				return
-			end
-			state._anti_capture_board_snapshot_seeded = true
-			grant_group_immunity_on_cells(
-				board_snapshot or state.board,
-				row,
-				col,
-				effect_def.duration or duration
-			)
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
+		extra = { duration = duration },
+		apply = function(state, _owner, row, col, _cell, effect_def)
+			anti_capture_helper.apply(state, row, col, (effect_def and effect_def.duration) or duration)
 		end,
 		on_tick = function(_state, _row, _col, cell)
-			local remaining = cell.immunity_remaining
-			if type(remaining) ~= "number" or remaining <= 0 then
-				return
-			end
-			remaining = remaining - 1
-			if remaining <= 0 then
-				cell.immunity_remaining = nil
-				return
-			end
-			cell.immunity_remaining = remaining
+			anti_capture_helper.tick_cell(cell)
 		end,
-	}
+	})
 end
 
 --- On placement, block opponent on orthogonally adjacent empty cells for ``blockade_duration_rounds``.
@@ -1417,72 +1313,37 @@ end
 --- @param effect table
 --- @return table
 function M.blockade_adjacent(effect)
-	return {
+	return effect_factory.build(effect, {
 		type = "BLOCKADE_ADJACENT",
-		phase = effect.sub or "points",
-		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "points",
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
-		on_placement = function(state, owner, row, col)
-			if row == nil or col == nil then
-				return
-			end
-			local actor = owner == config.OWNER_BLACK and "black" or "white"
-			local blocked_cells = require("single_game.resolver.blocked_cells")
-			blocked_cells.register_adjacent_from_blockade(state, row, col, actor)
-			state._blockade_registered_this_action = true
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
+		apply = function(state, owner, row, col)
+			blockade_helper.apply(state, owner, row, col)
 		end,
 		on_tick = function(state)
-			local blocked_cells = require("single_game.resolver.blocked_cells")
-			blocked_cells.tick(state)
+			blockade_helper.tick(state)
 		end,
-	}
+	})
 end
 
 --- End-of-turn tax from enemy stones inside the innermost owner enclosure containing this tax stone.
 --- @param effect table
 --- @return table
 function M.tax_enclosure_enemies(effect)
-	local sub = effect.sub or "points"
-	return {
+	return effect_factory.build(effect, {
 		type = "TAX_ENCLOSURE_ENEMIES",
-		phase = sub,
-		macro = effect.macro or "end_of_turn",
-		sub = sub,
-		value = effect.value or {},
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "end_of_turn",
+		default_priority = stone_params.default_effect_priority,
+		extra = { value = effect.value or {} },
 		apply = function(state, owner, row, col)
 			if row == nil or col == nil then
 				return
 			end
-			local active_owner = helpers.active_end_of_turn_owner(state)
-			if not active_owner or owner ~= active_owner then
-				return
-			end
-			local wall = enclosure.innermost_wall_containing(state.board, row, col, owner)
-			if not wall then
-				return
-			end
-			local region_key = enclosure.wall_region_key(wall)
-			state._tax_enclosure_paid = state._tax_enclosure_paid or {}
-			if state._tax_enclosure_paid[region_key] then
-				return
-			end
-			state._tax_enclosure_paid[region_key] = true
-			local enemy_count = enclosure.count_enemy_stones_in_wall(state.board, wall, owner)
-			if enemy_count <= 0 then
-				return
-			end
-			local money_per = effect.value.money_per_enemy or stone_params.tax_money_per_enemy
-			local points_per = effect.value.points_per_enemy or stone_params.tax_points_per_enemy
-			local side = owner == config.OWNER_BLACK and "black" or "white"
-			local player = require("match_state").player_for_color(state, side)
-			player.resources.money = (player.resources.money or 0) + enemy_count * money_per
-			state.scores.points[owner] = state.scores.points[owner] + enemy_count * points_per
+			tax_helper.apply(state, owner, row, col, effect.value)
 		end,
-	}
+	})
 end
 
 --- Immediate placement points plus a removal timer; stone leaves the board on expiry with no payout.
@@ -1494,24 +1355,17 @@ function M.self_destruct_timed(effect)
 		or effect.value
 		or stone_params.self_destruct_immediate_points
 	local delay_rounds = effect.delay_rounds or stone_params.self_destruct_delay_rounds
-	local board_cell_timers = require("single_game.resolver.board_cell_timers")
-	return {
+	return effect_factory.build(effect, {
 		type = "SELF_DESTRUCT_TIMED",
-		phase = sub,
-		macro = effect.macro or "playing_stones",
-		sub = sub,
-		value = immediate_points,
-		delay_rounds = delay_rounds,
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = sub,
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
+		extra = { value = immediate_points, delay_rounds = delay_rounds },
 		apply = function(state, owner)
-			state.scores.points[owner] = state.scores.points[owner] + immediate_points
-			local row, col = placement_coords(state)
-			if row and col then
-				board_cell_timers.register(state, row, col, delay_rounds)
-			end
+			local row, col = helpers.placement_coords(state)
+			self_destruct_helper.apply(state, owner, immediate_points, delay_rounds, row, col)
 		end,
-	}
+	})
 end
 
 --- End-of-turn payout from territory owner at the stone cell and that owner's total territory.
@@ -1557,24 +1411,15 @@ end
 --- @param effect table
 --- @return table
 function M.wall_stone(effect)
-	return {
+	return effect_factory.build(effect, {
 		type = "WALL_STONE",
-		phase = effect.sub or "points",
-		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "points",
-		priority = effect.priority or stone_params.wall_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.wall_effect_priority,
 		apply = function(state, owner)
-			local row, col = placement_coords(state)
-			connected_group_points.apply_group_size_bonus(state, owner, row, col, {
-				stone_kind = "wall",
-				connectivity = "orthogonal",
-				block_size = stone_params.wall_stones_per_block,
-				points_per_block = stone_params.wall_points_per_block,
-				animation = "wall_stone_bounce",
-			})
+			connected_group_placement_helper.apply_wall(state, owner)
 		end,
-	}
+	})
 end
 
 --- Line stone placement: points per full block of orthogonal connected group (line stone included).
@@ -1582,23 +1427,15 @@ end
 --- @return table
 function M.line_group_points(effect)
 	local stone_kind = effect.stone_kind or "line_stone"
-	return {
+	return effect_factory.build(effect, {
 		type = "LINE_GROUP_POINTS",
-		phase = effect.sub or "points",
-		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "points",
-		priority = effect.priority or stone_params.wall_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.wall_effect_priority,
 		apply = function(state, owner)
-			local row, col = placement_coords(state)
-			connected_group_points.apply_group_size_bonus(state, owner, row, col, {
-				stone_kind = stone_kind,
-				connectivity = "orthogonal",
-				block_size = stone_params.line_stone_block_size,
-				points_per_block = stone_params.line_stone_points_per_block,
-			})
+			connected_group_placement_helper.apply_line(state, owner, stone_kind)
 		end,
-	}
+	})
 end
 
 local ORTHOGONAL_OFFSETS = {
@@ -1652,49 +1489,31 @@ end
 --- @param effect table
 --- @return table
 function M.copper_threshold_plus_mult(effect)
-	local sub = effect.sub or "mult"
-	return {
+	return effect_factory.build(effect, {
 		type = "COPPER_THRESHOLD_PLUS_MULT",
-		phase = sub,
-		macro = effect.macro or "playing_stones",
-		sub = sub,
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "mult",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
 		apply = function(state, owner)
-			local row, col = placement_coords(state)
-			if not row or not col then
-				return
-			end
-			local copper_stone = require("single_game.resolver.copper_stone")
-			local delta = copper_stone.placement_threshold_plus_mult(state.board, row, col, owner)
-			if delta ~= 0 then
-				state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + delta
-			end
+			local row, col = helpers.placement_coords(state)
+			copper_helper.apply(state, owner, row, col)
 		end,
-	}
+	})
 end
 
 --- Adds plus_mult from territory control streak at the placed cell (snapshot taken before occupancy clears streak).
 --- @param effect table
 --- @return table
 function M.mult_control_streak(effect)
-	local sub = effect.sub or "mult"
-	local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
-	return {
+	return effect_factory.build(effect, {
 		type = "MULT_CONTROL_STREAK",
-		phase = sub,
-		macro = effect.macro or "playing_stones",
-		sub = sub,
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "mult",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
 		apply = function(state, owner)
-			local streak = territory_control_rounds.placement_streak_snapshot(state)
-			local delta = territory_control_rounds.plus_mult_delta_for_streak(streak, state, owner)
-			if delta ~= 0 then
-				state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + delta
-			end
+			mult_control_streak_helper.apply(state, owner)
 		end,
-	}
+	})
 end
 
 --- Control stone override: orthogonal adjacent empty cells resolve to the stone owner after enclosure and influence.
@@ -1767,137 +1586,52 @@ function M.enclosure_territory_multiply(row, col, effect_def)
 	}
 end
 
---- @return table
-local function territory_module()
-	return require("single_game.resolver.territory")
-end
-
---- @param row integer
---- @param col integer
---- @return string
-local function territory_stone_cell_key(row, col)
-	return row .. ":" .. col
-end
-
---- @param territory_count integer
---- @param divisor integer
---- @param cap integer
---- @return integer
-local function territory_multiplier_payout_for_count(territory_count, divisor, cap)
-	if divisor <= 0 or territory_count <= 0 then
-		return 0
-	end
-	return math.min(cap, math.floor(territory_count / divisor))
-end
-
---- @param state table
---- @param row integer
---- @param col integer
---- @return "B"|"W"|nil owner
---- @return integer recipient_territory
-local function territory_multiplier_recipient_and_total(state, row, col)
-	local territory = territory_module()
-	local key = territory_stone_cell_key(row, col)
-	local snap = state.territory_stone_snapshots and state.territory_stone_snapshots[key]
-	if snap and snap.placed_turn == (state.turn_number or 1) then
-		if snap.owner == config.OWNER_BLACK then
-			return snap.owner, snap.black_total
-		end
-		if snap.owner == config.OWNER_WHITE then
-			return snap.owner, snap.white_total
-		end
-		return nil, 0
-	end
-	local owner = territory.hypothetical_empty_owner(state, row, col)
-	if not owner then
-		return nil, 0
-	end
-	local total = territory.total_territory_for_owner(state, owner)
-	return owner, total
-end
-
 --- Records pre-placement territory ownership and totals for territory-to-multiplier payout on the placement turn.
 --- @param effect table
 --- @return table
 function M.territory_to_multiplier_snapshot(effect)
-	return {
+	return effect_factory.build(effect, {
 		type = "TERRITORY_TO_MULTIPLIER_SNAPSHOT",
-		phase = effect.sub or "mult",
-		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "mult",
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "mult",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
 		apply = function(state, _owner, row, col)
-			if row == nil or col == nil then
-				return
-			end
-			local territory = territory_module()
-			local territory_grid = state.territory
-			if not territory_grid then
-				return
-			end
-			local owner = territory.owner_at_territory_cell(territory_grid, row, col)
-			state.territory_stone_snapshots = state.territory_stone_snapshots or {}
-			state.territory_stone_snapshots[territory_stone_cell_key(row, col)] = {
-				owner = owner,
-				black_total = territory.total_territory_for_owner(state, config.OWNER_BLACK),
-				white_total = territory.total_territory_for_owner(state, config.OWNER_WHITE),
-				placed_turn = state.turn_number or 1,
-			}
+			territory_to_multiplier_helper.capture_snapshot(state, row, col)
 		end,
-	}
+	})
 end
 
 --- End-of-turn plus_mult from territory controlled by the owner of the stone cell.
 --- @param effect table
 --- @return table
 function M.territory_to_multiplier(effect)
-	return {
+	return effect_factory.build(effect, {
 		type = "TERRITORY_TO_MULTIPLIER",
-		phase = effect.sub or "mult",
-		macro = effect.macro or "end_of_turn",
-		sub = effect.sub or "mult",
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "mult",
+		default_macro = "end_of_turn",
+		default_priority = stone_params.default_effect_priority,
 		apply = function(state, _owner, row, col)
 			if row == nil or col == nil then
 				return
 			end
-			local recipient, recipient_territory = territory_multiplier_recipient_and_total(state, row, col)
-			if not recipient then
-				return
-			end
-			local payout = territory_multiplier_payout_for_count(
-				recipient_territory,
-				stone_params.t2m_divisor,
-				stone_params.t2m_cap
-			)
-			if payout <= 0 then
-				return
-			end
-			state.scores.plus_mult[recipient] = state.scores.plus_mult[recipient] + payout
+			territory_to_multiplier_helper.apply_end_of_turn(state, row, col)
 		end,
-	}
+	})
 end
 
 --- Zeros the per-cell bank when an escalating points stone is first placed.
 --- @param effect table
 --- @return table
 function M.escalating_points_bank_init(effect)
-	return {
+	return effect_factory.build(effect, {
 		type = "ESCALATING_POINTS_BANK_INIT",
-		phase = effect.sub or "points",
-		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "points",
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
 		apply = function(state, _owner, row, col)
-			if row == nil or col == nil then
-				return
-			end
-			helpers.set_stone_stored_value(state, row, col, 0)
+			escalating_points_helper.init_bank(state, row, col)
 		end,
-	}
+	})
 end
 
 --- Each ``end_of_turn``, add ``eps_round_points`` to this cell bank and owner points.
@@ -1905,109 +1639,64 @@ end
 --- @return table
 function M.escalating_points_bank(effect)
 	local round_points = effect.value or stone_params.eps_round_points
-	return {
+	return effect_factory.build(effect, {
 		type = "ESCALATING_POINTS_BANK",
-		phase = effect.sub or "points",
-		macro = effect.macro or "end_of_turn",
-		sub = effect.sub or "points",
-		value = round_points,
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "end_of_turn",
+		default_priority = stone_params.default_effect_priority,
+		extra = { value = round_points },
 		apply = function(state, owner, row, col)
-			if state._suppress_recurring_end_of_turn then
-				return
-			end
 			if row == nil or col == nil then
 				return
 			end
-			local cell = state.board[row] and state.board[row][col]
-			if not cell or board.is_empty(cell) or cell.kind ~= "escalating_points_stone" then
-				return
-			end
-			local stone_owner = cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
-			if stone_owner ~= owner then
-				return
-			end
-			local bank = helpers.stone_stored_value(state, row, col) or 0
-			local next_bank = bank + round_points
-			helpers.set_stone_stored_value(state, row, col, next_bank)
-			state.scores.points[owner] = state.scores.points[owner] + round_points
+			escalating_points_helper.apply_end_of_turn_bank(state, owner, row, col, round_points)
 		end,
-	}
+	})
 end
 
 --- On removal: transfer banked points to an enemy captor with configured multiplier; clears the cell bank.
 --- @param effect table
 --- @return table
 function M.escalating_points_capture_transfer(effect)
-	return {
+	return effect_factory.build(effect, {
 		type = "ESCALATING_POINTS_CAPTURE_TRANSFER",
-		phase = effect.sub or "points",
-		macro = effect.macro or "on_removed",
-		sub = effect.sub or "points",
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "on_removed",
+		default_priority = stone_params.default_effect_priority,
 		apply = function(state, row, col, cell, opts)
-			if not cell or cell.kind ~= "escalating_points_stone" then
-				return
-			end
-			local captor_side = opts and opts.capturer or nil
-			local bank = helpers.stone_stored_value(state, row, col) or 0
-			local stone_side = cell.color == config.STONE_WHITE and "white" or "black"
-			state.scores = state.scores or {}
-			state.scores.points = state.scores.points or { B = 1, W = 1 }
-			if captor_side and stone_side ~= captor_side and bank > 0 then
-				local captor_owner = captor_side == "white" and config.OWNER_WHITE or config.OWNER_BLACK
-				local transfer = stone_params.eps_capture_multiplier * bank
-				state.scores.points[captor_owner] = state.scores.points[captor_owner] + transfer
-				local captor_player = require("match_state").player_for_color(state, captor_side)
-				captor_player.score.points = (captor_player.score.points or 1) + transfer
-			end
-			helpers.set_stone_stored_value(state, row, col, 0)
+			escalating_points_helper.apply_capture_transfer(state, row, col, cell, opts)
 		end,
-	}
+	})
 end
 
 --- Final-round placement payout; non-final rounds grant fallback points only.
 --- @param effect table
 --- @return table
 function M.final_blow_placement(effect)
-	local sub = effect.sub or "points"
-	return {
+	return effect_factory.build(effect, {
 		type = "FINAL_BLOW_PLACEMENT",
-		phase = sub,
-		macro = effect.macro or "playing_stones",
-		sub = sub,
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
 		apply = function(state, owner)
-			if helpers.is_final_round(state) then
-				state.scores.points[owner] = state.scores.points[owner] + stone_params.final_blow_points
-				state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + stone_params.final_blow_plus_mult
-				return
-			end
-			state.scores.points[owner] = state.scores.points[owner] + stone_params.final_blow_nonfinal_points
+			final_blow_helper.apply(state, owner)
 		end,
-	}
+	})
 end
 
 --- Replays the placing owner's most recent retriggerable same-turn stone effect, or fallback points.
 --- @param effect table
 --- @return table
 function M.retrigger_prior_stone_effect(effect)
-	local sub = effect.sub or "points"
-	return {
+	return effect_factory.build(effect, {
 		type = "RETRIGGER_PRIOR_STONE_EFFECT",
-		phase = sub,
-		macro = effect.macro or "playing_stones",
-		sub = sub,
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
+		default_sub = "points",
+		default_macro = "playing_stones",
+		default_priority = stone_params.default_effect_priority,
 		apply = function(state, owner)
-			local retrigger = require("single_game.resolver.retrigger_stone")
-			retrigger.apply_retrigger_or_fallback(state, owner)
+			require("objects.helper_effects.retrigger_prior_stone_effect").apply_retrigger_or_fallback(state, owner)
 		end,
-	}
+	})
 end
 
 --- Double corner nearby territory effect: corner tower adds ``1`` to ``territory_value`` on every cell in the
@@ -2215,7 +1904,11 @@ function M.apply_on_removed_effects(state, row, col, cell, opts)
 	end
 	for i = 1, #stone_def.effects do
 		local effect_def = stone_def.effects[i]
-		if effect_def.macro == "on_removed" then
+		local when = effect_def.when
+		if when == nil and effect_def.macro == "on_removed" then
+			when = "on_removed"
+		end
+		if when == "on_removed" then
 			local resolved = M.resolve(effect_def)
 			if resolved and resolved.apply then
 				resolved.apply(state, row, col, cell, opts)

@@ -3,6 +3,7 @@
 
 local content = require("content")
 local effect_registry = require("effect_registry")
+local effect_schedule = require("objects.effect_schedule")
 
 local M = {}
 
@@ -14,7 +15,8 @@ local function collect_board_reconcile_effect_defs()
 		if type(stone_def) == "table" and stone_def.effects then
 			for i = 1, #stone_def.effects do
 				local effect_def = stone_def.effects[i]
-				if effect_def.macro == "board_reconcile" then
+				local when = effect_schedule.parse_when_phase(effect_def)
+				if when == "board_reconcile" then
 					local name = effect_def.effect_name
 					if name and not seen[name] then
 						seen[name] = true
