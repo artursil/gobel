@@ -1,12 +1,20 @@
 --- Schema validation for unified game objects.
---- Stone effects declare ``when`` + ``phase`` (legacy ``macro`` / ``sub`` / ``lifecycle`` accepted during migration).
+--- Stone effects declare ``action`` + ``phase`` (legacy ``macro`` / ``sub`` / ``when`` / ``lifecycle`` accepted during migration).
 --- @module objects.schema
+
+local effect_enums = require("objects.effect_enums")
 
 local M = {}
 
 local VALID_TYPES = { stone = true, card = true, stance = true }
 
 local VALID_RARITIES = { common = true, uncommon = true, rare = true, epic = true, legendary = true }
+
+local VALID_ACTION = {}
+for _, action in pairs(effect_enums.ACTION) do
+	VALID_ACTION[action] = true
+end
+VALID_ACTION.board_reconcile = true
 
 local VALID_WHEN = {
 	game_start = true,
@@ -18,6 +26,8 @@ local VALID_WHEN = {
 	on_removed = true,
 	game_end = true,
 	tick = true,
+	on_card = true,
+	on_play = true,
 }
 
 local VALID_PHASES = {
@@ -28,11 +38,7 @@ local VALID_PHASES = {
 
 local VALID_MACROS = VALID_WHEN
 
-local VALID_SUBS = {
-	territory = true,
-	points = true,
-	mult = true,
-}
+local VALID_SUBS = VALID_PHASES
 
 local VALID_LIFECYCLES = {
 	placement = true,
@@ -102,7 +108,28 @@ local function validate_effect(effect, object_id)
 		return false, string.format("Effect in %s missing effect_name or not string", object_id)
 	end
 
-	if effect.when and effect.phase then
+	if effect.action and effect.phase then
+		if not VALID_ACTION[effect.action] then
+			return false,
+				string.format(
+					"Effect '%s' in %s has invalid action '%s' (valid: %s)",
+					effect.effect_name,
+					object_id,
+					effect.action,
+					list_valid(VALID_ACTION)
+				)
+		end
+		if not VALID_PHASES[effect.phase] then
+			return false,
+				string.format(
+					"Effect '%s' in %s has invalid phase '%s' (valid: %s)",
+					effect.effect_name,
+					object_id,
+					effect.phase,
+					list_valid(VALID_PHASES)
+				)
+		end
+	elseif effect.when and effect.phase then
 		if not VALID_WHEN[effect.when] then
 			return false,
 				string.format(
@@ -147,7 +174,7 @@ local function validate_effect(effect, object_id)
 	elseif effect.phase and type(effect.phase) == "string" then
 	else
 		return false,
-			string.format("Effect '%s' in %s missing macro/sub or legacy phase", effect.effect_name, object_id)
+			string.format("Effect '%s' in %s missing action/phase or legacy scheduling fields", effect.effect_name, object_id)
 	end
 
 	if effect.priority and type(effect.priority) ~= "number" then
@@ -319,6 +346,7 @@ function M.validate_all(definitions, object_type)
 	return #errors == 0, errors
 end
 
+M.VALID_ACTION = VALID_ACTION
 M.VALID_MACROS = VALID_MACROS
 M.VALID_WHEN = VALID_WHEN
 M.VALID_PHASES = VALID_PHASES

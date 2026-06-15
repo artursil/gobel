@@ -15,6 +15,8 @@ local card_params = require("objects.parameters.cards")
 local enclosure = require("single_game.resolver.enclosure")
 local rules = require("rules")
 local effect_factory = require("objects.effect_factory")
+local effect_enums = require("objects.effect_enums")
+local effect_schedule = require("objects.effect_schedule")
 local add_points_helper = require("objects.helper_effects.add_points")
 local add_mult_helper = require("objects.helper_effects.add_mult")
 local add_energy_helper = require("objects.helper_effects.add_energy")
@@ -1833,7 +1835,10 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active
 	local out = {}
 	local effect_defs = {}
 	local owner = stone_cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
-	active_macro = active_macro or state._resolve_macro or "playing_stones"
+	local active_action = active_macro or state._resolve_action or effect_enums.resolve_macro_to_action(state._resolve_macro) or effect_enums.ACTION.on_play
+	local action = effect_enums.resolve_macro_to_action(active_action)
+	local resolve_macro = effect_schedule.action_to_resolve_macro(action)
+	local active_phase = active_sub
 
 	if stone_def and stone_def.effects then
 		for i = 1, #stone_def.effects do
@@ -1843,13 +1848,14 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active
 
 	for _, effect_def in ipairs(effect_defs) do
 		if scoring_phases.skips_board_scan(effect_def) then
-		elseif not scoring_phases.matches(effect_def, active_macro, active_sub, territory_step) then
+		elseif not scoring_phases.matches(effect_def, action, active_phase, territory_step) then
 		elseif effect_def.effect_name == "distance_bonus" then
 			out[#out + 1] = {
 				type = "DISTANCE_BONUS",
-				phase = "territory",
-				sub = "territory",
-				macro = active_macro,
+				action = action,
+				phase = effect_enums.PHASE.territory,
+				sub = effect_enums.PHASE.territory,
+				macro = resolve_macro,
 				priority = effect_def.priority or 10,
 				conditions = effect_def.conditions,
 				apply = function(current_state)
@@ -1875,8 +1881,10 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active
 		else
 			local resolved = resolve_board_effect_entry(effect_def, row, col, owner)
 			if resolved then
-				resolved.macro = active_macro
-				resolved.sub = active_sub
+				resolved.action = action
+				resolved.macro = resolve_macro
+				resolved.phase = active_phase
+				resolved.sub = active_phase
 				out[#out + 1] = resolved
 			end
 		end
@@ -1904,11 +1912,11 @@ function M.apply_on_removed_effects(state, row, col, cell, opts)
 	end
 	for i = 1, #stone_def.effects do
 		local effect_def = stone_def.effects[i]
-		local when = effect_def.when
-		if when == nil and effect_def.macro == "on_removed" then
-			when = "on_removed"
+		local removal_action = effect_def.action or effect_def.when
+		if removal_action == nil and effect_def.macro == "on_removed" then
+			removal_action = effect_enums.ACTION.on_removed
 		end
-		if when == "on_removed" then
+		if removal_action == effect_enums.ACTION.on_removed or removal_action == "on_removed" then
 			local resolved = M.resolve(effect_def)
 			if resolved and resolved.apply then
 				resolved.apply(state, row, col, cell, opts)

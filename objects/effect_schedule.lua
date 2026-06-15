@@ -1,5 +1,7 @@
---- Parses effect ``when`` / ``phase`` scheduling with legacy ``macro`` / ``sub`` / ``lifecycle`` compat.
+--- Parses effect ``action`` / ``phase`` scheduling with legacy ``macro`` / ``sub`` / ``when`` / ``lifecycle`` compat.
 --- @module objects.effect_schedule
+
+local effect_enums = require("objects.effect_enums")
 
 local M = {}
 
@@ -13,6 +15,8 @@ M.VALID_WHEN = {
 	on_removed = true,
 	game_end = true,
 	tick = true,
+	on_card = true,
+	on_play = true,
 }
 
 M.VALID_PHASE = {
@@ -45,60 +49,79 @@ M.PLACEMENT_RECORD_EFFECT_NAMES = {
 }
 
 --- @param effect_def table|nil
---- @return string|nil when
+--- @return string|nil action canonical or legacy-only action name
 --- @return string|nil phase
-function M.parse_when_phase(effect_def)
+function M.parse_action_phase(effect_def)
 	if not effect_def then
 		return nil, nil
 	end
+	if effect_def.action and effect_def.phase then
+		return effect_enums.normalize_action(effect_def.action), effect_def.phase
+	end
 	if effect_def.when and effect_def.phase then
-		return effect_def.when, effect_def.phase
+		return effect_enums.when_to_action(effect_def.when), effect_def.phase
 	end
 	if effect_def.lifecycle == "board_reconcile" then
-		return "board_reconcile", effect_def.sub or effect_def.phase or "territory"
+		return "board_reconcile", effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "territory"
 	end
 	if effect_def.lifecycle == "placement" then
-		return "playing_stones", effect_def.sub or effect_def.phase or "points"
+		return effect_enums.ACTION.on_play, effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "points"
 	end
 	if effect_def.macro == "on_removed" then
-		return "on_removed", effect_def.sub or effect_def.phase or "points"
+		return effect_enums.ACTION.on_removed, effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "points"
 	end
 	if effect_def.macro == "end_of_turn" then
-		return "end_of_turn", effect_def.sub or effect_def.phase or "points"
+		return effect_enums.ACTION.end_of_turn, effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "points"
 	end
 	if effect_def.macro == "board_reconcile" then
-		return "board_reconcile", effect_def.sub or effect_def.phase or "territory"
+		return "board_reconcile", effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "territory"
 	end
 	if effect_def.macro then
-		return effect_def.macro, effect_def.sub or effect_def.phase or "points"
+		return effect_enums.macro_to_action(effect_def.macro), effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "points"
 	end
 	local legacy = effect_def.phase
 	if legacy == "distance" or legacy == "territory" then
-		return "playing_stones", "territory"
+		return effect_enums.ACTION.on_play, effect_enums.PHASE.territory
 	end
 	if legacy == "points" then
-		return effect_def._legacy_macro or "playing_stones", "points"
+		return effect_enums.normalize_action(effect_def._legacy_macro or effect_def._legacy_action) or effect_enums.ACTION.on_play,
+			effect_enums.PHASE.points
 	end
 	if legacy == "mult" then
-		return effect_def._legacy_macro or "playing_stones", "mult"
+		return effect_enums.normalize_action(effect_def._legacy_macro or effect_def._legacy_action) or effect_enums.ACTION.on_play,
+			effect_enums.PHASE.mult
 	end
 	return nil, nil
 end
 
---- Maps ``when`` to legacy resolve macro name used by ``resolve_round``.
+--- @param effect_def table|nil
+--- @return string|nil when legacy alias for action
+--- @return string|nil phase
+function M.parse_when_phase(effect_def)
+	local action, phase = M.parse_action_phase(effect_def)
+	if not action then
+		return nil, nil
+	end
+	if action == effect_enums.ACTION.on_play then
+		return "playing_stones", phase
+	end
+	if action == effect_enums.ACTION.on_card then
+		return "playing_cards", phase
+	end
+	return action, phase
+end
+
+--- Maps canonical action to legacy resolve macro name used by ``resolve_round`` callers.
+--- @param action string
+--- @return string
+function M.action_to_resolve_macro(action)
+	return effect_enums.action_to_resolve_macro(action)
+end
+
 --- @param when string
 --- @return string
 function M.when_to_resolve_macro(when)
-	if when == "playing_stones" or when == "playing_cards" then
-		return when
-	end
-	if when == "end_of_turn" or when == "before_turn" or when == "game_start" or when == "game_end" then
-		return when
-	end
-	if when == "board_reconcile" or when == "on_removed" or when == "tick" then
-		return when
-	end
-	return when
+	return M.action_to_resolve_macro(effect_enums.when_to_action(when) or when)
 end
 
 --- @param effect_def table|nil
@@ -113,14 +136,14 @@ function M.is_placement_record(effect_def)
 	if effect_def.lifecycle == "placement" then
 		return true
 	end
-	local when, phase = M.parse_when_phase(effect_def)
-	if when ~= "playing_stones" then
+	local action, phase = M.parse_action_phase(effect_def)
+	if action ~= effect_enums.ACTION.on_play then
 		return false
 	end
 	if effect_def.effect_name and M.PLACEMENT_RECORD_EFFECT_NAMES[effect_def.effect_name] then
 		return true
 	end
-	return phase == "points" or phase == "mult"
+	return phase == effect_enums.PHASE.points or phase == effect_enums.PHASE.mult
 end
 
 --- @param effect_def table|nil
@@ -130,22 +153,22 @@ function M.skips_board_scan(effect_def)
 end
 
 --- @param effect_def table
---- @param active_macro string
---- @param active_sub string
+--- @param active_action string canonical or legacy resolve macro
+--- @param active_phase string
 --- @param territory_step string|nil
 --- @param is_board_territory_effect function|nil
 --- @return boolean
-function M.matches_resolve_pass(effect_def, active_macro, active_sub, territory_step, is_board_territory_effect)
-	local when, phase = M.parse_when_phase(effect_def)
-	if not when or not phase then
+function M.matches_resolve_pass(effect_def, active_action, active_phase, territory_step, is_board_territory_effect)
+	local action, phase = M.parse_action_phase(effect_def)
+	if not action or not phase then
 		return false
 	end
-	local macro = M.when_to_resolve_macro(when)
-	if phase ~= active_sub then
+	local normalized_active = effect_enums.resolve_macro_to_action(active_action)
+	if phase ~= active_phase then
 		return false
 	end
 	local board_territory = is_board_territory_effect and is_board_territory_effect(effect_def) or false
-	if active_sub == "territory" and board_territory then
+	if active_phase == effect_enums.PHASE.territory and board_territory then
 		local step = effect_def.territory_step
 		if territory_step and step and step ~= territory_step then
 			return false
@@ -155,13 +178,13 @@ function M.matches_resolve_pass(effect_def, active_macro, active_sub, territory_
 		end
 		return true
 	end
-	if macro ~= active_macro then
+	if action ~= normalized_active then
 		return false
 	end
-	if active_sub == "territory" and territory_step and effect_def.territory_step and effect_def.territory_step ~= territory_step then
+	if active_phase == effect_enums.PHASE.territory and territory_step and effect_def.territory_step and effect_def.territory_step ~= territory_step then
 		return false
 	end
-	if active_sub == "territory" and territory_step and not effect_def.territory_step then
+	if active_phase == effect_enums.PHASE.territory and territory_step and not effect_def.territory_step then
 		return false
 	end
 	return true

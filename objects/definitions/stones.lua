@@ -56,7 +56,7 @@ M.stone_power = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "add_points",
 			value = P.stone_power_placement_points,
@@ -81,7 +81,7 @@ M.stone_focus = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "mult",
 			effect_name = "add_mult",
 			value = P.stone_focus_placement_plus_mult,
@@ -124,7 +124,7 @@ M.influence_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "territory",
 			effect_name = "distance_bonus",
 			territory_step = "distance",
@@ -152,7 +152,7 @@ M.stone_influence = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "territory",
 			effect_name = "distance_bonus",
 			territory_step = "distance",
@@ -179,7 +179,7 @@ M.stone_tower = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "territory",
 			effect_name = "double_corner_nearby_territory",
 			territory_step = "value",
@@ -205,7 +205,7 @@ M.tower_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "territory",
 			effect_name = "double_corner_nearby_territory",
 			territory_step = "value",
@@ -231,7 +231,7 @@ M.enclosure_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "territory",
 			effect_name = "enclosure_territory_multiply",
 			territory_step = "value",
@@ -258,7 +258,7 @@ M.territory_to_points_stone = {
 	},
 	effects = {
 		{
-			when = "end_of_turn",
+			action = "end_of_turn",
 			phase = "points",
 			effect_name = "territory_to_points",
 			priority = P.default_effect_priority,
@@ -282,7 +282,7 @@ M.control_territory_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "mult",
 			effect_name = "mult_control_streak",
 			priority = P.default_effect_priority,
@@ -306,7 +306,7 @@ M.money_field_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "money_field_enclosure_payout",
 			priority = P.default_effect_priority,
@@ -331,14 +331,14 @@ M.copper_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "add_points",
 			value = P.copper_base_points,
 			priority = P.default_effect_priority,
 		},
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "mult",
 			effect_name = "copper_threshold_plus_mult",
 			priority = P.default_effect_priority,
@@ -362,7 +362,7 @@ M.anti_capture_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "anti_capture_immunity",
 			priority = P.default_effect_priority,
@@ -390,7 +390,7 @@ M.delay_reward_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "delay_reward_survival",
 			rounds = P.points_delay_rounds,
@@ -476,7 +476,7 @@ M.energy_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "add_energy",
 			value = P.energy_stone_gain,
@@ -503,7 +503,7 @@ M.kamikaze_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "kamikaze_sacrifice",
 			value = P.kamikaze_points_bonus,
@@ -554,7 +554,7 @@ M.control_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "territory",
 			effect_name = "control_territory_override",
 			territory_step = "override",
@@ -598,7 +598,7 @@ M.points_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "add_points",
 			value = P.points_stone_t1,
@@ -623,7 +623,7 @@ M.capture_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "capture_zero_liberty_enemy",
 			priority = P.default_effect_priority,
@@ -652,7 +652,7 @@ M.wall = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "wall_stone",
 			priority = P.wall_effect_priority,
@@ -681,7 +681,7 @@ M.diagonal_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "diagonal_group_points",
 			priority = P.wall_effect_priority,
@@ -709,7 +709,7 @@ M.line_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "line_group_points",
 			priority = P.wall_effect_priority,
@@ -736,7 +736,7 @@ M.blockade_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "blockade_adjacent",
 			priority = P.default_effect_priority,
@@ -760,7 +760,7 @@ M.tax_stone = {
 	},
 	effects = {
 		{
-			when = "end_of_turn",
+			action = "end_of_turn",
 			phase = "points",
 			effect_name = "tax_enclosure_enemies",
 			value = {
@@ -793,7 +793,7 @@ M.self_destruct_timed_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "self_destruct_timed",
 			immediate_points = P.self_destruct_immediate_points,
@@ -820,13 +820,13 @@ M.territory_to_multiplier_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "mult",
 			effect_name = "territory_to_multiplier_snapshot",
 			priority = P.default_effect_priority,
 		},
 		{
-			when = "end_of_turn",
+			action = "end_of_turn",
 			phase = "mult",
 			effect_name = "territory_to_multiplier",
 			priority = P.default_effect_priority,
@@ -854,20 +854,20 @@ M.escalating_points_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "escalating_points_bank_init",
 			priority = P.default_effect_priority,
 		},
 		{
-			when = "end_of_turn",
+			action = "end_of_turn",
 			phase = "points",
 			effect_name = "escalating_points_bank",
 			value = P.eps_round_points,
 			priority = P.default_effect_priority,
 		},
 		{
-			when = "on_removed",
+			action = "on_removed",
 			phase = "points",
 			effect_name = "escalating_points_capture_transfer",
 			priority = P.default_effect_priority,
@@ -891,13 +891,13 @@ M.escalating_money_stone = {
 	},
 	effects = {
 		{
-			when = "end_of_turn",
+			action = "end_of_turn",
 			phase = "points",
 			effect_name = "escalating_money_tracker",
 			priority = P.default_effect_priority,
 		},
 		{
-			when = "on_removed",
+			action = "on_removed",
 			phase = "points",
 			effect_name = "escalating_money_capture_penalty",
 			priority = P.default_effect_priority,
@@ -927,21 +927,21 @@ M.high_power_money_loss_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "add_points",
 			value = P.hpml_points_gain,
 			priority = P.default_effect_priority,
 		},
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "mult",
 			effect_name = "add_mult",
 			value = P.hpml_plus_mult_gain,
 			priority = P.default_effect_priority,
 		},
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "add_money",
 			value = { amount = -P.hpml_money_loss },
@@ -967,14 +967,14 @@ M.unlimited_upgrades_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "add_points",
 			value = P.unlimited_upgrades_points_per_level,
 			priority = P.default_effect_priority,
 		},
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "mult",
 			effect_name = "add_mult",
 			value = P.unlimited_upgrades_plus_mult_per_level,
@@ -1006,7 +1006,7 @@ M.final_blow_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "final_blow_placement",
 			priority = P.default_effect_priority,
@@ -1033,7 +1033,7 @@ M.retrigger_stone = {
 	},
 	effects = {
 		{
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			effect_name = "retrigger_prior_stone_effect",
 			priority = P.default_effect_priority,

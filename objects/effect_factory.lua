@@ -1,24 +1,28 @@
---- Builds resolved effect tables with ``when`` / ``phase`` metadata from definition stubs.
+--- Builds resolved effect tables with ``action`` / ``phase`` metadata from definition stubs.
 --- @module objects.effect_factory
 
+local effect_enums = require("objects.effect_enums")
 local effect_schedule = require("objects.effect_schedule")
 
 local M = {}
 
 --- @param effect_def table
---- @param opts table { type: string, default_priority?: integer, default_macro?: string, default_sub?: string, apply?: function, on_tick?: function, extra?: table }
+--- @param opts table { type: string, default_priority?: integer, default_action?: string, default_macro?: string, default_sub?: string, default_phase?: string, apply?: function, on_tick?: function, extra?: table }
 --- @return table
 function M.build(effect_def, opts)
-	local when, phase = effect_schedule.parse_when_phase(effect_def)
-	local sub = phase or effect_def.sub or effect_def.phase or opts.default_sub or "points"
+	local action, phase = effect_schedule.parse_action_phase(effect_def)
+	phase = phase or effect_enums.sub_to_phase(effect_def.sub) or opts.default_phase or opts.default_sub or effect_enums.PHASE.points
+	action = action
+		or effect_enums.normalize_action(effect_def.action or effect_def.macro or opts.default_action or opts.default_macro)
+		or effect_enums.ACTION.on_play
+	local resolve_macro = effect_schedule.action_to_resolve_macro(action)
 	local resolved = {
 		type = opts.type,
-		when = when,
-		phase = sub,
-		macro = effect_def.macro
-			or opts.default_macro
-			or (when and effect_schedule.when_to_resolve_macro(when)),
-		sub = sub,
+		action = action,
+		when = resolve_macro == "playing_stones" and "playing_stones" or (resolve_macro == "playing_cards" and "playing_cards" or action),
+		phase = phase,
+		macro = resolve_macro,
+		sub = phase,
 		priority = effect_def.priority or opts.default_priority or 10,
 		conditions = effect_def.conditions,
 		apply = opts.apply,

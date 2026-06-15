@@ -7,15 +7,15 @@ local M = {}
 
 M.pattern_x_mult = {
 	effect_name = "pattern_x_mult",
-	macro = "playing_stones",
-	sub = "mult",
+	action = "on_play",
+	phase = "mult",
 	priority = stone_params.pattern_effect_priority,
 }
 
 M.pattern_plus_mult = {
 	effect_name = "pattern_plus_mult",
-	macro = "playing_stones",
-	sub = "mult",
+	action = "on_play",
+	phase = "mult",
 	priority = stone_params.pattern_effect_priority,
 }
 

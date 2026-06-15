@@ -6,14 +6,14 @@ describe("stone_resolve.apply_effect_deltas", function()
 	local base_effects = {
 		{
 			effect_name = "add_points",
-			when = "playing_stones",
+			action = "on_play",
 			phase = "points",
 			value = 2,
 			priority = 10,
 		},
 		{
 			effect_name = "add_mult",
-			when = "playing_stones",
+			action = "on_play",
 			phase = "mult",
 			value = 1,
 			priority = 10,
