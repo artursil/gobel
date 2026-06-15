@@ -24,24 +24,22 @@ function M.apply_placement(state, row, col, rounds, payout)
 	state._effect_tick_skip_cell = { row = row, col = col }
 end
 
+--- Applies delayed payout after generic timer decrement reached zero.
 --- @param cell table
 --- @param default_payout number
---- @return nil
+--- @return number|nil payout_amount
+--- @return string|nil owner
 function M.tick_cell(cell, default_payout)
-	local remaining = cell.survival_rounds_remaining
-	if type(remaining) ~= "number" or remaining <= 0 then
+	if type(cell.survival_rounds_remaining) == "number" and cell.survival_rounds_remaining > 0 then
 		return
 	end
-	remaining = remaining - 1
-	cell.survival_rounds_remaining = remaining
-	cell.timer_remaining_rounds = remaining > 0 and remaining or nil
-	if remaining > 0 then
+	if cell.delay_payout == nil then
 		return
 	end
-	cell.survival_rounds_remaining = nil
-	cell.timer_remaining_rounds = nil
 	local payout_amount = cell.delay_payout or default_payout
 	cell.delay_payout = nil
+	cell.survival_rounds_remaining = nil
+	cell.timer_remaining_rounds = nil
 	if board.is_empty(cell) or payout_amount <= 0 then
 		return
 	end

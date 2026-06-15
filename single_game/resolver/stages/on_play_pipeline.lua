@@ -9,7 +9,7 @@ local messages = require("messages")
 local stone_params = require("objects.parameters.stones")
 local Effects = require("effect_registry")
 local board_reconcile = require("single_game.resolver.board_reconcile")
-local stone_removal = require("single_game.resolver.stone_removal")
+local dispatch_removed = require("single_game.resolver.stages.dispatch_removed")
 local stone_timers = require("single_game.resolver.stone_timers")
 local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 local territory_resolver = require("single_game.resolver.territory")
@@ -167,14 +167,11 @@ end
 --- @return nil
 function M.run(state, event)
 	local old_board = state.board
-	stone_removal.apply_board_replacement_diff(state, old_board, event.board, { capturer = event.actor })
-	stone_removal.preserve_cell_metadata(old_board, event.board)
-	stone_timers.clear_removed_stones(state, old_board, event.board)
+	dispatch_removed.preserve_cell_metadata(old_board, event.board)
 	if event.row and event.col and event.stone_id then
 		territory_resolver.capture_placement_snapshot_if_needed(state, event.row, event.col, event.stone_id)
 	end
 	state.board = event.board
-	stone_removal.install_board_hooks(state)
 	local stone_def = event.stone_id and content.get_stone(event.stone_id) or nil
 	local remove_ctx = {
 		state = state,
@@ -187,6 +184,12 @@ function M.run(state, event)
 		player_chain_color = color_to_stone(event.actor),
 	}
 	local extra_captures, kamikaze_sacrifice_applies = M.remove_stones(remove_ctx)
+	local dispatch_opts = { capturer = event.actor }
+	if kamikaze_sacrifice_applies and event.row and event.col then
+		dispatch_opts.skip_sacrifice_cell = { row = event.row, col = event.col }
+	end
+	dispatch_removed.run(state, old_board, state.board, dispatch_opts)
+	stone_timers.clear_removed_stones(state, old_board, state.board)
 	local stone_effects = event.stone_effects or {}
 	if extra_captures > 0 then
 		stone_effects = append_capture_bonus_stone_effects(stone_effects, extra_captures)
@@ -208,7 +211,7 @@ function M.run(state, event)
 	if event.row and event.col then
 		territory_control_rounds.record_placement_streak_snapshot(state, event.row, event.col)
 		territory_control_rounds.clear_cell(state, event.row, event.col)
-		stone_removal.mark_placed_via_play(state, event.row, event.col)
+		dispatch_removed.mark_placed_via_play(state, event.row, event.col)
 	end
 	state.last_played_stone = event.stone_id
 	state.last_opponent_move = { stone_id = event.stone_id, row = event.row, col = event.col, actor = event.actor }

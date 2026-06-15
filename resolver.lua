@@ -15,7 +15,7 @@ local stone_params = require("objects.parameters.stones")
 local board_reconcile = require("single_game.resolver.board_reconcile")
 local blocked_cells = require("single_game.resolver.helpers.blocked_cells")
 local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
-local effect_tick_lifecycle = require("single_game.resolver.effect_tick_lifecycle")
+local tick_objects = require("single_game.resolver.stages.tick_objects")
 local effects_helpers = require("objects.effects_helpers")
 local on_play_pipeline = require("single_game.resolver.stages.on_play_pipeline")
 local placement_lifecycle = require("single_game.resolver.placement_lifecycle")
@@ -388,7 +388,7 @@ local function card_play_message(card_def)
 	return label .. ": " .. table.concat(parts, ", ")
 end
 
-local stone_removal = require("single_game.resolver.stone_removal")
+local dispatch_removed = require("single_game.resolver.stages.dispatch_removed")
 
 --- @param captures integer
 --- @return integer
@@ -576,7 +576,8 @@ local function begin_next_turn(state)
 		}
 	end
 	local skip_cell = state._effect_tick_skip_cell
-	effect_tick_lifecycle.tick(state, { tick_blockade = false, skip_cell = skip_cell })
+	tick_objects.decrement(state, { skip_cell = skip_cell })
+	tick_objects.run_side_effects(state, { tick_blockade = false, skip_cell = skip_cell })
 	state._effect_tick_skip_cell = nil
 	state.turn_number = state.turn_number + 1
 	state.round_number = match_state.round_number_from_turn(state.turn_number)
@@ -1109,7 +1110,7 @@ function M.apply_board_stone_removal(state, row, col, captor_side)
 	if not cell or board.is_empty(cell) then
 		return
 	end
-	stone_removal.on_removed(state, row, col, cell, { capturer = captor_side })
+	dispatch_removed.on_removed(state, row, col, cell, { capturer = captor_side })
 end
 
 --- Visual specs remove stones via ``capture_stone_at``; wire removal hooks when test helper is loaded.

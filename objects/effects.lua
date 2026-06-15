@@ -33,6 +33,7 @@ local mult_control_streak_helper = require("objects.helper_effects.mult_control_
 local territory_to_multiplier_helper = require("objects.helper_effects.territory_to_multiplier")
 local escalating_points_helper = require("objects.helper_effects.escalating_points")
 local final_blow_helper = require("objects.helper_effects.final_blow_placement")
+local dispatch_removed = require("single_game.resolver.stages.dispatch_removed")
 
 local M = {}
 
@@ -818,8 +819,10 @@ function M.destroy_selected_enemy_stone(effect)
 				return
 			end
 
-			state.board[row][col] = config.STONE_NONE
+			local old_board = board.clone(state.board)
 			local actor_side = owner == config.OWNER_BLACK and "black" or "white"
+			state.board[row][col] = config.STONE_NONE
+			dispatch_removed.run(state, old_board, state.board, { capturer = actor_side })
 			local actor_state = match_state.player_for_color(state, actor_side)
 			actor_state.prisoners = (actor_state.prisoners or 0) + 1
 		end,
@@ -908,7 +911,11 @@ function M.damage_selected_stone(effect)
 			local intrinsic = current - previous_bonus
 			local next_intrinsic = math.max(0, intrinsic - amount)
 			if next_intrinsic <= 0 then
+				local old_board = board.clone(state.board)
+				local resolution = queries.ensure_resolution(state)
+				local capturer = resolution.effect_owner == config.OWNER_WHITE and "white" or "black"
 				state.board[row][col] = config.STONE_NONE
+				dispatch_removed.run(state, old_board, state.board, { capturer = capturer })
 				require("single_game.resolver.board_reconcile").run(state)
 				return
 			end

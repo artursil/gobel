@@ -7,16 +7,17 @@
 --- add_points/add_mult (see ``resolve_board_stone``).
 --- @module resolver.resolve_round
 
+local board = require("board")
 local config = require("config")
 local match_state = require("match_state")
 local effect_manager = require("single_game.resolver.effect_manager")
 local queries = require("single_game.resolver.helpers.state_queries")
 local territory = require("single_game.resolver.territory")
 local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
-local board_cell_timers = require("single_game.resolver.board_cell_timers")
 local card_play_memory = require("single_game.resolver.helpers.card_play_memory")
 local scoring_phases = require("single_game.resolver.scoring_phases")
-local effect_tick_lifecycle = require("single_game.resolver.effect_tick_lifecycle")
+local tick_objects = require("single_game.resolver.stages.tick_objects")
+local dispatch_removed = require("single_game.resolver.stages.dispatch_removed")
 local effects_helpers = require("objects.effects_helpers")
 local stone_timers = require("single_game.resolver.stone_timers")
 local effect_enums = require("objects.effect_enums")
@@ -269,17 +270,20 @@ end
 --- @param state table
 --- @return nil
 local function run_end_of_turn_housekeeping(state)
-	if state._decrement_board_cell_timers_on_eot then
-		board_cell_timers.decrement(state)
-	end
-	board_cell_timers.expire(state)
-	card_play_memory.flush_just_played_to_history(state)
-	require("single_game.resolver.helpers.blocked_cells").bootstrap_from_board_if_needed(state)
 	if not state._skip_end_of_turn_effect_tick then
+		local pre_board = board.clone(state.board)
+		tick_objects.run(state, {
+			decrement_board_cell_timers = state._decrement_board_cell_timers_on_eot,
+			remove_expired_timed_stones = true,
+		})
+		dispatch_removed.run(state, pre_board, state.board)
+		stone_timers.clear_removed_stones(state, pre_board, state.board)
 		local tick_blockade = not state._blockade_registered_this_action and (state.turn_number or 1) % 2 == 0
-		effect_tick_lifecycle.tick(state, { tick_blockade = tick_blockade })
+		tick_objects.run_side_effects(state, { tick_blockade = tick_blockade })
 	end
 	state._blockade_registered_this_action = nil
+	card_play_memory.flush_just_played_to_history(state)
+	require("single_game.resolver.helpers.blocked_cells").bootstrap_from_board_if_needed(state)
 	tick_timed_effects(state)
 	effects_helpers.tick_capture_cooldowns(state)
 	tick_temporary_stances(state)

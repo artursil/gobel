@@ -57,7 +57,7 @@ function M.apply_capture_transfer(state, row, col, cell, opts)
 		return
 	end
 	local captor_side = opts and opts.capturer or nil
-	local bank = helpers.stone_stored_value(state, row, col) or 0
+	local bank = (cell and cell.stored_value) or helpers.stone_stored_value(state, row, col) or 0
 	local stone_side = cell.color == config.STONE_WHITE and "white" or "black"
 	state.scores = state.scores or {}
 	state.scores.points = state.scores.points or { B = 1, W = 1 }

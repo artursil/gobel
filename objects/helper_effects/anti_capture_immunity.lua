@@ -35,19 +35,15 @@ function M.apply(state, row, col, duration)
 	M.grant_group_immunity_on_cells(state.board, row, col, duration)
 end
 
+--- Finalizes immunity after generic timer decrement (clears zeroed fields).
 --- @param cell table
 --- @return nil
 function M.tick_cell(cell)
 	local remaining = cell.immunity_remaining
-	if type(remaining) ~= "number" or remaining <= 0 then
+	if type(remaining) == "number" and remaining > 0 then
 		return
 	end
-	remaining = remaining - 1
-	if remaining <= 0 then
-		cell.immunity_remaining = nil
-		return
-	end
-	cell.immunity_remaining = remaining
+	cell.immunity_remaining = nil
 end
 
 return M
