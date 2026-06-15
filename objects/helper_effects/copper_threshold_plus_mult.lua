@@ -56,15 +56,14 @@ end
 --- @param owner string
 --- @param row integer|nil
 --- @param col integer|nil
+--- @param effect_def table|nil
 --- @return nil
-function M.apply(state, owner, row, col)
+function M.apply(state, owner, row, col, effect_def)
 	if not row or not col then
 		return
 	end
-	local delta = M.placement_threshold_plus_mult(state.board, row, col, owner)
-	if delta ~= 0 then
-		state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + delta
-	end
+	local bonus = (effect_def and effect_def.value) or stone_params.copper_threshold_plus_mult_bonus
+	state.scores.plus_mult[owner] = state.scores.plus_mult[owner] + bonus
 end
 
 return M

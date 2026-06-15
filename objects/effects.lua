@@ -1524,9 +1524,12 @@ function M.copper_threshold_plus_mult(effect)
 		default_sub = "mult",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
-		apply = function(state, owner)
-			local row, col = helpers.placement_coords(state)
-			copper_helper.apply(state, owner, row, col)
+		apply = function(state, owner, row, col, _cell, effect_def)
+			local pr, pc = row, col
+			if pr == nil or pc == nil then
+				pr, pc = helpers.placement_coords(state)
+			end
+			copper_helper.apply(state, owner, pr, pc, effect_def)
 		end,
 	})
 end

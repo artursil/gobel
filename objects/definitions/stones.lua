@@ -341,6 +341,10 @@ M.copper_stone = {
 			action = "on_play",
 			phase = "mult",
 			effect_name = "copper_threshold_plus_mult",
+			value = P.copper_threshold_plus_mult_bonus,
+			conditions = {
+				{ condition_name = "owner_coppers_on_board_at_least", value = P.copper_threshold },
+			},
 			priority = P.default_effect_priority,
 		},
 	},

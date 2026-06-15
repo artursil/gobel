@@ -3,7 +3,7 @@
 
 local board = require("board")
 local config = require("config")
-local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
+local anti_capture = require("single_game.resolver.stages_helpers.anti_capture")
 local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 
 local M = {}
@@ -147,7 +147,7 @@ end
 --- @return nil
 function M.run_side_effects(state, opts)
 	opts = opts or {}
-	anti_capture_immunity.ensure_materialized_from_board(state)
+	anti_capture.ensure_materialized_from_board(state)
 	local n = config.BOARD_SIZE
 	for r = 1, n do
 		for c = 1, n do

@@ -188,6 +188,30 @@ function M.selected_target_is_friendly_stone(condition_def, state)
 	return cell.color == owner_color
 end
 
+--- Owner had at least N copper stones on board before the current placement.
+--- @param condition_def table ``{ condition_name, value?: integer }``
+--- @param state table
+--- @return boolean
+function M.owner_coppers_on_board_at_least(condition_def, state)
+	local threshold = condition_def and condition_def.value
+	if threshold == nil or not state then
+		return false
+	end
+	local events = state.round_stone_effects or {}
+	local stone_event = events[#events]
+	if not stone_event or not stone_event.row or not stone_event.col then
+		return false
+	end
+	local copper_helper = require("objects.helper_effects.copper_threshold_plus_mult")
+	local before_count = copper_helper.count_owner_copper_on_board(
+		state.board,
+		stone_event.owner,
+		stone_event.row,
+		stone_event.col
+	)
+	return before_count >= threshold
+end
+
 --- Evaluate a single condition.
 --- Dispatch by condition name; return true if unknown (fail-safe).
 --- @param condition_def table: {condition_name, ...params...}

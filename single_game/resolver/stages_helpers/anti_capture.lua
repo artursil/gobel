@@ -1,5 +1,5 @@
---- Capture immunity queries for ``anti_capture_stone`` (``cell.immunity_remaining``).
---- @module resolver.anti_capture_immunity
+--- Anti-capture legality helpers (reads ``cell.immunity_remaining``).
+--- @module single_game.resolver.stages_helpers.anti_capture
 
 local board = require("board")
 local config = require("config")
@@ -8,7 +8,7 @@ local stone_params = require("objects.parameters.stones")
 
 local M = {}
 
---- Materializes ``cell.immunity_remaining`` for ``set_board`` layouts with ``anti_capture_stone``.
+--- Materializes ``cell.immunity_remaining`` for test boards with pre-placed anti_capture stones.
 --- @param state table
 --- @return nil
 function M.ensure_materialized_from_board(state)
@@ -94,6 +94,25 @@ function M.move_would_capture_immune_group(state, row, col, player, stone_kind)
 		end
 	end
 	return false
+end
+
+--- @param state table
+--- @param side string ``"black"`` | ``"white"``
+--- @param moves table[] ``{ row, col }`` or ``{ r, c }``
+--- @param stone_id string
+--- @return table[]
+function M.filter_legal_moves(state, side, moves, stone_id)
+	local player = side == "white" and config.STONE_WHITE or config.STONE_BLACK
+	local out = {}
+	for i = 1, #moves do
+		local move = moves[i]
+		local row = move.row or move[1] or move.r
+		local col = move.col or move[2] or move.c
+		if row and col and not M.move_would_capture_immune_group(state, row, col, player, stone_id) then
+			out[#out + 1] = move
+		end
+	end
+	return out
 end
 
 return M

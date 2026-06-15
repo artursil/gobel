@@ -12,6 +12,8 @@ Normative principles for stone behavior, resolver stages, and phased `apply`.
 
 Stone **scoring and cell setup** live in effects. **Board hygiene and legality** live in resolver stages. Effects use **`apply` only**.
 
+Effect definitions use **`action`** + **`phase`** (+ optional **`conditions`**). Canonical actions include `on_play`, `on_card`, `end_of_turn`, `tick`, `on_removed`.
+
 ```
 stone definition
   └─ effects[]: { effect_name, when, phase, … }
@@ -70,13 +72,14 @@ The same **phase order** (territory → points → mult) applies within each bea
 
 | `when` | Invoked |
 |--------|---------|
-| `playing_stones` | After a stone placement (pipeline above) |
+| `on_play` | After a stone placement (pipeline below) |
+| `on_card` | After a card is played |
 | `end_of_turn` | End-of-turn resolve for active player |
 | `tick` | Between turns / round boundary (timers, blockade decay, immunity decay) |
 | `on_removed` | When a stone leaves the board (cross-player penalties, bank transfer) |
 | `board_reconcile` | After any board topology change (defence solidity network) |
 
-There is **no** separate `lifecycle`, `macro`, or `sub` on new/changed stone defs — only `when` + `phase`.
+There is **no** separate `lifecycle`, legacy `macro`/`sub`, or `board_reconcile` action on stone defs — only `action` + `phase`.
 
 ---
 
@@ -129,7 +132,7 @@ Examples:
 | mult_control_streak | `playing_stones` | `mult` | Reads `territory_control_rounds` |
 | delay_reward_survival | `playing_stones` | `points` | Starts `survival_rounds_remaining` on cell |
 | blockade_adjacent | `playing_stones` | `points` | Writes board-zone blockade map |
-| defence_solidity_network | `board_reconcile` | `territory` | Full-board recompute |
+| defence solidity (one-shot) | `on_play` | `points` | Connected group + shared adjacency via `shared_stones_effects` |
 | tax_enclosure_enemies | `end_of_turn` | `points` | Enclosure scan |
 | escalating capture penalty | `on_removed` | `points` | Cross-player |
 

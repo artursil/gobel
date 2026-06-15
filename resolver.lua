@@ -13,7 +13,7 @@ local pouch = require("pouch")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
 local blocked_cells = require("single_game.resolver.helpers.blocked_cells")
-local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
+local anti_capture = require("single_game.resolver.stages_helpers.anti_capture")
 local tick_objects = require("single_game.resolver.stages.tick_objects")
 local effects_helpers = require("objects.effects_helpers")
 local on_play_pipeline = require("single_game.resolver.stages.on_play_pipeline")
@@ -683,7 +683,7 @@ local function compile_place_stone_events(state, action)
 		return nil, "Illegal move: cell blocked"
 	end
 	local player_chain_color = color_to_stone(action.actor)
-	if anti_capture_immunity.move_would_capture_immune_group(state, row, col, player_chain_color, stone_id) then
+	if anti_capture.move_would_capture_immune_group(state, row, col, player_chain_color, stone_id) then
 		return nil, "Illegal move: capture blocked by immunity"
 	end
 	local allow_suicide = rules.allows_suicide_placement(stone_id)
@@ -1150,12 +1150,12 @@ local function wire_visual_test_set_board()
 		return
 	end
 	local spec_helper = require("spec.spec_helper")
-	local anti_capture = require("single_game.resolver.anti_capture_immunity")
+	local anti_capture_mod = require("single_game.resolver.stages_helpers.anti_capture")
 	local blocked_cells_mod = require("single_game.resolver.helpers.blocked_cells")
 	local original_set_board = test_helper.set_board
 	function test_helper.set_board(g, rows)
 		original_set_board(g, rows)
-		anti_capture.ensure_materialized_from_board(g)
+		anti_capture_mod.ensure_materialized_from_board(g)
 		blocked_cells_mod.bootstrap_from_board_if_needed(g)
 	end
 	test_helper._gobel_set_board_wired = true

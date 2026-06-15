@@ -13,7 +13,7 @@ local config = require("config")
 local match_state = require("match_state")
 local resolver = require("resolver")
 local P = require("spec.parameters_helper")
-local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
+local anti_capture = require("single_game.resolver.stages_helpers.anti_capture")
 
 local LETTER_TO_STONE = {
 	B = { color = config.STONE_BLACK, kind = "stone_basic" },
@@ -37,7 +37,7 @@ local assert_legal_player_move_with_stone = test_helper.assert_legal_player_move
 local S = P.stone
 
 local function stone_immunity_remaining(g, row, col)
-	return anti_capture_immunity.remaining(g, row, col)
+	return anti_capture.remaining(g, row, col)
 end
 
 local function assert_stone_immune(g, row, col, expected, context)

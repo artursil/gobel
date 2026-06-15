@@ -103,6 +103,8 @@ local function round_def_copper_threshold_plus_mult(resolved)
 		effect_name = "copper_threshold_plus_mult",
 		action = def.action or ON_PLAY,
 		phase = def.phase or PHASE_MULT,
+		value = def.value or resolved.value,
+		conditions = def.conditions,
 		priority = resolved.priority or def.priority or 10,
 	}
 end

@@ -3,6 +3,7 @@
 
 local config = require("config")
 local rules = require("rules")
+local anti_capture = require("single_game.resolver.stages_helpers.anti_capture")
 
 local M = {}
 
@@ -22,12 +23,13 @@ function M.run(state)
 			stone_id = actor_state.stones.playable_stones[1]
 		end
 		stone_id = stone_id or "stone_basic"
-		state.legal_moves_cache[side] = rules.all_legal_moves(
+		local moves = rules.all_legal_moves(
 			state.board,
 			player,
 			state.ko_ban,
 			stone_id
 		)
+		state.legal_moves_cache[side] = anti_capture.filter_legal_moves(state, side, moves, stone_id)
 	end
 end
 
