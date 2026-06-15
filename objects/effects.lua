@@ -916,11 +916,9 @@ function M.damage_selected_stone(effect)
 				local capturer = resolution.effect_owner == config.OWNER_WHITE and "white" or "black"
 				state.board[row][col] = config.STONE_NONE
 				dispatch_removed.run(state, old_board, state.board, { capturer = capturer })
-				require("single_game.resolver.board_reconcile").run(state)
 				return
 			end
 			cell.solidity = next_intrinsic + previous_bonus
-			require("single_game.resolver.board_reconcile").run(state)
 		end,
 	}
 end
@@ -1248,21 +1246,44 @@ function M.diagonal_group_points(effect)
 	})
 end
 
---- Board connectivity effect: defence stones buff solidity for connected own stones.
+--- Board connectivity effect: one-shot defence solidity buff on connected own stones.
 --- @param effect table
 --- @return table
 function M.defence_solidity_network(effect)
-	return {
+	return effect_factory.build(effect, {
 		type = "DEFENCE_SOLIDITY_NETWORK",
-		phase = effect.sub or "points",
-		macro = effect.macro or "board_reconcile",
-		sub = effect.sub or "points",
-		priority = effect.priority or stone_params.default_effect_priority,
-		conditions = effect.conditions,
-		apply = function(state)
-			require("objects.defence_solidity_network").apply(state)
+		default_phase = effect_enums.PHASE.points,
+		default_action = effect_enums.ACTION.on_play,
+		default_priority = stone_params.default_effect_priority,
+		apply = function(state, _owner, row, col)
+			if row == nil or col == nil then
+				row, col = require("objects.effects_helpers").placement_coords(state)
+			end
+			if row and col then
+				require("objects.defence_solidity_network").apply_on_play(state, row, col)
+			end
 		end,
-	}
+	})
+end
+
+--- Shared on-play buff when a stone joins an existing defence network.
+--- @param effect table
+--- @return table
+function M.defence_adjacency_solidity(effect)
+	return effect_factory.build(effect, {
+		type = "DEFENCE_ADJACENCY_SOLIDITY",
+		default_phase = effect_enums.PHASE.points,
+		default_action = effect_enums.ACTION.on_play,
+		default_priority = stone_params.default_effect_priority,
+		apply = function(state, _owner, row, col)
+			if row == nil or col == nil then
+				row, col = require("objects.effects_helpers").placement_coords(state)
+			end
+			if row and col then
+				require("objects.defence_solidity_network").apply_adjacency_on_play(state, row, col)
+			end
+		end,
+	})
 end
 
 --- Marker for capture stone; removal handled in ``remove_stones`` stage.

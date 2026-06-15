@@ -19,6 +19,13 @@ M.pattern_plus_mult = {
 	priority = stone_params.pattern_effect_priority,
 }
 
+M.defence_adjacency_solidity = {
+	effect_name = "defence_adjacency_solidity",
+	action = "on_play",
+	phase = "points",
+	priority = stone_params.default_effect_priority,
+}
+
 M.all_stone_board_effects = {
 	M.pattern_x_mult,
 	M.pattern_plus_mult,

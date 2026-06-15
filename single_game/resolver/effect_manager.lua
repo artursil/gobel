@@ -12,6 +12,7 @@ local shared_stones_effects = require("objects.definitions.shared_stones_effects
 local objects_effects = require("objects.effects")
 local effect_enums = require("objects.effect_enums")
 local effect_schedule = require("objects.effect_schedule")
+local stone_params = require("objects.parameters.stones")
 
 local M = {}
 
@@ -169,6 +170,31 @@ local function append_stone_round_effects(state, active_action, active_phase, te
 					},
 				})
 			end
+		end
+	end
+	local shared_def = shared_stones_effects.defence_adjacency_solidity
+	if active_phase == effect_enums.PHASE.points and def_matches(shared_def, action, active_phase, territory_step) then
+		local resolved = objects_effects.resolve(shared_def)
+		if resolved and resolved.apply then
+			local owner = stone_event.owner
+			local row, col = stone_event.row, stone_event.col
+			table.insert(out, {
+				owner = owner,
+				action = action,
+				phase = effect_enums.PHASE.points,
+				sub = effect_enums.PHASE.points,
+				macro = resolve_macro,
+				priority = resolved.priority or stone_params.default_effect_priority,
+				conditions = resolved.conditions,
+				apply = function(current_state)
+					resolved.apply(current_state, owner, row, col)
+				end,
+				meta = {
+					source_owner = owner,
+					source_object_type = "shared_stone_effect",
+					source_def_id = stone_event.stone_type,
+				},
+			})
 		end
 	end
 end

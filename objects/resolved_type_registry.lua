@@ -1,15 +1,21 @@
 --- Shared resolved effect type → round scoring def mapping for resolver and AI.
---- @module single_game.resolver.resolved_type_registry
+--- @module objects.resolved_type_registry
+
+local effect_enums = require("objects.effect_enums")
 
 local M = {}
+
+local ON_PLAY = effect_enums.ACTION.on_play
+local PHASE_POINTS = effect_enums.PHASE.points
+local PHASE_MULT = effect_enums.PHASE.mult
 
 --- @param resolved table
 --- @return table|nil
 local function round_def_add_points(resolved)
 	return {
 		effect_name = "add_points",
-		macro = "playing_stones",
-		sub = "points",
+		action = ON_PLAY,
+		phase = PHASE_POINTS,
 		value = resolved.value,
 		priority = resolved.priority or 10,
 	}
@@ -20,8 +26,8 @@ end
 local function round_def_add_mult(resolved)
 	return {
 		effect_name = "add_mult",
-		macro = "playing_stones",
-		sub = "mult",
+		action = ON_PLAY,
+		phase = PHASE_MULT,
 		value = resolved.value,
 		priority = resolved.priority or 10,
 	}
@@ -32,8 +38,8 @@ end
 local function round_def_add_energy(resolved)
 	return {
 		effect_name = "add_energy",
-		macro = resolved.macro or "playing_stones",
-		sub = resolved.sub or "points",
+		action = resolved.action or ON_PLAY,
+		phase = resolved.phase or PHASE_POINTS,
 		value = resolved.value,
 		priority = resolved.priority or 10,
 	}
@@ -44,8 +50,8 @@ end
 local function round_def_add_money(resolved)
 	return {
 		effect_name = "add_money",
-		macro = "playing_stones",
-		sub = "points",
+		action = ON_PLAY,
+		phase = PHASE_POINTS,
 		value = resolved.value,
 		priority = resolved.priority or 10,
 	}
@@ -56,8 +62,8 @@ end
 local function round_def_kamikaze_sacrifice(resolved)
 	return {
 		effect_name = "kamikaze_sacrifice",
-		macro = "playing_stones",
-		sub = "points",
+		action = ON_PLAY,
+		phase = PHASE_POINTS,
 		value = resolved.value,
 		priority = resolved.priority or 10,
 	}
@@ -68,8 +74,8 @@ end
 local function round_def_self_destruct_timed(resolved)
 	return {
 		effect_name = "self_destruct_timed",
-		macro = "playing_stones",
-		sub = "points",
+		action = ON_PLAY,
+		phase = PHASE_POINTS,
 		immediate_points = resolved.value,
 		delay_rounds = resolved.delay_rounds,
 		priority = resolved.priority or 10,
@@ -82,8 +88,8 @@ local function round_def_money_field_enclosure_payout(resolved)
 	local def = resolved._effect_def or {}
 	return {
 		effect_name = "money_field_enclosure_payout",
-		macro = def.macro or "playing_stones",
-		sub = def.sub or "points",
+		action = def.action or ON_PLAY,
+		phase = def.phase or PHASE_POINTS,
 		value = def.value,
 		priority = resolved.priority or def.priority or 10,
 	}
@@ -95,8 +101,8 @@ local function round_def_copper_threshold_plus_mult(resolved)
 	local def = resolved._effect_def or {}
 	return {
 		effect_name = "copper_threshold_plus_mult",
-		macro = def.macro or "playing_stones",
-		sub = def.sub or "mult",
+		action = def.action or ON_PLAY,
+		phase = def.phase or PHASE_MULT,
 		priority = resolved.priority or def.priority or 10,
 	}
 end
@@ -104,8 +110,8 @@ end
 local function round_def_final_blow_placement(resolved)
 	return {
 		effect_name = "final_blow_placement",
-		macro = "playing_stones",
-		sub = "points",
+		action = ON_PLAY,
+		phase = PHASE_POINTS,
 		priority = resolved.priority or 10,
 	}
 end
@@ -113,8 +119,8 @@ end
 local function round_def_retrigger_prior_stone_effect(resolved)
 	return {
 		effect_name = "retrigger_prior_stone_effect",
-		macro = "playing_stones",
-		sub = "points",
+		action = ON_PLAY,
+		phase = PHASE_POINTS,
 		priority = resolved.priority or 10,
 	}
 end
@@ -122,8 +128,8 @@ end
 local function round_def_escalating_points_init(resolved)
 	return {
 		effect_name = "escalating_points_bank",
-		macro = "playing_stones",
-		sub = "points",
+		action = ON_PLAY,
+		phase = PHASE_POINTS,
 		priority = resolved.priority or 10,
 	}
 end

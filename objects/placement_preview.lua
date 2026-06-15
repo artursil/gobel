@@ -1,10 +1,11 @@
---- Resolve immediate placement scoring effects from stone definitions.
---- @module single_game.resolver.placement_lifecycle
+--- Resolve immediate placement scoring effects from stone definitions (preview / AI).
+--- @module objects.placement_preview
 
 local effect_registry = require("effect_registry")
+local effect_enums = require("objects.effect_enums")
 local effect_schedule = require("objects.effect_schedule")
 local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
-local resolved_type_registry = require("single_game.resolver.resolved_type_registry")
+local resolved_type_registry = require("objects.resolved_type_registry")
 
 local M = {}
 
@@ -64,8 +65,8 @@ local function resolve_immediate_effect(effect_def, ctx)
 		end
 		return effect_registry.stones.resolve({
 			effect_name = "add_mult",
-			macro = effect_def.macro or "playing_stones",
-			sub = effect_def.sub or "mult",
+			action = effect_def.action or effect_enums.ACTION.on_play,
+			phase = effect_def.phase or effect_enums.PHASE.mult,
 			value = delta,
 			priority = effect_def.priority or 10,
 		})

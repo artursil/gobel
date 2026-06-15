@@ -530,7 +530,7 @@ M.defence_stone = {
 	},
 	effects = {
 		{
-			when = "board_reconcile",
+			action = "on_play",
 			phase = "points",
 			effect_name = "defence_solidity_network",
 			priority = P.default_effect_priority,

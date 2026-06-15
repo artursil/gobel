@@ -8,13 +8,12 @@ local match_state = require("match_state")
 local messages = require("messages")
 local stone_params = require("objects.parameters.stones")
 local Effects = require("effect_registry")
-local board_reconcile = require("single_game.resolver.board_reconcile")
 local dispatch_removed = require("single_game.resolver.stages.dispatch_removed")
+local remove_stones = require("single_game.resolver.stages.remove_stones")
+local legality_of_moves = require("single_game.resolver.stages.legality_of_moves")
 local stone_timers = require("single_game.resolver.stone_timers")
 local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 local territory_resolver = require("single_game.resolver.territory")
-local remove_stones = require("single_game.resolver.stages.remove_stones")
-local legality_of_moves = require("single_game.resolver.stages.legality_of_moves")
 
 local M = {}
 
@@ -206,7 +205,6 @@ function M.run(state, event)
 			owner_for_side(event.actor)
 		)
 	end
-	board_reconcile.run(state)
 	state.ko_ban = event.ko_ban
 	if event.row and event.col then
 		territory_control_rounds.record_placement_streak_snapshot(state, event.row, event.col)

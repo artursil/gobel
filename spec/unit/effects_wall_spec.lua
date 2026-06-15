@@ -6,7 +6,7 @@ local content = require("content")
 local effects = require("objects.effects")
 local shape_patterns = require("game.patterns.shape_patterns")
 local effect_manager = require("single_game.resolver.effect_manager")
-local placement_effects = require("single_game.resolver.placement_effects")
+local placement_round = require("objects.placement_round")
 local spec_helper = require("spec.spec_helper")
 local P = require("spec.parameters_helper")
 
@@ -44,7 +44,7 @@ local function apply_wall_placement_effects(st)
 		{
 			owner = "B",
 			stone_type = "wall",
-			effects = placement_effects.collect_defs(wall_def),
+			effects = placement_round.collect_defs(wall_def),
 		},
 	}
 	effect_manager.apply_sub_phase(st, "playing_stones", "points", nil)

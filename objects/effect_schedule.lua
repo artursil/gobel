@@ -44,6 +44,8 @@ M.PLACEMENT_RECORD_EFFECT_NAMES = {
 	blockade_adjacent = true,
 	anti_capture_immunity = true,
 	capture_zero_liberty_enemy = true,
+	defence_solidity_network = true,
+	defence_adjacency_solidity = true,
 	escalating_points_bank_init = true,
 	territory_to_multiplier_snapshot = true,
 }

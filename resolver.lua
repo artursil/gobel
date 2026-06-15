@@ -12,15 +12,14 @@ local card_play_memory = require("single_game.resolver.helpers.card_play_memory"
 local pouch = require("pouch")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
-local board_reconcile = require("single_game.resolver.board_reconcile")
 local blocked_cells = require("single_game.resolver.helpers.blocked_cells")
 local anti_capture_immunity = require("single_game.resolver.anti_capture_immunity")
 local tick_objects = require("single_game.resolver.stages.tick_objects")
 local effects_helpers = require("objects.effects_helpers")
 local on_play_pipeline = require("single_game.resolver.stages.on_play_pipeline")
-local placement_lifecycle = require("single_game.resolver.placement_lifecycle")
-local placement_effects = require("single_game.resolver.placement_effects")
-local resolved_type_registry = require("single_game.resolver.resolved_type_registry")
+local placement_preview = require("objects.placement_preview")
+local placement_round = require("objects.placement_round")
+local resolved_type_registry = require("objects.resolved_type_registry")
 
 local M = {}
 
@@ -721,15 +720,15 @@ local function compile_place_stone_events(state, action)
 		row = row,
 		col = col,
 	}
-	local resolved_effects = placement_lifecycle.resolve_from_stone_def(stone_def, placement_ctx)
+	local resolved_effects = placement_preview.resolve_from_stone_def(stone_def, placement_ctx)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
-		if not placement_lifecycle.is_valid_resolved(resolved) then
+		if not placement_preview.is_valid_resolved(resolved) then
 			return nil, "Stone behavior produced invalid effect"
 		end
 	end
-	local placement_round = placement_effects.merge_round_defs(
+	local placement_round_defs = placement_round.merge_round_defs(
 		stone_def,
 		resolved_type_registry.round_effect_defs_from_resolved(resolved_effects)
 	)
@@ -745,7 +744,7 @@ local function compile_place_stone_events(state, action)
 			stone_index = selected_index,
 			row = row,
 			col = col,
-			stone_effects = placement_round,
+			stone_effects = placement_round_defs,
 			resolved_stone_effects = resolved_effects,
 		},
 	}
@@ -1128,7 +1127,6 @@ local function wire_visual_test_capture_stone_at()
 		end
 		M.apply_board_stone_removal(g, row, col, captor_side)
 		g.board[row][col] = config.STONE_NONE
-		board_reconcile.run(g)
 		g.territory, g.territory_decision_sources, g.territory_value =
 			spec_helper.territory_map(g.board, g.territory_mode or "regional")
 		local key = row .. ":" .. col
@@ -1168,7 +1166,7 @@ wire_visual_test_set_board()
 --- Sorted immediate-placement effect names (shared with AI placement scoring).
 --- @return string[]
 function M.immediate_placement_effect_name_keys()
-	return placement_lifecycle.immediate_placement_effect_name_keys()
+	return placement_preview.immediate_placement_effect_name_keys()
 end
 
 return M
