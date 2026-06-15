@@ -9,7 +9,7 @@
 --- **state.played_cards** (array, same state): append-only audit trail `{ owner, card_id,
 --- selected_target?, selected_targets?, turn_number? }`. Not consulted when collecting effects unless a future
 --- effect definition explicitly reads this list.
---- @module resolver.card_play_memory
+--- @module single_game.resolver.helpers.card_play_memory
 
 local M = {}
 

@@ -3,7 +3,7 @@ require("spec.test_helper")
 local board = require("board")
 local config = require("config")
 local game = require("game")
-local card_play_memory = require("single_game.resolver.card_play_memory")
+local card_play_memory = require("single_game.resolver.helpers.card_play_memory")
 
 describe("card play memory (just_played / played_cards)", function()
 	it("flush moves entries to played_cards with turn_number and clears just_played", function()

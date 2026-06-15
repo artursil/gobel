@@ -4,7 +4,7 @@
 --- ``state.placement_blocks`` / ``state.blocked_cells``, not on the blockade stone cell.
 --- Cell-owned tick fields (``survival_rounds_remaining``, ``immunity_remaining``) use
 --- ``effect_tick_lifecycle`` instead.
---- @module resolver.blocked_cells
+--- @module single_game.resolver.helpers.blocked_cells
 
 local board = require("board")
 local config = require("config")

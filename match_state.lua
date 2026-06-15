@@ -4,7 +4,7 @@ local config = require("config")
 local content = require("content")
 local deck = require("deck")
 local pouch = require("pouch")
-local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 local stone_removal = require("single_game.resolver.stone_removal")
 
 local M = {}
@@ -196,7 +196,7 @@ function M.new_match(match_kind, territory_mode, seed)
 		status = "",
 		pending_turn_after_ui = false,
 	}
-	require("single_game.resolver.blocked_cells").ensure(state)
+	require("single_game.resolver.helpers.blocked_cells").ensure(state)
 	stone_removal.install_state_hooks(state)
 	return state
 end

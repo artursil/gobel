@@ -1,7 +1,7 @@
 --- Plus_mult from territory control streak at the placed cell.
 --- @module objects.helper_effects.mult_control_streak
 
-local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 
 local M = {}
 

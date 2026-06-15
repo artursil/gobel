@@ -4,7 +4,7 @@
 local board = require("board")
 local config = require("config")
 local energy = require("energy")
-local queries = require("single_game.resolver.state_queries")
+local queries = require("single_game.resolver.helpers.state_queries")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
 

@@ -2,7 +2,7 @@
 --- @module objects.helper_effects.blockade_adjacent
 
 local config = require("config")
-local blocked_cells = require("single_game.resolver.blocked_cells")
+local blocked_cells = require("single_game.resolver.helpers.blocked_cells")
 local helpers = require("objects.effects_helpers")
 
 local M = {}

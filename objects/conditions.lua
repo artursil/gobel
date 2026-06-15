@@ -6,7 +6,7 @@
 local M = {}
 local config = require("config")
 local board = require("board")
-local queries = require("single_game.resolver.state_queries")
+local queries = require("single_game.resolver.helpers.state_queries")
 
 --- Always true condition.
 --- @param condition_def table|nil

@@ -3,7 +3,7 @@
 
 local board = require("board")
 local config = require("config")
-local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 
 local M = {}
 

@@ -3,7 +3,7 @@
 
 local effect_registry = require("effect_registry")
 local effect_schedule = require("objects.effect_schedule")
-local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 local resolved_type_registry = require("single_game.resolver.resolved_type_registry")
 
 local M = {}

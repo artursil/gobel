@@ -5,7 +5,7 @@
 
 local config = require("config")
 local board = require("board")
-local queries = require("single_game.resolver.state_queries")
+local queries = require("single_game.resolver.helpers.state_queries")
 local helpers = require("objects.effects_helpers")
 local animations = require("objects.animations")
 local shape_patterns = require("game.patterns.shape_patterns")

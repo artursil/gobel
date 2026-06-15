@@ -642,7 +642,7 @@ end
 --- @param g table
 --- @return string
 function M.territory_control_rounds_ascii(g)
-	local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+	local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 	territory_control_rounds.ensure_grid(g)
 	local grid = g.territory_control_rounds
 	local lines = {}
@@ -661,7 +661,7 @@ end
 --- @param rows table
 --- @return nil
 function M.set_territory_control_rounds_ascii(g, rows)
-	local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+	local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 	territory_control_rounds.ensure_grid(g)
 	if #rows ~= config.BOARD_SIZE then
 		error("set_territory_control_rounds_ascii: expected " .. config.BOARD_SIZE .. " rows")

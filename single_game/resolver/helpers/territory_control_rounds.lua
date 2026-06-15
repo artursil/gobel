@@ -1,5 +1,5 @@
 --- Per-cell territory control streak grid (positive black, negative white).
---- @module resolver.territory_control_rounds
+--- @module single_game.resolver.helpers.territory_control_rounds
 
 local board = require("board")
 local config = require("config")

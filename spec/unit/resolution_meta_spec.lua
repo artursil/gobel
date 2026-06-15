@@ -4,7 +4,7 @@ local board = require("board")
 local config = require("config")
 local effect_manager = require("single_game.resolver.effect_manager")
 local ObjectInstance = require("single_game.resolver.ObjectInstance")
-local queries = require("single_game.resolver.state_queries")
+local queries = require("single_game.resolver.helpers.state_queries")
 local stance_order = require("single_game.resolver.stance_order")
 
 local function minimal_scores()

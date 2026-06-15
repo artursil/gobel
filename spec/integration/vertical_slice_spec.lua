@@ -14,7 +14,7 @@ local function find_effect_by_phase(resolved, phase)
 end
 local game = require("game")
 local match_state = require("match_state")
-local queries = require("single_game.resolver.state_queries")
+local queries = require("single_game.resolver.helpers.state_queries")
 local resolve_round = require("single_game.resolver.resolve_round")
 local resolver = require("resolver")
 local stance_order = require("single_game.resolver.stance_order")

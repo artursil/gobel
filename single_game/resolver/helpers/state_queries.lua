@@ -1,6 +1,6 @@
 --- State query helpers for resolver/effect/condition evaluation.
 --- Centralizes derived reads from game state and transient resolution metadata.
---- @module resolver.state_queries
+--- @module single_game.resolver.helpers.state_queries
 
 local content = require("content")
 local config = require("config")
