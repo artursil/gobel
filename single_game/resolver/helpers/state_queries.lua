@@ -33,7 +33,6 @@ function M.clear_resolution(state)
 	local r = M.ensure_resolution(state)
 	r.phase = nil
 	r.macro = nil
-	r.sub = nil
 	r.territory_step = nil
 	r.effect_owner = nil
 	r.source_owner = nil
@@ -155,7 +154,7 @@ end
 --- @return string|nil
 function M.resolution_phase(state)
 	local r = M.ensure_resolution(state)
-	return r.sub or r.phase
+	return r.phase
 end
 
 --- @param state table
@@ -163,13 +162,6 @@ end
 function M.resolution_macro(state)
 	local r = M.ensure_resolution(state)
 	return r.macro
-end
-
---- @param state table
---- @return string|nil
-function M.resolution_sub(state)
-	local r = M.ensure_resolution(state)
-	return r.sub or r.phase
 end
 
 --- @param state table

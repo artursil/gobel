@@ -408,8 +408,8 @@ local function append_capture_bonus_resolved_effects(resolved_effects, captures)
 	end
 	resolved_effects[#resolved_effects + 1] = Effects.stones.resolve({
 		effect_name = "add_points",
-		macro = "playing_stones",
-		sub = "points",
+		action = "on_play",
+		phase = "points",
 		value = bonus,
 		priority = stone_params.default_effect_priority,
 	})

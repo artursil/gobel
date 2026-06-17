@@ -18,7 +18,6 @@ M.MACRO_ORDER = {
 }
 
 M.PHASE_ORDER = effect_enums.PHASE_ORDER
-M.SUB_ORDER = effect_enums.PHASE_ORDER
 
 M.TERRITORY_STEP_DISTANCE = "distance"
 M.TERRITORY_STEP_VALUE = "value"
@@ -62,12 +61,6 @@ function M.is_valid_phase(phase)
 	return effect_enums.is_valid_phase(phase)
 end
 
---- @param sub string|nil legacy alias
---- @return boolean
-function M.is_valid_sub(sub)
-	return M.is_valid_phase(sub)
-end
-
 --- @param effect_def table
 --- @return string|nil action canonical action
 --- @return string|nil phase
@@ -83,7 +76,7 @@ function M.parse_effect_scheduling(effect_def)
 	if effect_def.phase == "distance" and not effect_def.action and not effect_def.when and not effect_def.macro then
 		return effect_enums.ACTION.on_play, effect_enums.PHASE.territory, M.TERRITORY_STEP_DISTANCE
 	end
-	if effect_def.phase == "territory" and not effect_def.action and not effect_def.when and not effect_def.macro and not effect_def.sub then
+	if effect_def.phase == "territory" and not effect_def.action and not effect_def.when and not effect_def.macro then
 		local step = effect_def.territory_step or M.TERRITORY_STEP_VALUE
 		return effect_enums.ACTION.on_play, effect_enums.PHASE.territory, step
 	end
@@ -93,7 +86,7 @@ end
 --- Legacy ``phase`` string to action, phase, optional territory internal step.
 --- @param effect_def table
 --- @return string|nil macro legacy resolve macro for callers
---- @return string|nil sub phase name
+--- @return string|nil phase
 --- @return string|nil territory_step
 function M.parse_effect_phase(effect_def)
 	local action, phase, territory_step = M.parse_effect_scheduling(effect_def)

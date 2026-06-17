@@ -1,5 +1,5 @@
 --- Schema validation for unified game objects.
---- Stone effects declare ``action`` + ``phase`` (legacy ``macro`` / ``sub`` / ``when`` / ``lifecycle`` accepted during migration).
+--- Stone effects declare ``action`` + ``phase`` (legacy ``macro`` / ``when`` / ``lifecycle`` accepted during migration).
 --- @module objects.schema
 
 local effect_enums = require("objects.effect_enums")
@@ -37,8 +37,6 @@ local VALID_PHASES = {
 }
 
 local VALID_MACROS = VALID_WHEN
-
-local VALID_SUBS = VALID_PHASES
 
 local VALID_LIFECYCLES = {
 	placement = true,
@@ -108,6 +106,11 @@ local function validate_effect(effect, object_id)
 		return false, string.format("Effect in %s missing effect_name or not string", object_id)
 	end
 
+	if effect.sub then
+		return false,
+			string.format("Effect '%s' in %s uses removed field sub; use phase", effect.effect_name, object_id)
+	end
+
 	if effect.action and effect.phase then
 		if not VALID_ACTION[effect.action] then
 			return false,
@@ -150,7 +153,7 @@ local function validate_effect(effect, object_id)
 					list_valid(VALID_PHASES)
 				)
 		end
-	elseif effect.macro and effect.sub then
+	elseif effect.macro and effect.phase then
 		if not VALID_MACROS[effect.macro] then
 			return false,
 				string.format(
@@ -161,14 +164,14 @@ local function validate_effect(effect, object_id)
 					list_valid(VALID_MACROS)
 				)
 		end
-		if not VALID_SUBS[effect.sub] then
+		if not VALID_PHASES[effect.phase] then
 			return false,
 				string.format(
-					"Effect '%s' in %s has invalid sub '%s' (valid: %s)",
+					"Effect '%s' in %s has invalid phase '%s' (valid: %s)",
 					effect.effect_name,
 					object_id,
-					effect.sub,
-					list_valid(VALID_SUBS)
+					effect.phase,
+					list_valid(VALID_PHASES)
 				)
 		end
 	elseif effect.phase and type(effect.phase) == "string" then

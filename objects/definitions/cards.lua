@@ -45,8 +45,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_points",
-				macro = "playing_cards",
-				sub = "points",
+				action = "on_card",
+				phase = "points",
 				value = C.card_point_tap_points,
 				priority = C.default_effect_priority,
 			},
@@ -66,8 +66,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_points",
-				macro = "playing_cards",
-				sub = "points",
+				action = "on_card",
+				phase = "points",
 				value = C.card_point_push_points,
 				priority = C.default_effect_priority,
 			},
@@ -87,8 +87,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_mult",
-				macro = "playing_cards",
-				sub = "mult",
+				action = "on_card",
+				phase = "mult",
 				value = C.card_small_mult_plus_mult,
 				priority = C.default_effect_priority,
 			},
@@ -108,8 +108,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_mult",
-				macro = "playing_cards",
-				sub = "mult",
+				action = "on_card",
+				phase = "mult",
 				value = C.card_big_mult_plus_mult,
 				priority = C.default_effect_priority,
 			},
@@ -129,15 +129,15 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_points",
-				macro = "playing_cards",
-				sub = "points",
+				action = "on_card",
+				phase = "points",
 				value = C.card_balanced_boost_points,
 				priority = C.default_effect_priority,
 			},
 			{
 				effect_name = "add_mult",
-				macro = "playing_cards",
-				sub = "mult",
+				action = "on_card",
+				phase = "mult",
 				value = C.card_balanced_boost_plus_mult,
 				priority = C.default_effect_priority,
 			},
@@ -172,8 +172,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "create_temporary_stance",
-				macro = "playing_cards",
-				sub = "points",
+				action = "on_card",
+				phase = "points",
 				value = {
 					stance_id = "stance_focus_bonus",
 					rounds = C.card_focus_stance_rounds,
@@ -201,8 +201,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "destroy_selected_enemy_stone",
-				macro = "playing_cards",
-				sub = "points",
+				action = "on_card",
+				phase = "points",
 				value = {
 					chance_numerator = C.card_destroy_chance_numerator,
 					chance_denominator = C.card_destroy_chance_denominator,
@@ -233,8 +233,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_permanent_points_to_selected_stone",
-				macro = "playing_cards",
-				sub = "points",
+				action = "on_card",
+				phase = "points",
 				value = { points = C.card_forge_mark_points },
 				priority = C.default_effect_priority,
 				conditions = {
@@ -265,8 +265,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "damage_selected_stone",
-				macro = "playing_cards",
-				sub = "points",
+				action = "on_card",
+				phase = "points",
 				value = { amount = C.card_attack_1_damage },
 				priority = C.default_effect_priority,
 			},
@@ -293,8 +293,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "heal_selected_stone",
-				macro = "playing_cards",
-				sub = "points",
+				action = "on_card",
+				phase = "points",
 				value = { amount = C.card_heal_1_amount },
 				priority = C.default_effect_priority,
 			},
@@ -321,8 +321,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_money",
-				macro = "playing_cards",
-				sub = "points",
+				action = "on_card",
+				phase = "points",
 				value = { amount = C.card_money_discard_2_gain },
 				priority = C.default_effect_priority,
 			},

@@ -135,8 +135,7 @@ local function apply_placement_stance_effects(view, scratch, owner)
 		local generated = effect_registry.stances.resolve(stance, scratch)
 		for j = 1, #generated do
 			local effect = generated[j]
-			local phase = effect.phase
-			if (effect.sub == "points" or effect.sub == "mult") and triggers_on_stone_placement(effect.conditions) then
+			if (effect.phase == "points" or effect.phase == "mult") and triggers_on_stone_placement(effect.conditions) then
 				if conditions.eval_all(effect.conditions, scratch) and effect.apply then
 					effect.apply(scratch)
 				end

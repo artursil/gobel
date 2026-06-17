@@ -129,3 +129,15 @@ This is literally all wrong and should be handled all in apply.
 6. macro/sub - again why do we need it when we already have phases, which determine the order?
 7. lifecycle - we don't need it
 
+
+
+
+1. condition still not used
+2. phases enum wrong
+3. action enum I don't see
+4. macro still exists
+5. sub still exists
+6. helper_effects vs effect_helpers
+7. legacy_action remove
+8. dispatch_removed vs remove_stones
+9. Condition.lua why removed?

@@ -34,7 +34,7 @@ local function append_wrapped_effects(out, effects, owner, selected_target, sele
 		local wrapped = wrap_effect_with_owner(effects[i], owner)
 		wrapped._effect_def = effects[i]._effect_def
 		wrapped.macro = effects[i].macro
-		wrapped.sub = effects[i].sub
+		wrapped.phase = effects[i].phase
 		wrapped.meta = wrapped.meta or {}
 		wrapped.meta.selected_target = selected_target
 		wrapped.meta.selected_targets = selected_targets
@@ -68,8 +68,8 @@ function M.stones.resolve(effect)
 	return objects_effects.resolve(effect)
 end
 
-function M.stones.resolve_board_stone(stone_cell, row, col, state, active_macro, active_sub, territory_step)
-	return objects_effects.resolve_board_stone(stone_cell, row, col, state, active_macro, active_sub, territory_step)
+function M.stones.resolve_board_stone(stone_cell, row, col, state, active_macro, active_phase, territory_step)
+	return objects_effects.resolve_board_stone(stone_cell, row, col, state, active_macro, active_phase, territory_step)
 end
 
 return M

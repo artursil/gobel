@@ -483,7 +483,7 @@ end
 function M.add_points(effect)
 	return effect_factory.build(effect, {
 		type = "ADD_POINTS",
-		default_sub = "points",
+		default_phase = "points",
 		extra = { value = effect.value },
 		apply = function(state, owner)
 			add_points_helper.apply(state, owner, effect.value)
@@ -497,7 +497,7 @@ end
 function M.add_energy(effect)
 	return effect_factory.build(effect, {
 		type = "ADD_ENERGY",
-		default_sub = "points",
+		default_phase = "points",
 		extra = { value = effect.value },
 		apply = function(state, owner)
 			add_energy_helper.apply(state, owner, effect.value)
@@ -506,13 +506,13 @@ function M.add_energy(effect)
 end
 
 --- Kamikaze sacrifice: points in apply; removal in ``remove_stones`` stage.
---- @param effect table: {effect_name, macro?, sub?, value?, priority?, conditions?}
+--- @param effect table: {effect_name, macro?, phase?, value?, priority?, conditions?}
 --- @return table: {type, phase, value, priority, conditions?, apply}
 function M.kamikaze_sacrifice(effect)
 	local value = effect.value or stone_params.kamikaze_points_bonus
 	return effect_factory.build(effect, {
 		type = "KAMIKAZE_SACRIFICE",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		extra = { value = value },
@@ -528,7 +528,7 @@ end
 function M.add_mult(effect)
 	return effect_factory.build(effect, {
 		type = "ADD_MULT",
-		default_sub = "mult",
+		default_phase = "mult",
 		extra = { value = effect.value },
 		apply = function(state, owner)
 			add_mult_helper.apply(state, owner, effect.value)
@@ -544,7 +544,6 @@ function M.distance_bonus(effect)
 		type = "DISTANCE_BONUS",
 		phase = "territory",
 		macro = effect.macro or "playing_stones",
-		sub = "territory",
 		territory_step = effect.territory_step or "distance",
 		value = effect.value,
 		priority = effect.priority or 10,
@@ -652,15 +651,14 @@ end
 --- @param effect table
 --- @return table
 function M.copy_right_effect(effect)
-	local sub = effect.sub or effect.phase
-	if sub == "distance" then
-		sub = "territory"
+	local phase = effect.phase
+	if phase == "distance" then
+		phase = "territory"
 	end
 	return {
 		type = "COPY_RIGHT_EFFECT",
-		phase = sub,
+		phase = phase,
 		macro = effect.macro or "playing_stones",
-		sub = sub,
 		territory_step = effect.territory_step,
 		value = effect.value,
 		priority = effect.priority or 10,
@@ -972,9 +970,8 @@ end
 function M.escalating_money_tracker(effect)
 	return {
 		type = "ESCALATING_MONEY_TRACKER",
-		phase = effect.sub or "points",
+		phase = effect.phase or "points",
 		macro = effect.macro or "end_of_turn",
-		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
 		apply = function(state, owner, row, col)
@@ -1012,8 +1009,8 @@ end
 function M.escalating_money_capture_penalty(effect)
 	return {
 		type = "ESCALATING_MONEY_CAPTURE_PENALTY",
+		phase = effect.phase or "points",
 		macro = effect.macro or "on_removed",
-		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
 		apply = function(state, row, col, cell, _opts)
@@ -1044,7 +1041,7 @@ end
 function M.money_field_enclosure_payout(effect)
 	return effect_factory.build(effect, {
 		type = "MONEY_FIELD_ENCLOSURE_PAYOUT",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		extra = { value = effect.value or {} },
@@ -1101,9 +1098,8 @@ end
 function M.pattern_x_mult(effect)
 	return {
 		type = "PATTERN_X_MULT",
-		phase = effect.sub or "mult",
+		phase = effect.phase or "mult",
 		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "mult",
 		priority = effect.priority or stone_params.pattern_effect_priority,
 		conditions = effect.conditions,
 		apply = function(state, owner)
@@ -1176,9 +1172,8 @@ end
 function M.pattern_plus_mult(effect)
 	return {
 		type = "PATTERN_PLUS_MULT",
-		phase = effect.sub or "mult",
+		phase = effect.phase or "mult",
 		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "mult",
 		priority = effect.priority or stone_params.pattern_effect_priority,
 		conditions = effect.conditions,
 		apply = function(state, owner)
@@ -1237,7 +1232,7 @@ end
 function M.diagonal_group_points(effect)
 	return effect_factory.build(effect, {
 		type = "DIAGONAL_GROUP_POINTS",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.wall_effect_priority,
 		apply = function(state, owner)
@@ -1292,9 +1287,8 @@ end
 function M.capture_zero_liberty_enemy(effect)
 	return {
 		type = "CAPTURE_ZERO_LIBERTY_ENEMY",
-		phase = effect.sub or "points",
+		phase = effect.phase or "points",
 		macro = effect.macro or "playing_stones",
-		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
 	}
@@ -1308,7 +1302,7 @@ function M.delay_reward_survival(effect)
 	local payout = effect.payout or stone_params.points_delay_payout
 	return effect_factory.build(effect, {
 		type = "DELAY_REWARD_SURVIVAL",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		extra = { rounds = rounds, payout = payout },
@@ -1325,7 +1319,7 @@ function M.anti_capture_immunity(effect)
 	local duration = effect.duration or stone_params.anti_capture_duration_rounds
 	return effect_factory.build(effect, {
 		type = "ANTI_CAPTURE_IMMUNITY",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		extra = { duration = duration },
@@ -1345,7 +1339,7 @@ end
 function M.blockade_adjacent(effect)
 	return effect_factory.build(effect, {
 		type = "BLOCKADE_ADJACENT",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		apply = function(state, owner, row, col)
@@ -1363,7 +1357,7 @@ end
 function M.tax_enclosure_enemies(effect)
 	return effect_factory.build(effect, {
 		type = "TAX_ENCLOSURE_ENEMIES",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "end_of_turn",
 		default_priority = stone_params.default_effect_priority,
 		extra = { value = effect.value or {} },
@@ -1380,14 +1374,14 @@ end
 --- @param effect table
 --- @return table
 function M.self_destruct_timed(effect)
-	local sub = effect.sub or effect.phase or "points"
+	local phase = effect.phase or "points"
 	local immediate_points = effect.immediate_points
 		or effect.value
 		or stone_params.self_destruct_immediate_points
 	local delay_rounds = effect.delay_rounds or stone_params.self_destruct_delay_rounds
 	return effect_factory.build(effect, {
 		type = "SELF_DESTRUCT_TIMED",
-		default_sub = sub,
+		default_phase = phase,
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		extra = { value = immediate_points, delay_rounds = delay_rounds },
@@ -1404,9 +1398,8 @@ end
 function M.territory_to_points(effect)
 	return {
 		type = "TERRITORY_TO_POINTS",
-		phase = effect.sub or "points",
+		phase = effect.phase or "points",
 		macro = effect.macro or "end_of_turn",
-		sub = effect.sub or "points",
 		priority = effect.priority or stone_params.default_effect_priority,
 		conditions = effect.conditions,
 		apply = function(state, _owner, row, col)
@@ -1443,7 +1436,7 @@ end
 function M.wall_stone(effect)
 	return effect_factory.build(effect, {
 		type = "WALL_STONE",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.wall_effect_priority,
 		apply = function(state, owner)
@@ -1459,7 +1452,7 @@ function M.line_group_points(effect)
 	local stone_kind = effect.stone_kind or "line_stone"
 	return effect_factory.build(effect, {
 		type = "LINE_GROUP_POINTS",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.wall_effect_priority,
 		apply = function(state, owner)
@@ -1521,7 +1514,7 @@ end
 function M.copper_threshold_plus_mult(effect)
 	return effect_factory.build(effect, {
 		type = "COPPER_THRESHOLD_PLUS_MULT",
-		default_sub = "mult",
+		default_phase = "mult",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		apply = function(state, owner, row, col, _cell, effect_def)
@@ -1540,7 +1533,7 @@ end
 function M.mult_control_streak(effect)
 	return effect_factory.build(effect, {
 		type = "MULT_CONTROL_STREAK",
-		default_sub = "mult",
+		default_phase = "mult",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		apply = function(state, owner)
@@ -1557,7 +1550,6 @@ function M.control_territory_override(effect)
 		type = "CONTROL_TERRITORY_OVERRIDE",
 		phase = "territory",
 		macro = effect.macro or "playing_stones",
-		sub = "territory",
 		territory_step = effect.territory_step or "override",
 		priority = effect.priority or 10,
 		conditions = effect.conditions,
@@ -1583,7 +1575,6 @@ function M.enclosure_territory_multiply(row, col, effect_def)
 		type = "ENCLOSURE_TERRITORY_MULTIPLY",
 		phase = "territory",
 		macro = effect_def.macro or "playing_stones",
-		sub = "territory",
 		priority = effect_def.priority or stone_params.default_effect_priority,
 		conditions = effect_def.conditions,
 		apply = function(state, owner)
@@ -1625,7 +1616,7 @@ end
 function M.territory_to_multiplier_snapshot(effect)
 	return effect_factory.build(effect, {
 		type = "TERRITORY_TO_MULTIPLIER_SNAPSHOT",
-		default_sub = "mult",
+		default_phase = "mult",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		apply = function(state, _owner, row, col)
@@ -1640,7 +1631,7 @@ end
 function M.territory_to_multiplier(effect)
 	return effect_factory.build(effect, {
 		type = "TERRITORY_TO_MULTIPLIER",
-		default_sub = "mult",
+		default_phase = "mult",
 		default_macro = "end_of_turn",
 		default_priority = stone_params.default_effect_priority,
 		apply = function(state, _owner, row, col)
@@ -1658,7 +1649,7 @@ end
 function M.escalating_points_bank_init(effect)
 	return effect_factory.build(effect, {
 		type = "ESCALATING_POINTS_BANK_INIT",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		apply = function(state, _owner, row, col)
@@ -1674,7 +1665,7 @@ function M.escalating_points_bank(effect)
 	local round_points = effect.value or stone_params.eps_round_points
 	return effect_factory.build(effect, {
 		type = "ESCALATING_POINTS_BANK",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "end_of_turn",
 		default_priority = stone_params.default_effect_priority,
 		extra = { value = round_points },
@@ -1693,7 +1684,7 @@ end
 function M.escalating_points_capture_transfer(effect)
 	return effect_factory.build(effect, {
 		type = "ESCALATING_POINTS_CAPTURE_TRANSFER",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "on_removed",
 		default_priority = stone_params.default_effect_priority,
 		apply = function(state, row, col, cell, opts)
@@ -1708,7 +1699,7 @@ end
 function M.final_blow_placement(effect)
 	return effect_factory.build(effect, {
 		type = "FINAL_BLOW_PLACEMENT",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		apply = function(state, owner)
@@ -1723,7 +1714,7 @@ end
 function M.retrigger_prior_stone_effect(effect)
 	return effect_factory.build(effect, {
 		type = "RETRIGGER_PRIOR_STONE_EFFECT",
-		default_sub = "points",
+		default_phase = "points",
 		default_macro = "playing_stones",
 		default_priority = stone_params.default_effect_priority,
 		apply = function(state, owner)
@@ -1743,7 +1734,6 @@ function M.double_corner_nearby_territory(row, col, effect_def)
 		type = "DOUBLE_CORNER_NEARBY_TERRITORY",
 		phase = "territory",
 		macro = effect_def.macro or "playing_stones",
-		sub = "territory",
 		priority = effect_def.priority or 10,
 		conditions = effect_def.conditions,
 		apply = function(state, owner)
@@ -1853,10 +1843,10 @@ end
 --- @param col integer
 --- @param state table
 --- @param active_macro string
---- @param active_sub string
+--- @param active_phase string
 --- @param territory_step string|nil
 --- @return table
-function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active_sub, territory_step)
+function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active_phase, territory_step)
 	local scoring_phases = require("single_game.resolver.scoring_phases")
 	local content = require("content")
 	local stone_ref = stone_cell.level and { def_id = stone_cell.kind, level = stone_cell.level } or stone_cell.kind
@@ -1866,10 +1856,9 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active
 	local out = {}
 	local effect_defs = {}
 	local owner = stone_cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
-	local active_action = active_macro or state._resolve_action or effect_enums.resolve_macro_to_action(state._resolve_macro) or effect_enums.ACTION.on_play
-	local action = effect_enums.resolve_macro_to_action(active_action)
+	local action = effect_enums.resolve_macro_to_action(active_macro or state._resolve_action or state._resolve_macro)
+		or effect_enums.ACTION.on_play
 	local resolve_macro = effect_schedule.action_to_resolve_macro(action)
-	local active_phase = active_sub
 
 	if stone_def and stone_def.effects then
 		for i = 1, #stone_def.effects do
@@ -1885,7 +1874,6 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active
 				type = "DISTANCE_BONUS",
 				action = action,
 				phase = effect_enums.PHASE.territory,
-				sub = effect_enums.PHASE.territory,
 				macro = resolve_macro,
 				priority = effect_def.priority or 10,
 				conditions = effect_def.conditions,
@@ -1915,7 +1903,6 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_macro, active
 				resolved.action = action
 				resolved.macro = resolve_macro
 				resolved.phase = active_phase
-				resolved.sub = active_phase
 				out[#out + 1] = resolved
 			end
 		end

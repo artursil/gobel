@@ -30,8 +30,8 @@ describe("resolve scoring macro", function()
 				effects = {
 					{
 						effect_name = "add_points",
-						macro = "playing_stones",
-						sub = "points",
+						action = "on_play",
+						phase = "points",
 						value = injected_points,
 						priority = P.stone.default_effect_priority,
 					},
@@ -123,7 +123,7 @@ describe("resolve scoring macro", function()
 				owner = "W",
 				stone_type = "stone_basic",
 				effects = {
-					{ effect_name = "add_points", macro = "playing_stones", sub = "points", value = 1, priority = 10 },
+					{ effect_name = "add_points", action = "on_play", phase = "points", value = 1, priority = 10 },
 				},
 			},
 		}

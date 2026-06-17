@@ -47,7 +47,7 @@ describe("T-100 effects system", function()
 		local resolved = effects.resolve(effect_def)
 		assert.is_not_nil(resolved)
 		assert.are.equal("DISTANCE_BONUS", resolved.type)
-		assert.are.equal("territory", resolved.sub)
+		assert.are.equal("territory", resolved.phase)
 		assert.are.equal("distance", resolved.territory_step)
 		assert.are.equal(1, resolved.value)
 	end)
@@ -64,15 +64,15 @@ describe("T-100 effects system", function()
 	it("resolves add_energy effect", function()
 		local effect_def = {
 			effect_name = "add_energy",
-			macro = "playing_stones",
-			sub = "points",
+			action = "on_play",
+			phase = "points",
 			value = P.stone.energy_stone_gain,
 			priority = 10,
 		}
 		local resolved = effects.resolve(effect_def)
 		assert.is_not_nil(resolved)
 		assert.are.equal("ADD_ENERGY", resolved.type)
-		assert.are.equal("points", resolved.sub)
+		assert.are.equal("points", resolved.phase)
 		assert.are.equal(P.stone.energy_stone_gain, resolved.value)
 		assert.are.equal(10, resolved.priority)
 		assert.is_not_nil(resolved.apply)

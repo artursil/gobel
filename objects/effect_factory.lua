@@ -7,11 +7,11 @@ local effect_schedule = require("objects.effect_schedule")
 local M = {}
 
 --- @param effect_def table
---- @param opts table { type: string, default_priority?: integer, default_action?: string, default_macro?: string, default_sub?: string, default_phase?: string, apply?: function, on_tick?: function, extra?: table }
+--- @param opts table { type: string, default_priority?: integer, default_action?: string, default_macro?: string, default_phase?: string, apply?: function, on_tick?: function, extra?: table }
 --- @return table
 function M.build(effect_def, opts)
 	local action, phase = effect_schedule.parse_action_phase(effect_def)
-	phase = phase or effect_enums.sub_to_phase(effect_def.sub) or opts.default_phase or opts.default_sub or effect_enums.PHASE.points
+	phase = phase or effect_def.phase or opts.default_phase or effect_enums.PHASE.points
 	action = action
 		or effect_enums.normalize_action(effect_def.action or effect_def.macro or opts.default_action or opts.default_macro)
 		or effect_enums.ACTION.on_play
@@ -19,10 +19,8 @@ function M.build(effect_def, opts)
 	local resolved = {
 		type = opts.type,
 		action = action,
-		when = resolve_macro == "playing_stones" and "playing_stones" or (resolve_macro == "playing_cards" and "playing_cards" or action),
 		phase = phase,
 		macro = resolve_macro,
-		sub = phase,
 		priority = effect_def.priority or opts.default_priority or 10,
 		conditions = effect_def.conditions,
 		apply = opts.apply,

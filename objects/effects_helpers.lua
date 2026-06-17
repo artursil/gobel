@@ -91,35 +91,35 @@ function H.get_copy_right_target(state)
 	return target, target_owner, target_def
 end
 
---- Whether a copied stance child runs in the active resolve sub (ignores the child's macro).
+--- Whether a copied stance child runs in the active resolve phase (ignores the child's macro).
 --- @param effect_def table
---- @param active_sub string
+--- @param active_phase string
 --- @param territory_step string|nil
 --- @return boolean
-local function copied_child_matches_active_sub(effect_def, active_sub, territory_step)
+local function copied_child_matches_active_phase(effect_def, active_phase, territory_step)
 	local scoring_phases = require("single_game.resolver.scoring_phases")
-	local _, child_sub, child_step = scoring_phases.parse_effect_phase(effect_def)
-	if not child_sub or child_sub ~= active_sub then
+	local _, child_phase, child_step = scoring_phases.parse_effect_phase(effect_def)
+	if not child_phase or child_phase ~= active_phase then
 		return false
 	end
-	if active_sub == "territory" and territory_step and child_step ~= territory_step then
+	if active_phase == "territory" and territory_step and child_step ~= territory_step then
 		return false
 	end
-	if active_sub == "territory" and territory_step and not child_step then
+	if active_phase == "territory" and territory_step and not child_step then
 		return false
 	end
 	return true
 end
 
---- Scans ``target_def.effects`` for children matching the active scoring sub (from ``state.resolution``), skipping recursive ``copy_right_effect`` rows. Copied children ignore their own macro so e.g. ``before_turn.points`` can apply during ``playing_stones.points``. Returns ``nil`` when there is nothing to run.
+--- Scans ``target_def.effects`` for children matching the active scoring phase (from ``state.resolution``), skipping recursive ``copy_right_effect`` rows. Copied children ignore their own macro so e.g. ``before_turn.points`` can apply during ``playing_stones.points``. Returns ``nil`` when there is nothing to run.
 --- @param state table
 --- @param target_def table Stance definition from ``objects.definitions.stances`` (expects an ``effects`` array).
 --- @param resolve_effect fun(effect_def: table): table|nil
 --- @return table|nil Sequential list of resolved runtime effect tables, each with ``apply``; or ``nil`` if none.
 function H.get_target_effects(state, target_def, resolve_effect)
-	local active_sub = queries.resolution_sub(state)
+	local active_phase = queries.resolution_phase(state)
 	local territory_step = queries.resolution_territory_step(state)
-	if not target_def or not target_def.effects or not active_sub then
+	if not target_def or not target_def.effects or not active_phase then
 		return nil
 	end
 	local resolved_effects = {}
@@ -127,9 +127,8 @@ function H.get_target_effects(state, target_def, resolve_effect)
 		local effect_def = target_def.effects[i]
 		if effect_def.effect_name ~= "copy_right_effect" then
 			local resolved = resolve_effect(effect_def)
-			if resolved and resolved.apply and copied_child_matches_active_sub(effect_def, active_sub, territory_step) then
-				resolved.sub = active_sub
-				resolved.phase = active_sub
+			if resolved and resolved.apply and copied_child_matches_active_phase(effect_def, active_phase, territory_step) then
+				resolved.phase = active_phase
 				resolved_effects[#resolved_effects + 1] = resolved
 			end
 		end

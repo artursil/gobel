@@ -19,13 +19,7 @@ local M = {}
 --- @param payload table
 --- @return string|nil phase
 local function phase_from_payload(payload)
-	if payload.phase then
-		return effect_enums.sub_to_phase(payload.phase)
-	end
-	if payload.sub then
-		return effect_enums.sub_to_phase(payload.sub)
-	end
-	return nil
+	return payload.phase
 end
 
 --- @param active_action string canonical action or legacy resolve macro
@@ -154,7 +148,6 @@ local function append_stone_round_effects(state, active_action, active_phase, te
 					owner = owner,
 					action = action,
 					phase = phase,
-					sub = phase,
 					macro = resolve_macro,
 					priority = resolved.priority or 10,
 					conditions = resolved.conditions,
@@ -182,7 +175,6 @@ local function append_stone_round_effects(state, active_action, active_phase, te
 				owner = owner,
 				action = action,
 				phase = effect_enums.PHASE.points,
-				sub = effect_enums.PHASE.points,
 				macro = resolve_macro,
 				priority = resolved.priority or stone_params.default_effect_priority,
 				conditions = resolved.conditions,
@@ -245,7 +237,6 @@ local function append_board_stone_effects(state, active_action, active_phase, te
 								owner = owner,
 								action = action,
 								phase = effect_enums.PHASE.points,
-								sub = effect_enums.PHASE.points,
 								macro = resolve_macro,
 								priority = 25,
 								conditions = nil,
@@ -295,7 +286,6 @@ local function append_pattern_board_effects(state, active_action, active_phase, 
 					owner = owner,
 					action = action,
 					phase = effect_enums.PHASE.mult,
-					sub = effect_enums.PHASE.mult,
 					macro = resolve_macro,
 					priority = resolved.priority or 12,
 					conditions = resolved.conditions,
@@ -363,7 +353,6 @@ local function set_resolution_for_effect(state, active_action, active_phase, ter
 	local meta = effect.meta or {}
 	resolution.action = action
 	resolution.macro = resolve_macro
-	resolution.sub = active_phase
 	resolution.phase = active_phase
 	resolution.territory_step = territory_step
 	resolution.trigger = "phase"
@@ -397,7 +386,6 @@ function M.collect_effects(state, active_action, active_phase, territory_step)
 		action = action,
 		macro = effect_schedule.action_to_resolve_macro(action),
 		phase = active_phase,
-		sub = active_phase,
 		territory_step = territory_step,
 		effects = effects,
 	})
@@ -424,19 +412,9 @@ function M.apply_phase_pass(state, active_action, active_phase, territory_step)
 	queries.clear_resolution(state)
 end
 
---- Legacy alias for ``apply_phase_pass`` (accepts legacy resolve macro as first scheduling arg).
---- @param state table
---- @param active_macro string
---- @param active_sub string
---- @param territory_step string|nil
---- @return nil
-function M.apply_sub_phase(state, active_macro, active_sub, territory_step)
-	M.apply_phase_pass(state, active_macro, active_sub, territory_step)
-end
-
 --- Back-compat for territory preview and tests.
 --- @param state table
---- @param phase string legacy phase or sub name
+--- @param phase string
 --- @return nil
 function M.apply_phase(state, phase)
 	local action = state._resolve_action or effect_enums.resolve_macro_to_action(state._resolve_macro) or effect_enums.ACTION.on_play

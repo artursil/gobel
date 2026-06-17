@@ -67,8 +67,8 @@ local function append_capture_bonus_stone_effects(stone_effects, capture_count)
 	end
 	out[#out + 1] = {
 		effect_name = "add_points",
-		macro = "playing_stones",
-		sub = "points",
+		action = "on_play",
+		phase = "points",
 		value = bonus,
 		priority = stone_params.default_effect_priority,
 	}

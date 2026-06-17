@@ -47,7 +47,7 @@ local function apply_wall_placement_effects(st)
 			effects = placement_round.collect_defs(wall_def),
 		},
 	}
-	effect_manager.apply_sub_phase(st, "playing_stones", "points", nil)
+	effect_manager.apply_phase_pass(st, "playing_stones", "points", nil)
 end
 
 describe("wall stone effects", function()

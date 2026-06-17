@@ -1,4 +1,4 @@
---- Parses effect ``action`` / ``phase`` scheduling with legacy ``macro`` / ``sub`` / ``when`` / ``lifecycle`` compat.
+--- Parses effect ``action`` / ``phase`` scheduling with legacy ``macro`` / ``when`` / ``lifecycle`` compat.
 --- @module objects.effect_schedule
 
 local effect_enums = require("objects.effect_enums")
@@ -64,22 +64,22 @@ function M.parse_action_phase(effect_def)
 		return effect_enums.when_to_action(effect_def.when), effect_def.phase
 	end
 	if effect_def.lifecycle == "board_reconcile" then
-		return "board_reconcile", effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "territory"
+		return "board_reconcile", effect_def.phase or "territory"
 	end
 	if effect_def.lifecycle == "placement" then
-		return effect_enums.ACTION.on_play, effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "points"
+		return effect_enums.ACTION.on_play, effect_def.phase or "points"
 	end
 	if effect_def.macro == "on_removed" then
-		return effect_enums.ACTION.on_removed, effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "points"
+		return effect_enums.ACTION.on_removed, effect_def.phase or "points"
 	end
 	if effect_def.macro == "end_of_turn" then
-		return effect_enums.ACTION.end_of_turn, effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "points"
+		return effect_enums.ACTION.end_of_turn, effect_def.phase or "points"
 	end
 	if effect_def.macro == "board_reconcile" then
-		return "board_reconcile", effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "territory"
+		return "board_reconcile", effect_def.phase or "territory"
 	end
 	if effect_def.macro then
-		return effect_enums.macro_to_action(effect_def.macro), effect_enums.sub_to_phase(effect_def.sub or effect_def.phase) or "points"
+		return effect_enums.macro_to_action(effect_def.macro), effect_def.phase or "points"
 	end
 	local legacy = effect_def.phase
 	if legacy == "distance" or legacy == "territory" then

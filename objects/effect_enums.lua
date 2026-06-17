@@ -77,21 +77,6 @@ function M.when_to_action(when)
 	return M.normalize_action(when)
 end
 
---- @param sub string|nil
---- @return string|nil phase
-function M.sub_to_phase(sub)
-	if not sub then
-		return nil
-	end
-	if sub == "distance" then
-		return M.PHASE.territory
-	end
-	if VALID_PHASE[sub] then
-		return sub
-	end
-	return sub
-end
-
 --- @param action string|nil
 --- @return boolean
 function M.is_valid_action(action)

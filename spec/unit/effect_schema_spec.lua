@@ -17,8 +17,6 @@ describe("T-202 Effect schema runtime", function()
 		assert.are.equal("add_points", effect.effect_name)
 		assert.are.equal(effect_enums.ACTION.on_card, effect.action)
 		assert.are.equal(effect_enums.PHASE.points, effect.phase)
-		assert.are.equal("playing_cards", effect.macro)
-		assert.are.equal(effect_enums.PHASE.points, effect.sub)
 		assert.are.equal(10, effect.priority)
 		assert.are.equal(5, effect.value)
 	end)
@@ -34,11 +32,20 @@ describe("T-202 Effect schema runtime", function()
 		assert.is_nil(err)
 	end)
 
-	it("validates legacy macro/sub effect", function()
+	it("rejects legacy sub field", function()
 		local effect_def = {
 			effect_name = "add_points",
 			macro = "playing_stones",
-			sub = "points",
+		}
+		local valid, err = Effect.validate(effect_def)
+		assert.is_false(valid)
+	end)
+
+	it("validates legacy macro/phase effect", function()
+		local effect_def = {
+			effect_name = "add_points",
+			macro = "playing_stones",
+			phase = "points",
 		}
 		local valid, err = Effect.validate(effect_def)
 		assert.is_true(valid)

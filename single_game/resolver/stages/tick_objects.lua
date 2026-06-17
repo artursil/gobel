@@ -116,7 +116,7 @@ end
 --- @return table|nil resolved effect builder output
 local function resolved_tick_handler(effect_name)
 	local objects_effects = require("objects.effects")
-	return objects_effects.resolve({ effect_name = effect_name, macro = "playing_stones", sub = "points" })
+	return objects_effects.resolve({ effect_name = effect_name, action = "on_play", phase = "points" })
 end
 
 --- @param state table
