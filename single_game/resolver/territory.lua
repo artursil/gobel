@@ -37,6 +37,7 @@ local function new_tile()
 		influence = { B = 0, W = 0 },
 		region_id = nil,
 		override_owner = nil,
+		override_contested = false,
 		owner = nil,
 	}
 end
@@ -342,6 +343,18 @@ local function override_decision(owner, black_stones, white_stones, nearest_blac
 	}
 end
 
+--- Builds provenance entry when opposing control overrides cancel on the same cell.
+--- @param nearest_black table
+--- @param nearest_white table
+--- @return table
+local function override_contested_decision(nearest_black, nearest_white)
+	return {
+		mode = "override_contested",
+		owner = nil,
+		contributors = { B = nearest_black, W = nearest_white },
+	}
+end
+
 --- Resolves owner and provenance for one empty tile.
 --- Decision order: special override -> enclosure owner -> regular distance/count.
 --- @param tile table
@@ -360,6 +373,12 @@ end
 local function resolve_empty_tile(tile, row, col, regions, walls, black_stones, white_stones, distance_modifiers, print_debug)
 	local regular_owner, nearest_black, nearest_white =
 		resolve_regular_owner(row, col, black_stones, white_stones, distance_modifiers)
+	if tile.override_contested then
+		if print_debug then
+			print("[Territory] override contested at", row, col)
+		end
+		return nil, override_contested_decision(nearest_black, nearest_white)
+	end
 	if tile.override_owner then
 		if print_debug then
 			print("[Territory] override at", row, col, "->", tile.override_owner)
@@ -442,6 +461,93 @@ local function count_controlled(territory_grid, b, state)
 		end
 	end
 	return black, white
+end
+
+--- @param territory_grid table
+--- @param row integer
+--- @param col integer
+--- @return "B"|"W"|nil
+function M.owner_at_territory_cell(territory_grid, row, col)
+	local row_cells = territory_grid[row]
+	if not row_cells then
+		return nil
+	end
+	local color = row_cells[col]
+	if color == config.STONE_BLACK then
+		return config.OWNER_BLACK
+	end
+	if color == config.STONE_WHITE then
+		return config.OWNER_WHITE
+	end
+	return nil
+end
+
+--- Weighted territory total for one owner on the current territory grid (matches ``spec_helper.territory_points``).
+--- @param state table
+--- @param owner "B"|"W"
+--- @return integer
+function M.total_territory_for_owner(state, owner)
+	local territory_grid = state.territory
+	if not territory_grid then
+		return 0
+	end
+	local color = owner == config.OWNER_BLACK and config.STONE_BLACK or config.STONE_WHITE
+	local territory_value = state.territory_value or {}
+	local n = config.BOARD_SIZE
+	local sum = 0
+	for r = 1, n do
+		local row_cells = territory_grid[r]
+		if row_cells then
+			for c = 1, n do
+				if row_cells[c] == color then
+					local weight = (territory_value[r] and territory_value[r][c]) or 1
+					sum = sum + weight
+				end
+			end
+		end
+	end
+	return sum
+end
+
+--- @param state table
+--- @return integer black
+--- @return integer white
+function M.count_controlled_totals(state)
+	if not state.territory then
+		return 0, 0
+	end
+	return count_controlled(state.territory, state.board, state)
+end
+
+--- Territory owner at ``row,col`` if the stone cell were empty, using the current assignment pass tiles.
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return "B"|"W"|nil
+function M.hypothetical_empty_owner(state, row, col)
+	local tiles = state.territory_tiles
+	local b = state.board
+	if not tiles or not b then
+		return nil
+	end
+	local n = config.BOARD_SIZE
+	local black_stones, white_stones = collect_stones_by_owner(b, n)
+	local tile = tiles[row] and tiles[row][col]
+	if not tile then
+		return nil
+	end
+	local owner = resolve_empty_tile(
+		tile,
+		row,
+		col,
+		state.regions,
+		state.enclosure_walls,
+		black_stones,
+		white_stones,
+		state.distance_modifiers,
+		false
+	)
+	return owner
 end
 
 --- @param regions table
@@ -536,10 +642,142 @@ function M.compute_from_board(b, territory_mode)
 			end,
 		},
 	}
-	effect_manager.apply_phase(temp_state, "distance")
-	effect_manager.apply_phase(temp_state, "territory")
+	local scoring_phases = require("single_game.resolver.scoring_phases")
+	effect_manager.apply_phase_pass(temp_state, "on_play", "territory", scoring_phases.TERRITORY_STEP_DISTANCE)
+	temp_state.territory_tiles = tiles
+	temp_state.enclosure_walls = walls
+	temp_state.regions = regions
+	effect_manager.apply_phase_pass(temp_state, "on_play", "territory", scoring_phases.TERRITORY_STEP_VALUE)
+	effect_manager.apply_phase_pass(temp_state, "on_play", "territory", scoring_phases.TERRITORY_STEP_OVERRIDE)
 	local territory_grid, decision_sources = finish_resolve_owners(tiles, regions, walls, b, temp_state, false)
 	return territory_grid, decision_sources, temp_state.territory_value
+end
+
+--- Maps a territory grid cell color to a scoring owner token.
+--- @param territory_color integer|nil
+--- @return string|nil ``config.OWNER_BLACK`` | ``config.OWNER_WHITE`` | nil when contested or unowned
+function M.owner_from_territory_color(territory_color)
+	if territory_color == config.STONE_BLACK then
+		return config.OWNER_BLACK
+	end
+	if territory_color == config.STONE_WHITE then
+		return config.OWNER_WHITE
+	end
+	return nil
+end
+
+--- Territory owner at one grid cell from a territory map snapshot.
+--- @param territory_grid table
+--- @param row integer
+--- @param col integer
+--- @return string|nil
+function M.owner_at_cell(territory_grid, row, col)
+	if not territory_grid or not territory_grid[row] then
+		return nil
+	end
+	return M.owner_from_territory_color(territory_grid[row][col])
+end
+
+--- Weighted total controlled territory for one side across the full grid.
+--- @param territory_grid table
+--- @param color integer ``config.STONE_BLACK`` | ``config.STONE_WHITE``
+--- @param territory_value table|nil
+--- @return integer
+function M.weighted_territory_points(territory_grid, color, territory_value)
+	local n = config.BOARD_SIZE
+	local sum = 0
+	for r = 1, n do
+		for c = 1, n do
+			if territory_grid[r][c] == color then
+				if territory_value then
+					local weight = (territory_value[r] and territory_value[r][c]) or 1
+					sum = sum + weight
+				else
+					sum = sum + 1
+				end
+			end
+		end
+	end
+	return sum
+end
+
+local stone_params = require("objects.parameters.stones")
+
+--- Computes end-of-turn territory-to-points payout from total controlled territory.
+--- @param total_territory integer
+--- @return integer
+function M.territory_to_points_payout(total_territory)
+	return math.min(
+		stone_params.t2p_cap,
+		math.floor(total_territory / stone_params.t2p_divisor)
+	)
+end
+
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return table territory_grid
+--- @return table territory_value
+local function territory_map_for_stone_cell(state, row, col)
+	local key = row .. ":" .. col
+	local snapshots = state.territory_placement_snapshots
+	if snapshots and snapshots[key] then
+		local snapshot = snapshots[key]
+		snapshots[key] = nil
+		return snapshot.territory, snapshot.territory_value
+	end
+	local cell = state.board[row] and state.board[row][col]
+	if cell and not board.is_empty(cell) then
+		local cloned = board.clone(state.board)
+		cloned[row][col] = config.STONE_NONE
+		local territory_grid, _, territory_value =
+			M.compute_from_board(cloned, state.territory_mode or "regional")
+		return territory_grid, territory_value
+	end
+	return state.territory, state.territory_value
+end
+
+--- Territory map used by territory-to-points stones at payout time.
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @return table territory_grid
+--- @return table territory_value
+function M.territory_map_for_stone_payout(state, row, col)
+	return territory_map_for_stone_cell(state, row, col)
+end
+
+--- Stores the pre-placement territory snapshot for stones that read ownership on their placement turn.
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @param stone_id string
+--- @return nil
+function M.capture_placement_snapshot_if_needed(state, row, col, stone_id)
+	local def = content.get_stone(stone_id)
+	if not def or not def.effects then
+		return
+	end
+	local needs_snapshot = false
+	for i = 1, #def.effects do
+		local effect_name = def.effects[i].effect_name
+		if effect_name == "territory_to_points"
+			or effect_name == "territory_to_multiplier_snapshot"
+			or effect_name == "territory_to_multiplier" then
+			needs_snapshot = true
+			break
+		end
+	end
+	if not needs_snapshot then
+		return
+	end
+	local mode = state.territory_mode or "regional"
+	local territory_grid, _, territory_value = M.compute_from_board(state.board, mode)
+	state.territory_placement_snapshots = state.territory_placement_snapshots or {}
+	state.territory_placement_snapshots[row .. ":" .. col] = {
+		territory = territory_grid,
+		territory_value = territory_value,
+	}
 end
 
 return M

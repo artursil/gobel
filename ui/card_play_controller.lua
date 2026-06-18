@@ -212,7 +212,7 @@ local function can_arm_hand_target_card(active, hand_index, card_def)
 	if not deck.can_play_from_hand(active.cards, hand_index) then
 		return false
 	end
-	return energy.can_spend(active.resources, card_def.energy_cost)
+	return energy.can_spend(active, card_def.energy_cost)
 end
 
 --- @param s table

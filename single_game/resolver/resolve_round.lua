@@ -1,21 +1,28 @@
---- Per-action scoring resolve: macro lifecycle + sub passes (territory → points → mult).
+--- Per-action scoring resolve: action lifecycle + phase passes (territory → points → mult).
 ---
 --- ``points``, ``plus_mult``, and ``x_mult`` hydrate from ``player.score`` each resolve and persist
 --- across turns; only ``territory`` is recomputed from the board. Card effects read
---- ``state.just_played`` for ``playing_cards`` macro only. Stone on-place effects use
---- ``round_stone_effects`` for ``playing_stones`` macro only. Board scan never applies on-place
+--- ``state.just_played`` for ``on_card`` action only. Stone on-place effects use
+--- ``round_stone_effects`` for ``on_play`` action only. Board scan never applies on-place
 --- add_points/add_mult (see ``resolve_board_stone``).
 --- @module resolver.resolve_round
 
+local board = require("board")
 local config = require("config")
 local match_state = require("match_state")
-local phases = require("single_game.resolver.phases")
 local effect_manager = require("single_game.resolver.effect_manager")
-local queries = require("single_game.resolver.state_queries")
+local queries = require("single_game.resolver.helpers.state_queries")
 local territory = require("single_game.resolver.territory")
-local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
-local card_play_memory = require("single_game.resolver.card_play_memory")
+local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
+local card_play_memory = require("single_game.resolver.helpers.card_play_memory")
 local scoring_phases = require("single_game.resolver.scoring_phases")
+local tick_objects = require("single_game.resolver.stages.tick_objects")
+local remove_stones = require("single_game.resolver.stages.remove_stones")
+local on_play_pipeline = require("single_game.resolver.stages.on_play_pipeline")
+local effects_helpers = require("objects.effects_conditions.helpers.shared.effects_helpers")
+local effect_enums = require("objects.effects_conditions.scheduling")
+local objects_effects = require("objects.effects_conditions.effects")
+local run = require("objects.effects_conditions.run")
 
 local M = {}
 
@@ -23,6 +30,7 @@ local M = {}
 --- @return nil
 local function ensure_state_fields(state)
 	state.round_number = match_state.round_number_from_turn(state.turn_number)
+	require("single_game.resolver.helpers.blocked_cells").ensure(state)
 	state.run_state = state.run_state or {}
 	state.run_state.pending_counter_mult_delta = {}
 	state.last_opponent_move = state.last_opponent_move or nil
@@ -119,12 +127,12 @@ end
 
 --- Hydrate persistent factors from ``player.score``, reset territory, optionally refresh active turn bonus.
 --- @param state table
---- @param macro string
+--- @param action string canonical action
 --- @return nil
-local function prepare_score_baselines(state, macro)
+local function prepare_score_baselines(state, action)
 	local tn = state.turn_number or 1
 	local turn_bonus = 1 + (0.1 * tn)
-	if macro == "game_start" then
+	if action == effect_enums.ACTION.game_start then
 		state.scores.turn_bonus = { B = turn_bonus, W = turn_bonus }
 		state.scores.plus_mult = { B = 1, W = 1 }
 		state.scores.x_mult = { B = 1, W = 1 }
@@ -134,7 +142,7 @@ local function prepare_score_baselines(state, macro)
 	end
 	hydrate_score_ledger_from_players(state)
 	reset_territory_ledger(state)
-	if macro == "before_turn" then
+	if action == effect_enums.ACTION.before_turn then
 		local owner = side_to_owner(state.to_play)
 		state.scores.turn_bonus[owner] = turn_bonus
 	end
@@ -210,62 +218,141 @@ local function tick_temporary_stances(state)
 	state.temporary_stances = kept
 end
 
---- Territory sub: distance modifiers → territory-value effects → assign owners and count.
+--- Territory phase: distance modifiers → territory-value effects → assign owners and count.
 --- @param state table
---- @param macro string
+--- @param action string
 --- @return nil
-local function apply_territory_sub(state, macro)
-	effect_manager.apply_sub_phase(state, macro, "territory", scoring_phases.TERRITORY_STEP_DISTANCE)
+local function apply_territory_phase(state, action)
+	effect_manager.apply_phase_pass(state, action, effect_enums.PHASE.territory, scoring_phases.TERRITORY_STEP_DISTANCE)
 	territory.begin_assignment(state)
-	effect_manager.apply_sub_phase(state, macro, "territory", scoring_phases.TERRITORY_STEP_VALUE)
+	effect_manager.apply_phase_pass(state, action, effect_enums.PHASE.territory, scoring_phases.TERRITORY_STEP_VALUE)
+	effect_manager.apply_phase_pass(state, action, effect_enums.PHASE.territory, scoring_phases.TERRITORY_STEP_OVERRIDE)
 	territory.finish_assignment(state)
 end
 
 --- @param state table
---- @param macro string
+--- @param action string
 --- @return nil
-local function run_sub_phases(state, macro)
-	for i = 1, #phases.SUB_ORDER do
-		local sub = phases.SUB_ORDER[i]
-		if sub == "territory" then
-			apply_territory_sub(state, macro)
-		else
-			effect_manager.apply_sub_phase(state, macro, sub, nil)
+local function apply_points_phase(state, action)
+	effect_manager.apply_phase_pass(state, action, effect_enums.PHASE.points, nil)
+end
+
+--- @param state table
+--- @param action string
+--- @return nil
+local function apply_mult_phase(state, action)
+	effect_manager.apply_phase_pass(state, action, effect_enums.PHASE.mult, nil)
+end
+
+--- Run territory → points → mult for the given action beat.
+--- @param state table
+--- @param action string canonical action
+--- @return nil
+local function run_scoring_beats(state, action)
+	apply_territory_phase(state, action)
+	apply_points_phase(state, action)
+	apply_mult_phase(state, action)
+end
+
+--- @param state table
+--- @param action string canonical action
+--- @return nil
+local function run_post_scoring_hooks(state, action)
+	if action == effect_enums.ACTION.on_card then
+		card_play_memory.flush_just_played_to_history(state)
+		for _, stance in ipairs(state.temporary_stances or {}) do
+			stance.created_this_turn = nil
+		end
+	elseif action == effect_enums.ACTION.on_play then
+		territory_control_rounds.clear_placement_streak_snapshot(state)
+	end
+end
+
+--- @param state table
+--- @return nil
+local function run_eot_tick_pipeline(state)
+	if state._skip_end_of_turn_effect_tick then
+		return
+	end
+	local duration_left = require("objects.effects_conditions.helpers.shared.duration_left")
+	tick_objects.decrement(state, {
+		skip_cell = duration_left.resolve_tick_skip(state),
+		decrement_board_cell_timers = state._decrement_board_cell_timers_on_eot,
+	})
+	state._effect_tick_skip_cell = nil
+
+	state._resolve_action = effect_enums.ACTION.tick
+	run_scoring_beats(state, effect_enums.ACTION.tick)
+
+	on_play_pipeline.run_placement_animations(state)
+	remove_stones.run({ state = state, actor = state.to_play })
+
+	local tick_blockade = not state._blockade_registered_this_action
+	if tick_blockade then
+		local resolved = objects_effects.resolve({
+			effect_name = "blockade_tick",
+			action = effect_enums.ACTION.tick,
+			phase = effect_enums.PHASE.points,
+		})
+		if resolved then
+			run.apply_effect(resolved, state, nil)
 		end
 	end
 end
 
 --- @param state table
---- @param opts table|nil ``{ macro = string }``
+--- @return nil
+local function run_end_of_turn_housekeeping(state)
+	state._blockade_registered_this_action = nil
+	card_play_memory.flush_just_played_to_history(state)
+	require("single_game.resolver.helpers.blocked_cells").bootstrap_from_board_if_needed(state)
+	tick_timed_effects(state)
+	effects_helpers.tick_capture_cooldowns(state)
+	tick_temporary_stances(state)
+	if (state.turn_number or 1) % 2 == 0 then
+		territory_control_rounds.tick(state)
+	end
+	sync_player_scores(state)
+end
+
+--- @param opts table|nil
+--- @return string action canonical action
+local function resolve_action_from_opts(opts)
+	if opts.action then
+		return effect_enums.normalize_action(opts.action) or effect_enums.ACTION.on_play
+	end
+	return effect_enums.ACTION.on_play
+end
+
+--- @param state table
+--- @param opts table|nil ``{ action = string }``
 --- @return nil
 function M.resolve(state, opts)
 	opts = opts or {}
-	local macro = opts.macro or "playing_stones"
+	local action = resolve_action_from_opts(opts)
+
 	ensure_state_fields(state)
 	sync_opponent_state(state)
-	prepare_score_baselines(state, macro)
+	prepare_score_baselines(state, action)
 	queries.clear_resolution(state)
-	state._resolve_macro = macro
-	run_sub_phases(state, macro)
+	state._resolve_action = action
+	if action == effect_enums.ACTION.end_of_turn then
+		state._tax_enclosure_paid = {}
+		run_eot_tick_pipeline(state)
+	end
+
+	run_scoring_beats(state, action)
+	if action == effect_enums.ACTION.on_card then
+		on_play_pipeline.run_card_removal_beat(state, state.to_play)
+	end
 	sync_player_scores(state)
-	if macro == "playing_cards" then
-		card_play_memory.flush_just_played_to_history(state)
-		for _, stance in ipairs(state.temporary_stances or {}) do
-			stance.created_this_turn = nil
-		end
-	elseif macro == "playing_stones" then
-		state.round_stone_effects = {}
+	run_post_scoring_hooks(state, action)
+	if action == effect_enums.ACTION.end_of_turn then
+		run_end_of_turn_housekeeping(state)
 	end
-	if macro == "end_of_turn" then
-		card_play_memory.flush_just_played_to_history(state)
-		tick_timed_effects(state)
-		tick_temporary_stances(state)
-		if (state.turn_number or 1) % 2 == 0 then
-			territory_control_rounds.tick(state)
-		end
-	end
+
 	queries.clear_resolution(state)
-	state._resolve_macro = nil
+	state._resolve_action = nil
 end
 
 return M

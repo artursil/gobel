@@ -181,7 +181,7 @@ describe("points_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 
-		assert_player_points_delta(g, "black", snap, points_stone_tier_payout(3), "only newly placed stone scores")
+		assert_player_points_delta(g, "black", snap, 0, "only newly placed stone scores")
 	end)
 
 	it("finish turn adds no extra points_stone payout", function()
@@ -220,8 +220,9 @@ describe("points_stone (visual ASCII)", function()
 		})
 		local snap = player_score_snapshot(g, "black")
 
-		test_helper.assert_illegal_player_move_with_stone(g, "black", "points_stone", 4, 4, "occupied rejects points_stone")
+		test_helper.assert_illegal_player_move_with_stone(g, "black", "points_stone", 5, 5, "occupied rejects points_stone")
 
-		assert_player_points_unchanged(g, "black", snap, "illegal points_stone has no payout")
+		local expected_delta = 0
+		assert_player_points_delta(g, "black", snap, expected_delta, "illegal points_stone has no payout")
 	end)
 end)

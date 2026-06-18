@@ -1,7 +1,7 @@
 require("spec.test_helper")
 
 local config = require("config")
-local effects = require("objects.effects")
+local effects = require("objects.effects_conditions.effects")
 local animations = require("objects.animations")
 
 describe("ui animation steel sync (factory)", function()

@@ -4,7 +4,7 @@ local board = require("board")
 local config = require("config")
 local effect_manager = require("single_game.resolver.effect_manager")
 local ObjectInstance = require("single_game.resolver.ObjectInstance")
-local queries = require("single_game.resolver.state_queries")
+local queries = require("single_game.resolver.helpers.state_queries")
 local stance_order = require("single_game.resolver.stance_order")
 
 local function minimal_scores()
@@ -39,13 +39,13 @@ describe("state.resolution metadata wiring", function()
 		assert.are.equal("run_inst_test", effects[1].meta.source_instance_id)
 	end)
 
-	it("during apply_sub_phase, stance effects see resolution.source_instance_id from the stance row", function()
+	it("during apply_phase_pass, stance effects see resolution.source_instance_id from the stance row", function()
 		local em = effect_manager
 		local orig_collect = em.collect_effects
 		local seen_id
 
-		em.collect_effects = function(match_state, macro, sub, territory_step)
-			local list = orig_collect(match_state, macro, sub, territory_step)
+		em.collect_effects = function(match_state, action, phase, territory_step)
+			local list = orig_collect(match_state, action, phase, territory_step)
 			for _, e in ipairs(list) do
 				if e.meta and e.meta.source_object_type == "stance" then
 					local inner = e.apply
@@ -75,19 +75,19 @@ describe("state.resolution metadata wiring", function()
 		}
 		stance_order.flatten_stances_for_resolve(state)
 
-		em.apply_sub_phase(state, "before_turn", "points", nil)
+		em.apply_phase_pass(state, "before_turn", "points", nil)
 		em.collect_effects = orig_collect
 
 		assert.are.equal("phase_inst_stance", seen_id)
 	end)
 
-	it("during apply_sub_phase, stone round effects see resolution.effect_owner as stone_event.owner", function()
+	it("during apply_phase_pass, stone round effects see resolution.effect_owner as stone_event.owner", function()
 		local em = effect_manager
 		local orig_collect = em.collect_effects
 		local seen_owner
 
-		em.collect_effects = function(match_state, macro, sub, territory_step)
-			local list = orig_collect(match_state, macro, sub, territory_step)
+		em.collect_effects = function(match_state, action, phase, territory_step)
+			local list = orig_collect(match_state, action, phase, territory_step)
 			for _, e in ipairs(list) do
 				if e.meta and e.meta.source_object_type == "stone" then
 					local inner = e.apply
@@ -116,8 +116,8 @@ describe("state.resolution metadata wiring", function()
 					effects = {
 						{
 							effect_name = "add_points",
-							macro = "playing_stones",
-							sub = "points",
+							action = "on_play",
+							phase = "points",
 							value = 2,
 							priority = 10,
 						},
@@ -128,7 +128,7 @@ describe("state.resolution metadata wiring", function()
 			scores = minimal_scores(),
 		}
 
-		em.apply_sub_phase(state, "playing_stones", "points", nil)
+		em.apply_phase_pass(state, "on_play", "points", nil)
 		em.collect_effects = orig_collect
 
 		assert.are.equal("W", seen_owner)

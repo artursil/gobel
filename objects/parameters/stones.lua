@@ -62,6 +62,7 @@ return {
 
 	unlimited_upgrades_points_per_level = 1,
 	unlimited_upgrades_plus_mult_per_level = 1,
+	unlimited_upgrades_upgrade_cost_base = 1,
 
 	tax_money_per_enemy = 1,
 	tax_points_per_enemy = 1,
@@ -92,4 +93,5 @@ return {
 	kamikaze_self_removal_counts_as_prisoner = false,
 
 	capture_bonus_points_per_stone = 3,
+	capture_cooldown_rounds = 1,
 }

@@ -51,7 +51,7 @@ function M.legal_for_card(view, hand_index)
 	if not card_def or not card_def.targeting or card_def.targeting.kind ~= "board_stone" then
 		return {}
 	end
-	if not energy.can_spend(view:player().resources, card_def.energy_cost or 0) then
+	if not energy.can_spend(view:player(), card_def.energy_cost or 0) then
 		return {}
 	end
 	return M.legal_cells(view, card_def.targeting.rule)

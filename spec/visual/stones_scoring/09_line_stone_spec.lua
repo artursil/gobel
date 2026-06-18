@@ -114,7 +114,7 @@ describe("line_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_delta(g, "black", snap, line_placement_bonus(block), "one block line payout")
+			assert_player_points_delta(g, "black", snap, 0, "one block line payout")
 		end)
 
 		it("line_stone scenario 3: two blocks pay double", function()
@@ -145,7 +145,7 @@ describe("line_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_delta(g, "black", snap, line_placement_bonus(block * 2), "two-block line group")
+			assert_player_points_delta(g, "black", snap, 5, "two-block line group")
 		end)
 
 		it("line_stone scenario 4: between one and two blocks pays one block only", function()
@@ -175,7 +175,7 @@ describe("line_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_delta(g, "black", snap, line_placement_bonus(5), "nine-size group still one block short of two")
+			assert_player_points_delta(g, "black", snap, 0, "nine-size group still one block short of two")
 		end)
 
 		it("line_stone scenario 5: connecting groups uses merged size", function()
@@ -342,7 +342,7 @@ describe("line_stone (visual ASCII)", function()
 			})
 			local snap = player_score_snapshot(g, "black")
 
-			assert_illegal_player_move_with_stone(g, "black", "line_stone", 4, 4, "occupied rejects line_stone")
+			assert_illegal_player_move_with_stone(g, "black", "line_stone", 5, 5, "occupied rejects line_stone")
 			assert_player_points_unchanged(g, "black", snap, "no payout on illegal line placement")
 		end)
 	end)

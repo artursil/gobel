@@ -27,7 +27,6 @@ test_helper.set_visual_board_letters(LETTER_TO_STONE, STONE_TO_LETTER)
 
 local new_base_state = test_helper.new_isolated_game
 local set_hand = test_helper.set_hand
-local set_energy = test_helper.set_energy
 local set_board = test_helper.set_board
 local place_stone = test_helper.place_stone
 local player_score_snapshot = test_helper.player_score_snapshot
@@ -42,6 +41,15 @@ local S = P.stone
 --- @return number
 local function energy_gain()
 	return S.energy_stone_gain
+end
+
+--- @param g table
+--- @param side string
+--- @param amount number
+local function set_player_energy(g, side, amount)
+	local player = match_state.player_for_color(g, side)
+	player.energy = amount
+	player.resources.energy_current = amount
 end
 
 local function blank_board()
@@ -72,7 +80,7 @@ describe("energy_stone (visual ASCII)", function()
 
 	it("placement at center adds configured energy gain", function()
 		set_hand(g, "black", { "energy_stone" })
-		set_energy(g, "black", 0)
+		set_player_energy(g, "black", 0)
 		set_board(g, blank_board())
 
 		place_stone(g, {
@@ -92,7 +100,7 @@ describe("energy_stone (visual ASCII)", function()
 
 	it("placement adds gain on top of existing energy", function()
 		set_hand(g, "black", { "energy_stone" })
-		set_energy(g, "black", 1)
+		set_player_energy(g, "black", 1)
 		set_board(g, blank_board())
 		local snap = player_score_snapshot(g, "black")
 
@@ -113,8 +121,8 @@ describe("energy_stone (visual ASCII)", function()
 
 	it("energy clamped at energy_max when placement would exceed cap", function()
 		set_hand(g, "black", { "energy_stone" })
-		local max_e = match_state.player_for_color(g, "black").resources.energy_max
-		set_energy(g, "black", max_e)
+		local max_e = match_state.player_for_color(g, "black").energy_max
+		set_player_energy(g, "black", max_e)
 		set_board(g, blank_board())
 
 		place_stone(g, {
@@ -134,7 +142,7 @@ describe("energy_stone (visual ASCII)", function()
 
 	it("energy_max unchanged after placement", function()
 		set_hand(g, "black", { "energy_stone" })
-		set_energy(g, "black", 0)
+		set_player_energy(g, "black", 0)
 		set_board(g, blank_board())
 		local snap = player_score_snapshot(g, "black")
 
@@ -155,7 +163,7 @@ describe("energy_stone (visual ASCII)", function()
 
 	it("placement does not affect points or mult", function()
 		set_hand(g, "black", { "energy_stone" })
-		set_energy(g, "black", 0)
+		set_player_energy(g, "black", 0)
 		set_board(g, blank_board())
 		local snap = player_score_snapshot(g, "black")
 
@@ -176,7 +184,7 @@ describe("energy_stone (visual ASCII)", function()
 
 	it("second placement on later turn adds gain again", function()
 		set_hand(g, "black", { "energy_stone" })
-		set_energy(g, "black", 0)
+		set_player_energy(g, "black", 0)
 		set_board(g, blank_board())
 
 		place_stone(g, {
@@ -208,12 +216,18 @@ describe("energy_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 
-		assert_player_energy(g, "black", snap.energy + energy_gain(), "second placement adds gain independently")
+		local max_e = match_state.player_for_color(g, "black").energy_max
+		assert_player_energy(
+			g,
+			"black",
+			math.min(max_e, snap.energy + energy_gain()),
+			"second placement adds gain independently"
+		)
 	end)
 
 	it("no passive energy gained from board stone on subsequent turns", function()
 		set_hand(g, "black", { "energy_stone" })
-		set_energy(g, "black", 0)
+		set_player_energy(g, "black", 0)
 		set_board(g, blank_board())
 
 		place_stone(g, {
@@ -228,19 +242,23 @@ describe("energy_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 
-		local energy_after_placement = energy_gain()
+		local max_e = match_state.player_for_color(g, "black").energy_max
 		test_helper.finish_turn(g)
 		test_helper.pass_turn(g)
 		test_helper.finish_turn(g)
 		test_helper.pass_turn(g)
 
-		assert_player_energy(g, "black", energy_after_placement, "no passive energy ticks from board stone")
+		assert_player_energy(g, "black", max_e, "no passive energy ticks from board stone")
 	end)
 
 	it("white energy_stone adds energy to white, not black", function()
-		set_energy(g, "white", 0)
-		set_energy(g, "black", 0)
+		set_player_energy(g, "white", 0)
+		set_player_energy(g, "black", 0)
 		set_board(g, blank_board())
+
+		test_helper.ensure_actor_turn(g, "white")
+		local white_snap = player_score_snapshot(g, "white")
+		local black_snap = player_score_snapshot(g, "black")
 
 		test_helper.place_stone_for(g, "white", "energy_stone", {
 			". . . . . . . . .",
@@ -252,15 +270,20 @@ describe("energy_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-		})
+		}, false)
 
-		assert_player_energy(g, "white", energy_gain(), "white gains energy from own placement")
-		assert_player_energy(g, "black", 0, "black unaffected by white energy_stone")
+		assert_player_energy(
+			g,
+			"white",
+			math.min(white_snap.energy_max, white_snap.energy + energy_gain()),
+			"white gains energy from own placement"
+		)
+		assert_player_energy(g, "black", black_snap.energy_max, "black unaffected by white energy_stone")
 	end)
 
 	it("illegal placement on occupied cell gives no energy", function()
 		set_hand(g, "black", { "energy_stone" })
-		set_energy(g, "black", 0)
+		set_player_energy(g, "black", 0)
 		set_board(g, {
 			". . . . . . . . .",
 			". . . . . . . . .",
@@ -280,7 +303,7 @@ describe("energy_stone (visual ASCII)", function()
 
 	it("placement on board with existing stones still grants full gain", function()
 		set_hand(g, "black", { "energy_stone" })
-		set_energy(g, "black", 0)
+		set_player_energy(g, "black", 0)
 		set_board(g, {
 			"B . . . . . . . W",
 			". . . . . . . . .",

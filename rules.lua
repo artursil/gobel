@@ -142,11 +142,14 @@ end
 --- @param player integer chain color
 --- @param ko_ban table|nil forbidden intersection for this move {row, col}
 --- @param stone_kind integer kind id from stone_kinds
+--- @param stone_level integer|nil
+--- @param opts table|nil ``{ allow_suicide?: boolean }``
 --- @return boolean ok
 --- @return table|nil new_board
 --- @return table|nil new_ko next player's ko ban or nil
 --- @return integer captures number of opponent stones removed
-function M.try_play(b, row, col, player, ko_ban, stone_kind, stone_level)
+--- @return string|nil illegal_reason
+function M.try_play(b, row, col, player, ko_ban, stone_kind, stone_level, opts)
 	local n = config.BOARD_SIZE
 	if row < 1 or row > n or col < 1 or col > n then
 		return false, nil, nil, 0, "out_of_bounds"
@@ -162,7 +165,7 @@ function M.try_play(b, row, col, player, ko_ban, stone_kind, stone_level)
 	trial[row][col] = board.make_stone(player, stone_kind, stone_solidity.stone_max_solidity(stone_kind), stone_level)
 	local captures, ko_coord = M.remove_opponent_captures(trial, row, col, player)
 	local my_group = M.collect_group(trial, row, col)
-	if M.liberty_count(trial, my_group) == 0 then
+	if M.liberty_count(trial, my_group) == 0 and not (opts and opts.allow_suicide) then
 		return false, nil, nil, 0, "suicide"
 	end
 	local new_ko = nil
@@ -213,6 +216,54 @@ function M.unique_liberty_points(b, stone_color)
 		end
 	end
 	return count
+end
+
+--- Whether this stone id may enter zero-liberty cells (suicide override).
+--- @param stone_id string|nil
+--- @return boolean
+function M.allows_suicide_placement(stone_id)
+	return stone_id == "kamikaze_stone"
+end
+
+--- True when every orthogonal neighbor of an empty cell is occupied.
+--- @param b table
+--- @param row integer
+--- @param col integer
+--- @return boolean
+function M.empty_cell_has_no_empty_neighbors(b, row, col)
+	for nr, nc in M.each_neighbor(row, col) do
+		if board.is_empty(b[nr][nc]) then
+			return false
+		end
+	end
+	return true
+end
+
+--- Kamikaze payout/self-removal on a capture-cooldown cell fully enclosed before placement.
+--- @param on_capture_cooldown_cell boolean
+--- @param empty_cell_had_no_empty_neighbors boolean
+--- @return boolean
+function M.kamikaze_on_capture_cooldown_sacrifice(on_capture_cooldown_cell, empty_cell_had_no_empty_neighbors)
+	return on_capture_cooldown_cell and empty_cell_had_no_empty_neighbors
+end
+
+--- Whether ``kamikaze_sacrifice`` should run for the current placement context.
+--- @param ctx table|nil ``{ required_suicide_override?, on_capture_cooldown_cell?, empty_cell_had_no_empty_neighbors?, ok_without_override?, had_former_capture_cooldown? }``
+--- @return boolean
+function M.kamikaze_sacrifice_triggers(ctx)
+	if not ctx then
+		return false
+	end
+	if M.kamikaze_on_capture_cooldown_sacrifice(ctx.on_capture_cooldown_cell, ctx.empty_cell_had_no_empty_neighbors) then
+		return true
+	end
+	if ctx.required_suicide_override then
+		return true
+	end
+	if ctx.ok_without_override and ctx.had_former_capture_cooldown then
+		return false
+	end
+	return true
 end
 
 return M

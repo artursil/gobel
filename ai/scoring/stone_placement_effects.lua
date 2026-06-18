@@ -2,43 +2,19 @@
 --- @module ai.scoring.stone_placement_effects
 
 local content = require("content")
-local effect_registry = require("effect_registry")
+local placement_preview = require("objects.placement_preview")
+local placement_round = require("objects.placement_round")
+local resolved_type_registry = require("objects.resolved_type_registry")
 
 local M = {}
 
---- @param stone_def table
---- @param state table
---- @param actor "black"|"white"
---- @return table
-local function resolved_from_behavior(stone_def, state, actor)
-	if type(stone_def.behavior) == "function" then
-		return stone_def.behavior(state, actor)
+--- @param side "black"|"white"
+--- @return string
+local function owner_for_side(side)
+	if side == "white" then
+		return require("config").OWNER_WHITE
 	end
-	return {}
-end
-
---- @param stone_def table
---- @return table
-local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
-	add_points = true,
-	add_mult = true,
-}
-
-local function resolved_from_effect_defs(stone_def)
-	local out = {}
-	if not stone_def.effects then
-		return out
-	end
-	for i = 1, #stone_def.effects do
-		local effect = stone_def.effects[i]
-		if IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
-			local resolved = effect_registry.stones.resolve(effect)
-			if resolved then
-				out[#out + 1] = resolved
-			end
-		end
-	end
-	return out
+	return require("config").OWNER_BLACK
 end
 
 --- @param stone_def table
@@ -49,10 +25,15 @@ function M.resolved_stone_effects_from_def(stone_def, state, actor)
 	if not stone_def then
 		return {}
 	end
-	if type(stone_def.behavior) == "function" then
-		return resolved_from_behavior(stone_def, state, actor)
-	end
-	return resolved_from_effect_defs(stone_def)
+	local ctx = {
+		state = state,
+		actor = actor,
+		owner = owner_for_side(actor),
+		row = nil,
+		col = nil,
+		board_snapshot = state.board,
+	}
+	return placement_preview.resolve_from_stone_def(stone_def, ctx)
 end
 
 --- @param stone_id string
@@ -73,31 +54,27 @@ function M.resolved_for_stone_ref(stone_ref, state, actor)
 	return M.resolved_stone_effects_from_def(stone_def, state, actor)
 end
 
---- @param resolved_effects table
+--- @param stone_def table
 --- @return table
-function M.round_effect_defs(resolved_effects)
-	local round = {}
-	for i = 1, #resolved_effects do
-		local r = resolved_effects[i]
-		if r.type == "ADD_POINTS" then
-			round[i] = {
-				effect_name = "add_points",
-				macro = "playing_stones",
-				sub = "points",
-				value = r.value,
-				priority = r.priority or 10,
-			}
-		elseif r.type == "ADD_MULT" then
-			round[i] = {
-				effect_name = "add_mult",
-				macro = "playing_stones",
-				sub = "mult",
-				value = r.value,
-				priority = r.priority or 10,
-			}
-		end
+function M.placement_round_defs(stone_def)
+	return placement_round.collect_defs(stone_def)
+end
+
+--- @param resolved_effects table
+--- @param stone_def table|nil
+--- @return table
+function M.round_effect_defs(resolved_effects, stone_def)
+	local round = resolved_type_registry.round_effect_defs_from_resolved(resolved_effects)
+	if stone_def then
+		return placement_round.merge_round_defs(stone_def, round)
 	end
 	return round
+end
+
+--- Re-export for registry parity tests.
+--- @return string[]
+function M.immediate_placement_effect_name_keys()
+	return placement_preview.immediate_placement_effect_name_keys()
 end
 
 return M

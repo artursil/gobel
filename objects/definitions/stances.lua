@@ -18,8 +18,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_points",
-				macro = "before_turn",
-				sub = "points",
+				action = "before_turn",
+				phase = "points",
 				value = S.stance_point_before_turn_points,
 				priority = S.stance_turn_bonus_priority,
 			},
@@ -38,8 +38,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_mult",
-				macro = "before_turn",
-				sub = "mult",
+				action = "before_turn",
+				phase = "mult",
 				value = S.stance_mult_before_turn_plus_mult,
 				priority = S.stance_turn_bonus_priority,
 			},
@@ -58,8 +58,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_points",
-				macro = "before_turn",
-				sub = "points",
+				action = "before_turn",
+				phase = "points",
 				value = S.stance_heavy_point_before_turn_points,
 				priority = S.stance_turn_bonus_priority,
 			},
@@ -78,8 +78,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "count_and_multiply_x_mult",
-				macro = "playing_stones",
-				sub = "mult",
+				action = "on_play",
+				phase = "mult",
 				value = S.stance_gluttony_x_mult_per_steel,
 				priority = S.stance_gluttony_priority,
 				conditions = {
@@ -101,8 +101,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "add_points",
-				macro = "playing_stones",
-				sub = "points",
+				action = "on_play",
+				phase = "points",
 				value = S.stance_focus_bonus_points_per_round,
 				priority = S.stance_turn_bonus_priority,
 				conditions = {
@@ -125,20 +125,20 @@ local M = {
 		effects = {
 			{
 				effect_name = "copy_right_effect",
-				macro = "playing_stones",
-				sub = "territory",
+				action = "on_play",
+				phase = "territory",
 				territory_step = "distance",
 				priority = S.stance_echo_priority,
 			},
 			{
 				effect_name = "copy_right_effect",
-				macro = "playing_stones",
-				sub = "territory",
+				action = "on_play",
+				phase = "territory",
 				territory_step = "value",
 				priority = S.stance_echo_priority,
 			},
-			{ effect_name = "copy_right_effect", macro = "playing_stones", sub = "points", priority = S.stance_echo_priority },
-			{ effect_name = "copy_right_effect", macro = "playing_stones", sub = "mult", priority = S.stance_echo_priority },
+			{ effect_name = "copy_right_effect", action = "on_play", phase = "points", priority = S.stance_echo_priority },
+			{ effect_name = "copy_right_effect", action = "on_play", phase = "mult", priority = S.stance_echo_priority },
 		},
 	},
 	stance_persistent_flux = {
@@ -160,8 +160,8 @@ local M = {
 		effects = {
 			{
 				effect_name = "adjust_run_persistent_counter",
-				macro = "playing_stones",
-				sub = "mult",
+				action = "on_play",
+				phase = "mult",
 				value = { counter_key = "persistent_flux_mult", delta = S.stance_persistent_flux_special_delta },
 				priority = S.stance_persistent_flux_priority,
 				conditions = {
@@ -170,8 +170,8 @@ local M = {
 			},
 			{
 				effect_name = "adjust_run_persistent_counter",
-				macro = "playing_stones",
-				sub = "mult",
+				action = "on_play",
+				phase = "mult",
 				value = { counter_key = "persistent_flux_mult", delta = S.stance_persistent_flux_wall_delta },
 				priority = S.stance_persistent_flux_priority,
 				conditions = {
@@ -180,8 +180,8 @@ local M = {
 			},
 			{
 				effect_name = "apply_run_persistent_counter_as_mult",
-				macro = "playing_stones",
-				sub = "mult",
+				action = "on_play",
+				phase = "mult",
 				value = { counter_key = "persistent_flux_mult" },
 				priority = S.stance_turn_bonus_priority,
 				conditions = {
@@ -190,8 +190,8 @@ local M = {
 			},
 			{
 				effect_name = "apply_run_persistent_pending_delta_as_mult",
-				macro = "playing_stones",
-				sub = "mult",
+				action = "on_play",
+				phase = "mult",
 				value = { counter_key = "persistent_flux_mult" },
 				priority = S.stance_turn_bonus_priority,
 				conditions = {

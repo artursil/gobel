@@ -3,7 +3,7 @@
 --- @module effect_registry
 
 local config = require("config")
-local objects_effects = require("objects.effects")
+local objects_effects = require("objects.effects_conditions.effects")
 local objects_stones = require("objects.stones")
 local objects_stances = require("objects.stances")
 local objects_cards = require("objects.cards")
@@ -22,8 +22,8 @@ local function wrap_effect_with_owner(effect_payload, owner)
 	effect_payload.owner = owner
 	effect_payload.apply = (function(eff)
 		local fn = eff.apply
-		return function(s)
-			fn(s, owner)
+		return function(s, _owner, kwargs)
+			fn(s, owner, kwargs)
 		end
 	end)(effect_payload)
 	return effect_payload
@@ -32,9 +32,8 @@ end
 local function append_wrapped_effects(out, effects, owner, selected_target, selected_targets)
 	for i = 1, #effects do
 		local wrapped = wrap_effect_with_owner(effects[i], owner)
-		wrapped._effect_def = effects[i]._effect_def
-		wrapped.macro = effects[i].macro
-		wrapped.sub = effects[i].sub
+		wrapped.action = effects[i].action
+		wrapped.phase = effects[i].phase
 		wrapped.meta = wrapped.meta or {}
 		wrapped.meta.selected_target = selected_target
 		wrapped.meta.selected_targets = selected_targets
@@ -68,8 +67,8 @@ function M.stones.resolve(effect)
 	return objects_effects.resolve(effect)
 end
 
-function M.stones.resolve_board_stone(stone_cell, row, col, state, active_macro, active_sub, territory_step)
-	return objects_effects.resolve_board_stone(stone_cell, row, col, state, active_macro, active_sub, territory_step)
+function M.stones.resolve_board_stone(stone_cell, row, col, state, active_action, active_phase, territory_step)
+	return objects_effects.resolve_board_stone(stone_cell, row, col, state, active_action, active_phase, territory_step)
 end
 
 return M

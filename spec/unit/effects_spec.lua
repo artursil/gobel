@@ -1,7 +1,9 @@
 require("spec.test_helper")
 
-local effects = require("objects.effects")
-local conditions = require("objects.conditions")
+local effects = require("objects.effects_conditions.effects")
+local conditions = require("objects.effects_conditions.conditions")
+local match_state = require("match_state")
+local P = require("spec.parameters_helper")
 
 describe("T-100 effects system", function()
 	it("resolves add_points effect", function()
@@ -13,7 +15,7 @@ describe("T-100 effects system", function()
 		}
 		local resolved = effects.resolve(effect_def)
 		assert.is_not_nil(resolved)
-		assert.are.equal("ADD_POINTS", resolved.type)
+		assert.are.equal("add_points", resolved.effect_name)
 		assert.are.equal("points", resolved.phase)
 		assert.are.equal(3, resolved.value)
 		assert.are.equal(10, resolved.priority)
@@ -29,7 +31,7 @@ describe("T-100 effects system", function()
 		}
 		local resolved = effects.resolve(effect_def)
 		assert.is_not_nil(resolved)
-		assert.are.equal("ADD_MULT", resolved.type)
+		assert.are.equal("add_mult", resolved.effect_name)
 		assert.are.equal("mult", resolved.phase)
 		assert.are.equal(2, resolved.value)
 		assert.are.equal(15, resolved.priority)
@@ -44,8 +46,8 @@ describe("T-100 effects system", function()
 		}
 		local resolved = effects.resolve(effect_def)
 		assert.is_not_nil(resolved)
-		assert.are.equal("DISTANCE_BONUS", resolved.type)
-		assert.are.equal("territory", resolved.sub)
+		assert.are.equal("distance_bonus", resolved.effect_name)
+		assert.are.equal("territory", resolved.phase)
 		assert.are.equal("distance", resolved.territory_step)
 		assert.are.equal(1, resolved.value)
 	end)
@@ -57,6 +59,53 @@ describe("T-100 effects system", function()
 		}
 		local resolved = effects.resolve(effect_def)
 		assert.is_nil(resolved)
+	end)
+
+	it("resolves add_energy effect", function()
+		local effect_def = {
+			effect_name = "add_energy",
+			action = "on_play",
+			phase = "points",
+			value = P.stone.energy_stone_gain,
+			priority = 10,
+		}
+		local resolved = effects.resolve(effect_def)
+		assert.is_not_nil(resolved)
+		assert.are.equal("add_energy", resolved.effect_name)
+		assert.are.equal("points", resolved.phase)
+		assert.are.equal(P.stone.energy_stone_gain, resolved.value)
+		assert.are.equal(10, resolved.priority)
+		assert.is_not_nil(resolved.apply)
+	end)
+
+	it("applies add_energy effect to player energy", function()
+		local state = match_state.new_match("pvp", 1)
+		local player = state.players.black
+		player.energy = 0
+		player.energy_max = P.energy_max_default()
+		local effect_def = {
+			effect_name = "add_energy",
+			value = P.stone.energy_stone_gain,
+		}
+		local resolved = effects.resolve(effect_def)
+		resolved.apply(state, "B")
+		assert.are.equal(P.stone.energy_stone_gain, player.energy)
+		assert.are.equal(player.energy, player.resources.energy_current)
+	end)
+
+	it("clamps add_energy at player energy_max", function()
+		local state = match_state.new_match("pvp", 2)
+		local player = state.players.black
+		player.energy = P.energy_max_default()
+		player.energy_max = P.energy_max_default()
+		local effect_def = {
+			effect_name = "add_energy",
+			value = P.stone.energy_stone_gain,
+		}
+		local resolved = effects.resolve(effect_def)
+		resolved.apply(state, "B")
+		assert.are.equal(P.energy_max_default(), player.energy)
+		assert.are.equal(player.energy, player.resources.energy_current)
 	end)
 
 	it("applies add_points effect to state", function()
@@ -98,7 +147,7 @@ describe("T-100 effects system", function()
 
 	it("resolves wall_stone", function()
 		local wall = effects.resolve({ effect_name = "wall_stone", phase = "points" })
-		assert.are.equal("WALL_STONE", wall.type)
+		assert.are.equal("wall_stone", wall.effect_name)
 	end)
 
 	it("preserves conditions in resolved effect", function()
@@ -107,7 +156,7 @@ describe("T-100 effects system", function()
 			value = 1,
 			priority = 10,
 			conditions = {
-				{ condition_name = "always" },
+				{ condition_name = "round_number_exactly", value = 1 },
 			},
 		}
 		local resolved = effects.resolve(effect_def)

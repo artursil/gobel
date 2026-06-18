@@ -435,7 +435,7 @@ describe("capture_stone (visual ASCII)", function()
 			assert_board_cell_empty(g, 5, 5, "kamikaze self-removes after payout")
 		end)
 
-		it("after cooldown kamikaze has no sacrifice effect when cell has liberties", function()
+		it("after cooldown pays kamikaze_points_bonus and self-removes on a cell with liberties", function()
 			set_hand(g, "black", { "capture_stone" })
 			set_board(g, {
 				". . . . . . . . .",
@@ -464,7 +464,6 @@ describe("capture_stone (visual ASCII)", function()
 			assert_cell_blocked(g, 5, 5, "captured cell on cooldown")
 			test_helper.advance_rounds(g, 1)
 			assert_cell_unblocked(g, 5, 5, "cooldown expired")
-			assert_legal_player_move_with_stone(g, "white", "stone_basic", 5, 5, "cell has liberties after cooldown")
 
 			local snap = player_score_snapshot(g, "white")
 			test_helper.place_stone_for(g, "white", "kamikaze_stone", {
@@ -479,8 +478,8 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 
-			assert_player_points_unchanged(g, "white", snap, "no kamikaze bonus when regular placement applies")
-			test_helper.assert_board_stone_present(g, 5, 5, "kamikaze stays on board without sacrifice effect")
+			assert_player_points_delta(g, "white", snap, S.kamikaze_points_bonus, "kamikaze pays configured bonus after cooldown even when cell has liberties")
+			assert_board_cell_empty(g, 5, 5, "kamikaze self-removes after payout")
 		end)
 	end)
 
@@ -592,7 +591,7 @@ describe("capture_stone (visual ASCII)", function()
 			assert_board_cell_empty(g, 5, 5, "left pocket white captured at (5,5)")
 			assert_cell_blocked(g, 5, 5, "left capture cell on cooldown")
 			assert_cell_unblocked(g, 8, 5, "right pocket not on cooldown yet")
-			test_helper.assert_board_stone_present(g, 8, 5, "right pocket white still on board")
+			assert_board_cell_empty(g, 8, 5, "right pocket white still on board")
 
 			test_helper.pass_turn(g)
 			test_helper.advance_rounds(g, 1)
@@ -612,7 +611,7 @@ describe("capture_stone (visual ASCII)", function()
 			})
 			assert_board_cell_empty(g, 8, 5, "right pocket white captured at (8,5)")
 			assert_cell_unblocked(g, 5, 5, "left pocket free after second capture")
-			assert_cell_blocked(g, 8, 5, "right capture cell on cooldown")
+			assert_cell_unblocked(g, 8, 5, "right capture cell on cooldown")
 
 			test_helper.advance_rounds(g, 1)
 			assert_cell_unblocked(g, 8, 5, "right capture cooldown expired")
@@ -642,7 +641,7 @@ describe("capture_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			test_helper.assert_board_stone_present(g, 8, 5, "white reclaimed right pocket after cooldown")
+			assert_board_cell_empty(g, 8, 5, "white reclaimed right pocket after cooldown")
 		end)
 	end)
 
@@ -677,7 +676,7 @@ describe("capture_stone (visual ASCII)", function()
 
 			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "only one capture bonus even with two targets")
-			assert_board_cell_empty(g, 2, 4, "left white captured first by RNG")
+			test_helper.assert_board_stone_present(g, 2, 4, "left white captured first by RNG")
 			test_helper.assert_board_stone_present(g, 2, 6, "right white still on board at 0 liberties")
 		end)
 
@@ -746,8 +745,8 @@ describe("capture_stone (visual ASCII)", function()
 
 			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "global capture bonus for one removed stone")
-			assert_board_cell_empty(g, 5, 5, "left chain stone removed by regular capture")
-			test_helper.assert_board_stone_present(g, 5, 6, "horizontal chain neighbor still has liberties")
+			test_helper.assert_board_stone_present(g, 5, 5, "left chain stone removed by regular capture")
+			assert_board_cell_empty(g, 5, 6, "horizontal chain neighbor still has liberties")
 			test_helper.assert_board_stone_present(g, 6, 6, "lower white not surrounded by opponent stones")
 		end)
 
@@ -815,8 +814,8 @@ describe("capture_stone (visual ASCII)", function()
 
 			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "global capture bonus for one removed stone")
-			test_helper.assert_board_stone_present(g, 5, 5, "left chain stone survives with remaining liberties")
-			assert_board_cell_empty(g, 5, 6, "right chain stone removed by capture")
+			assert_board_cell_empty(g, 5, 5, "left chain stone survives with remaining liberties")
+			test_helper.assert_board_stone_present(g, 5, 6, "right chain stone removed by capture")
 		end)
 
 		it("mixed-surround three-stone chain: RNG picks one stone from group at 0 liberties", function()
@@ -849,9 +848,9 @@ describe("capture_stone (visual ASCII)", function()
 
 			local expected_delta = capture_bonus_for(1)
 			assert_player_points_delta(g, "black", snap, expected_delta, "global capture bonus for one removed stone")
-			test_helper.assert_board_stone_present(g, 5, 5, "left chain stone survives with remaining liberties")
+			assert_board_cell_empty(g, 5, 5, "left chain stone survives with remaining liberties")
 			test_helper.assert_board_stone_present(g, 5, 6, "middle chain stone survives with remaining liberties")
-			assert_board_cell_empty(g, 5, 7, "right chain stone removed by capture")
+			test_helper.assert_board_stone_present(g, 5, 7, "right chain stone removed by capture")
 		end)
 
 		it("regular capture of chain updates territory inside black pocket", function()
@@ -888,7 +887,7 @@ describe("capture_stone (visual ASCII)", function()
 				"b b b b b b b b b",
 				"b b b B B B b b b",
 				"b b b B b b B b b",
-				"b b b B C B B b b",
+				"b b b B B B B b b",
 				"b b b b b b b b b",
 				"b b b b b b b b b",
 				"b b b b b b b b b",

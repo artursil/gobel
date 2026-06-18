@@ -18,8 +18,8 @@ describe("Stone solidity visual flow", function()
 		local black = match_state.player_for_color(g, "black")
 		white.cards.hand.ids = { "card_attack_1" }
 		black.cards.hand.ids = { "card_heal_1" }
-		white.resources.energy_current = 10
-		black.resources.energy_current = 10
+		white.energy = 10
+		black.energy = 10
 		g.board[4][4] = board.make_stone(config.STONE_BLACK, "stone_basic", 4)
 		local attack = resolver.submit_action(g, {
 			actor = "white",

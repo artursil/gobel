@@ -4,7 +4,7 @@ local config = require("config")
 local content = require("content")
 local deck = require("deck")
 local pouch = require("pouch")
-local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 
 local M = {}
 
@@ -78,6 +78,8 @@ local function build_player(side, starter, rng_next_int)
 	local deck_seed_ids = build_deck_seed_ids(starter.deck, CARD_DECK_TARGET_SIZE, rng_next_int)
 	return {
 		side = side,
+		energy = ENERGY_MAX_DEFAULT,
+		energy_max = ENERGY_MAX_DEFAULT,
 		score = {
 			turn_bonus = 1,
 			territory = 0,
@@ -121,7 +123,7 @@ function M.new_match(match_kind, territory_mode, seed)
 	local rng_next_int = make_side_rng(rng_state)
 	local black = build_player("black", content.starters.black, rng_next_int)
 	local white = build_player("white", content.starters.white, rng_next_int)
-	return {
+	local state = {
 		board = board.new(),
 		to_play = "black",
 		phase = "TURN_START",
@@ -148,6 +150,7 @@ function M.new_match(match_kind, territory_mode, seed)
 		last_opponent_modifiers = {},
 		active_effects = {},
 		round_stone_effects = {},
+		pending_stone_removals = {},
 		ui_animation_events = {},
 		stone_draw_events = {},
 		resolution = {
@@ -193,6 +196,8 @@ function M.new_match(match_kind, territory_mode, seed)
 		status = "",
 		pending_turn_after_ui = false,
 	}
+	require("single_game.resolver.helpers.blocked_cells").ensure(state)
+	return state
 end
 
 function M.rng_next_int(match_state, max_value)

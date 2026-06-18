@@ -404,7 +404,6 @@ describe("escalating_points_stone (visual ASCII)", function()
 		it("two placements each accrue eps_round_points independently", function()
 			set_hand(g, "black", { "escalating_points_stone", "escalating_points_stone" })
 			set_board(g, blank_board())
-			local snap = player_score_snapshot(g, "black")
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -416,6 +415,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
+			test_helper.ensure_actor_turn(g, "black")
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -427,6 +427,7 @@ describe("escalating_points_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
+			local snap = player_score_snapshot(g, "black")
 			advance_rounds(g, 1)
 			local expected_delta = S.eps_round_points * 2
 			assert_player_points_delta(g, "black", snap, expected_delta, "each stone pays one round accrual")

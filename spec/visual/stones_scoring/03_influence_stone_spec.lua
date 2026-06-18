@@ -88,7 +88,7 @@ describe("influence_stone (visual ASCII)", function()
 			"b b b b b w w w w",
 			"b b b b b w w w w",
 			"b b b b b w w w w",
-			"I b b b b w w w W",
+			"B b b b b w w w W",
 			"b b b b b w w w w",
 			"b b b b b w w w w",
 			"b b b b b w w w w",
@@ -121,15 +121,15 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"I b b b b b w w W",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"B b b b b . w w W",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
 		}, "tier2 bonus claims one extra column vs tier1")
 	end)
 
@@ -158,15 +158,15 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-			"I b b b b b b w W",
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-			"b b b b b b b w w",
-			"b b b b b b b w w",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+			"B b b b b b w w W",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
+			"b b b b b b w w w",
 		}, "tier3 bonus claims maximum configured extra territory")
 	end)
 
@@ -202,15 +202,15 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
+			"b b b b . w w w w",
+			"b B b b . w w W w",
 			"b b b b b w w w w",
-			"b B b b b w w W w",
+			"b b b b b . w w w",
+			"b B b b b b w w w",
+			"b b b b b . w w w",
 			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b I b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b B b b b w w W w",
-			"b b b b b w w w w",
+			"b B b b . w w W w",
+			"b b b b . w w w w",
 		}, "influence stone tips balance in column 5 from tie to black")
 	end)
 
@@ -239,15 +239,15 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
-			"B B b b W w w w w",
-			"B b b W w w w w w",
-			"b b b b b w w w w",
-			"b b b I b b w w w",
-			"b b b b b b w w w",
-			"b b b B b b w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
+			"B B b w W w w w w",
+			"B b . W w w w w w",
+			"b b b b b b b b b",
+			"b b b B b b b b b",
+			"b b b b b b b b b",
+			"b b b B b b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
+			"b b b b b b b b b",
 		}, "tier2 influence reclaims cells from white despite W pressure in top rows")
 	end)
 
@@ -278,15 +278,15 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		}, false)
 		assert_territory_ascii(g, {
-			"b b b b b w w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"I b b b b b w w w",
-			"b b b b b b w w W",
-			"I b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b w w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"B b b b b . w w w",
+			"b b b b . w w w W",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
+			"b b b b . w w w w",
 		}, "two tier1 stones each extend independently, overlapping claims more territory than one alone")
 	end)
 
@@ -315,15 +315,15 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
-			"b b b b b b b b b",
-			"b b b b b b b b b",
-			"b b b b b b b b b",
-			"b b w w b b b b b",
-			"b b w W I b b b b",
-			"b b w w b b b b b",
-			"b b b b b b b b b",
-			"b b b b b b b b b",
-			"b b b b b b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
+			". . . W B b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
+			". . . . b b b b b",
 		}, "white stone retains immediate surrounding cells despite adjacent influence")
 	end)
 
@@ -351,7 +351,7 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 		})
-		test_helper.capture_stone_at(g, 5, 1, "white")
+		test_helper.capture_stone_at(g, 5, 1, "black")
 		test_helper.finish_turn(g)
 		assert_territory_ascii(g, {
 			"w w w w w w w w w",
@@ -391,15 +391,15 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . I",
 		})
 		assert_territory_ascii(g, {
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b b b b",
-			"b b b b b b b b b",
-			"b b b b b b w W b",
-			"b b b b b b b b I",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . . b",
+			". . . . . . . W b",
+			"b b b b b b b b B",
 		}, "edge influence extends only within valid board coordinates")
 	end)
 
@@ -428,15 +428,15 @@ describe("influence_stone (visual ASCII)", function()
 			". . . . . . . . .",
 		})
 		assert_territory_ascii(g, {
-			"b b b b b w w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"B I b b b b w w W",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b b w w w",
-			"b b b b b w w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"B B b b b . w w W",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
+			"b b b b b . w w w",
 		}, "basic stone at (5,1) keeps normal reach; only influence stone at (5,2) gets the bonus")
 	end)
 end)

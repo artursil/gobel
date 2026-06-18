@@ -20,6 +20,12 @@ function M.starting_points()
 	return 1
 end
 
+--- Starting and maximum energy for each player at match init (matches match_state).
+--- @return integer
+function M.energy_max_default()
+	return 3
+end
+
 --- @return integer
 function M.base_plus_mult()
 	return 1
@@ -106,6 +112,12 @@ end
 
 --- @param stone_id string
 --- @return number
+function M.stone_energy_gain(stone_id)
+	return M.stone_effect_value(stone_id, "add_energy") or 0
+end
+
+--- @param stone_id string
+--- @return number
 function M.stone_plus_mult(stone_id)
 	return M.stone_effect_value(stone_id, "add_mult") or 0
 end
@@ -152,6 +164,11 @@ end
 --- @return integer
 function M.capture_bonus_points(capture_count)
 	return stone_params.capture_bonus_points_per_stone * capture_count
+end
+
+--- @return integer
+function M.kamikaze_points_bonus()
+	return stone_params.kamikaze_points_bonus
 end
 
 --- @return string

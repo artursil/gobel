@@ -1,7 +1,7 @@
 require("spec.test_helper")
 
-local effects = require("objects.effects")
-local conditions = require("objects.conditions")
+local effects = require("objects.effects_conditions.effects")
+local conditions = require("objects.effects_conditions.conditions")
 
 describe("T-102 effects with conditions integration", function()
 	it("applies effect when all conditions pass", function()
@@ -13,9 +13,6 @@ describe("T-102 effects with conditions integration", function()
 		local effect_def = {
 			effect_name = "add_points",
 			value = 5,
-			conditions = {
-				{ condition_name = "always" },
-			},
 		}
 		local resolved = effects.resolve(effect_def)
 		local context = { state = state }
@@ -37,7 +34,7 @@ describe("T-102 effects with conditions integration", function()
 			effect_name = "add_points",
 			value = 5,
 			conditions = {
-				{ condition_name = "never" },
+				{ condition_name = "round_number_exactly", value = 99 },
 			},
 		}
 		local resolved = effects.resolve(effect_def)
@@ -81,12 +78,11 @@ describe("T-102 effects with conditions integration", function()
 			{
 				effect_name = "add_points",
 				value = 3,
-				conditions = { { condition_name = "always" } },
 			},
 			{
 				effect_name = "add_mult",
 				value = 2,
-				conditions = { { condition_name = "never" } },
+				conditions = { { condition_name = "round_number_exactly", value = 99 } },
 			},
 		}
 

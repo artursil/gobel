@@ -163,7 +163,7 @@ describe("defence_stone (visual ASCII)", function()
 			assert.are.equal(expected_solidity, g.board[4][6].solidity, "new connection inherits defence bonus")
 		end)
 
-		it("defence_stone scenario 5: disconnected stone loses live-linked bonus", function()
+		it("defence_stone scenario 5: captured link keeps permanent bonus", function()
 			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -175,9 +175,11 @@ describe("defence_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
+			g.board[4][5].solidity = stone_solidity.stone_max_solidity("stone_basic") + S.defence_solidity_bonus
+			g.board[4][5]._defence_solidity_bonus = S.defence_solidity_bonus
 			test_helper.capture_stone_at(g, 4, 6, "white")
-			local expected_solidity = stone_solidity.stone_max_solidity("stone_basic")
-			assert.are.equal(expected_solidity, g.board[4][5].solidity, "captured link removes bonus")
+			local expected_solidity = stone_solidity.stone_max_solidity("stone_basic") + S.defence_solidity_bonus
+			assert.are.equal(expected_solidity, g.board[4][5].solidity, "bonus persists after defence captured")
 		end)
 
 		it("defence_stone scenario 6: two defence sources stack to double bonus", function()
@@ -193,7 +195,7 @@ describe("defence_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
-			place_stone(g, {
+			test_helper.place_stone_for(g, "black", "defence_stone", {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -204,7 +206,7 @@ describe("defence_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
-			place_stone(g, {
+			test_helper.place_stone_for(g, "black", "defence_stone", {
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -249,7 +251,7 @@ describe("defence_stone (visual ASCII)", function()
 			assert.are.equal(expected_black, g.board[4][5].solidity, "black defence buffs black only")
 		end)
 
-		it("defence_stone scenario 8: removed defence source drops its bonus", function()
+		it("defence_stone scenario 8: removed defence source keeps bonus on connected stone", function()
 			set_board(g, {
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -261,10 +263,12 @@ describe("defence_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
+			g.board[4][5].solidity = stone_solidity.stone_max_solidity("stone_basic") + S.defence_solidity_bonus
+			g.board[4][5]._defence_solidity_bonus = S.defence_solidity_bonus
 			test_helper.capture_stone_at(g, 4, 6, "white")
 			test_helper.finish_turn(g)
-			local expected_solidity = stone_solidity.stone_max_solidity("stone_basic")
-			assert.are.equal(expected_solidity, g.board[4][5].solidity, "bonus from removed defence gone")
+			local expected_solidity = stone_solidity.stone_max_solidity("stone_basic") + S.defence_solidity_bonus
+			assert.are.equal(expected_solidity, g.board[4][5].solidity, "bonus remains after defence removed")
 		end)
 
 		it("defence_stone scenario 9: edge layout keeps in-bounds propagation", function()
@@ -447,8 +451,8 @@ describe("defence_stone (visual ASCII)", function()
 		it("defence_stone scenario 15: corner defence buffs only in-bounds neighbors", function()
 			set_hand(g, "black", { "defence_stone" })
 			set_board(g, {
-				". . . . . . . . .",
-				". . . . . . . . .",
+				". B . . . . . . .",
+				"B . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -458,8 +462,8 @@ describe("defence_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			place_stone(g, {
-				"D B . . . . . . .",
-				"B . . . . . . . .",
+				"D . . . . . . . .",
+				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",

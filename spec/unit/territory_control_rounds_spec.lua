@@ -1,7 +1,7 @@
 local board = require("board")
 local config = require("config")
 local test_helper = require("spec.test_helper")
-local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 
 local ZERO_ROW = "+0 +0 +0 +0 +0 +0 +0 +0 +0"
 local ZERO_ROWS = {}

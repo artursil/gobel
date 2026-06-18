@@ -92,9 +92,10 @@ prompts:
 workflows:
 - tests_exist.py - In this workflow for a single issue, we ask code-writer to implement a functionality, then we ask delegator to check if the implemenation is correct and if code-writer correctly raises concerns about the tests, visual-test-writer is asked to correct things. This loop runs until delegator has no further remarks or we run the loop already 4 times. If it doesn't finish in 4 attempts it has to be reported, by creating a new issue.
 
-- parallel_tests_exist.py - Firstly evokes planner then runs in parallel tests_exist for each issue and then merges.
+- parallel_tests_exist.py - Planner (or explicit issue list) then parallel tests_exist per issue.
+- merge_issues.py - Sequentially merges agent/issue-N branches into an integration branch; closes each issue after its merge; opens a review PR at the end.
 - single_feature.py - Acts similar like test_exist.py but here we use test-writer or visual-test-writer to write test first, then code-writer implements then delegator checks everything else is the same.
-- parallel_features.py - This works the same as parallel_tests_exist.py just for single_feature.
+- parallel_features.py - Same batch pattern as parallel_tests_exist.py but for single_feature (no merge step).
 
 
 Please take inspiration from run.ts for workflows and from prompts/.md for writing md prompts
@@ -107,3 +108,77 @@ Please take inspiration from run.ts for workflows and from prompts/.md for writi
 - stone effects when held in hand?
 - capture stone
 - finish turn / advance_round / complete_full_round
+- energy not the state of the game, energy stone doesn't work as it supposed.
+- energy max, after run
+
+
+
+
+on_removed
+CONTEXT
+sub macro
+lifecycle
+
+
+This is literally all wrong and should be handled all in apply.
+1. on_compile - capture_stone should actually not special effect just in resolver/stages there should be file remove_stones.lua which examines state of the board and removes the stones and gives points for capture. for anti-capture we also don't need a special effect, we need however in state of the game state.recalculate_legal_moves which contains a state of the legal moves on the board and in resolver/stages/legality_of_moves.lua we update this based on the state of the board.
+2. resolve_immediate - this should be just in apply with a right phase, we always calculate scores in apply.
+3. on_finalize_compile - kamikaze_stone should be removed in remove_stones.lua stage where we remove all stones that don't belong.
+4. on_snapshot - totally unnecessary, apply should just in the mult phase assign right number of points, remember that we already store information about territory control look here for the tests -> spec\visual\territory_control_rounds_spec.lua
+5. on_placement - apply should start the timer, we don't need it
+6. macro/sub - again why do we need it when we already have phases, which determine the order?
+7. lifecycle - we don't need it
+
+
+
+
+1. condition still not used
+2. phases enum wrong
+3. action enum I don't see X
+4. macro still exists X
+5. sub still exists X
+6. helper_effects vs effect_helpers
+7. legacy_action remove
+8. dispatch_removed vs remove_stones
+9. Condition.lua why removed?
+
+
+
+objects
+├── animations
+├── definitions
+├── effects
+│   ├── effect_helpers
+│   ├── EffectSchema.lua
+│   ├── effects.lua
+├── conditions
+│   ├── condition_helpers
+│   ├── ConditionSchema.lua
+│   ├── conditions.lua
+├── parameters
+│   ├── cards.lua
+├── definitions
+│   ├── cards.lua
+├── definitions
+│   ├── cards.lua
+
+
+We are almost there .
+1. Object definition is wrong it should look something like this:
+		effects = {
+			{
+				effect_name = "add_points",
+				action = "on_play",
+				phase = "points",
+				value = S.stance_focus_bonus_points_per_round,
+				priority = S.stance_turn_bonus_priority,
+				conditions = {
+					{ condition_name = "temporary_stance_active" },
+					{ condition_name = "stance_owner_is_current_turn" },
+				},
+			},
+		},
+
+I'm just not sure how to handle if we have multiple values for effects or conditions
+
+2. I'm stiil not sure how do you define conditions inside conditions.lua

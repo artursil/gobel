@@ -8,10 +8,19 @@ local match_state = require("match_state")
 local messages = require("messages")
 local resolve_round = require("single_game.resolver.resolve_round")
 local score_display = require("ui.score_display")
-local card_play_memory = require("single_game.resolver.card_play_memory")
+local card_play_memory = require("single_game.resolver.helpers.card_play_memory")
 local pouch = require("pouch")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
+local blocked_cells = require("single_game.resolver.helpers.blocked_cells")
+local anti_capture = require("single_game.resolver.stages_helpers.anti_capture")
+local tick_objects = require("single_game.resolver.stages.tick_objects")
+local effects_helpers = require("objects.effects_conditions.helpers.shared.effects_helpers")
+local on_play_pipeline = require("single_game.resolver.stages.on_play_pipeline")
+local placement_preview = require("objects.placement_preview")
+local placement_round = require("objects.placement_round")
+local resolved_type_registry = require("objects.resolved_type_registry")
+local effect_enums = require("objects.effects_conditions.scheduling")
 
 local M = {}
 
@@ -341,11 +350,16 @@ function M.validate_card_target_candidate(card_def, selected_targets, candidate,
 end
 
 --- @param state table
---- @param macro string|nil active scoring macro (``playing_cards``, ``playing_stones``, ``end_of_turn``, …)
+--- @param action string|nil canonical resolve action
+--- @param end_of_turn_owner string|nil owner token when ``action`` is ``end_of_turn``
 --- @return nil
-local function recalc_all_scores(state, macro)
+local function recalc_all_scores(state, action, end_of_turn_owner)
+	if action == "end_of_turn" and end_of_turn_owner then
+		state._end_of_turn_owner = end_of_turn_owner
+	end
 	local baseline = score_display.snapshot_scores(state)
-	resolve_round.resolve(state, { macro = macro or "playing_stones" })
+	resolve_round.resolve(state, { action = action or effect_enums.ACTION.on_play })
+	state._end_of_turn_owner = nil
 	score_display.after_resolve(state, baseline, state.ui_animation_events)
 end
 
@@ -374,66 +388,7 @@ local function card_play_message(card_def)
 	return label .. ": " .. table.concat(parts, ", ")
 end
 
-local function stone_placement_message(stone_def, resolved_effects)
-	if not stone_def or not resolved_effects or #resolved_effects == 0 then
-		return (stone_def and stone_def.name or "Stone") .. " placed"
-	end
-	local name = stone_def.name
-	local r = resolved_effects[1]
-	if r.type == "ADD_POINTS" then
-		return string.format("%s placement: +%d points", name, r.value)
-	end
-	if r.type == "ADD_MULT" then
-		return string.format("%s placement: +%d mult", name, r.value)
-	end
-	return name .. " placed"
-end
-
-local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
-
-local IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
-	add_points = true,
-	add_mult = true,
-	mult_control_streak = true,
-}
-
---- @param stone_def table
---- @param state table
---- @param actor string
---- @param row integer
---- @param col integer
---- @return table
-local function resolved_stone_effects_from_def(stone_def, state, actor, row, col)
-	if type(stone_def.behavior) == "function" then
-		return stone_def.behavior(state, actor)
-	end
-	local out = {}
-	if stone_def.effects then
-		for i = 1, #stone_def.effects do
-			local effect = stone_def.effects[i]
-			if effect.effect_name == "mult_control_streak" then
-				local delta = territory_control_rounds.placement_plus_mult_delta(
-					state,
-					row,
-					col,
-					owner_for_side(actor)
-				)
-				if delta ~= 0 then
-					out[#out + 1] = Effects.stones.resolve({
-						effect_name = "add_mult",
-						macro = effect.macro or "playing_stones",
-						sub = effect.sub or "mult",
-						value = delta,
-						priority = effect.priority or 10,
-					})
-				end
-			elseif IMMEDIATE_PLACEMENT_EFFECT_NAMES[effect.effect_name] then
-				out[#out + 1] = Effects.stones.resolve(effect)
-			end
-		end
-	end
-	return out
-end
+local dispatch_removed = require("single_game.resolver.stages.dispatch_removed")
 
 --- @param captures integer
 --- @return integer
@@ -454,52 +409,17 @@ local function append_capture_bonus_resolved_effects(resolved_effects, captures)
 	end
 	resolved_effects[#resolved_effects + 1] = Effects.stones.resolve({
 		effect_name = "add_points",
-		macro = "playing_stones",
-		sub = "points",
+		action = "on_play",
+		phase = "points",
 		value = bonus,
 		priority = stone_params.default_effect_priority,
 	})
 	return bonus
 end
 
-local function round_effects_from_resolved(resolved_effects)
-	local round = {}
-	for i = 1, #resolved_effects do
-		local r = resolved_effects[i]
-		if r.type == "ADD_POINTS" then
-			round[i] = {
-				effect_name = "add_points",
-				macro = "playing_stones",
-				sub = "points",
-				value = r.value,
-				priority = r.priority or 10,
-			}
-		elseif r.type == "ADD_MULT" then
-			round[i] = {
-				effect_name = "add_mult",
-				macro = "playing_stones",
-				sub = "mult",
-				value = r.value,
-				priority = r.priority or 10,
-			}
-		end
-	end
-	return round
-end
-
 local function contains_stone_id(ids, stone_id)
 	for i = 1, #ids do
 		if ids[i] == stone_id then
-			return true
-		end
-	end
-	return false
-end
-
-local function remove_first_stone_id(ids, stone_id)
-	for i = 1, #ids do
-		if ids[i] == stone_id then
-			table.remove(ids, i)
 			return true
 		end
 	end
@@ -519,15 +439,6 @@ local function refill_playable_stones(actor_state)
 	return drawn_events
 end
 
-local function refresh_selected_stone(actor_state)
-	local selected_index = actor_state.stones.selected_stone_index
-	if selected_index and actor_state.stones.playable_stones[selected_index] == actor_state.stones.selected_stone then
-		return
-	end
-	actor_state.stones.selected_stone = actor_state.stones.playable_stones[1]
-	actor_state.stones.selected_stone_index = (#actor_state.stones.playable_stones > 0) and 1 or nil
-end
-
 --- @param state table
 --- @param event_queue table
 --- @return nil
@@ -535,32 +446,8 @@ local function run_event_queue(state, event_queue)
 	for i = 1, #event_queue do
 		local event = event_queue[i]
 		if event.kind == "BOARD_APPLY" then
-			state.board = event.board
-			state.ko_ban = event.ko_ban
-			if event.row and event.col then
-				territory_control_rounds.clear_cell(state, event.row, event.col)
-			end
-			state.last_played_stone = event.stone_id
-			state.last_opponent_move = { stone_id = event.stone_id, row = event.row, col = event.col, actor = event.actor }
-			local actor_state = match_state.player_for_color(state, event.actor)
-			actor_state.prisoners = actor_state.prisoners + event.captures
-			if event.stone_index and actor_state.stones.playable_stones[event.stone_index] == event.stone_id then
-				table.remove(actor_state.stones.playable_stones, event.stone_index)
-			elseif remove_first_stone_id(actor_state.stones.playable_stones, event.stone_id) then
-			end
-			refresh_selected_stone(actor_state)
-			state.consecutive_passes = 0
-			state.round_stone_effects = state.round_stone_effects or {}
-			state.round_stone_effects[#state.round_stone_effects + 1] = {
-				owner = owner_for_side(event.actor),
-				stone_type = event.stone_id,
-				effects = event.stone_effects or {},
-			}
-			local def = content.get_stone(event.stone_id)
-			if def and event.resolved_stone_effects then
-				messages.push(state.messages, stone_placement_message(def, event.resolved_stone_effects))
-				push_status_from_messages(state)
-			end
+			on_play_pipeline.run(state, event)
+			push_status_from_messages(state)
 		elseif event.kind == "PASS" then
 			state.consecutive_passes = state.consecutive_passes + 1
 		end
@@ -603,7 +490,13 @@ local function push_place_stone_score_events(state, actor, points_before, mult_b
 			value = mult_stones_delta,
 		}
 	end
-	recalc_all_scores(state, "end_of_turn")
+	state._suppress_recurring_end_of_turn = true
+	state._skip_board_end_of_turn_effects = true
+	state._skip_end_of_turn_effect_tick = true
+	recalc_all_scores(state, "end_of_turn", owner_for_side(actor))
+	state._suppress_recurring_end_of_turn = nil
+	state._skip_board_end_of_turn_effects = nil
+	state._skip_end_of_turn_effect_tick = nil
 	local points_after = actor_state.score.points or 0
 	local mult_after = actor_state.score.plus_mult or 1
 	local eot_points_delta = points_after - points_after_stones
@@ -629,7 +522,7 @@ end
 --- @return nil
 local function on_turn_start(state, actor)
 	local actor_state = match_state.player_for_color(state, actor)
-	energy.refresh(actor_state.resources)
+	energy.refresh(actor_state)
 	state.just_played = {}
 	state.selected_card_target = nil
 	if not actor_state.stones.selected_stone or not actor_state.stones.selected_stone_index then
@@ -682,6 +575,8 @@ local function begin_next_turn(state)
 			target_index = drawn[i].target_index,
 		}
 	end
+	local skip_cell = state._effect_tick_skip_cell
+	state._effect_tick_skip_cell = nil
 	state.turn_number = state.turn_number + 1
 	state.round_number = match_state.round_number_from_turn(state.turn_number)
 	state.to_play = opponent_color(state.to_play)
@@ -729,7 +624,7 @@ local function compile_play_card_events(state, action)
 	if not card_def then
 		return nil, "Unknown card id"
 	end
-	if not energy.can_spend(actor_state.resources, card_def.energy_cost) then
+	if not energy.can_spend(actor_state, card_def.energy_cost) then
 		return nil, "Insufficient energy"
 	end
 	local selected_targets = normalize_selected_targets(action.payload, state)
@@ -780,14 +675,27 @@ local function compile_place_stone_events(state, action)
 	local placement_level = instance and instance.level or nil
 	local row = action.payload and action.payload.row or -1
 	local col = action.payload and action.payload.col or -1
+	if blocked_cells.is_blocked_for_actor(state, row, col, action.actor) then
+		return nil, "Illegal move: cell is blockaded for this player"
+	end
+	if effects_helpers.is_cell_blocked_for_capture_cooldown(state, row, col, action.actor, stone_id) then
+		return nil, "Illegal move: cell blocked"
+	end
+	local player_chain_color = color_to_stone(action.actor)
+	if anti_capture.move_would_capture_immune_group(state, row, col, player_chain_color, stone_id) then
+		return nil, "Illegal move: capture blocked by immunity"
+	end
+	local allow_suicide = rules.allows_suicide_placement(stone_id)
+	local old_board = board.clone(state.board)
 	local ok, new_board, new_ko, captures, illegal_reason = rules.try_play(
 		state.board,
 		row,
 		col,
-		color_to_stone(action.actor),
+		player_chain_color,
 		state.ko_ban,
 		stone_id,
-		placement_level
+		placement_level,
+		{ allow_suicide = allow_suicide }
 	)
 	if not ok then
 		if illegal_reason == "occupied" then
@@ -804,15 +712,25 @@ local function compile_place_stone_events(state, action)
 		end
 		return nil, "Illegal move: rule violation"
 	end
-	local resolved_effects = resolved_stone_effects_from_def(stone_def, state, action.actor, row, col)
+	local placement_ctx = {
+		state = state,
+		actor = action.actor,
+		owner = owner_for_side(action.actor),
+		row = row,
+		col = col,
+	}
+	local resolved_effects = placement_preview.resolve_from_stone_def(stone_def, placement_ctx)
 	local capture_bonus_points = append_capture_bonus_resolved_effects(resolved_effects, captures)
 	for i = 1, #resolved_effects do
 		local resolved = resolved_effects[i]
-		if not resolved or type(resolved) ~= "table" or (resolved.type ~= "ADD_POINTS" and resolved.type ~= "ADD_MULT") or type(resolved.value) ~= "number" then
+		if not placement_preview.is_valid_resolved(resolved) then
 			return nil, "Stone behavior produced invalid effect"
 		end
 	end
-	local placement_round = round_effects_from_resolved(resolved_effects)
+	local placement_round_defs = placement_round.merge_round_defs(
+		stone_def,
+		resolved_type_registry.round_effect_defs_from_resolved(resolved_effects)
+	)
 	local events = {
 		{
 			kind = "BOARD_APPLY",
@@ -825,7 +743,7 @@ local function compile_place_stone_events(state, action)
 			stone_index = selected_index,
 			row = row,
 			col = col,
-			stone_effects = placement_round,
+			stone_effects = placement_round_defs,
 			resolved_stone_effects = resolved_effects,
 		},
 	}
@@ -946,7 +864,7 @@ local function apply_non_effect_event(state, event)
 		if not discard_selected_card_targets(state, event.selected_targets or {}) then
 			return false, "Failed to discard selected targets"
 		end
-		local spent = energy.spend(actor_state.resources, event.energy_cost)
+		local spent = energy.spend(actor_state, event.energy_cost)
 		if not spent then
 			return false, "Insufficient energy"
 		end
@@ -965,7 +883,7 @@ local function apply_non_effect_event(state, event)
 			type = event.card_id,
 			actor = event.actor,
 		}
-		recalc_all_scores(state, "playing_cards")
+		recalc_all_scores(state, "on_card")
 		state.selected_card_target = nil
 		local cdef = content.get_card(event.card_id)
 		if cdef then
@@ -1040,7 +958,9 @@ function M.submit_action(state, action)
 	local compile_error
 	local actor_points_before = nil
 	local actor_mult_before = nil
+	local continuation_deferred_placement = action.type == "PLACE_STONE" and state.pending_turn_after_ui == true
 	if action.type == "PLACE_STONE" then
+		state._continuation_deferred_placement = continuation_deferred_placement
 		local actor_state = match_state.player_for_color(state, action.actor)
 		actor_points_before = actor_state.score.points or 0
 		actor_mult_before = actor_state.score.plus_mult or 1
@@ -1105,14 +1025,22 @@ function M.submit_action(state, action)
 		end
 	end
 	if action.type == "PASS_TURN" then
-		recalc_all_scores(state, "end_of_turn")
-	elseif action.type == "PLACE_STONE" then
-		recalc_all_scores(state, "playing_stones")
+		state._decrement_board_cell_timers_on_eot = true
+		recalc_all_scores(state, "end_of_turn", owner_for_side(action.actor))
+		state._decrement_board_cell_timers_on_eot = nil
+	elseif action.type == "PLACE_STONE" and not continuation_deferred_placement then
+		recalc_all_scores(state, "on_play")
+		on_play_pipeline.run_removal_beat(state)
 	end
-	if action.type == "PLACE_STONE" then
+	if action.type == "PLACE_STONE" and not continuation_deferred_placement then
 		push_place_stone_score_events(state, action.actor, actor_points_before, actor_mult_before, capture_bonus_points)
+		on_play_pipeline.recalculate_legal_moves(state)
+	elseif action.type == "PLACE_STONE" and continuation_deferred_placement then
+		recalc_all_scores(state, "on_play")
+		on_play_pipeline.run_removal_beat(state)
+		push_place_stone_score_events(state, action.actor, actor_points_before, actor_mult_before, capture_bonus_points)
+		on_play_pipeline.recalculate_legal_moves(state)
 	end
-	state.phase = "TURN_END"
 	if finish_match_if_needed(state) then
 		return {
 			ok = true,
@@ -1121,12 +1049,26 @@ function M.submit_action(state, action)
 			emitted_events = #event_queue,
 		}
 	end
+	local defer_for_stone = false
+	if action.type == "PLACE_STONE" and state.last_played_stone then
+		local stone_def = content.get_stone(state.last_played_stone)
+		defer_for_stone = stone_def ~= nil and stone_def.defer_turn_after_placement == true
+	end
 	local ev = state.ui_animation_events
-	if type(ev) == "table" and #ev > 0 then
+	local should_defer_ui = type(ev) == "table" and #ev > 0
+	local test_defer = state._test_defer_turn_advance == true and action.type == "PLACE_STONE"
+	if should_defer_ui or defer_for_stone or test_defer then
 		state.pending_turn_after_ui = true
+		if (defer_for_stone or test_defer) and action.type == "PLACE_STONE" then
+			state.phase = "PLACE_PHASE"
+		else
+			state.phase = "TURN_END"
+		end
 	else
+		state.phase = "TURN_END"
 		begin_next_turn(state)
 	end
+	state._continuation_deferred_placement = nil
 	return {
 		ok = true,
 		error = nil,
@@ -1147,8 +1089,85 @@ function M.flush_pending_turn_if_ready(state)
 		return
 	end
 	state.pending_turn_after_ui = false
+	state._test_defer_turn_advance = nil
 	score_display.end_rollout(state)
+	if state._pending_deferred_placement_score then
+		recalc_all_scores(state, "on_play")
+		recalc_all_scores(state, "end_of_turn")
+		state._pending_deferred_placement_score = nil
+	end
 	begin_next_turn(state)
+end
+
+--- Runs removal hooks when a board stone is cleared (capture or voluntary removal).
+--- @param state table
+--- @param row integer
+--- @param col integer
+--- @param captor_side string|nil ``"black"`` | ``"white"`` removing side; nil skips enemy transfer
+--- @return nil
+function M.apply_board_stone_removal(state, row, col, captor_side)
+	local cell = state.board and state.board[row] and state.board[row][col]
+	if not cell or board.is_empty(cell) then
+		return
+	end
+	dispatch_removed.on_removed(state, row, col, cell, { capturer = captor_side })
+end
+
+--- Visual specs remove stones via ``capture_stone_at``; wire removal hooks when test helper is loaded.
+--- @return nil
+local function wire_visual_test_capture_stone_at()
+	local ok, test_helper = pcall(require, "spec.test_helper")
+	if not ok or not test_helper or test_helper._gobel_capture_removal_wired then
+		return
+	end
+	local spec_helper = require("spec.spec_helper")
+	function test_helper.capture_stone_at(g, row, col, captor_side)
+		local cell = g.board[row][col]
+		if board.is_empty(cell) then
+			return
+		end
+		M.apply_board_stone_removal(g, row, col, captor_side)
+		g.board[row][col] = config.STONE_NONE
+		g.territory, g.territory_decision_sources, g.territory_value =
+			spec_helper.territory_map(g.board, g.territory_mode or "regional")
+		local key = row .. ":" .. col
+		if g.stone_stored_values then
+			g.stone_stored_values[key] = 0
+		end
+		if g.board_cell_timers then
+			g.board_cell_timers[key] = nil
+		end
+	end
+	test_helper._gobel_capture_removal_wired = true
+end
+
+wire_visual_test_capture_stone_at()
+
+--- Seeds blockade and anti-capture runtime from ASCII boards in visual specs.
+--- @return nil
+local function wire_visual_test_set_board()
+	local ok, test_helper = pcall(require, "spec.test_helper")
+	if not ok or not test_helper or test_helper._gobel_set_board_wired then
+		return
+	end
+	local spec_helper = require("spec.spec_helper")
+	local anti_capture_mod = require("single_game.resolver.stages_helpers.anti_capture")
+	local blocked_cells_mod = require("single_game.resolver.helpers.blocked_cells")
+	local original_set_board = test_helper.set_board
+	function test_helper.set_board(g, rows)
+		original_set_board(g, rows)
+		anti_capture_mod.ensure_materialized_from_board(g)
+		blocked_cells_mod.bootstrap_from_board_if_needed(g)
+	end
+	test_helper._gobel_set_board_wired = true
+end
+
+wire_visual_test_set_board()
+
+--- Sorted immediate-placement effect names (shared with AI placement scoring).
+--- @return string[]
+function M.immediate_placement_effect_name_keys()
+	return placement_preview.immediate_placement_effect_name_keys()
 end
 
 return M

@@ -17,7 +17,7 @@ describe("temporary stance turn ownership", function()
 		local white = match_state.player_for_color(state, "white")
 
 		black.cards.hand.ids = { "card_focus_stance" }
-		black.resources.energy_current = 10
+		black.energy = 10
 
 		assert.is_true(game.play_card(state, 1))
 		assert.are.equal(1, #state.temporary_stances)

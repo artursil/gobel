@@ -4,7 +4,8 @@
 
 local board = require("board")
 local config = require("config")
-local conditions = require("objects.conditions")
+local content = require("content")
+local conditions = require("objects.effects_conditions.conditions")
 local effect_registry = require("effect_registry")
 local match_scoring = require("ai.scoring")
 local stone_placement_effects = require("ai.scoring.stone_placement_effects")
@@ -85,6 +86,7 @@ local function build_projection_state(view, trial_board, stone_id)
 	local game = view:raw_game()
 	local actor = view:actor()
 	local owner = view:owner_key()
+	local stone_def = content.resolve_stone(stone_id)
 	local resolved = stone_placement_effects.resolved_for_stone_id(stone_id, game, actor)
 	return {
 		board = trial_board,
@@ -102,7 +104,7 @@ local function build_projection_state(view, trial_board, stone_id)
 			{
 				owner = owner,
 				stone_type = stone_id,
-				effects = stone_placement_effects.round_effect_defs(resolved),
+				effects = stone_placement_effects.round_effect_defs(resolved, stone_def),
 			},
 		},
 		resolution = {},
@@ -133,8 +135,7 @@ local function apply_placement_stance_effects(view, scratch, owner)
 		local generated = effect_registry.stances.resolve(stance, scratch)
 		for j = 1, #generated do
 			local effect = generated[j]
-			local phase = effect.phase
-			if (effect.sub == "points" or effect.sub == "mult") and triggers_on_stone_placement(effect.conditions) then
+			if (effect.phase == "points" or effect.phase == "mult") and triggers_on_stone_placement(effect.conditions) then
 				if conditions.eval_all(effect.conditions, scratch) and effect.apply then
 					effect.apply(scratch)
 				end

@@ -119,6 +119,7 @@ describe("retrigger_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
+			test_helper.begin_same_turn_placements(g)
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . w w w w w .",
@@ -202,8 +203,8 @@ describe("retrigger_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
-				". . . . . . . . .",
 				". . . . R . . . .",
+				". . . . W . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
 				". . . . . . . . .",
@@ -255,6 +256,7 @@ describe("retrigger_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			})
+			test_helper.begin_same_turn_placements(g)
 			place_stone(g, {
 				". . . . . . . . .",
 				". . . w w w w w .",
@@ -296,7 +298,7 @@ describe("retrigger_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			test_helper.assert_illegal_player_move_with_stone(g, "black", "retrigger_stone", 4, 4, "illegal retrigger")
+			test_helper.assert_illegal_player_move_with_stone(g, "black", "retrigger_stone", 5, 5, "illegal retrigger")
 			assert_player_points_delta(g, "black", snap, 0, "illegal no fallback")
 		end)
 
@@ -329,7 +331,7 @@ describe("retrigger_stone (visual ASCII)", function()
 			set_hand(g, "black", { "retrigger_stone" })
 			place_stone(g, {
 				". . . . . . . . .",
-				". . . w w w w w .",
+				". . . w w w w . .",
 				". . . . . . . . .",
 				". . . . R . . . .",
 				". . . . W . . . .",
@@ -338,7 +340,7 @@ describe("retrigger_stone (visual ASCII)", function()
 				". . . . . . . . .",
 				". . . . . . . . .",
 			}, false)
-			assert_player_points_delta(g, "black", snap, P.wall_points(5), "replays black wall not white basic")
+			assert_player_points_delta(g, "black", snap, P.wall_points(4), "replays black wall not white basic")
 		end)
 
 		it("retrigger_stone scenario 9: edge placement fallback unchanged", function()

@@ -523,7 +523,9 @@ end
 --- @param dt number
 function love.update(dt)
 	if screen == "play" and match then
-		card_controller:update(dt)
+		if card_controller then
+			card_controller:update(dt)
+		end
 		update_influence_probe(dt)
 		render.update(dt, match, layout)
 		if not render.is_score_animating() then

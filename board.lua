@@ -18,6 +18,19 @@ function M.new()
 	return b
 end
 
+--- Copies runtime stone metadata that is not part of the static definition snapshot.
+--- @param source table
+--- @param target table
+--- @return nil
+local function copy_stone_runtime_fields(source, target)
+	if source._defence_solidity_bonus ~= nil then
+		target._defence_solidity_bonus = source._defence_solidity_bonus
+	end
+	if source.duration_left ~= nil then
+		target.duration_left = source.duration_left
+	end
+end
+
 --- Allocates a stone value for placement on the board.
 --- @param color integer
 --- @param kind string
@@ -79,6 +92,7 @@ function M.clone(board)
 				copy[r][c] = config.STONE_NONE
 			else
 				copy[r][c] = M.make_stone(cell.color, cell.kind, cell.solidity, cell.level)
+				copy_stone_runtime_fields(cell, copy[r][c])
 			end
 		end
 	end

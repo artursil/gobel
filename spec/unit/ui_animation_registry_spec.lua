@@ -164,7 +164,7 @@ describe("ui.animation_kinds registry", function()
 		g.ui_animation_events = {
 			{ type = "board_stone_bounce", owner = config.OWNER_BLACK, row = 1, col = 1 },
 		}
-		resolve_round.resolve(g, { macro = "end_of_turn" })
+		resolve_round.resolve(g, { action = "end_of_turn" })
 		assert.are.equal(1, #g.ui_animation_events)
 	end)
 

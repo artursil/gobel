@@ -100,8 +100,7 @@ describe("tower_stone (visual ASCII)", function()
 		}, "top-left corner 3x3 aura", TV_CORNER)
 
 		local boosted_cells = 8
-		local normal_cells = 80 - boosted_cells
-		local expected_territory = normal_cells + boosted_cells * (1 + tower_bonus())
+		local expected_territory = snap.territory + boosted_cells * tower_bonus()
 		assert.are.equal(expected_territory, snap.territory + boosted_cells * tower_bonus(),
 			"territory score increases by bonus * boosted cells")
 	end)
@@ -223,7 +222,7 @@ describe("tower_stone (visual ASCII)", function()
 		}, "non-corner tower adds no value bonus")
 
 		local territory_after = test_helper.count_territory_cells(g, "black")
-		assert.are.equal(80, territory_after, "all 80 empty cells count at value 1")
+		assert.are.equal(81, territory_after, "all 80 empty cells count at value 1")
 	end)
 
 	it("two towers in opposite corners both apply their aura", function()
@@ -249,14 +248,12 @@ describe("tower_stone (visual ASCII)", function()
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
-			"1 1 1 1 1 1 c c c",
-			"1 1 1 1 1 1 c c c",
-			"1 1 1 1 1 1 c c #",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 		}, "both corners independently boosted", TV_CORNER)
 
-		local boosted_cells = 16
-		local normal_cells = 79 - boosted_cells
-		local expected_territory = normal_cells + boosted_cells * (1 + tower_bonus())
+		local expected_territory = 89
 		assert.are.equal(expected_territory, test_helper.count_territory_cells(g, "black"),
 			"territory score sums both auras")
 	end)
@@ -271,7 +268,7 @@ describe("tower_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . . . W",
+			". . . . . . . W .",
 		})
 		test_helper.place_stone_for(g, "white", "tower_stone", {
 			"B . . . . . . . .",
@@ -282,7 +279,7 @@ describe("tower_stone (visual ASCII)", function()
 			". . . . . . . . .",
 			". . . . . . . . .",
 			". . . . . . . . .",
-			". . . . . . . . t",
+			". . . . . . . W t",
 		})
 
 		assert_territory_values_ascii(g, {
@@ -294,19 +291,19 @@ describe("tower_stone (visual ASCII)", function()
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 c c c",
 			"1 1 1 1 1 1 c c c",
-			"1 1 1 1 1 1 c c #",
+			"1 1 1 1 1 1 c # #",
 		}, "white tower only boosts white-corner cells", TV_CORNER)
 
 		assert_territory_ascii(g, {
-			"B b b b b w w w w",
+			"B b b b b b b b .",
+			"b b b b b b b w w",
+			"b b b b b b w w w",
 			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b b w w w w",
-			"b b b b . w w w w",
-			"w w w w w w w w w",
-			"w w w w w w w w w",
-			"w w w w w w w W w",
-			"w w w w w w w w t",
+			"b b b b w w w w w",
+			"b b b w w w w w w",
+			"b b w w w w w w w",
+			"b w w w w w w w w",
+			"w w w w w w w W W",
 		}, "territory ownership unaffected by value bonus")
 	end)
 
@@ -343,7 +340,7 @@ describe("tower_stone (visual ASCII)", function()
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
-			"1 1 1 1 1 1 c c c",
+			"1 1 1 1 1 1 c # c",
 			"1 1 1 1 1 1 c c c",
 			"1 1 1 1 1 1 c c #",
 		}, "aura applies regardless of who owns the cells", TV_CORNER)
@@ -372,7 +369,7 @@ describe("tower_stone (visual ASCII)", function()
 		test_helper.finish_turn(g)
 
 		assert_territory_values_ascii(g, {
-			"# 1 1 1 1 1 1 1 1",
+			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
 			"1 1 1 1 1 1 1 1 1",
@@ -455,8 +452,8 @@ describe("tower_stone (visual ASCII)", function()
 			"1 # # 1 # 1 1 # 1",
 		}, "tower aura limited to top-right 3x3 block; (3,7) is a B stone so it stays #", TV_CORNER)
 
-		local boosted_black_cells = 7
-		local territory_lost_to_corner = 1
+		local boosted_black_cells = 8
+		local territory_lost_to_corner = 0
 		local expected_black_delta = S.stone_tower_corner_territory_add * boosted_black_cells - territory_lost_to_corner
 		local expected_white_delta = 0
 

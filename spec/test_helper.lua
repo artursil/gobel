@@ -514,6 +514,13 @@ function M.play_cards(g, hand_indices)
 	end
 end
 
+--- Marks the next ``place_stone(..., false)`` calls as same-turn chain (turn advance deferred until ``finish_turn``).
+--- @param g table
+--- @return nil
+function M.begin_same_turn_placements(g)
+	g._test_defer_turn_advance = true
+end
+
 --- @param g table
 --- @param board_rows table
 --- @param finish_animations boolean|nil
@@ -553,6 +560,9 @@ function M.place_stone(g, board_rows, finish_animations)
 		local idx = player.stones.selected_stone_index or 1
 		if player.stones.playable_stones[idx] then
 			player.stones.playable_stones[idx] = stone_kind
+		end
+		if not finish_animations and (g._test_defer_turn_advance == true or g.pending_turn_after_ui == true) then
+			g._test_defer_turn_advance = true
 		end
 		M.assert_legal_player_move(g, r, c, "place_stone at row " .. r .. " col " .. c)
 		if finish_animations then
@@ -632,7 +642,7 @@ end
 --- @param g table
 --- @return string
 function M.territory_control_rounds_ascii(g)
-	local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+	local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 	territory_control_rounds.ensure_grid(g)
 	local grid = g.territory_control_rounds
 	local lines = {}
@@ -651,7 +661,7 @@ end
 --- @param rows table
 --- @return nil
 function M.set_territory_control_rounds_ascii(g, rows)
-	local territory_control_rounds = require("single_game.resolver.territory_control_rounds")
+	local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 	territory_control_rounds.ensure_grid(g)
 	if #rows ~= config.BOARD_SIZE then
 		error("set_territory_control_rounds_ascii: expected " .. config.BOARD_SIZE .. " rows")
@@ -1174,39 +1184,9 @@ function M.advance_rounds(g, count)
 	M.ensure_test_state_bags(g)
 	local resolve_round = require("single_game.resolver.resolve_round")
 	for _ = 1, count do
-		for key, remaining in pairs(g.board_cell_timers) do
-			if remaining > 0 then
-				g.board_cell_timers[key] = remaining - 1
-			end
-		end
-		for key, remaining in pairs(g.blocked_cells) do
-			if remaining > 0 then
-				g.blocked_cells[key] = remaining - 1
-				if g.blocked_cells[key] <= 0 then
-					g.blocked_cells[key] = nil
-				end
-			end
-		end
-		for key, remaining in pairs(g.stone_immunity_remaining) do
-			if remaining > 0 then
-				g.stone_immunity_remaining[key] = remaining - 1
-				if g.stone_immunity_remaining[key] <= 0 then
-					g.stone_immunity_remaining[key] = nil
-				end
-			end
-		end
-		local kept = {}
-		for i = 1, #(g.active_effects or {}) do
-			local active = g.active_effects[i]
-			active.remaining_turns = (active.remaining_turns or 0) - 1
-			if active.remaining_turns > 0 then
-				kept[#kept + 1] = active
-			end
-		end
-		g.active_effects = kept
 		g.turn_number = (g.turn_number or 1) + 1
 		g.round_number = match_state.round_number_from_turn(g.turn_number)
-		resolve_round.resolve(g, { macro = "end_of_turn" })
+		resolve_round.resolve(g, { action = "end_of_turn" })
 	end
 end
 
@@ -1244,8 +1224,8 @@ end
 --- @param col integer
 --- @return integer
 function M.stone_immunity_remaining(g, row, col)
-	M.ensure_test_state_bags(g)
-	return g.stone_immunity_remaining[cell_key(row, col)] or 0
+	local anti_capture = require("single_game.resolver.stages_helpers.anti_capture")
+	return anti_capture.remaining(g, row, col)
 end
 
 --- @param g table
@@ -1270,6 +1250,10 @@ end
 --- @param col integer
 --- @return integer
 function M.stone_timer_remaining(g, row, col)
+	local cell = g.board[row] and g.board[row][col]
+	if type(cell) == "table" and not board.is_empty(cell) and cell.duration_left ~= nil then
+		return cell.duration_left
+	end
 	M.ensure_test_state_bags(g)
 	local key = cell_key(row, col)
 	if g.board_cell_timers[key] then
@@ -1280,10 +1264,6 @@ function M.stone_timer_remaining(g, row, col)
 		if active.row == row and active.col == col then
 			return active.remaining_turns or 0
 		end
-	end
-	local cell = g.board[row][col]
-	if type(cell) == "table" and cell.timer_remaining_rounds then
-		return cell.timer_remaining_rounds
 	end
 	return 0
 end

@@ -334,7 +334,7 @@ describe("copper_stone (visual ASCII)", function()
 				". . . . . . . . .",
 			})
 			local snap = player_score_snapshot(g, "black")
-			test_helper.assert_illegal_player_move_with_stone(g, "black", "copper_stone", 4, 4, "illegal copper")
+			test_helper.assert_illegal_player_move_with_stone(g, "black", "copper_stone", 5, 5, "illegal copper")
 			assert_player_plus_mult_delta(g, "black", snap, 0, "illegal copper no bonus")
 		end)
 

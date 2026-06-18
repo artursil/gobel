@@ -1,4 +1,4 @@
-# Stones Implementation Entry Point
+﻿# Stones Implementation Entry Point
 
 This document is the normative implementation handoff for stones.
 Visual specs assert resolver-visible game state only.
@@ -63,7 +63,7 @@ Visual specs assert resolver-visible game state only.
 **description:** Direct points stone with three upgrade tiers.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Tier payouts are parameters: `POINTS_STONE_T1`, `POINTS_STONE_T2`, `POINTS_STONE_T3`.
 - Trigger on placement only.
 - Upgrading affects future placements of upgraded instances only.
@@ -78,7 +78,7 @@ Visual specs assert resolver-visible game state only.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -88,7 +88,7 @@ Visual specs assert resolver-visible game state only.
 **description:** Territory-distance modifier with three tiers.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Tier distance bonuses are parameters: `INFLUENCE_T1`, `INFLUENCE_T2`, `INFLUENCE_T3`.
 - Applies in `playing_stones.territory` with `territory_step=distance`.
 - Stacks additively with other distance effects.
@@ -103,7 +103,7 @@ Visual specs assert resolver-visible game state only.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -128,7 +128,7 @@ Visual specs assert resolver-visible game state only.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -138,7 +138,7 @@ Visual specs assert resolver-visible game state only.
 **description:** Economy stone for immediate energy gain with no max-energy change.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - On placement, increase current energy by `ENERGY_STONE_GAIN`.
 - Does not modify `max_energy`.
 - No delayed/recurring payout from this stone.
@@ -153,7 +153,7 @@ Visual specs assert resolver-visible game state only.
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -217,9 +217,9 @@ Comment: should work more like wall_stone, because there is not much to be compl
 **description:** Placement-scoring stone that behaves like wall-style placement reward, not diagonal completion reward.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger only when `diagonal_stone` is placed.
-- Compute orthogonally connected group size including placed stone.
+- Compute diagonally connected group size including placed stone.
 - Points bonus formula mirrors wall-style block scoring using diagonal parameters: `floor(group_size / DIAGONAL_STONE_BLOCK_SIZE) * DIAGONAL_STONE_POINTS_PER_BLOCK`.
 - No pattern-completion line tier logic.
 - Same placement key cannot score twice.
@@ -234,7 +234,7 @@ Comment: should work more like wall_stone, because there is not much to be compl
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -246,7 +246,7 @@ Comment: should work the same way wall stone does, so we get points only placeme
 **description:** Placement-scoring stone that behaves like wall-style placement reward, not line-completion tier reward.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger only when `line_stone` is placed.
 - Compute orthogonally connected group size including placed line stone.
 - Points bonus formula: `floor(group_size / LINE_STONE_BLOCK_SIZE) * LINE_STONE_POINTS_PER_BLOCK`.
@@ -263,7 +263,7 @@ Comment: should work the same way wall stone does, so we get points only placeme
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -273,7 +273,7 @@ Comment: should work the same way wall stone does, so we get points only placeme
 **description:** Sacrifice stone with illegal-placement override and immediate self-removal payout.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Placement legality override applies to self-atari/no-liberty placements for this stone.
 - On placement resolve, stone is removed from board.
 - Add `KAMIKAZE_POINTS_BONUS` points once.
@@ -289,7 +289,7 @@ Comment: should work the same way wall stone does, so we get points only placeme
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -301,7 +301,7 @@ Comment: implementation details don't really match this description "if placed i
 **description:** Territory amplifier that doubles field values inside owner enclosure.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger condition: placed cell is in owner-enclosed territory.
 - Effect: all fields inside that enclosure region have territory value multiplied by `ENCLOSURE_STONE_MULTIPLIER`.
 - Multiplication applies to region fields, not only placed cell.
@@ -318,7 +318,7 @@ Comment: implementation details don't really match this description "if placed i
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -330,7 +330,7 @@ Comment: Implementation details I don't like, during the territory resolution si
 **description:** Territory assignment override stone resolved last.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Control assignment runs after normal territory ownership assignment.
 - For affected cells, latest control override wins over previous assignment.
 - If both players apply control to same cell in same resolve, cell becomes contested.
@@ -346,7 +346,7 @@ Comment: Implementation details I don't like, during the territory resolution si
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -356,7 +356,7 @@ Comment: Implementation details I don't like, during the territory resolution si
 **description:** Temporarily blocks placement on nearby cells just for an opponent.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Affected cells: orthogonally adjacent cells.
 - Block duration parameter: `BLOCKADE_DURATION_ROUNDS`.
 - Block applies to all stone types, including `kamikaze_stone`.
@@ -372,7 +372,7 @@ Comment: Implementation details I don't like, during the territory resolution si
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -384,7 +384,7 @@ Comment: stones have solidity parameter so defense stone should increase solidit
 **description:** Solidity amplifier for connected stones, including future connections.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - On placement, apply `+1 solidity` to defence stone and all orthogonally/diagonally connected own stones in its effect scope.
 - When new own stones later become connected to defence network, they receive `+1 solidity` automatically while connection holds.
 - Solidity bonus is a stone parameter modification, not a separate chance formula.
@@ -400,7 +400,7 @@ Comment: stones have solidity parameter so defense stone should increase solidit
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -410,7 +410,7 @@ Comment: stones have solidity parameter so defense stone should increase solidit
 **description:** Immediate money payout stone gated by enclosed placement.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - If placed in owner-enclosed territory, add `MONEY_FIELD_PAYOUT`.
 - Otherwise add zero.
 - One-time placement payout only.
@@ -425,7 +425,7 @@ Comment: stones have solidity parameter so defense stone should increase solidit
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -438,7 +438,7 @@ Comment: This stone prevents opponent to place a stone on an empty field that wo
 **description:** Temporary capture immunity stone.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Immunity duration parameter: `ANTI_CAPTURE_DURATION_ROUNDS`.
 - Applies to snapshot scope at trigger time: placed stone + connected own stones.
 - New stones connected later are not included unless re-triggered.
@@ -454,7 +454,7 @@ Comment: This stone prevents opponent to place a stone on an empty field that wo
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -498,7 +498,7 @@ Comment: This is ok but I would increase it to 7 rounds
 **description:** Delayed points stone with a 7-round survival timer.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - On placement, register survival timer `POINTS_DELAY_ROUNDS = 7`.
 - If stone still exists when timer expires, grant `POINTS_DELAY_PAYOUT`.
 - If removed/captured before expiry, no payout.
@@ -514,7 +514,7 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -524,7 +524,7 @@ Comment: This is ok but I would increase it to 7 rounds
 **description:** Placement-triggered capture stone that removes one enemy stone with zero liberties, regardless of which color surrounds it.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger on placement only.
 - Eligible targets: enemy stones with exactly **0 liberties** after this stone is placed. Unlike basic Go capture, it does not matter which colors surround the target — only that the target has no empty orthogonal neighbors.
 - If exactly one eligible target exists, capture (remove) it.
@@ -542,7 +542,7 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -552,7 +552,7 @@ Comment: This is ok but I would increase it to 7 rounds
 **description:** End-of-turn tax payout from enemy stones inside qualifying enclosure.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger at each owner `end_of_turn`.
 - For each qualifying enclosure region containing at least one owner tax stone, count enemy stones in that region.
 - Payout per counted enemy stone is parameterized: `TAX_MONEY_PER_ENEMY` and `TAX_POINTS_PER_ENEMY`.
@@ -569,7 +569,7 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -579,7 +579,7 @@ Comment: This is ok but I would increase it to 7 rounds
 **description:** Immediate points stone that auto-removes after a timer.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - On placement add `SELF_DESTRUCT_IMMEDIATE_POINTS`.
 - Register removal timer `SELF_DESTRUCT_DELAY_ROUNDS`.
 - On expiry, remove stone from board.
@@ -595,7 +595,7 @@ Comment: This is ok but I would increase it to 7 rounds
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -607,7 +607,7 @@ Comment: This needs to be totally differently implemented. Conversion formula I 
 **description:** End-of-turn points generator based on current owner of the stone cell and that owner's total controlled territory.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger each `end_of_turn` while stone remains on board.
 - **Pre-recompute territory snapshot (placement turn):** on the turn the stone is placed, read territory owner at the stone cell and `T_OWNER` total controlled territory from the territory map **before** placement recomputes territory. Payout uses that snapshot; the new stone must not inflate/deflate the counted territory on its placement turn.
 - **Later turns:** at each subsequent `end_of_turn`, use the territory map at trigger time (after any prior recomputation) the same way: owner at stone cell → `T_OWNER` → payout from `T_OWNER` total controlled territory.
@@ -626,7 +626,7 @@ Comment: This needs to be totally differently implemented. Conversion formula I 
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -638,10 +638,12 @@ Comment: should act exactly like the previous stone just with mult
 **description:** End-of-turn multiplier generator mirroring territory_to_points behavior.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Trigger each `end_of_turn` while stone remains on board.
-- Determine territory owner at stone cell at trigger time.
-- Let recipient be that current owner; add `min(T2M_CAP, floor(RECIPIENT_TERRITORY / T2M_DIVISOR))` to `plus_mult`.
+- **Pre-recompute territory snapshot (placement turn):** on the turn the stone is placed, read territory owner at the stone cell and recipient total controlled territory from the territory map **before** placement recomputes territory. Payout uses that snapshot; the new stone must not inflate/deflate the counted territory on its placement turn.
+- **Later turns:** at each subsequent `end_of_turn`, use the territory map at trigger time: owner at stone cell → recipient → payout from recipient total controlled territory.
+- Let recipient be the side owning the stone cell at snapshot/trigger time; add `min(T2M_CAP, floor(RECIPIENT_TERRITORY / T2M_DIVISOR))` to `plus_mult`.
+- Contested / unowned cells: payout zero.
 - No territory consumption/reduction.
 - Behavior is structurally parallel to `territory_to_points_stone` but outputs `plus_mult`.
 
@@ -655,7 +657,7 @@ Comment: should act exactly like the previous stone just with mult
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -667,7 +669,7 @@ Comment: this stone should give some number of points every round, but then when
 **description:** Per-round point generator with capture transfer multiplier.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - While on board, each owner `end_of_turn` adds `EPS_ROUND_POINTS` to this stone's accumulated bank.
 - Also add `EPS_ROUND_POINTS` to owner points each round (generator behavior).
 - On capture, opponent gains `EPS_CAPTURE_MULTIPLIER * accumulated_bank`.
@@ -684,7 +686,7 @@ Comment: this stone should give some number of points every round, but then when
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -696,7 +698,7 @@ Comment: similar to the last stone it should generate more money each round, but
 **description:** Per-round money generator with capture penalty multiplier.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - While on board, each owner `end_of_turn` adds `EMS_ROUND_MONEY` to owner money and tracks cumulative received total `EMS_TOTAL_RECEIVED`.
 - On capture, captured owner pays penalty `EMS_CAPTURE_MULTIPLIER * EMS_TOTAL_RECEIVED`.
 - Penalty is applied to captured owner's money with clamp at global min if defined.
@@ -712,7 +714,7 @@ Comment: similar to the last stone it should generate more money each round, but
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -798,7 +800,7 @@ Comment: similar to the last stone it should generate more money each round, but
 **description:** Immediate high reward with immediate money penalty.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - On placement add `HPML_POINTS_GAIN` and `HPML_PLUS_MULT_GAIN`.
 - On same resolution subtract `HPML_MONEY_LOSS`.
 - If money underflows, clamp by global money floor.
@@ -813,7 +815,7 @@ Comment: similar to the last stone it should generate more money each round, but
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 
@@ -823,7 +825,7 @@ Comment: similar to the last stone it should generate more money each round, but
 **description:** Low baseline stone with synergy threshold behavior.
 
 ### implementation_details
-- [ ] not implemented
+- [x] implemented
 - Base placement payout is `COPPER_BASE_POINTS` (default may be zero).
 - Copper tag is available for external synergies.
 - Built-in threshold rule: if owner copper count on board is `>= COPPER_THRESHOLD`, add `COPPER_THRESHOLD_PLUS_MULT_BONUS` on new copper placement.
@@ -838,7 +840,7 @@ Comment: similar to the last stone it should generate more money each round, but
 
 ### tests
 - [x] tests specified (>=10 scenarios)
-- [ ] tests implemented in code
+- [x] tests implemented in code
 
 ---
 

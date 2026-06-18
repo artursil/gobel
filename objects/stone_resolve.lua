@@ -21,9 +21,9 @@ local function copy_effects(effects)
 	return out
 end
 
---- Shallow-copy effect rows; add delta when effect_name, macro, and sub match.
+--- Shallow-copy effect rows; add ``delta`` to the matching ``effect_name`` row value.
 --- @param effects table[]
---- @param deltas table<string, { macro: string, sub: string, delta: number }>|nil
+--- @param deltas table<string, { delta: number }>|nil
 --- @return table[]
 function M.apply_effect_deltas(effects, deltas)
 	if not effects then
@@ -40,7 +40,7 @@ function M.apply_effect_deltas(effects, deltas)
 			copy[k] = v
 		end
 		local delta = deltas[copy.effect_name]
-		if delta and delta.macro == copy.macro and delta.sub == copy.sub and type(copy.value) == "number" then
+		if delta and type(copy.value) == "number" then
 			copy.value = copy.value + (delta.delta or 0)
 		end
 		out[i] = copy
@@ -59,6 +59,23 @@ function M.copy_stone_def(def)
 	end
 	out.effects = copy_effects(def.effects)
 	return out
+end
+
+--- Scales base per-level stone effects for unlimited_upgrades_stone (no level cap).
+--- @param def table
+--- @param level integer
+--- @return table
+function M.resolve_unlimited_upgrades_at_level(def, level)
+	local resolved = M.copy_stone_def(def)
+	local clamped = math.max(1, level)
+	for i = 1, #resolved.effects do
+		local row = resolved.effects[i]
+		if type(row.value) == "number" then
+			row.value = row.value * clamped
+		end
+	end
+	resolved._level = clamped
+	return resolved
 end
 
 --- Cumulative merge: applies upgrade_levels[2]..upgrade_levels[level] in order.
