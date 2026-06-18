@@ -177,7 +177,6 @@ function M.validate_all(definitions, object_type)
 end
 
 M.VALID_ACTION = EffectSchema.VALID_ACTION
-M.VALID_WHEN = EffectSchema.VALID_WHEN
 M.VALID_PHASES = EffectSchema.VALID_PHASES
 
 return M

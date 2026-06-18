@@ -49,7 +49,7 @@ Kamikaze and similar: stone **scores while still on the board**, then enqueues s
 
 ### End-of-turn tick pipeline
 
-1. Generic decrement of `duration_left` (and legacy fields until migrated) — no stone semantics
+1. Generic decrement of `cell.duration_left` — no stone semantics
 2. **`action = tick` effect phases** (expire hooks, payouts, enqueue removals)
 3. **Animations**
 4. **Drain `pending_stone_removals`**
@@ -94,21 +94,12 @@ Card effects read **`state.resolution.selected_target(s)`** via shared helpers �
 - One animation → remove beat for effect-driven removals.
 - Capture stone supplemental logic is testable via condition kwargs + enqueue.
 
-### Negative / migration cost
+### Implementation cost (historical)
 
-- Reorder on-play pipeline (effects before remove stage).
-- Introduce `pending_stone_removals` + shared enqueue helper.
-- Refactor `remove_stones.lua` to drain queue; move kamikaze, capture-stone supplemental, self-destruct expiry out of stage branches.
-- Remove `tick_objects` → `on_tick` side door; use `action = tick` + effect_manager.
-- Update tests and visual specs for ordering changes.
-
-### Implementation order (with module migration)
-
-0. **`pending_stone_removals` + pipeline reorder** (this ADR)
-1. Wall stone file split (template)
-2. Selected-stone cards
-3. Timed stones (`duration_left`, `action = tick`)
-4. Remaining effect names → registry-only monolith shrink
+- Reordered on-play pipeline (effects before remove stage).
+- Introduced `pending_stone_removals` + shared enqueue helper.
+- Refactored `remove_stones.lua` to drain queue; moved kamikaze, capture-stone supplemental, self-destruct expiry out of stage branches.
+- Removed `tick_objects` → `on_tick` side door; per-stone tick semantics use `action = tick` + `effect_manager`.
 
 ## Alternatives considered
 
@@ -122,5 +113,5 @@ Card effects read **`state.resolution.selected_target(s)`** via shared helpers �
 ## References
 
 - Grill-with-docs session 2026-06-18
-- `objects/effects_conditions/helpers/shared/pending_removals.lua` (to be added)
+- `objects/effects_conditions/helpers/shared/pending_removals.lua`
 - `single_game/resolver/stages/remove_stones.lua`

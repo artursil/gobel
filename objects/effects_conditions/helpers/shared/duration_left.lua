@@ -1,39 +1,17 @@
---- Unified per-cell countdown field and legacy timer migration.
+--- Unified per-cell countdown field for timed stones.
 --- @module objects.effects_conditions.helpers.shared.duration_left
 
 local M = {}
 
---- Copy legacy timer fields into ``duration_left`` when present and unified field is absent.
---- @param cell table
---- @return nil
-function M.migrate_legacy_fields(cell)
-	if cell.duration_left ~= nil then
-		return
-	end
-	if type(cell.survival_rounds_remaining) == "number" then
-		cell.duration_left = cell.survival_rounds_remaining
-		cell.survival_rounds_remaining = nil
-		cell.timer_remaining_rounds = nil
-		return
-	end
-	if type(cell.immunity_remaining) == "number" then
-		cell.duration_left = cell.immunity_remaining
-		cell.immunity_remaining = nil
-		return
-	end
-end
-
 --- @param cell table
 --- @return boolean
 function M.has_timer(cell)
-	M.migrate_legacy_fields(cell)
 	return cell.duration_left ~= nil
 end
 
 --- @param cell table
 --- @return integer
 function M.remaining(cell)
-	M.migrate_legacy_fields(cell)
 	return cell.duration_left or 0
 end
 
@@ -41,7 +19,6 @@ end
 --- @param cell table
 --- @return nil
 function M.decrement_cell(cell)
-	M.migrate_legacy_fields(cell)
 	local remaining = cell.duration_left
 	if type(remaining) ~= "number" or remaining <= 0 then
 		return
@@ -54,10 +31,6 @@ end
 --- @return nil
 function M.clear(cell)
 	cell.duration_left = nil
-	cell.survival_rounds_remaining = nil
-	cell.timer_remaining_rounds = nil
-	cell.immunity_remaining = nil
-	cell.delay_payout = nil
 end
 
 --- Mark a cell to skip the generic tick decrement on the placement turn's end-of-turn only.

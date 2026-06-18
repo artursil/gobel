@@ -11,7 +11,6 @@ local stance_order = require("single_game.resolver.stance_order")
 local shared_stones_effects = require("objects.definitions.shared_stones_effects")
 local objects_effects = require("objects.effects_conditions.effects")
 local effect_enums = require("objects.effects_conditions.scheduling")
-local effect_schedule = require("objects.effects_conditions.scheduling")
 local stone_params = require("objects.parameters.stones")
 local run = require("objects.effects_conditions.run")
 
@@ -29,10 +28,10 @@ local function phase_from_payload(payload)
 	return nil
 end
 
---- @param active_action string canonical action or legacy resolve macro
---- @return string action
-local function normalize_active_action(active_action)
-	return effect_enums.resolve_macro_to_action(active_action)
+--- @param active_action string canonical action
+--- @return string|nil action
+local function canonical_action(active_action)
+	return effect_enums.normalize_action(active_action) or active_action
 end
 
 --- @param effect_def table
@@ -51,7 +50,7 @@ end
 --- @param out table
 --- @return nil
 local function append_stance_effects(state, active_action, active_phase, territory_step, out)
-	local action = normalize_active_action(active_action)
+	local action = canonical_action(active_action)
 	local rows = stance_order.flatten_stances_for_resolve(state)
 	for _, stance in ipairs(rows) do
 		local i = stance.index
@@ -69,9 +68,8 @@ local function append_stance_effects(state, active_action, active_phase, territo
 				table.insert(out, e)
 			elseif not effect_def and phase_from_payload(e) == active_phase
 				and (
-					e.action and normalize_active_action(e.action) == action
-					or e.macro and normalize_active_action(e.macro) == action
-					or (not e.action and not e.macro and action == effect_enums.ACTION.on_play)
+					e.action and canonical_action(e.action) == action
+					or (not e.action and action == effect_enums.ACTION.on_play)
 				) then
 				e.meta = e.meta or {}
 				e.meta.source_owner = stance.owner
@@ -93,7 +91,7 @@ end
 --- @param out table
 --- @return nil
 local function append_card_effects(state, active_action, active_phase, territory_step, out)
-	local action = normalize_active_action(active_action)
+	local action = canonical_action(active_action)
 	if action ~= effect_enums.ACTION.on_card then
 		return
 	end
@@ -111,8 +109,7 @@ local function append_card_effects(state, active_action, active_phase, territory
 				table.insert(out, e)
 			elseif not effect_def and phase_from_payload(e) == active_phase
 				and (
-					(e.action and normalize_active_action(e.action) == action)
-					or (e.macro and normalize_active_action(e.macro) == action)
+					(e.action and canonical_action(e.action) == action)
 					or action == effect_enums.ACTION.on_card
 				) then
 				e.meta = e.meta or {}
@@ -134,7 +131,7 @@ end
 --- @param out table
 --- @return nil
 local function append_stone_round_effects(state, active_action, active_phase, territory_step, out)
-	local action = normalize_active_action(active_action)
+	local action = canonical_action(active_action)
 	if action ~= effect_enums.ACTION.on_play or active_phase == effect_enums.PHASE.territory then
 		return
 	end
@@ -143,7 +140,6 @@ local function append_stone_round_effects(state, active_action, active_phase, te
 	if not stone_event then
 		return
 	end
-	local resolve_macro = effect_schedule.action_to_resolve_macro(action)
 	for _, stone_effect in ipairs(stone_event.effects or {}) do
 		if def_matches(stone_effect, action, active_phase, territory_step) then
 			local resolved = effects_registry.stones.resolve(stone_effect)
@@ -156,7 +152,6 @@ local function append_stone_round_effects(state, active_action, active_phase, te
 					action = action,
 					phase = phase,
 					sub = phase,
-					macro = resolve_macro,
 					priority = resolved.priority or 10,
 					conditions = resolved.conditions,
 					apply = function(current_state, effect_owner, kwargs)
@@ -190,7 +185,6 @@ local function append_stone_round_effects(state, active_action, active_phase, te
 				action = action,
 				phase = effect_enums.PHASE.points,
 				sub = effect_enums.PHASE.points,
-				macro = resolve_macro,
 				priority = resolved.priority or stone_params.default_effect_priority,
 				conditions = resolved.conditions,
 				apply = function(current_state, effect_owner, kwargs)
@@ -217,8 +211,7 @@ end
 --- @param out table
 --- @return nil
 local function append_board_stone_effects(state, active_action, active_phase, territory_step, out)
-	local action = normalize_active_action(active_action)
-	local resolve_macro = effect_schedule.action_to_resolve_macro(action)
+	local action = canonical_action(active_action)
 	local owner_from_color = function(color)
 		if color == 1 then
 			return config.OWNER_BLACK
@@ -257,7 +250,6 @@ local function append_board_stone_effects(state, active_action, active_phase, te
 								action = action,
 								phase = effect_enums.PHASE.points,
 								sub = effect_enums.PHASE.points,
-								macro = resolve_macro,
 								priority = 25,
 								conditions = nil,
 								apply = function(current_state)
@@ -286,8 +278,7 @@ local function append_pattern_board_effects(state, active_action, active_phase, 
 	if active_phase ~= effect_enums.PHASE.mult then
 		return
 	end
-	local action = normalize_active_action(active_action)
-	local resolve_macro = effect_schedule.action_to_resolve_macro(action)
+	local action = canonical_action(active_action)
 	local to_play = state.to_play
 	if not to_play or to_play == "none" then
 		return
@@ -307,7 +298,6 @@ local function append_pattern_board_effects(state, active_action, active_phase, 
 					action = action,
 					phase = effect_enums.PHASE.mult,
 					sub = effect_enums.PHASE.mult,
-					macro = resolve_macro,
 					priority = resolved.priority or 12,
 					conditions = resolved.conditions,
 					apply = function(current_state, effect_owner, kwargs)
@@ -330,17 +320,14 @@ end
 --- @param out table
 --- @return nil
 local function append_timed_effects(state, active_action, active_phase, territory_step, out)
-	local action = normalize_active_action(active_action)
+	local action = canonical_action(active_action)
 	for _, active in ipairs(state.active_effects or {}) do
 		local effect = active.effect
 		local effect_def = effect and effect._effect_def
 		if effect_def and def_matches(effect_def, action, active_phase, territory_step) then
 			table.insert(out, effect)
 		elseif effect and phase_from_payload(effect) == active_phase
-			and (
-				(effect.action and normalize_active_action(effect.action) == action)
-				or (effect.macro and normalize_active_action(effect.macro) == action)
-			) then
+			and effect.action and canonical_action(effect.action) == action then
 			table.insert(out, effect)
 		end
 	end
@@ -368,12 +355,10 @@ end
 --- @param effect table
 --- @return nil
 local function set_resolution_for_effect(state, active_action, active_phase, territory_step, effect)
-	local action = normalize_active_action(active_action)
-	local resolve_macro = effect_schedule.action_to_resolve_macro(action)
+	local action = canonical_action(active_action)
 	local resolution = queries.ensure_resolution(state)
 	local meta = effect.meta or {}
 	resolution.action = action
-	resolution.macro = resolve_macro
 	resolution.sub = active_phase
 	resolution.phase = active_phase
 	resolution.territory_step = territory_step
@@ -390,12 +375,12 @@ local function set_resolution_for_effect(state, active_action, active_phase, ter
 end
 
 --- @param state table
---- @param active_action string canonical action or legacy resolve macro
+--- @param active_action string canonical action
 --- @param active_phase string
 --- @param territory_step string|nil
 --- @return table
 function M.collect_effects(state, active_action, active_phase, territory_step)
-	local action = normalize_active_action(active_action)
+	local action = canonical_action(active_action)
 	local effects = {}
 	append_stance_effects(state, action, active_phase, territory_step, effects)
 	append_card_effects(state, action, active_phase, territory_step, effects)
@@ -406,7 +391,6 @@ function M.collect_effects(state, active_action, active_phase, territory_step)
 	table.sort(effects, effect_priority)
 	dbg.log_stack("collected effects", {
 		action = action,
-		macro = effect_schedule.action_to_resolve_macro(action),
 		phase = active_phase,
 		sub = active_phase,
 		territory_step = territory_step,
@@ -416,12 +400,12 @@ function M.collect_effects(state, active_action, active_phase, territory_step)
 end
 
 --- @param state table
---- @param active_action string canonical action or legacy resolve macro
+--- @param active_action string canonical action
 --- @param active_phase string
 --- @param territory_step string|nil
 --- @return nil
 function M.apply_phase_pass(state, active_action, active_phase, territory_step)
-	local action = normalize_active_action(active_action)
+	local action = canonical_action(active_action)
 	local effects = M.collect_effects(state, action, active_phase, territory_step)
 	queries.clear_resolution(state)
 	for _, effect in ipairs(effects) do
@@ -438,14 +422,14 @@ function M.apply_phase_pass(state, active_action, active_phase, territory_step)
 	queries.clear_resolution(state)
 end
 
---- Legacy alias for ``apply_phase_pass`` (accepts legacy resolve macro as first scheduling arg).
+--- Legacy alias for ``apply_phase_pass``.
 --- @param state table
---- @param active_macro string
+--- @param active_action string
 --- @param active_sub string
 --- @param territory_step string|nil
 --- @return nil
-function M.apply_sub_phase(state, active_macro, active_sub, territory_step)
-	M.apply_phase_pass(state, active_macro, active_sub, territory_step)
+function M.apply_sub_phase(state, active_action, active_sub, territory_step)
+	M.apply_phase_pass(state, active_action, active_sub, territory_step)
 end
 
 --- Back-compat for territory preview and tests.
@@ -453,7 +437,7 @@ end
 --- @param phase string legacy phase or sub name
 --- @return nil
 function M.apply_phase(state, phase)
-	local action = state._resolve_action or effect_enums.resolve_macro_to_action(state._resolve_macro) or effect_enums.ACTION.on_play
+	local action = state._resolve_action or effect_enums.ACTION.on_play
 	if phase == "distance" then
 		M.apply_phase_pass(state, action, effect_enums.PHASE.territory, scoring_phases.TERRITORY_STEP_DISTANCE)
 	elseif phase == "territory" then

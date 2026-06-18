@@ -156,7 +156,7 @@ describe("T-100 effects system", function()
 			value = 1,
 			priority = 10,
 			conditions = {
-				{ condition_name = "always" },
+				{ condition_name = "round_number_exactly", value = 1 },
 			},
 		}
 		local resolved = effects.resolve(effect_def)

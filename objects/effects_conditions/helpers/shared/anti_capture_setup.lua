@@ -19,7 +19,6 @@ function M.grant_group_on_cells(board_snapshot, row, col, duration)
 		local cell = board_snapshot[r][c]
 		if cell and not board.is_empty(cell) then
 			cell.duration_left = duration
-			cell.immunity_remaining = nil
 		end
 	end
 end

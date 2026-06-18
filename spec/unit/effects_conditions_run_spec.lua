@@ -26,7 +26,7 @@ describe("effects_conditions run.apply_effect", function()
 		local state = base_state()
 		local applied = false
 		local effect = {
-			conditions = { { condition_name = "never" } },
+			conditions = { { condition_name = "round_number_exactly", value = 99 } },
 			apply = function()
 				applied = true
 			end,
@@ -39,7 +39,6 @@ describe("effects_conditions run.apply_effect", function()
 	it("calls apply with kwargs table when conditions pass without fragments", function()
 		local seen_kwargs = nil
 		local effect = {
-			conditions = { { condition_name = "always" } },
 			apply = function(_state, _owner, kwargs)
 				seen_kwargs = kwargs
 			end,

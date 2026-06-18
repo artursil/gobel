@@ -5,10 +5,11 @@ local scheduling = require("objects.effects_conditions.scheduling")
 local stone_params = require("objects.parameters.stones")
 local enclosure = require("single_game.resolver.enclosure")
 local targets = require("objects.effects_conditions.helpers.shared.enclosure_multiply_targets")
+local require_kwargs = require("objects.effects_conditions.helpers.shared.require_kwargs")
 
 local M = {}
 
-function M.build_at_board(row, col, effect)
+function M.build(effect)
 	local action, phase = scheduling.parse_action_phase(effect)
 	local value = effect.value or stone_params.enclosure_stone_multiplier
 	return {
@@ -19,7 +20,10 @@ function M.build_at_board(row, col, effect)
 		priority = effect.priority or stone_params.default_effect_priority,
 		value = effect.value,
 		conditions = effect.conditions or {},
-		apply = function(state, owner, _kwargs)
+		apply = function(state, owner, kwargs)
+			require_kwargs.require_kwargs(kwargs, { "row", "col" })
+			local row = kwargs.row
+			local col = kwargs.col
 			local walls = state.enclosure_walls
 			if not walls then
 				walls = enclosure.extract_walls(state.board)

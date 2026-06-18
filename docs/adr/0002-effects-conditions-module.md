@@ -31,7 +31,7 @@ objects/effects_conditions/
     shared/             # reusable math, pending_removals enqueue, capture supplemental pick, …
 ```
 
-Delete or stop using: monolithic inlined builders in `effects.lua`, `helpers/effects/` per-effect trees, `EffectSchema.build` as factory, `kwargs_from_def`, resolved `on_tick` hooks.
+Removed: monolithic inlined builders in `effects.lua`, `helpers/effects/` per-effect trees, `EffectSchema.build` as factory, `kwargs_from_def`, resolved `on_tick` hooks.
 
 Top-level shims (`objects/effects.lua`, `objects/conditions.lua`, …) and resolver `Effect.lua` are deleted. Callers require `objects.effects_conditions.*` directly.
 
@@ -42,7 +42,7 @@ Each `effects/<name>.lua` exports **`build(effect)`** returning a plain table:
 - `type`, `action`, `phase`, `priority`, `value`, `conditions`, …
 - **`apply = function(state, owner, kwargs)`** — inline closure; not `M.apply`
 
-**Forbidden** on resolved instances: `on_tick`, `kwargs_from_def`, `macro`, `sub`, `accepts_kwargs`, `_effect_def`.
+**Forbidden** on resolved instances: `on_tick`, `kwargs_from_def`, `macro`, `sub`, `accepts_kwargs`.
 
 Def fields (`rounds`, `duration`, `payout`, …) are read from the `effect` argument inside `build` and closed over by `apply` — not injected into kwargs.
 
@@ -54,6 +54,10 @@ Def fields (`rounds`, `duration`, `payout`, …) are read from the `effect` argu
 4. **Required keys:** `require_kwargs` when conditions supply computed values (e.g. `{ blocks }`, `{ row, col }`).
 5. **Resolution context:** Selected board targets, placement coords, and tick cell context are read inside **`helpers/shared`** from `state` / resolution metadata — not duplicated into kwargs unless a condition **computes** a value (wall blocks, capture-stone supplemental target).
 
+### Stone-context kwargs (registry convention)
+
+The registry routes only — no business logic in `effects.lua` or `conditions.lua`. For board-scanned stone effects, `effects.wrap_board_scan` merges `{ row, col, cell, stone_def }` into kwargs before `apply`. Removal dispatch passes `{ row, col, cell, opts }` the same way. Helpers must not add extra `apply` parameters beyond the three-argument contract.
+
 ### Timed stones
 
 - Separate **`effect_name` per beat** (e.g. `delay_reward_setup` + `delay_reward_payout`) — one file each.
@@ -64,11 +68,11 @@ Def fields (`rounds`, `duration`, `payout`, …) are read from the `effect` argu
 
 Per-round semantics use **`action = tick`** effect rows collected by `effect_manager` and invoked via **`run.apply_effect`**.
 
-**Do not** expose `on_tick` on resolved effects. Remove `tick_objects.run_side_effects` → `on_tick` dispatch after migration.
+**Do not** expose `on_tick` on resolved effects. Generic `duration_left` decrement lives in `tick_objects`; stone-specific expire/payout semantics live in `action = tick` effect files.
 
 ### Removal integration (ADR 0003)
 
-Effects that remove stones **enqueue** on `state.pending_stone_removals` via `helpers/shared/pending_removals.lua` (to be added). They do not clear board cells directly except where the beat requires immediate field mutation (e.g. solidity before lethal enqueue).
+Effects that remove stones **enqueue** on `state.pending_stone_removals` via `helpers/shared/pending_removals.lua`. They do not clear board cells directly except where the beat requires immediate field mutation (e.g. solidity before lethal enqueue).
 
 ### Shared utilities
 

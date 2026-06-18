@@ -32,18 +32,6 @@ describe("T-202 Effect schema runtime", function()
 		assert.is_nil(err)
 	end)
 
-	it("rejects legacy sub field", function()
-		local effect_def = {
-			effect_name = "add_points",
-			sub = "points",
-			action = effect_enums.ACTION.on_play,
-			phase = effect_enums.PHASE.points,
-		}
-		local valid, err = Effect.validate(effect_def)
-		assert.is_false(valid)
-		assert.matches("removed field sub", err)
-	end)
-
 	it("rejects legacy macro field", function()
 		local effect_def = {
 			effect_name = "add_points",
@@ -121,7 +109,7 @@ describe("T-202 Effect schema runtime", function()
 			action = effect_enums.ACTION.on_play,
 			phase = effect_enums.PHASE.points,
 			conditions = {
-				{ condition_name = "always", kwargs_keys = { "blocks" } },
+				{ condition_name = "stance_owner_is_current_turn", kwargs_keys = { "blocks" } },
 				{ condition_name = "wall_part_of_wall" },
 			},
 		}

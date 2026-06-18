@@ -16,21 +16,6 @@ local VALID_ACTION = {}
 for _, action in pairs(scheduling.ACTION) do
 	VALID_ACTION[action] = true
 end
-VALID_ACTION.board_reconcile = true
-
-local VALID_WHEN = {
-	game_start = true,
-	before_turn = true,
-	playing_cards = true,
-	playing_stones = true,
-	board_reconcile = true,
-	end_of_turn = true,
-	on_removed = true,
-	game_end = true,
-	tick = true,
-	on_card = true,
-	on_play = true,
-}
 
 local VALID_PHASES = {
 	territory = true,
@@ -38,24 +23,8 @@ local VALID_PHASES = {
 	mult = true,
 }
 
-local VALID_LIFECYCLES = {
-	placement = true,
-	board_reconcile = true,
-}
-
-local VALID_SCOPES = {
-	self = true,
-	board = true,
-	hand = true,
-	opponent = true,
-	all = true,
-}
-
 M.VALID_ACTION = VALID_ACTION
-M.VALID_WHEN = VALID_WHEN
 M.VALID_PHASES = VALID_PHASES
-M.VALID_LIFECYCLES = VALID_LIFECYCLES
-M.VALID_SCOPES = VALID_SCOPES
 
 local function list_valid(tbl)
 	local result = {}
@@ -66,19 +35,10 @@ local function list_valid(tbl)
 	return table.concat(result, ", ")
 end
 
-local OPTIONAL_DEF_FIELDS = {
-	"territory_step",
-	"delay_rounds",
-	"immediate_points",
-	"rounds",
-	"payout",
-	"stone_kind",
-}
-
 --- Build a normalized effect instance from a definition row.
 function M.new(effect_def)
 	local action, phase = scheduling.parse_action_phase(effect_def)
-	local instance = {
+	return {
 		effect_name = effect_def.effect_name,
 		action = action,
 		phase = phase,
@@ -95,13 +55,6 @@ function M.new(effect_def)
 		},
 		tags = effect_def.tags or {},
 	}
-	for i = 1, #OPTIONAL_DEF_FIELDS do
-		local key = OPTIONAL_DEF_FIELDS[i]
-		if effect_def[key] ~= nil then
-			instance[key] = effect_def[key]
-		end
-	end
-	return instance
 end
 
 --- Validate an effect definition row.
@@ -125,52 +78,31 @@ function M.validate(effect, object_id)
 			string.format("Effect '%s' in %s uses removed field macro; use action", effect.effect_name, object_id)
 	end
 
-	if effect.action and effect.phase then
-		if not VALID_ACTION[effect.action] then
-			return false,
-				string.format(
-					"Effect '%s' in %s has invalid action '%s' (valid: %s)",
-					effect.effect_name,
-					object_id,
-					effect.action,
-					list_valid(VALID_ACTION)
-				)
-		end
-		if not VALID_PHASES[effect.phase] then
-			return false,
-				string.format(
-					"Effect '%s' in %s has invalid phase '%s' (valid: %s)",
-					effect.effect_name,
-					object_id,
-					effect.phase,
-					list_valid(VALID_PHASES)
-				)
-		end
-	elseif effect.when and effect.phase then
-		if not VALID_WHEN[effect.when] then
-			return false,
-				string.format(
-					"Effect '%s' in %s has invalid when '%s' (valid: %s)",
-					effect.effect_name,
-					object_id,
-					effect.when,
-					list_valid(VALID_WHEN)
-				)
-		end
-		if not VALID_PHASES[effect.phase] then
-			return false,
-				string.format(
-					"Effect '%s' in %s has invalid phase '%s' (valid: %s)",
-					effect.effect_name,
-					object_id,
-					effect.phase,
-					list_valid(VALID_PHASES)
-				)
-		end
-	elseif effect.phase and type(effect.phase) == "string" then
-	else
+	if not effect.action or not effect.phase then
 		return false,
 			string.format("Effect '%s' in %s missing action/phase scheduling fields", effect.effect_name, object_id)
+	end
+
+	if not VALID_ACTION[effect.action] then
+		return false,
+			string.format(
+				"Effect '%s' in %s has invalid action '%s' (valid: %s)",
+				effect.effect_name,
+				object_id,
+				effect.action,
+				list_valid(VALID_ACTION)
+			)
+	end
+
+	if not VALID_PHASES[effect.phase] then
+		return false,
+			string.format(
+				"Effect '%s' in %s has invalid phase '%s' (valid: %s)",
+				effect.effect_name,
+				object_id,
+				effect.phase,
+				list_valid(VALID_PHASES)
+			)
 	end
 
 	if effect.priority and type(effect.priority) ~= "number" then
@@ -191,28 +123,6 @@ function M.validate(effect, object_id)
 	if effect.duration and type(effect.duration) ~= "number" then
 		return false,
 			string.format("Effect '%s' in %s has non-numeric duration: %s", effect.effect_name, object_id, type(effect.duration))
-	end
-
-	if effect.scope and not VALID_SCOPES[effect.scope] then
-		return false,
-			string.format(
-				"Effect '%s' in %s has invalid scope '%s' (valid: %s)",
-				effect.effect_name,
-				object_id,
-				effect.scope,
-				list_valid(VALID_SCOPES)
-			)
-	end
-
-	if effect.lifecycle and not VALID_LIFECYCLES[effect.lifecycle] then
-		return false,
-			string.format(
-				"Effect '%s' in %s has invalid lifecycle '%s' (valid: %s)",
-				effect.effect_name,
-				object_id,
-				effect.lifecycle,
-				list_valid(VALID_LIFECYCLES)
-			)
 	end
 
 	if effect.conditions then

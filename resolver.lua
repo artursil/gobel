@@ -20,6 +20,7 @@ local on_play_pipeline = require("single_game.resolver.stages.on_play_pipeline")
 local placement_preview = require("objects.placement_preview")
 local placement_round = require("objects.placement_round")
 local resolved_type_registry = require("objects.resolved_type_registry")
+local effect_enums = require("objects.effects_conditions.scheduling")
 
 local M = {}
 
@@ -349,15 +350,15 @@ function M.validate_card_target_candidate(card_def, selected_targets, candidate,
 end
 
 --- @param state table
---- @param macro string|nil active scoring macro (``playing_cards``, ``playing_stones``, ``end_of_turn``, …)
---- @param end_of_turn_owner string|nil owner token when ``macro`` is ``end_of_turn``
+--- @param action string|nil canonical resolve action
+--- @param end_of_turn_owner string|nil owner token when ``action`` is ``end_of_turn``
 --- @return nil
-local function recalc_all_scores(state, macro, end_of_turn_owner)
-	if macro == "end_of_turn" and end_of_turn_owner then
+local function recalc_all_scores(state, action, end_of_turn_owner)
+	if action == "end_of_turn" and end_of_turn_owner then
 		state._end_of_turn_owner = end_of_turn_owner
 	end
 	local baseline = score_display.snapshot_scores(state)
-	resolve_round.resolve(state, { macro = macro or "playing_stones" })
+	resolve_round.resolve(state, { action = action or effect_enums.ACTION.on_play })
 	state._end_of_turn_owner = nil
 	score_display.after_resolve(state, baseline, state.ui_animation_events)
 end
@@ -408,8 +409,8 @@ local function append_capture_bonus_resolved_effects(resolved_effects, captures)
 	end
 	resolved_effects[#resolved_effects + 1] = Effects.stones.resolve({
 		effect_name = "add_points",
-		macro = "playing_stones",
-		sub = "points",
+		action = "on_play",
+		phase = "points",
 		value = bonus,
 		priority = stone_params.default_effect_priority,
 	})
@@ -882,7 +883,7 @@ local function apply_non_effect_event(state, event)
 			type = event.card_id,
 			actor = event.actor,
 		}
-		recalc_all_scores(state, "playing_cards")
+		recalc_all_scores(state, "on_card")
 		state.selected_card_target = nil
 		local cdef = content.get_card(event.card_id)
 		if cdef then
@@ -1091,7 +1092,7 @@ function M.flush_pending_turn_if_ready(state)
 	state._test_defer_turn_advance = nil
 	score_display.end_rollout(state)
 	if state._pending_deferred_placement_score then
-		recalc_all_scores(state, "playing_stones")
+		recalc_all_scores(state, "on_play")
 		recalc_all_scores(state, "end_of_turn")
 		state._pending_deferred_placement_score = nil
 	end

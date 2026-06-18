@@ -33,10 +33,10 @@ function M.is_board_territory_effect(effect_def)
 	return M.BOARD_TERRITORY_EFFECT_NAMES[effect_def.effect_name] == true
 end
 
---- @param action string|nil canonical action or legacy when alias
+--- @param action string|nil canonical action
 --- @return boolean
 function M.is_valid_action(action)
-	return effect_enums.is_valid_action(effect_enums.normalize_action(action))
+	return effect_enums.is_valid_action(action)
 end
 
 --- @param phase string|nil
@@ -57,10 +57,10 @@ function M.parse_effect_scheduling(effect_def)
 	if not action or not phase then
 		return nil, nil, nil
 	end
-	if effect_def.phase == "distance" and not effect_def.action and not effect_def.when then
+	if effect_def.phase == "distance" and not effect_def.action then
 		return effect_enums.ACTION.on_play, effect_enums.PHASE.territory, M.TERRITORY_STEP_DISTANCE
 	end
-	if effect_def.phase == "territory" and not effect_def.action and not effect_def.when then
+	if effect_def.phase == "territory" and not effect_def.action then
 		local step = effect_def.territory_step or M.TERRITORY_STEP_VALUE
 		return effect_enums.ACTION.on_play, effect_enums.PHASE.territory, step
 	end
@@ -68,7 +68,7 @@ function M.parse_effect_scheduling(effect_def)
 end
 
 --- @param effect_def table
---- @param active_action string canonical action or legacy when alias
+--- @param active_action string canonical action
 --- @param active_phase string
 --- @param territory_step string|nil when active_phase is territory
 --- @return boolean

@@ -4,7 +4,6 @@
 local board = require("board")
 local config = require("config")
 local scheduling = require("objects.effects_conditions.scheduling")
-local helpers = require("objects.effects_conditions.helpers.shared.effects_helpers")
 local duration_left = require("objects.effects_conditions.helpers.shared.duration_left")
 
 local M = {}
@@ -67,23 +66,6 @@ for effect_name, mod in pairs(EFFECT_MODULES) do
 	end
 end
 
-local BOARD_COORD_EFFECT_NAMES = {
-	control_territory_override = true,
-	territory_to_points = true,
-	territory_to_multiplier = true,
-	territory_to_multiplier_snapshot = true,
-	tax_enclosure_enemies = true,
-	escalating_points_bank = true,
-	escalating_points_bank_init = true,
-	escalating_money_tracker = true,
-}
-
-local BOARD_SCAN_ONLY = {
-	distance_bonus = true,
-	enclosure_territory_multiply = true,
-	double_corner_nearby_territory = true,
-}
-
 local function merge_kwargs(kwargs, defaults)
 	local merged = {}
 	for key, value in pairs(kwargs or {}) do
@@ -99,12 +81,6 @@ function M.resolve(effect_def)
 	if not effect_def or not effect_def.effect_name then
 		return nil
 	end
-	if BOARD_SCAN_ONLY[effect_def.effect_name] then
-		if effect_def.effect_name == "enclosure_territory_multiply"
-			or effect_def.effect_name == "double_corner_nearby_territory" then
-			return nil
-		end
-	end
 	local builder = M[effect_def.effect_name]
 	if not builder then
 		return nil
@@ -116,38 +92,19 @@ function M.resolve(effect_def)
 	return resolved
 end
 
-function M.resolve_at_board(row, col, effect_def)
-	if not effect_def or not effect_def.effect_name then
-		return nil
-	end
-	if effect_def.effect_name == "enclosure_territory_multiply" then
-		return EFFECT_MODULES.enclosure_territory_multiply.build_at_board(row, col, effect_def)
-	end
-	if effect_def.effect_name == "double_corner_nearby_territory" then
-		return EFFECT_MODULES.double_corner_nearby_territory.build_at_board(row, col, effect_def)
-	end
-	local builder = M[effect_def.effect_name]
-	if not builder then
-		return nil
-	end
-	return builder(effect_def)
-end
-
-function M.wrap_board_scan(resolved, owner, row, col, stone_cell, action)
+--- Inject stone-context kwargs for board-scanned effect apply.
+function M.wrap_board_scan(resolved, owner, row, col, stone_cell, stone_def)
 	if not resolved or not resolved.apply then
 		return resolved
 	end
 	local base_apply = resolved.apply
-	local needs_coords = BOARD_COORD_EFFECT_NAMES[resolved.effect_name]
-	local needs_tick_context = action == scheduling.ACTION.tick
 	resolved.apply = function(state, effect_owner, kwargs)
-		local merged = kwargs or {}
-		if needs_coords or needs_tick_context then
-			merged = merge_kwargs(merged, { row = row, col = col })
-		end
-		if needs_tick_context and stone_cell then
-			merged = merge_kwargs(merged, { cell = stone_cell })
-		end
+		local merged = merge_kwargs(kwargs, {
+			row = row,
+			col = col,
+			cell = stone_cell,
+			stone_def = stone_def,
+		})
 		base_apply(state, effect_owner or owner, merged)
 	end
 	return resolved
@@ -158,8 +115,6 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_action, activ
 	local content = require("content")
 	local stone_ref = stone_cell.level and { def_id = stone_cell.kind, level = stone_cell.level } or stone_cell.kind
 	local stone_def = content.resolve_stone(stone_ref)
-	local key = helpers.stone_key(row, col)
-	local n = config.BOARD_SIZE
 	local out = {}
 	local effect_defs = {}
 	local owner = stone_cell.color == config.STONE_BLACK and config.OWNER_BLACK or config.OWNER_WHITE
@@ -178,30 +133,12 @@ function M.resolve_board_stone(stone_cell, row, col, state, active_action, activ
 	for _, effect_def in ipairs(effect_defs) do
 		if scoring_phases.skips_board_scan(effect_def) then
 		elseif not scoring_phases.matches(effect_def, action, active_phase, territory_step) then
-		elseif effect_def.effect_name == "distance_bonus" then
-			local resolved = M.resolve(effect_def)
-			if resolved then
-				resolved.action = action
-				resolved.phase = active_phase
-				resolved.apply = function(current_state, _effect_owner, _kwargs)
-					helpers.apply_distance_bonus_for_stone(stone_def, current_state, key, n, effect_def.value)
-				end
-				out[#out + 1] = resolved
-			end
-		elseif effect_def.effect_name == "enclosure_territory_multiply"
-			or effect_def.effect_name == "double_corner_nearby_territory" then
-			local resolved = M.resolve_at_board(row, col, effect_def)
-			if resolved then
-				resolved.action = action
-				resolved.phase = active_phase
-				out[#out + 1] = M.wrap_board_scan(resolved, owner, row, col, stone_cell, action)
-			end
 		else
 			local resolved = M.resolve(effect_def)
 			if resolved and resolved.apply then
 				resolved.action = action
 				resolved.phase = active_phase
-				out[#out + 1] = M.wrap_board_scan(resolved, owner, row, col, stone_cell, action)
+				out[#out + 1] = M.wrap_board_scan(resolved, owner, row, col, stone_cell, stone_def)
 			end
 		end
 	end
@@ -221,10 +158,7 @@ function M.apply_on_removed_effects(state, row, col, cell, opts)
 	end
 	for i = 1, #stone_def.effects do
 		local effect_def = stone_def.effects[i]
-		local removal_action = effect_def.action or effect_def.when
-		if removal_action == nil and effect_def.macro == "on_removed" then
-			removal_action = scheduling.ACTION.on_removed
-		end
+		local removal_action = effect_def.action
 		if removal_action == scheduling.ACTION.on_removed or removal_action == "on_removed" then
 			local resolved = M.resolve(effect_def)
 			if resolved and resolved.apply then

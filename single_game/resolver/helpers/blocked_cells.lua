@@ -2,8 +2,7 @@
 ---
 --- **Board-zone exception:** blockade durations are stored on empty adjacent cells in
 --- ``state.placement_blocks`` / ``state.blocked_cells``, not on the blockade stone cell.
---- Cell-owned tick fields (``survival_rounds_remaining``, ``immunity_remaining``) use
---- ``tick_objects`` instead.
+--- Cell-owned tick fields (``duration_left``) use ``tick_objects`` instead.
 --- @module single_game.resolver.helpers.blocked_cells
 
 local board = require("board")

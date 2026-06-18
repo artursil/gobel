@@ -30,7 +30,6 @@ describe("timed stones tick action", function()
 		local state = test_helper.new_isolated_game("basic_stones")
 		state.board[5][5] = board.make_stone(config.STONE_BLACK, "delay_reward_stone", 1, nil)
 		state.board[5][5].duration_left = stone_params.points_delay_rounds
-		state.board[5][5].delay_payout = stone_params.points_delay_payout
 		local points_before = state.scores.points.B
 		for _ = 1, stone_params.points_delay_rounds do
 			resolve_round.resolve(state, { action = "end_of_turn" })

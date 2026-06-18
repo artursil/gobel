@@ -4,10 +4,11 @@
 local config = require("config")
 local scheduling = require("objects.effects_conditions.scheduling")
 local stone_params = require("objects.parameters.stones")
+local require_kwargs = require("objects.effects_conditions.helpers.shared.require_kwargs")
 
 local M = {}
 
-function M.build_at_board(row, col, effect)
+function M.build(effect)
 	local action, phase = scheduling.parse_action_phase(effect)
 	return {
 		type = "DOUBLE_CORNER_NEARBY_TERRITORY",
@@ -16,7 +17,10 @@ function M.build_at_board(row, col, effect)
 		phase = phase or scheduling.PHASE.territory,
 		priority = effect.priority or 10,
 		conditions = effect.conditions or {},
-		apply = function(state, _owner, _kwargs)
+		apply = function(state, _owner, kwargs)
+			require_kwargs.require_kwargs(kwargs, { "row", "col" })
+			local row = kwargs.row
+			local col = kwargs.col
 			local n = config.BOARD_SIZE
 			local is_corner = (row == 1 or row == n) and (col == 1 or col == n)
 			if not is_corner then

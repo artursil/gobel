@@ -9,146 +9,204 @@ local ON_PLAY = scheduling.ACTION.on_play
 local PHASE_POINTS = scheduling.PHASE.points
 local PHASE_MULT = scheduling.PHASE.mult
 
+--- @param spec table
 --- @param resolved table
---- @return table|nil
-local function round_def_add_points(resolved)
-	return {
+--- @return string|number|nil
+local function resolve_scheduling_field(spec, resolved)
+	local def = resolved._effect_def or {}
+	if spec.fixed ~= nil then
+		return spec.fixed
+	end
+	local value = nil
+	if spec.resolved then
+		value = resolved[spec.resolved]
+	end
+	if value == nil and spec.effect_def then
+		value = def[spec.effect_def]
+	end
+	return value or spec.default
+end
+
+--- @param field_spec string|table
+--- @param resolved table
+--- @return string|number|table|nil
+local function resolve_carry_field(field_spec, resolved)
+	local def = resolved._effect_def or {}
+	if type(field_spec) == "string" then
+		return resolved[field_spec]
+	end
+	local value = nil
+	if field_spec.resolved then
+		value = resolved[field_spec.resolved]
+	end
+	if value == nil and field_spec.effect_def and def[field_spec.effect_def] ~= nil then
+		value = def[field_spec.effect_def]
+	end
+	if value == nil and field_spec.fallback and resolved[field_spec.fallback] ~= nil then
+		value = resolved[field_spec.fallback]
+	end
+	if value == nil and field_spec.default ~= nil then
+		value = field_spec.default
+	end
+	return value
+end
+
+--- @param spec table
+--- @param resolved table
+--- @return table
+local function build_round_def(spec, resolved)
+	local def = {
+		effect_name = spec.effect_name,
+		action = resolve_scheduling_field(spec.action, resolved),
+		phase = resolve_scheduling_field(spec.phase, resolved),
+	}
+	for key, field_spec in pairs(spec.fields) do
+		local value = resolve_carry_field(field_spec, resolved)
+		if value ~= nil or field_spec.always then
+			def[key] = value
+		end
+	end
+	return def
+end
+
+local RESOLVED_TYPE_SPECS = {
+	ADD_POINTS = {
 		effect_name = "add_points",
-		action = ON_PLAY,
-		phase = PHASE_POINTS,
-		value = resolved.value,
-		priority = resolved.priority or 10,
-	}
-end
-
---- @param resolved table
---- @return table|nil
-local function round_def_add_mult(resolved)
-	return {
+		action = { fixed = ON_PLAY },
+		phase = { fixed = PHASE_POINTS },
+		fields = {
+			value = "value",
+			priority = { resolved = "priority", default = 10, always = true },
+		},
+		validate = "number_value",
+	},
+	ADD_MULT = {
 		effect_name = "add_mult",
-		action = ON_PLAY,
-		phase = PHASE_MULT,
-		value = resolved.value,
-		priority = resolved.priority or 10,
-	}
-end
-
---- @param resolved table
---- @return table|nil
-local function round_def_add_energy(resolved)
-	return {
+		action = { fixed = ON_PLAY },
+		phase = { fixed = PHASE_MULT },
+		fields = {
+			value = "value",
+			priority = { resolved = "priority", default = 10, always = true },
+		},
+		validate = "number_value",
+	},
+	ADD_ENERGY = {
 		effect_name = "add_energy",
-		action = resolved.action or ON_PLAY,
-		phase = resolved.phase or PHASE_POINTS,
-		value = resolved.value,
-		priority = resolved.priority or 10,
-	}
-end
-
---- @param resolved table
---- @return table|nil
-local function round_def_add_money(resolved)
-	return {
+		action = { resolved = "action", default = ON_PLAY },
+		phase = { resolved = "phase", default = PHASE_POINTS },
+		fields = {
+			value = "value",
+			priority = { resolved = "priority", default = 10, always = true },
+		},
+		validate = "number_value",
+	},
+	ADD_MONEY = {
 		effect_name = "add_money",
-		action = ON_PLAY,
-		phase = PHASE_POINTS,
-		value = resolved.value,
-		priority = resolved.priority or 10,
-	}
-end
-
---- @param resolved table
---- @return table|nil
-local function round_def_kamikaze_sacrifice(resolved)
-	return {
+		action = { fixed = ON_PLAY },
+		phase = { fixed = PHASE_POINTS },
+		fields = {
+			value = "value",
+			priority = { resolved = "priority", default = 10, always = true },
+		},
+		validate = "money_value",
+	},
+	KAMIKAZE_SACRIFICE = {
 		effect_name = "kamikaze_sacrifice",
-		action = ON_PLAY,
-		phase = PHASE_POINTS,
-		value = resolved.value,
-		priority = resolved.priority or 10,
-	}
-end
-
---- @param resolved table
---- @return table|nil
-local function round_def_self_destruct_setup(resolved)
-	return {
+		action = { fixed = ON_PLAY },
+		phase = { fixed = PHASE_POINTS },
+		fields = {
+			value = "value",
+			priority = { resolved = "priority", default = 10, always = true },
+		},
+		validate = "number_value",
+	},
+	SELF_DESTRUCT_SETUP = {
 		effect_name = "self_destruct_setup",
-		action = ON_PLAY,
-		phase = PHASE_POINTS,
-		immediate_points = resolved.value,
-		delay_rounds = resolved.delay_rounds,
-		priority = resolved.priority or 10,
-	}
-end
-
---- @param resolved table
---- @return table|nil
-local function round_def_money_field_enclosure_payout(resolved)
-	local def = resolved._effect_def or {}
-	return {
+		action = { fixed = ON_PLAY },
+		phase = { fixed = PHASE_POINTS },
+		fields = {
+			immediate_points = "value",
+			delay_rounds = "delay_rounds",
+			priority = { resolved = "priority", default = 10, always = true },
+		},
+		validate = "number_value",
+	},
+	MONEY_FIELD_ENCLOSURE_PAYOUT = {
 		effect_name = "money_field_enclosure_payout",
-		action = def.action or ON_PLAY,
-		phase = def.phase or PHASE_POINTS,
-		value = def.value,
-		priority = resolved.priority or def.priority or 10,
-	}
-end
-
---- @param resolved table
---- @return table|nil
-local function round_def_copper_threshold_plus_mult(resolved)
-	local def = resolved._effect_def or {}
-	return {
+		action = { effect_def = "action", default = ON_PLAY },
+		phase = { effect_def = "phase", default = PHASE_POINTS },
+		fields = {
+			value = { effect_def = "value" },
+			priority = {
+				resolved = "priority",
+				effect_def = "priority",
+				default = 10,
+				always = true,
+			},
+		},
+		validate = "always",
+	},
+	COPPER_THRESHOLD_PLUS_MULT = {
 		effect_name = "copper_threshold_plus_mult",
-		action = def.action or ON_PLAY,
-		phase = def.phase or PHASE_MULT,
-		value = def.value or resolved.value,
-		conditions = def.conditions,
-		priority = resolved.priority or def.priority or 10,
-	}
-end
-
-local function round_def_final_blow_placement(resolved)
-	return {
+		action = { effect_def = "action", default = ON_PLAY },
+		phase = { effect_def = "phase", default = PHASE_MULT },
+		fields = {
+			value = { effect_def = "value", fallback = "value" },
+			conditions = { effect_def = "conditions" },
+			priority = {
+				resolved = "priority",
+				effect_def = "priority",
+				default = 10,
+				always = true,
+			},
+		},
+		validate = "always",
+	},
+	FINAL_BLOW_PLACEMENT = {
 		effect_name = "final_blow_placement",
-		action = ON_PLAY,
-		phase = PHASE_POINTS,
-		priority = resolved.priority or 10,
-	}
-end
-
-local function round_def_retrigger_prior_stone_effect(resolved)
-	return {
+		action = { fixed = ON_PLAY },
+		phase = { fixed = PHASE_POINTS },
+		fields = {
+			priority = { resolved = "priority", default = 10, always = true },
+		},
+		validate = "always",
+	},
+	RETRIGGER_PRIOR_STONE_EFFECT = {
 		effect_name = "retrigger_prior_stone_effect",
-		action = ON_PLAY,
-		phase = PHASE_POINTS,
-		priority = resolved.priority or 10,
-	}
-end
-
-local function round_def_escalating_points_init(resolved)
-	return {
+		action = { fixed = ON_PLAY },
+		phase = { fixed = PHASE_POINTS },
+		fields = {
+			priority = { resolved = "priority", default = 10, always = true },
+		},
+		validate = "always",
+	},
+	ESCALATING_POINTS_INIT = {
 		effect_name = "escalating_points_bank",
-		action = ON_PLAY,
-		phase = PHASE_POINTS,
-		priority = resolved.priority or 10,
-	}
-end
-
-M.ROUND_DEF_BY_TYPE = {
-	ADD_POINTS = round_def_add_points,
-	ADD_MULT = round_def_add_mult,
-	ADD_ENERGY = round_def_add_energy,
-	ADD_MONEY = round_def_add_money,
-	KAMIKAZE_SACRIFICE = round_def_kamikaze_sacrifice,
-	SELF_DESTRUCT_SETUP = round_def_self_destruct_setup,
-	MONEY_FIELD_ENCLOSURE_PAYOUT = round_def_money_field_enclosure_payout,
-	COPPER_THRESHOLD_PLUS_MULT = round_def_copper_threshold_plus_mult,
-	FINAL_BLOW_PLACEMENT = round_def_final_blow_placement,
-	RETRIGGER_PRIOR_STONE_EFFECT = round_def_retrigger_prior_stone_effect,
-	ESCALATING_POINTS_INIT = round_def_escalating_points_init,
+		action = { fixed = ON_PLAY },
+		phase = { fixed = PHASE_POINTS },
+		fields = {
+			priority = { resolved = "priority", default = 10, always = true },
+		},
+		validate = "always",
+	},
+	ANTI_CAPTURE_SETUP = {
+		validate = "always",
+	},
 }
+
+local VALIDATORS = {
+	number_value = function(resolved)
+		return type(resolved.value) == "number"
+	end,
+	money_value = function(resolved)
+		return type(resolved.value) == "table" and type(resolved.value.amount) == "number"
+	end,
+	always = function(_resolved)
+		return true
+	end,
+}
+
+M.RESOLVED_TYPE_SPECS = RESOLVED_TYPE_SPECS
 
 --- @param resolved table|nil
 --- @return table|nil
@@ -156,11 +214,11 @@ function M.round_effect_def_from_resolved(resolved)
 	if not resolved or not resolved.type then
 		return nil
 	end
-	local builder = M.ROUND_DEF_BY_TYPE[resolved.type]
-	if not builder then
+	local spec = RESOLVED_TYPE_SPECS[resolved.type]
+	if not spec or not spec.effect_name then
 		return nil
 	end
-	return builder(resolved)
+	return build_round_def(spec, resolved)
 end
 
 --- @param resolved_effects table
@@ -182,31 +240,12 @@ function M.is_valid_resolved(resolved)
 	if not resolved or type(resolved) ~= "table" then
 		return false
 	end
-	if resolved.type == "ADD_POINTS" or resolved.type == "ADD_MULT" or resolved.type == "ADD_ENERGY" then
-		return type(resolved.value) == "number"
+	local spec = RESOLVED_TYPE_SPECS[resolved.type]
+	if not spec then
+		return false
 	end
-	if resolved.type == "KAMIKAZE_SACRIFICE" or resolved.type == "SELF_DESTRUCT_SETUP" then
-		return type(resolved.value) == "number"
-	end
-	if resolved.type == "ADD_MONEY" then
-		return type(resolved.value) == "table" and type(resolved.value.amount) == "number"
-	end
-	if resolved.type == "MONEY_FIELD_ENCLOSURE_PAYOUT" then
-		return true
-	end
-	if resolved.type == "COPPER_THRESHOLD_PLUS_MULT" then
-		return true
-	end
-	if resolved.type == "FINAL_BLOW_PLACEMENT" or resolved.type == "RETRIGGER_PRIOR_STONE_EFFECT" then
-		return true
-	end
-	if resolved.type == "ESCALATING_POINTS_INIT" then
-		return true
-	end
-	if resolved.type == "ANTI_CAPTURE_SETUP" then
-		return true
-	end
-	return false
+	local validator = VALIDATORS[spec.validate]
+	return validator(resolved)
 end
 
 return M

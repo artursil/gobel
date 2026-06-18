@@ -29,18 +29,6 @@ local function copy_stone_runtime_fields(source, target)
 	if source.duration_left ~= nil then
 		target.duration_left = source.duration_left
 	end
-	if source.survival_rounds_remaining ~= nil then
-		target.survival_rounds_remaining = source.survival_rounds_remaining
-	end
-	if source.timer_remaining_rounds ~= nil then
-		target.timer_remaining_rounds = source.timer_remaining_rounds
-	end
-	if source.delay_payout ~= nil then
-		target.delay_payout = source.delay_payout
-	end
-	if source.immunity_remaining ~= nil then
-		target.immunity_remaining = source.immunity_remaining
-	end
 end
 
 --- Allocates a stone value for placement on the board.

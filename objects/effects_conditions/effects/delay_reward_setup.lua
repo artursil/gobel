@@ -1,4 +1,4 @@
---- Delay-reward on-play setup: stores ``duration_left`` and deferred payout on the placed cell.
+--- Delay-reward on-play setup: stores ``duration_left`` on the placed cell.
 ---
 --- Runs on ``on_play`` in the ``points`` phase. Definition must declare ``rounds`` and ``payout``
 --- from parameters (no builder fallback).
@@ -32,7 +32,6 @@ function M.build(effect)
 				state,
 				owner,
 				rounds,
-				payout,
 				kwargs and kwargs.row,
 				kwargs and kwargs.col
 			)

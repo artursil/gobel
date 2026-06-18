@@ -4,11 +4,7 @@
 local M = {}
 
 M.KNOWN_CONDITION_NAMES = {
-	always = true,
-	never = true,
-	random = true,
 	stone_tag_just_added = true,
-	temporary_stance_expired = true,
 	temporary_stance_active = true,
 	stance_owner_is_current_turn = true,
 	round_number_exactly = true,

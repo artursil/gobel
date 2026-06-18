@@ -1265,12 +1265,6 @@ function M.stone_timer_remaining(g, row, col)
 			return active.remaining_turns or 0
 		end
 	end
-	if type(cell) == "table" and cell.timer_remaining_rounds then
-		return cell.timer_remaining_rounds
-	end
-	if type(cell) == "table" and cell.survival_rounds_remaining then
-		return cell.survival_rounds_remaining
-	end
 	return 0
 end
 

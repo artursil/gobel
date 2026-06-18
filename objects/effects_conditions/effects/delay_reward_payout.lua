@@ -1,7 +1,7 @@
 --- Delay-reward tick payout when ``duration_left`` reaches zero after generic decrement.
 ---
 --- Runs on ``action = tick`` in the ``points`` phase for cells with an active timer.
---- Pays ``delay_payout`` stored at setup and clears timer fields.
+--- Pays deferred payout from the stone definition and clears timer fields.
 ---
 --- Shared helpers: ``delay_reward.payout_at_zero``.
 ---

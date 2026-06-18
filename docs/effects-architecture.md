@@ -39,7 +39,7 @@ The resolver **runs stages and phases in a fixed order**. The **only** resolver 
 | **Effect files** | `effects/<name>.lua` | `build(effect)` → inline `apply` | Yes (via apply) |
 | **Condition files** | `conditions/<name>.lua` | `eval(state, owner, condition_def) → pass, fragment` | No (fragments only) |
 | **Shared helpers** | `helpers/shared/*` | Reusable math, enqueue removals, placement reads | Usually yes when called from apply |
-| **Resolver stages** | `resolver/stages/*.lua` | Drain removal queue, legality, dumb timer decrement | Yes (orchestrated) |
+| **Resolver stages** | `resolver/stages/*.lua` | Drain removal queue, legality, generic timer decrement | Yes (orchestrated) |
 
 **Rule of thumb**
 
@@ -47,7 +47,7 @@ The resolver **runs stages and phases in a fixed order**. The **only** resolver 
 - **Drain** `pending_stone_removals`, `dispatch_removed`, prisoners → **`remove_stones` stage**
 - Regular Go capture at placement → **`rules` at commit** (immediate; no animation queue this pass)
 - Playability / immunity / blockade → **`legality_of_moves` stage** + `rules`
-- Dumb countdown decrement → **generic tick stage** (no stone semantics)
+- Generic countdown decrement → **generic tick stage** (no stone semantics)
 
 Do not put business logic in registry files or stone-specific branches in resolver stages.
 
@@ -62,6 +62,10 @@ Do not put business logic in registry files or stone-specific branches in resolv
 5. **UI / resolution input** (selected board target, placement coords) is read inside shared helpers from `state` — not copied into kwargs for card targeting.
 6. Def fields (`value`, `rounds`, `duration`, …) are closed over in `build` — not kwargs.
 7. Required kwargs keys must error when absent (`helpers/shared/require_kwargs.lua`).
+
+### Stone-context kwargs (registry convention)
+
+Board-scanned stone effects receive placement context from the registry, not extra `apply` parameters. `effects.wrap_board_scan` merges `{ row, col, cell, stone_def }` into kwargs before calling the effect's `apply`. Removal dispatch passes `{ row, col, cell, opts }` the same way. The registry routes only; it does not interpret stone semantics.
 
 ---
 
@@ -118,11 +122,11 @@ Sacrifice queue entries carry metadata so **`on_removed` is skipped** (kamikaze)
 
 ### Legality of moves (`resolver/stages/legality_of_moves.lua`)
 
-Rebuilds cached legal placements from board, ko ban, blockade, anti-capture (`duration_left` / legacy fields during migration).
+Rebuilds cached legal placements from board, ko ban, blockade, and anti-capture immunity (`cell.duration_left` > 0).
 
 ### Tick decrement (generic)
 
-Subtracts 1 from timer fields without interpreting stone meaning. Expire semantics live in **`action = tick` effect rows**.
+Subtracts 1 from `cell.duration_left` without interpreting stone meaning. Expire semantics live in **`action = tick` effect rows**.
 
 ---
 
@@ -130,7 +134,7 @@ Subtracts 1 from timer fields without interpreting stone meaning. Expire semanti
 
 ### Single hook: `apply(state, owner, kwargs)`
 
-Every resolved effect exposes **`apply` only** — no `on_tick`, no `EffectSchema.build` wrapper.
+Every resolved effect exposes **`apply` only** — scheduled via `action` + `phase`, built inline in `effects/<name>.lua`.
 
 | Stone / behavior | `action` | `phase` | Notes |
 |------------------|----------|---------|--------|
@@ -141,17 +145,19 @@ Every resolved effect exposes **`apply` only** — no `on_tick`, no `EffectSchem
 | self_destruct_setup / expire | `on_play` / `tick` | `points` | Expire enqueues removal |
 | anti_capture_setup / expire | `on_play` / `tick` | — | Expire no-op for now |
 | capture_zero_liberty_enemy | `on_play` | `points` | Condition `{ row, col }`; enqueue supplemental |
-| damage_selected_stone | `on_card` | `points` | Solidarity −; enqueue at 0 |
+| damage_selected_stone | `on_card` | `points` | Solidarity ↓; enqueue at 0 |
 | tax_enclosure_enemies | `end_of_turn` | `points` | Enclosure scan |
 | escalating capture penalty | `on_removed` | `points` | Via `dispatch_removed` |
 
 Timed stones use **separate `effect_name`s per beat**; strict `rounds`/`duration` on setup defs.
 
+Scheduling enums and parsing live in `objects/effects_conditions/scheduling.lua` (re-exported from `EffectSchema`).
+
 ---
 
 ## 8. State modeling
 
-Definitions (`objects/definitions/*`) are immutable. Runtime state lives on board cells, players, match score bags, and **`pending_stone_removals`**. Unified stone countdown: **`cell.duration_left`** (migrating from legacy fields).
+Definitions (`objects/definitions/*`) are immutable. Runtime state lives on board cells, players, match score bags, and **`pending_stone_removals`**. Stone countdown: **`cell.duration_left`**.
 
 ---
 
@@ -177,9 +183,9 @@ Run the full busted suite when touching stages, phases, or effects.
 
 ## 11. Reviewer checklist
 
-- [ ] Stone def has `effect_name`, `action`, `phase`
+- [ ] Stone def has `effect_name`, `action`, `phase` (schema rejects `macro`, `sub`, `when`, `lifecycle`)
 - [ ] Logic in `effects/<name>.lua` + `helpers/shared/`; registry routes only
-- [ ] `apply(state, owner, kwargs)` only; no `on_tick`
+- [ ] `apply(state, owner, kwargs)` only; board-scanned stones get context via `wrap_board_scan`
 - [ ] Removals enqueue — stage does not branch on stone id
 - [ ] Conditions return fragments for computed values; cards read resolution for targets
 - [ ] Timed setup defs declare `rounds`/`duration` from parameters
@@ -191,9 +197,12 @@ Run the full busted suite when touching stages, phases, or effects.
 
 | Anti-pattern | Why it fails |
 |--------------|--------------|
+| `macro`, `sub`, `when`, or `lifecycle` on effect defs | Schema rejects at load; use `action` + `phase` |
 | `on_tick` on resolved effects | Bypasses `action = tick` scheduling |
 | `EffectSchema.build` / `kwargs_from_def` | Hidden def→kwargs injection |
+| Extra `apply` parameters beyond kwargs | Breaks runner contract |
 | Clearing board in `apply` without enqueue | Skips animation-last removal beat |
 | Stone-specific logic in `remove_stones` | Violates ADR 0003 |
 | Duplicating regular Go capture in capture-stone effect | Regular capture has priority |
+| Business logic in registry files | Hard to review and test |
 | `helpers/effects/` per-effect trees | Superseded by `effects/<name>.lua` + `helpers/shared/` |

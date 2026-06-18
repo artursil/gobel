@@ -32,26 +32,6 @@ M.ACTION_ORDER = {
 	M.ACTION.game_end,
 }
 
-M.LEGACY_ACTION = {
-	playing_stones = M.ACTION.on_play,
-	playing_cards = M.ACTION.on_card,
-	board_reconcile = "board_reconcile",
-}
-
-M.VALID_WHEN = {
-	game_start = true,
-	before_turn = true,
-	playing_cards = true,
-	playing_stones = true,
-	board_reconcile = true,
-	end_of_turn = true,
-	on_removed = true,
-	game_end = true,
-	tick = true,
-	on_card = true,
-	on_play = true,
-}
-
 M.VALID_PHASE = {
 	territory = true,
 	points = true,
@@ -104,7 +84,7 @@ function M.sub_to_phase(sub_or_phase)
 	return sub_or_phase
 end
 
---- Normalize action or legacy macro/when alias to canonical action.
+--- Normalize action string to a canonical ACTION value when recognized.
 function M.normalize_action(action)
 	if not action then
 		return nil
@@ -112,51 +92,19 @@ function M.normalize_action(action)
 	if VALID_CANONICAL_ACTION[action] then
 		return action
 	end
-	local mapped = M.LEGACY_ACTION[action]
-	if mapped then
-		return mapped
-	end
-	return action
+	return nil
 end
 
-function M.macro_to_action(macro)
-	return M.normalize_action(macro)
-end
-
-function M.when_to_action(when)
-	return M.normalize_action(when)
-end
-
+--- Whether the value is a canonical ACTION enum member.
 function M.is_valid_action(action)
-	if not action then
-		return false
-	end
-	if VALID_CANONICAL_ACTION[action] then
-		return true
-	end
-	return M.LEGACY_ACTION[action] ~= nil
+	return action ~= nil and VALID_CANONICAL_ACTION[action] == true
 end
 
 function M.is_valid_phase(phase)
 	return phase ~= nil and VALID_PHASE_LOOKUP[phase] == true
 end
 
-function M.action_to_resolve_macro(action)
-	local normalized = M.normalize_action(action)
-	if normalized == M.ACTION.on_play then
-		return "playing_stones"
-	end
-	if normalized == M.ACTION.on_card then
-		return "playing_cards"
-	end
-	return normalized or action
-end
-
-function M.resolve_macro_to_action(resolve_macro)
-	return M.normalize_action(resolve_macro) or resolve_macro
-end
-
---- Parse action and phase from a definition row with legacy field compat.
+--- Parse canonical action and phase from a definition row.
 function M.parse_action_phase(effect_def)
 	if not effect_def then
 		return nil, nil
@@ -164,58 +112,7 @@ function M.parse_action_phase(effect_def)
 	if effect_def.action and effect_def.phase then
 		return M.normalize_action(effect_def.action), effect_def.phase
 	end
-	if effect_def.when and effect_def.phase then
-		return M.when_to_action(effect_def.when), effect_def.phase
-	end
-	if effect_def.lifecycle == "board_reconcile" then
-		return "board_reconcile", effect_def.phase or "territory"
-	end
-	if effect_def.lifecycle == "placement" then
-		return M.ACTION.on_play, effect_def.phase or "points"
-	end
-	if effect_def.macro == "on_removed" then
-		return M.ACTION.on_removed, effect_def.phase or "points"
-	end
-	if effect_def.macro == "end_of_turn" then
-		return M.ACTION.end_of_turn, effect_def.phase or "points"
-	end
-	if effect_def.macro == "board_reconcile" then
-		return "board_reconcile", effect_def.phase or "territory"
-	end
-	if effect_def.macro then
-		return M.macro_to_action(effect_def.macro), effect_def.phase or "points"
-	end
-	local legacy = effect_def.phase
-	if legacy == "distance" or legacy == "territory" then
-		return M.ACTION.on_play, M.PHASE.territory
-	end
-	if legacy == "points" then
-		return M.normalize_action(effect_def._legacy_macro or effect_def._legacy_action) or M.ACTION.on_play,
-			M.PHASE.points
-	end
-	if legacy == "mult" then
-		return M.normalize_action(effect_def._legacy_macro or effect_def._legacy_action) or M.ACTION.on_play,
-			M.PHASE.mult
-	end
 	return nil, nil
-end
-
-function M.parse_when_phase(effect_def)
-	local action, phase = M.parse_action_phase(effect_def)
-	if not action then
-		return nil, nil
-	end
-	if action == M.ACTION.on_play then
-		return "playing_stones", phase
-	end
-	if action == M.ACTION.on_card then
-		return "playing_cards", phase
-	end
-	return action, phase
-end
-
-function M.when_to_resolve_macro(when)
-	return M.action_to_resolve_macro(M.when_to_action(when) or when)
 end
 
 function M.is_placement_record(effect_def)
@@ -223,9 +120,6 @@ function M.is_placement_record(effect_def)
 		return false
 	end
 	if effect_def.placement_record == true then
-		return true
-	end
-	if effect_def.lifecycle == "placement" then
 		return true
 	end
 	local action, phase = M.parse_action_phase(effect_def)
@@ -242,12 +136,12 @@ function M.skips_board_scan(effect_def)
 	return M.is_placement_record(effect_def)
 end
 
+--- Whether an effect definition matches the active resolve pass.
 function M.matches_resolve_pass(effect_def, active_action, active_phase, territory_step, is_board_territory_effect)
 	local action, phase = M.parse_action_phase(effect_def)
 	if not action or not phase then
 		return false
 	end
-	local normalized_active = M.resolve_macro_to_action(active_action)
 	if phase ~= active_phase then
 		return false
 	end
@@ -262,7 +156,7 @@ function M.matches_resolve_pass(effect_def, active_action, active_phase, territo
 		end
 		return true
 	end
-	if action ~= normalized_active then
+	if action ~= active_action then
 		return false
 	end
 	if active_phase == M.PHASE.territory and territory_step and effect_def.territory_step and effect_def.territory_step ~= territory_step then

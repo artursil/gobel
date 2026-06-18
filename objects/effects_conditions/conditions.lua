@@ -1,11 +1,7 @@
 --- Thin condition dispatch registry.
 --- @module objects.effects_conditions.conditions
 
-local always = require("objects.effects_conditions.conditions.always")
-local never = require("objects.effects_conditions.conditions.never")
-local random = require("objects.effects_conditions.conditions.random")
 local stone_tag_just_added = require("objects.effects_conditions.conditions.stone_tag_just_added")
-local temporary_stance_expired = require("objects.effects_conditions.conditions.temporary_stance_expired")
 local temporary_stance_active = require("objects.effects_conditions.conditions.temporary_stance_active")
 local stance_owner_is_current_turn = require("objects.effects_conditions.conditions.stance_owner_is_current_turn")
 local round_number_exactly = require("objects.effects_conditions.conditions.round_number_exactly")
@@ -18,11 +14,7 @@ local wall_part_of_wall = require("objects.effects_conditions.conditions.wall_pa
 local capture_stone_supplemental_target = require("objects.effects_conditions.conditions.capture_stone_supplemental_target")
 
 local CONDITION_HELPERS = {
-	always = always,
-	never = never,
-	random = random,
 	stone_tag_just_added = stone_tag_just_added,
-	temporary_stance_expired = temporary_stance_expired,
 	temporary_stance_active = temporary_stance_active,
 	stance_owner_is_current_turn = stance_owner_is_current_turn,
 	round_number_exactly = round_number_exactly,

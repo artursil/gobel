@@ -321,26 +321,21 @@ local function resolve_action_from_opts(opts)
 	if opts.action then
 		return effect_enums.normalize_action(opts.action) or effect_enums.ACTION.on_play
 	end
-	if opts.macro then
-		return effect_enums.resolve_macro_to_action(opts.macro)
-	end
 	return effect_enums.ACTION.on_play
 end
 
 --- @param state table
---- @param opts table|nil ``{ action = string, macro = string }`` (``macro`` legacy)
+--- @param opts table|nil ``{ action = string }``
 --- @return nil
 function M.resolve(state, opts)
 	opts = opts or {}
 	local action = resolve_action_from_opts(opts)
-	local resolve_macro = effect_enums.action_to_resolve_macro(action)
 
 	ensure_state_fields(state)
 	sync_opponent_state(state)
 	prepare_score_baselines(state, action)
 	queries.clear_resolution(state)
 	state._resolve_action = action
-	state._resolve_macro = resolve_macro
 	if action == effect_enums.ACTION.end_of_turn then
 		state._tax_enclosure_paid = {}
 		run_eot_tick_pipeline(state)
@@ -358,7 +353,6 @@ function M.resolve(state, opts)
 
 	queries.clear_resolution(state)
 	state._resolve_action = nil
-	state._resolve_macro = nil
 end
 
 return M

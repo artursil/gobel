@@ -3,28 +3,43 @@
 
 local board = require("board")
 local config = require("config")
+local content = require("content")
 local duration_left = require("objects.effects_conditions.helpers.shared.duration_left")
 local placement = require("objects.effects_conditions.helpers.shared.effects_helpers")
 
 local M = {}
 
+--- @param cell table
+--- @return number|nil
+function M.payout_for_cell(cell)
+	local stone_def = content.resolve_stone({ def_id = cell.kind, level = cell.level or 1 })
+	if not stone_def or not stone_def.effects then
+		return nil
+	end
+	for i = 1, #stone_def.effects do
+		local row = stone_def.effects[i]
+		if row.effect_name == "delay_reward_setup" and type(row.payout) == "number" then
+			return row.payout
+		end
+	end
+	return nil
+end
+
 --- @param state table
 --- @param row integer
 --- @param col integer
 --- @param rounds integer
---- @param payout number
 --- @return nil
-function M.setup(state, row, col, rounds, payout)
+function M.setup(state, row, col, rounds)
 	local cell = state.board[row] and state.board[row][col]
 	if not cell or board.is_empty(cell) then
 		return
 	end
 	cell.duration_left = rounds
-	cell.delay_payout = payout
 	duration_left.set_tick_skip_for_placement(state, row, col)
 end
 
---- Pay stored payout when ``duration_left`` reached zero after the generic tick decrement.
+--- Pay deferred payout when ``duration_left`` reached zero after the generic tick decrement.
 --- @param state table
 --- @param row integer
 --- @param col integer
@@ -34,11 +49,10 @@ function M.payout_at_zero(state, row, col, cell)
 	if duration_left.remaining(cell) ~= 0 then
 		return
 	end
-	if cell.delay_payout == nil then
+	local payout_amount = M.payout_for_cell(cell)
+	if payout_amount == nil then
 		return
 	end
-	local payout_amount = cell.delay_payout
-	cell.delay_payout = nil
 	duration_left.clear(cell)
 	if board.is_empty(cell) or payout_amount <= 0 then
 		return
@@ -50,18 +64,17 @@ end
 --- @param state table
 --- @param owner string
 --- @param rounds integer
---- @param payout number
 --- @param row integer|nil
 --- @param col integer|nil
 --- @return nil
-function M.setup_from_placement(state, owner, rounds, payout, row, col)
+function M.setup_from_placement(state, owner, rounds, row, col)
 	if not row or not col then
 		row, col = placement.placement_coords(state)
 	end
 	if not row or not col then
 		return
 	end
-	M.setup(state, row, col, rounds, payout)
+	M.setup(state, row, col, rounds)
 end
 
 return M
