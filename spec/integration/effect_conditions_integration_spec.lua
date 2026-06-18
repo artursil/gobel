@@ -1,7 +1,7 @@
 require("spec.test_helper")
 
-local effects = require("objects.effects")
-local conditions = require("objects.conditions")
+local effects = require("objects.effects_conditions.effects")
+local conditions = require("objects.effects_conditions.conditions")
 
 describe("T-102 effects with conditions integration", function()
 	it("applies effect when all conditions pass", function()

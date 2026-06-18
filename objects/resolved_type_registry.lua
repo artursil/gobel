@@ -1,7 +1,7 @@
---- Shared resolved effect type → round scoring def mapping for resolver and AI.
+--- Shared resolved effect → round scoring def mapping for resolver and AI.
 --- @module objects.resolved_type_registry
 
-local effect_enums = require("objects.effect_enums")
+local effect_enums = require("objects.effects_conditions.scheduling")
 
 local M = {}
 
@@ -14,7 +14,7 @@ local PHASE_MULT = effect_enums.PHASE.mult
 local function round_def_add_points(resolved)
 	return {
 		effect_name = "add_points",
-		action = ON_PLAY,
+		action = resolved.action or ON_PLAY,
 		phase = PHASE_POINTS,
 		value = resolved.value,
 		priority = resolved.priority or 10,
@@ -26,7 +26,7 @@ end
 local function round_def_add_mult(resolved)
 	return {
 		effect_name = "add_mult",
-		action = ON_PLAY,
+		action = resolved.action or ON_PLAY,
 		phase = PHASE_MULT,
 		value = resolved.value,
 		priority = resolved.priority or 10,
@@ -50,7 +50,7 @@ end
 local function round_def_add_money(resolved)
 	return {
 		effect_name = "add_money",
-		action = ON_PLAY,
+		action = resolved.action or ON_PLAY,
 		phase = PHASE_POINTS,
 		value = resolved.value,
 		priority = resolved.priority or 10,
@@ -62,7 +62,7 @@ end
 local function round_def_kamikaze_sacrifice(resolved)
 	return {
 		effect_name = "kamikaze_sacrifice",
-		action = ON_PLAY,
+		action = resolved.action or ON_PLAY,
 		phase = PHASE_POINTS,
 		value = resolved.value,
 		priority = resolved.priority or 10,
@@ -74,9 +74,9 @@ end
 local function round_def_self_destruct_timed(resolved)
 	return {
 		effect_name = "self_destruct_timed",
-		action = ON_PLAY,
+		action = resolved.action or ON_PLAY,
 		phase = PHASE_POINTS,
-		immediate_points = resolved.value,
+		immediate_points = resolved.immediate_points or resolved.value,
 		delay_rounds = resolved.delay_rounds,
 		priority = resolved.priority or 10,
 	}
@@ -85,34 +85,32 @@ end
 --- @param resolved table
 --- @return table|nil
 local function round_def_money_field_enclosure_payout(resolved)
-	local def = resolved._effect_def or {}
 	return {
 		effect_name = "money_field_enclosure_payout",
-		action = def.action or ON_PLAY,
-		phase = def.phase or PHASE_POINTS,
-		value = def.value,
-		priority = resolved.priority or def.priority or 10,
+		action = resolved.action or ON_PLAY,
+		phase = resolved.phase or PHASE_POINTS,
+		value = resolved.value,
+		priority = resolved.priority or 10,
 	}
 end
 
 --- @param resolved table
 --- @return table|nil
 local function round_def_copper_threshold_plus_mult(resolved)
-	local def = resolved._effect_def or {}
 	return {
 		effect_name = "copper_threshold_plus_mult",
-		action = def.action or ON_PLAY,
-		phase = def.phase or PHASE_MULT,
-		value = def.value or resolved.value,
-		conditions = def.conditions,
-		priority = resolved.priority or def.priority or 10,
+		action = resolved.action or ON_PLAY,
+		phase = resolved.phase or PHASE_MULT,
+		value = resolved.value,
+		conditions = resolved.conditions,
+		priority = resolved.priority or 10,
 	}
 end
 
 local function round_def_final_blow_placement(resolved)
 	return {
 		effect_name = "final_blow_placement",
-		action = ON_PLAY,
+		action = resolved.action or ON_PLAY,
 		phase = PHASE_POINTS,
 		priority = resolved.priority or 10,
 	}
@@ -121,7 +119,7 @@ end
 local function round_def_retrigger_prior_stone_effect(resolved)
 	return {
 		effect_name = "retrigger_prior_stone_effect",
-		action = ON_PLAY,
+		action = resolved.action or ON_PLAY,
 		phase = PHASE_POINTS,
 		priority = resolved.priority or 10,
 	}
@@ -130,33 +128,33 @@ end
 local function round_def_escalating_points_init(resolved)
 	return {
 		effect_name = "escalating_points_bank",
-		action = ON_PLAY,
+		action = resolved.action or ON_PLAY,
 		phase = PHASE_POINTS,
 		priority = resolved.priority or 10,
 	}
 end
 
-M.ROUND_DEF_BY_TYPE = {
-	ADD_POINTS = round_def_add_points,
-	ADD_MULT = round_def_add_mult,
-	ADD_ENERGY = round_def_add_energy,
-	ADD_MONEY = round_def_add_money,
-	KAMIKAZE_SACRIFICE = round_def_kamikaze_sacrifice,
-	SELF_DESTRUCT_TIMED = round_def_self_destruct_timed,
-	MONEY_FIELD_ENCLOSURE_PAYOUT = round_def_money_field_enclosure_payout,
-	COPPER_THRESHOLD_PLUS_MULT = round_def_copper_threshold_plus_mult,
-	FINAL_BLOW_PLACEMENT = round_def_final_blow_placement,
-	RETRIGGER_PRIOR_STONE_EFFECT = round_def_retrigger_prior_stone_effect,
-	ESCALATING_POINTS_INIT = round_def_escalating_points_init,
+M.ROUND_DEF_BY_NAME = {
+	add_points = round_def_add_points,
+	add_mult = round_def_add_mult,
+	add_energy = round_def_add_energy,
+	add_money = round_def_add_money,
+	kamikaze_sacrifice = round_def_kamikaze_sacrifice,
+	self_destruct_timed = round_def_self_destruct_timed,
+	money_field_enclosure_payout = round_def_money_field_enclosure_payout,
+	copper_threshold_plus_mult = round_def_copper_threshold_plus_mult,
+	final_blow_placement = round_def_final_blow_placement,
+	retrigger_prior_stone_effect = round_def_retrigger_prior_stone_effect,
+	escalating_points_bank_init = round_def_escalating_points_init,
 }
 
 --- @param resolved table|nil
 --- @return table|nil
 function M.round_effect_def_from_resolved(resolved)
-	if not resolved or not resolved.type then
+	if not resolved or not resolved.effect_name then
 		return nil
 	end
-	local builder = M.ROUND_DEF_BY_TYPE[resolved.type]
+	local builder = M.ROUND_DEF_BY_NAME[resolved.effect_name]
 	if not builder then
 		return nil
 	end
@@ -182,28 +180,29 @@ function M.is_valid_resolved(resolved)
 	if not resolved or type(resolved) ~= "table" then
 		return false
 	end
-	if resolved.type == "ADD_POINTS" or resolved.type == "ADD_MULT" or resolved.type == "ADD_ENERGY" then
+	local name = resolved.effect_name
+	if name == "add_points" or name == "add_mult" or name == "add_energy" then
 		return type(resolved.value) == "number"
 	end
-	if resolved.type == "KAMIKAZE_SACRIFICE" or resolved.type == "SELF_DESTRUCT_TIMED" then
-		return type(resolved.value) == "number"
+	if name == "kamikaze_sacrifice" or name == "self_destruct_timed" then
+		return type(resolved.value) == "number" or type(resolved.immediate_points) == "number"
 	end
-	if resolved.type == "ADD_MONEY" then
+	if name == "add_money" then
 		return type(resolved.value) == "table" and type(resolved.value.amount) == "number"
 	end
-	if resolved.type == "MONEY_FIELD_ENCLOSURE_PAYOUT" then
+	if name == "money_field_enclosure_payout" then
 		return true
 	end
-	if resolved.type == "COPPER_THRESHOLD_PLUS_MULT" then
+	if name == "copper_threshold_plus_mult" then
 		return true
 	end
-	if resolved.type == "FINAL_BLOW_PLACEMENT" or resolved.type == "RETRIGGER_PRIOR_STONE_EFFECT" then
+	if name == "final_blow_placement" or name == "retrigger_prior_stone_effect" then
 		return true
 	end
-	if resolved.type == "ESCALATING_POINTS_INIT" then
+	if name == "escalating_points_bank_init" then
 		return true
 	end
-	if resolved.type == "ANTI_CAPTURE_IMMUNITY" then
+	if name == "anti_capture_immunity" then
 		return true
 	end
 	return false

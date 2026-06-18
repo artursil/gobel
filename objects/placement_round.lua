@@ -1,7 +1,7 @@
 --- Placement record helpers: collect stone effect defs for ``round_stone_effects``.
 --- @module objects.placement_round
 
-local effect_schedule = require("objects.effect_schedule")
+local effect_schedule = require("objects.effects_conditions.scheduling")
 local placement_preview = require("objects.placement_preview")
 
 local M = {}

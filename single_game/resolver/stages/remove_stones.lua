@@ -4,7 +4,7 @@
 local board = require("board")
 local config = require("config")
 local content = require("content")
-local effects_helpers = require("objects.effects_helpers")
+local effects_helpers = require("objects.effects_conditions.helpers.shared.effects_helpers")
 
 local M = {}
 

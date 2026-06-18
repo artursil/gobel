@@ -643,12 +643,12 @@ function M.compute_from_board(b, territory_mode)
 		},
 	}
 	local scoring_phases = require("single_game.resolver.scoring_phases")
-	effect_manager.apply_phase_pass(temp_state, "playing_stones", "territory", scoring_phases.TERRITORY_STEP_DISTANCE)
+	effect_manager.apply_phase_pass(temp_state, "on_play", "territory", scoring_phases.TERRITORY_STEP_DISTANCE)
 	temp_state.territory_tiles = tiles
 	temp_state.enclosure_walls = walls
 	temp_state.regions = regions
-	effect_manager.apply_phase_pass(temp_state, "playing_stones", "territory", scoring_phases.TERRITORY_STEP_VALUE)
-	effect_manager.apply_phase_pass(temp_state, "playing_stones", "territory", scoring_phases.TERRITORY_STEP_OVERRIDE)
+	effect_manager.apply_phase_pass(temp_state, "on_play", "territory", scoring_phases.TERRITORY_STEP_VALUE)
+	effect_manager.apply_phase_pass(temp_state, "on_play", "territory", scoring_phases.TERRITORY_STEP_OVERRIDE)
 	local territory_grid, decision_sources = finish_resolve_owners(tiles, regions, walls, b, temp_state, false)
 	return territory_grid, decision_sources, temp_state.territory_value
 end

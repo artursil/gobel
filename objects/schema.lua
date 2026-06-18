@@ -1,55 +1,14 @@
 --- Schema validation for unified game objects.
---- Stone effects declare ``action`` + ``phase`` (legacy ``macro`` / ``when`` / ``lifecycle`` accepted during migration).
+--- Stone effects declare ``action`` + ``phase``.
 --- @module objects.schema
 
-local effect_enums = require("objects.effect_enums")
+local EffectSchema = require("objects.effects_conditions.EffectSchema")
 
 local M = {}
 
 local VALID_TYPES = { stone = true, card = true, stance = true }
 
 local VALID_RARITIES = { common = true, uncommon = true, rare = true, epic = true, legendary = true }
-
-local VALID_ACTION = {}
-for _, action in pairs(effect_enums.ACTION) do
-	VALID_ACTION[action] = true
-end
-VALID_ACTION.board_reconcile = true
-
-local VALID_WHEN = {
-	game_start = true,
-	before_turn = true,
-	playing_cards = true,
-	playing_stones = true,
-	board_reconcile = true,
-	end_of_turn = true,
-	on_removed = true,
-	game_end = true,
-	tick = true,
-	on_card = true,
-	on_play = true,
-}
-
-local VALID_PHASES = {
-	territory = true,
-	points = true,
-	mult = true,
-}
-
-local VALID_MACROS = VALID_WHEN
-
-local VALID_LIFECYCLES = {
-	placement = true,
-	board_reconcile = true,
-}
-
-local VALID_SCOPES = {
-	self = true,
-	board = true,
-	hand = true,
-	opponent = true,
-	all = true,
-}
 
 local VALID_PLAY_MODES = {
 	instant = true,
@@ -91,138 +50,6 @@ local function list_valid(tbl)
 	end
 	table.sort(result)
 	return table.concat(result, ", ")
-end
-
---- @param effect table
---- @param object_id string
---- @return boolean
---- @return string|nil
-local function validate_effect(effect, object_id)
-	if type(effect) ~= "table" then
-		return false, string.format("Effect in %s is not a table: %s", object_id, type(effect))
-	end
-
-	if not effect.effect_name or type(effect.effect_name) ~= "string" then
-		return false, string.format("Effect in %s missing effect_name or not string", object_id)
-	end
-
-	if effect.sub then
-		return false,
-			string.format("Effect '%s' in %s uses removed field sub; use phase", effect.effect_name, object_id)
-	end
-
-	if effect.action and effect.phase then
-		if not VALID_ACTION[effect.action] then
-			return false,
-				string.format(
-					"Effect '%s' in %s has invalid action '%s' (valid: %s)",
-					effect.effect_name,
-					object_id,
-					effect.action,
-					list_valid(VALID_ACTION)
-				)
-		end
-		if not VALID_PHASES[effect.phase] then
-			return false,
-				string.format(
-					"Effect '%s' in %s has invalid phase '%s' (valid: %s)",
-					effect.effect_name,
-					object_id,
-					effect.phase,
-					list_valid(VALID_PHASES)
-				)
-		end
-	elseif effect.when and effect.phase then
-		if not VALID_WHEN[effect.when] then
-			return false,
-				string.format(
-					"Effect '%s' in %s has invalid when '%s' (valid: %s)",
-					effect.effect_name,
-					object_id,
-					effect.when,
-					list_valid(VALID_WHEN)
-				)
-		end
-		if not VALID_PHASES[effect.phase] then
-			return false,
-				string.format(
-					"Effect '%s' in %s has invalid phase '%s' (valid: %s)",
-					effect.effect_name,
-					object_id,
-					effect.phase,
-					list_valid(VALID_PHASES)
-				)
-		end
-	elseif effect.macro and effect.phase then
-		if not VALID_MACROS[effect.macro] then
-			return false,
-				string.format(
-					"Effect '%s' in %s has invalid macro '%s' (valid: %s)",
-					effect.effect_name,
-					object_id,
-					effect.macro,
-					list_valid(VALID_MACROS)
-				)
-		end
-		if not VALID_PHASES[effect.phase] then
-			return false,
-				string.format(
-					"Effect '%s' in %s has invalid phase '%s' (valid: %s)",
-					effect.effect_name,
-					object_id,
-					effect.phase,
-					list_valid(VALID_PHASES)
-				)
-		end
-	elseif effect.phase and type(effect.phase) == "string" then
-	else
-		return false,
-			string.format("Effect '%s' in %s missing action/phase or legacy scheduling fields", effect.effect_name, object_id)
-	end
-
-	if effect.priority and type(effect.priority) ~= "number" then
-		return false,
-			string.format("Effect '%s' in %s has non-numeric priority: %s", effect.effect_name, object_id, type(effect.priority))
-	end
-
-	if effect.value and type(effect.value) ~= "number" and type(effect.value) ~= "table" then
-		return false,
-			string.format(
-				"Effect '%s' in %s has invalid value type (expected number or table, got %s)",
-				effect.effect_name,
-				object_id,
-				type(effect.value)
-			)
-	end
-
-	if effect.duration and type(effect.duration) ~= "number" then
-		return false,
-			string.format("Effect '%s' in %s has non-numeric duration: %s", effect.effect_name, object_id, type(effect.duration))
-	end
-
-	if effect.scope and not VALID_SCOPES[effect.scope] then
-		return false,
-			string.format(
-				"Effect '%s' in %s has invalid scope '%s' (valid: %s)",
-				effect.effect_name,
-				object_id,
-				effect.scope,
-				list_valid(VALID_SCOPES)
-			)
-	end
-
-	if effect.lifecycle and not VALID_LIFECYCLES[effect.lifecycle] then
-		return false,
-			string.format(
-				"Effect '%s' in %s has invalid lifecycle '%s' (valid: %s)",
-				effect.effect_name,
-				object_id,
-				effect.lifecycle,
-				list_valid(VALID_LIFECYCLES)
-			)
-	end
-
-	return true
 end
 
 --- @param object table
@@ -323,7 +150,7 @@ function M.validate_object(object, object_type)
 	end
 
 	for i, effect in ipairs(object.effects) do
-		local valid, err = validate_effect(effect, object.id)
+		local valid, err = EffectSchema.validate(effect, object.id)
 		if not valid then
 			return false, string.format("Object %s, effect #%d: %s", object.id, i, err)
 		end
@@ -349,9 +176,8 @@ function M.validate_all(definitions, object_type)
 	return #errors == 0, errors
 end
 
-M.VALID_ACTION = VALID_ACTION
-M.VALID_MACROS = VALID_MACROS
-M.VALID_WHEN = VALID_WHEN
-M.VALID_PHASES = VALID_PHASES
+M.VALID_ACTION = EffectSchema.VALID_ACTION
+M.VALID_WHEN = EffectSchema.VALID_WHEN
+M.VALID_PHASES = EffectSchema.VALID_PHASES
 
 return M

@@ -1,41 +1,43 @@
 require("spec.test_helper")
 
-local conditions = require("objects.conditions")
+local conditions = require("objects.effects_conditions.conditions")
 
 describe("T-101 conditions system", function()
 	it("evaluates always condition as true", function()
-		assert.is_true(conditions.always({}))
+		assert.is_true(conditions.eval({ condition_name = "always" }, {}))
 	end)
 
 	it("evaluates never condition as false", function()
-		assert.is_false(conditions.never({}))
+		assert.is_false(conditions.eval({ condition_name = "never" }, {}))
 	end)
 
 	it("evaluates random condition with probability 1.0", function()
-		local def = { probability = 1.0 }
-		assert.is_true(conditions.random(def, {}))
+		local def = { condition_name = "random", probability = 1.0 }
+		assert.is_true(conditions.eval(def, {}))
 	end)
 
 	it("evaluates random condition with probability 0.0", function()
-		local def = { probability = 0.0 }
-		assert.is_false(conditions.random(def, {}))
+		local def = { condition_name = "random", probability = 0.0 }
+		assert.is_false(conditions.eval(def, {}))
 	end)
 
 	it("evaluates random condition with invalid probability as false", function()
-		local def = { probability = nil }
-		assert.is_false(conditions.random(def, {}))
+		local def = { condition_name = "random", probability = nil }
+		assert.is_false(conditions.eval(def, {}))
 	end)
 
 	it("fractional random without rng is false (replay-safe fallback)", function()
-		assert.is_false(conditions.random({ probability = 0.37 }, {}))
-		assert.is_false(conditions.random({ probability = 0.37 }, nil))
+		assert.is_false(conditions.eval({ condition_name = "random", probability = 0.37 }, {}))
+		assert.is_false(conditions.eval({ condition_name = "random", probability = 0.37 }, nil))
 	end)
 
 	it("fractional random uses state.rng deterministically", function()
-		local def = { probability = 0.37 }
+		local def = { condition_name = "random", probability = 0.37 }
 		local s1 = { rng = { seed = 94211 } }
 		local s2 = { rng = { seed = 94211 } }
-		assert.are.equal(conditions.random(def, s1), conditions.random(def, s2))
+		local pass1 = conditions.eval(def, s1)
+		local pass2 = conditions.eval(def, s2)
+		assert.are.equal(pass1, pass2)
 	end)
 
 	it("evaluates empty conditions array as true (pass-through)", function()
@@ -88,13 +90,13 @@ describe("T-101 conditions system", function()
 	end)
 
 	it("evaluates round_number_exactly", function()
-		assert.is_true(conditions.round_number_exactly({ value = 2 }, { round_number = 2 }))
-		assert.is_false(conditions.round_number_exactly({ value = 1 }, { round_number = 2 }))
+		assert.is_true(conditions.eval({ condition_name = "round_number_exactly", value = 2 }, { round_number = 2 }))
+		assert.is_false(conditions.eval({ condition_name = "round_number_exactly", value = 1 }, { round_number = 2 }))
 	end)
 
 	it("evaluates round_number_at_least", function()
-		assert.is_true(conditions.round_number_at_least({ value = 2 }, { round_number = 3 }))
-		assert.is_true(conditions.round_number_at_least({ value = 2 }, { round_number = 2 }))
-		assert.is_false(conditions.round_number_at_least({ value = 3 }, { round_number = 2 }))
+		assert.is_true(conditions.eval({ condition_name = "round_number_at_least", value = 2 }, { round_number = 3 }))
+		assert.is_true(conditions.eval({ condition_name = "round_number_at_least", value = 2 }, { round_number = 2 }))
+		assert.is_false(conditions.eval({ condition_name = "round_number_at_least", value = 3 }, { round_number = 2 }))
 	end)
 end)

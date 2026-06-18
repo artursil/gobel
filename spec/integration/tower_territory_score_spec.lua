@@ -72,7 +72,7 @@ describe("tower territory score through resolve", function()
 		place_corner_tower(g)
 
 		local after_stone = test_helper.player_territory_score(g, "black")
-		resolve_round.resolve(g, { macro = "playing_cards" })
+		resolve_round.resolve(g, { action = "on_card" })
 
 		assert.are.equal(2, g.territory_value[1][2])
 		assert.are.equal(after_stone, match_state.player_for_color(g, "black").score.territory)
@@ -84,7 +84,7 @@ describe("tower territory score through resolve", function()
 		local g = new_game()
 		place_corner_tower(g)
 
-		resolve_round.resolve(g, { macro = "end_of_turn" })
+		resolve_round.resolve(g, { action = "end_of_turn" })
 
 		assert.are.equal(2, g.territory_value[1][2])
 		assert.are.equal(test_helper.player_territory_score(g, "black"), match_state.player_for_color(g, "black").score.territory)

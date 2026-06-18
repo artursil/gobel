@@ -1,7 +1,7 @@
 require("spec.test_helper")
 
-local Effect = require("single_game.resolver.Effect")
-local effect_enums = require("objects.effect_enums")
+local Effect = require("objects.effects_conditions.EffectSchema")
+local effect_enums = require("objects.effects_conditions.scheduling")
 
 describe("T-202 Effect schema runtime", function()
 	it("creates effect instance with action and phase", function()
@@ -35,21 +35,24 @@ describe("T-202 Effect schema runtime", function()
 	it("rejects legacy sub field", function()
 		local effect_def = {
 			effect_name = "add_points",
-			macro = "playing_stones",
+			sub = "points",
+			action = effect_enums.ACTION.on_play,
+			phase = effect_enums.PHASE.points,
 		}
 		local valid, err = Effect.validate(effect_def)
 		assert.is_false(valid)
+		assert.matches("removed field sub", err)
 	end)
 
-	it("validates legacy macro/phase effect", function()
+	it("rejects legacy macro field", function()
 		local effect_def = {
 			effect_name = "add_points",
 			macro = "playing_stones",
 			phase = "points",
 		}
 		local valid, err = Effect.validate(effect_def)
-		assert.is_true(valid)
-		assert.is_nil(err)
+		assert.is_false(valid)
+		assert.matches("removed field macro", err)
 	end)
 
 	it("rejects invalid effect_name", function()
@@ -110,5 +113,22 @@ describe("T-202 Effect schema runtime", function()
 			phase = effect_enums.PHASE.points,
 		})
 		assert.are.equal("game", effect.scope)
+	end)
+
+	it("rejects duplicate kwargs keys across conditions", function()
+		local effect_def = {
+			effect_name = "test_effect",
+			action = effect_enums.ACTION.on_play,
+			phase = effect_enums.PHASE.points,
+			conditions = {
+				{ condition_name = "always", kwargs_keys = { "blocks" } },
+				{ condition_name = "wall_part_of_wall" },
+			},
+		}
+		local valid, err = Effect.validate(effect_def)
+		assert.is_false(valid)
+		assert.is_not_nil(err)
+		assert.matches("Duplicate kwargs key .-blocks", err)
+		assert.matches("conditions #1 and #2", err)
 	end)
 end)

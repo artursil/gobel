@@ -40,7 +40,7 @@ Other match beats (end of turn, tick, on removed, board reconcile) invoke the sa
 
 - Each stone effect declares `effect_name`, `when`, and `phase`.
 - Resolved effects expose **`apply` only** — no `on_compile`, `on_placement`, or other placement hooks.
-- Factories delegate to helper modules under `objects/helper_effects/`.
+- Factories delegate to helper modules under `objects/effects_conditions/helpers/effects/` (see [ADR 0002](0002-effects-conditions-module.md)).
 
 ### Stages vs effects
 

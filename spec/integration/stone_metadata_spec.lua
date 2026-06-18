@@ -35,7 +35,6 @@ describe("T-050 stone metadata and behavior hooks", function()
 				assert.is_true(
 					(effect.action ~= nil and effect.phase ~= nil)
 						or (effect.when ~= nil and effect.phase ~= nil)
-						or (effect.macro ~= nil and effect.phase ~= nil)
 				)
 			end
 		end

@@ -9,7 +9,7 @@ local resolver = require("resolver")
 local spec_helper = require("spec.spec_helper")
 local P = require("spec.parameters_helper")
 
-describe("resolve scoring macro", function()
+describe("resolve scoring action", function()
 	it("playing_stones resolve counts center stone territory and placement points once", function()
 		local g = game.new("pvp", "basic_stones")
 		g.board = board.new()
@@ -38,7 +38,7 @@ describe("resolve scoring macro", function()
 				},
 			},
 		}
-		resolve_round.resolve(g, { macro = "playing_stones" })
+		resolve_round.resolve(g, { action = "on_play" })
 		assert.are.equal(P.territory_after_single_center_stone(), g.scores.territory.B)
 		assert.are.equal(P.starting_points() + injected_points, g.scores.points.B)
 	end)
@@ -107,7 +107,7 @@ describe("resolve scoring macro", function()
 			},
 		}
 		g.last_opponent_move = { row = 5, col = 5, stone_id = "x_stone", actor = "black" }
-		resolve_round.resolve(g, { macro = "playing_stones" })
+		resolve_round.resolve(g, { action = "on_play" })
 		assert.are.equal(P.x_mult_after(P.base_x_mult(), 1), black.score.x_mult, "completing minimal X doubles x_mult")
 
 		g.to_play = "white"
@@ -128,8 +128,8 @@ describe("resolve scoring macro", function()
 			},
 		}
 		g.last_opponent_move = { row = 3, col = 3, stone_id = "stone_basic", actor = "white" }
-		resolve_round.resolve(g, { macro = "playing_stones" })
-		resolve_round.resolve(g, { macro = "end_of_turn" })
+		resolve_round.resolve(g, { action = "on_play" })
+		resolve_round.resolve(g, { action = "end_of_turn" })
 		resolver.begin_turn(g, "black")
 		assert.are.equal(P.x_mult_after(P.base_x_mult(), 1), black.score.x_mult, "black x_mult unchanged after white stone and turn advance")
 	end)

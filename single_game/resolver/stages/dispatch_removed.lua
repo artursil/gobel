@@ -4,7 +4,7 @@
 local board = require("board")
 local config = require("config")
 local content = require("content")
-local effects_helpers = require("objects.effects_helpers")
+local effects_helpers = require("objects.effects_conditions.helpers.shared.effects_helpers")
 
 local M = {}
 
@@ -55,7 +55,7 @@ end
 --- @param opts table|nil
 --- @return nil
 function M.on_removed(state, row, col, cell, opts)
-	local objects_effects = require("objects.effects")
+	local objects_effects = require("objects.effects_conditions.effects")
 	objects_effects.apply_on_removed_effects(state, row, col, cell, opts)
 end
 

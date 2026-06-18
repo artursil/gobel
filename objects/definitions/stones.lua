@@ -660,6 +660,9 @@ M.wall = {
 			phase = "points",
 			effect_name = "wall_stone",
 			priority = P.wall_effect_priority,
+			conditions = {
+				{ condition_name = "wall_part_of_wall" },
+			},
 		},
 	},
 }

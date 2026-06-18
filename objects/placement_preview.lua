@@ -2,8 +2,8 @@
 --- @module objects.placement_preview
 
 local effect_registry = require("effect_registry")
-local effect_enums = require("objects.effect_enums")
-local effect_schedule = require("objects.effect_schedule")
+local effect_enums = require("objects.effects_conditions.scheduling")
+local effect_schedule = require("objects.effects_conditions.scheduling")
 local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 local resolved_type_registry = require("objects.resolved_type_registry")
 

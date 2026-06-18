@@ -90,13 +90,13 @@ local function apply_continuation_placement_setup(state, stone_effects, resolved
 		if effect_def.effect_name == "delay_reward_survival" then
 			local resolved = Effects.stones.resolve(effect_def)
 			if resolved and resolved.apply then
-				resolved.apply(state, owner, row, col)
+				resolved.apply(state, owner, { row = row, col = col })
 			end
 		end
 	end
 	for i = 1, #(resolved_effects or {}) do
 		local resolved = resolved_effects[i]
-		if resolved.type == "SELF_DESTRUCT_TIMED" and resolved.delay_rounds then
+		if resolved.effect_name == "self_destruct_timed" and resolved.delay_rounds then
 			board_cell_timers.register(state, row, col, resolved.delay_rounds)
 		end
 	end
@@ -135,10 +135,11 @@ local function stone_placement_message(stone_def, resolved_effects)
 	end
 	local name = stone_def.name
 	local r = resolved_effects[1]
-	if r.type == "ADD_POINTS" or r.type == "KAMIKAZE_SACRIFICE" or r.type == "SELF_DESTRUCT_TIMED" then
-		return string.format("%s placement: +%d points", name, r.value)
+	if r.effect_name == "add_points" or r.effect_name == "kamikaze_sacrifice" or r.effect_name == "self_destruct_timed" then
+		local points = r.value or r.immediate_points
+		return string.format("%s placement: +%d points", name, points)
 	end
-	if r.type == "ADD_MULT" then
+	if r.effect_name == "add_mult" then
 		return string.format("%s placement: +%d mult", name, r.value)
 	end
 	return name .. " placed"

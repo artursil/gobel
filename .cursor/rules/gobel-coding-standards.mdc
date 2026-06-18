@@ -25,7 +25,7 @@ if not v.ok then return end
 ## Code style (Lua)
 
 - **Minimal diff** — no drive-by refactors or unrelated files.
-- **Docstrings** (`--- @param`, `--- @return`) on new/changed functions; avoid inline comments for behavior.
+- **Docstrings** on new/changed functions; avoid inline comments for behavior.
 - **Fully typed** new APIs: `str | nil`, not `Optional`; use Enums/tables with schema validation in `objects/schema.lua` for defs.
 - **Small focused functions**; avoid deep nesting and copy-paste — extract shared logic once.
 - **No gratuitous defensive branches** or `pcall` unless explicitly required.
@@ -39,7 +39,7 @@ if not v.ok then return end
 ## Effects & scoring
 
 - Stone/card effects declare **`when` + `phase`**; resolver stages schedule **`apply`** — no hook model.
-- New card/stone behavior = new **effect_name** + `objects/effects.lua` factory + `objects/helper_effects/*` apply logic + spec.
+- New card/stone behavior = new **effect_name** + `objects/effects_conditions/effects.lua` dispatch + `objects/effects_conditions/helpers/effects/*` apply logic + spec.
 
 ## Tests
 

@@ -134,10 +134,51 @@ This is literally all wrong and should be handled all in apply.
 
 1. condition still not used
 2. phases enum wrong
-3. action enum I don't see
-4. macro still exists
-5. sub still exists
+3. action enum I don't see X
+4. macro still exists X
+5. sub still exists X
 6. helper_effects vs effect_helpers
 7. legacy_action remove
 8. dispatch_removed vs remove_stones
 9. Condition.lua why removed?
+
+
+
+objects
+├── animations
+├── definitions
+├── effects
+│   ├── effect_helpers
+│   ├── EffectSchema.lua
+│   ├── effects.lua
+├── conditions
+│   ├── condition_helpers
+│   ├── ConditionSchema.lua
+│   ├── conditions.lua
+├── parameters
+│   ├── cards.lua
+├── definitions
+│   ├── cards.lua
+├── definitions
+│   ├── cards.lua
+
+
+We are almost there .
+1. Object definition is wrong it should look something like this:
+		effects = {
+			{
+				effect_name = "add_points",
+				action = "on_play",
+				phase = "points",
+				value = S.stance_focus_bonus_points_per_round,
+				priority = S.stance_turn_bonus_priority,
+				conditions = {
+					{ condition_name = "temporary_stance_active" },
+					{ condition_name = "stance_owner_is_current_turn" },
+				},
+			},
+		},
+
+I'm just not sure how to handle if we have multiple values for effects or conditions
+
+2. I'm stiil not sure how do you define conditions inside conditions.lua

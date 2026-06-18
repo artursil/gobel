@@ -128,7 +128,7 @@ describe("state.resolution metadata wiring", function()
 			scores = minimal_scores(),
 		}
 
-		em.apply_phase_pass(state, "playing_stones", "points", nil)
+		em.apply_phase_pass(state, "on_play", "points", nil)
 		em.collect_effects = orig_collect
 
 		assert.are.equal("W", seen_owner)

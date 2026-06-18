@@ -1,22 +1,12 @@
 --- Action/phase scoring passes for per-action resolve.
 --- @module resolver.scoring_phases
 
-local effect_enums = require("objects.effect_enums")
-local effect_schedule = require("objects.effect_schedule")
+local effect_enums = require("objects.effects_conditions.scheduling")
+local effect_schedule = require("objects.effects_conditions.scheduling")
 
 local M = {}
 
 M.ACTION_ORDER = effect_enums.ACTION_ORDER
-M.MACRO_ORDER = {
-	"game_start",
-	"before_turn",
-	"playing_cards",
-	"playing_stones",
-	"end_of_turn",
-	"on_removed",
-	"game_end",
-}
-
 M.PHASE_ORDER = effect_enums.PHASE_ORDER
 
 M.TERRITORY_STEP_DISTANCE = "distance"
@@ -43,16 +33,10 @@ function M.is_board_territory_effect(effect_def)
 	return M.BOARD_TERRITORY_EFFECT_NAMES[effect_def.effect_name] == true
 end
 
---- @param action string|nil canonical or legacy resolve macro
+--- @param action string|nil canonical action or legacy when alias
 --- @return boolean
 function M.is_valid_action(action)
-	return effect_enums.is_valid_action(effect_enums.resolve_macro_to_action(action))
-end
-
---- @param macro string|nil legacy alias
---- @return boolean
-function M.is_valid_macro(macro)
-	return M.is_valid_action(macro)
+	return effect_enums.is_valid_action(effect_enums.normalize_action(action))
 end
 
 --- @param phase string|nil
@@ -73,31 +57,18 @@ function M.parse_effect_scheduling(effect_def)
 	if not action or not phase then
 		return nil, nil, nil
 	end
-	if effect_def.phase == "distance" and not effect_def.action and not effect_def.when and not effect_def.macro then
+	if effect_def.phase == "distance" and not effect_def.action and not effect_def.when then
 		return effect_enums.ACTION.on_play, effect_enums.PHASE.territory, M.TERRITORY_STEP_DISTANCE
 	end
-	if effect_def.phase == "territory" and not effect_def.action and not effect_def.when and not effect_def.macro then
+	if effect_def.phase == "territory" and not effect_def.action and not effect_def.when then
 		local step = effect_def.territory_step or M.TERRITORY_STEP_VALUE
 		return effect_enums.ACTION.on_play, effect_enums.PHASE.territory, step
 	end
 	return action, phase, effect_def.territory_step
 end
 
---- Legacy ``phase`` string to action, phase, optional territory internal step.
 --- @param effect_def table
---- @return string|nil macro legacy resolve macro for callers
---- @return string|nil phase
---- @return string|nil territory_step
-function M.parse_effect_phase(effect_def)
-	local action, phase, territory_step = M.parse_effect_scheduling(effect_def)
-	if not action then
-		return nil, nil, nil
-	end
-	return effect_schedule.action_to_resolve_macro(action), phase, territory_step
-end
-
---- @param effect_def table
---- @param active_action string canonical action or legacy resolve macro
+--- @param active_action string canonical action or legacy when alias
 --- @param active_phase string
 --- @param territory_step string|nil when active_phase is territory
 --- @return boolean

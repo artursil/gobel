@@ -3,7 +3,7 @@ require("spec.test_helper")
 local board = require("board")
 local config = require("config")
 local content = require("content")
-local effects = require("objects.effects")
+local effects = require("objects.effects_conditions.effects")
 local shape_patterns = require("game.patterns.shape_patterns")
 local effect_manager = require("single_game.resolver.effect_manager")
 local placement_round = require("objects.placement_round")
@@ -47,7 +47,7 @@ local function apply_wall_placement_effects(st)
 			effects = placement_round.collect_defs(wall_def),
 		},
 	}
-	effect_manager.apply_phase_pass(st, "playing_stones", "points", nil)
+	effect_manager.apply_phase_pass(st, "on_play", "points", nil)
 end
 
 describe("wall stone effects", function()
@@ -68,7 +68,7 @@ describe("wall stone effects", function()
 		})
 		st.last_opponent_move = { row = 3, col = 5, stone_id = "stone_basic", actor = "black" }
 		local cell = st.board[3][5]
-		local resolved_list = effects.resolve_board_stone(cell, 3, 5, st, "playing_stones", "points", nil)
+		local resolved_list = effects.resolve_board_stone(cell, 3, 5, st, "on_play", "points", nil)
 		for i = 1, #resolved_list do
 			assert.are_not.equal("WALL_STONE", resolved_list[i].type)
 		end
@@ -154,7 +154,7 @@ describe("wall stone effects", function()
 		})
 		st.last_opponent_move = { row = 3, col = 4, stone_id = "wall", actor = "black" }
 		local cell = st.board[3][4]
-		local generated = effects.resolve_board_stone(cell, 3, 4, st, "playing_stones", "points", nil)
+		local generated = effects.resolve_board_stone(cell, 3, 4, st, "on_play", "points", nil)
 		for i = 1, #generated do
 			assert.are_not.equal("WALL_STONE", generated[i].type)
 		end

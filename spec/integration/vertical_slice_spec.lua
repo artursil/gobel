@@ -42,12 +42,12 @@ describe("vertical slice features", function()
 		assert.are.equal(4, #effects)
 		local copy_points = find_effect_by_phase(effects, "points")
 		assert.is_not_nil(copy_points)
-		assert.are.equal("COPY_RIGHT_EFFECT", copy_points.type)
+		assert.are.equal("copy_right_effect", copy_points.effect_name)
 		local r = queries.ensure_resolution(state)
 		r.phase = "points"
 		r.source_stance_index = 1
 		r.source_stance_slot_index = 1
-		copy_points.apply(state)
+		copy_points.apply(state, config.OWNER_BLACK, {})
 		assert.are.equal(P.stance.stance_point_before_turn_points, state.scores.points.B)
 	end)
 

@@ -1216,7 +1216,7 @@ function M.advance_rounds(g, count)
 		g.active_effects = kept
 		g.turn_number = (g.turn_number or 1) + 1
 		g.round_number = match_state.round_number_from_turn(g.turn_number)
-		resolve_round.resolve(g, { macro = "end_of_turn" })
+		resolve_round.resolve(g, { action = "end_of_turn" })
 	end
 end
 

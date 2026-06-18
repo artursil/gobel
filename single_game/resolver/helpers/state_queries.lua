@@ -32,7 +32,7 @@ end
 function M.clear_resolution(state)
 	local r = M.ensure_resolution(state)
 	r.phase = nil
-	r.macro = nil
+	r.action = nil
 	r.territory_step = nil
 	r.effect_owner = nil
 	r.source_owner = nil
@@ -157,11 +157,12 @@ function M.resolution_phase(state)
 	return r.phase
 end
 
+--- Returns source action from transient resolution metadata.
 --- @param state table
 --- @return string|nil
-function M.resolution_macro(state)
+function M.resolution_action(state)
 	local r = M.ensure_resolution(state)
-	return r.macro
+	return r.action
 end
 
 --- @param state table
