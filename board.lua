@@ -26,6 +26,9 @@ local function copy_stone_runtime_fields(source, target)
 	if source._defence_solidity_bonus ~= nil then
 		target._defence_solidity_bonus = source._defence_solidity_bonus
 	end
+	if source.duration_left ~= nil then
+		target.duration_left = source.duration_left
+	end
 	if source.survival_rounds_remaining ~= nil then
 		target.survival_rounds_remaining = source.survival_rounds_remaining
 	end

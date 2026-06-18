@@ -1,14 +1,16 @@
---- Anti-capture legality helpers (reads ``cell.immunity_remaining``).
+--- Anti-capture legality helpers (reads ``cell.duration_left``).
 --- @module single_game.resolver.stages_helpers.anti_capture
 
 local board = require("board")
 local config = require("config")
 local rules = require("rules")
 local stone_params = require("objects.parameters.stones")
+local duration_left = require("objects.effects_conditions.helpers.shared.duration_left")
+local anti_capture_setup = require("objects.effects_conditions.helpers.shared.anti_capture_setup")
 
 local M = {}
 
---- Materializes ``cell.immunity_remaining`` for test boards with pre-placed anti_capture stones.
+--- Materializes ``duration_left`` for test boards with pre-placed anti_capture stones.
 --- @param state table
 --- @return nil
 function M.ensure_materialized_from_board(state)
@@ -30,17 +32,10 @@ function M.ensure_materialized_from_board(state)
 		return
 	end
 	state._anti_capture_board_snapshot_seeded = true
-	local duration = stone_params.anti_capture_duration_rounds
+	local immunity_duration = stone_params.anti_capture_duration_rounds
 	for i = 1, #triggers do
 		local r, c = triggers[i][1], triggers[i][2]
-		local group = rules.collect_group(state.board, r, c)
-		for j = 1, #group do
-			local gr, gc = group[j][1], group[j][2]
-			local cell = state.board[gr][gc]
-			if cell and not board.is_empty(cell) and cell.immunity_remaining == nil then
-				cell.immunity_remaining = duration
-			end
-		end
+		anti_capture_setup.grant_group_on_cells(state.board, r, c, immunity_duration)
 	end
 end
 
@@ -54,7 +49,7 @@ function M.remaining(state, row, col)
 	if not cell or board.is_empty(cell) then
 		return 0
 	end
-	return cell.immunity_remaining or 0
+	return duration_left.remaining(cell)
 end
 
 --- @param state table

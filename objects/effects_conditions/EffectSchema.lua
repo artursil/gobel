@@ -1,4 +1,4 @@
---- Effect definition schema: validation, runtime instances, EffectSchema.build factory.
+--- Effect definition schema: validation and normalized runtime instances.
 --- @module objects.effects_conditions.EffectSchema
 
 local scheduling = require("objects.effects_conditions.scheduling")
@@ -75,18 +75,6 @@ local OPTIONAL_DEF_FIELDS = {
 	"stone_kind",
 }
 
---- Merge runtime kwargs with definition defaults (definition wins on key collision).
-function M.merge_kwargs(kwargs, defaults)
-	local merged = {}
-	for key, value in pairs(kwargs or {}) do
-		merged[key] = value
-	end
-	for key, value in pairs(defaults or {}) do
-		merged[key] = value
-	end
-	return merged
-end
-
 --- Build a normalized effect instance from a definition row.
 function M.new(effect_def)
 	local action, phase = scheduling.parse_action_phase(effect_def)
@@ -112,53 +100,6 @@ function M.new(effect_def)
 		if effect_def[key] ~= nil then
 			instance[key] = effect_def[key]
 		end
-	end
-	return instance
-end
-
---- Build a resolved runtime instance from a definition row and builder output.
-function M.build(effect_def, opts)
-	opts = opts or {}
-	local action, phase = scheduling.parse_action_phase(effect_def)
-	local instance = {
-		type = opts.type,
-		effect_name = effect_def.effect_name,
-		action = action or opts.default_action or scheduling.ACTION.on_play,
-		phase = phase or opts.default_phase or scheduling.PHASE.points,
-		priority = effect_def.priority or opts.default_priority or 10,
-		value = effect_def.value,
-		params = effect_def.params or {},
-		duration = effect_def.duration,
-		scope = effect_def.scope or "game",
-		probability = effect_def.probability,
-		conditions = effect_def.conditions or opts.conditions,
-		target = effect_def.target or {
-			selector = "self",
-			filters = {},
-		},
-		tags = effect_def.tags or {},
-	}
-	for i = 1, #OPTIONAL_DEF_FIELDS do
-		local key = OPTIONAL_DEF_FIELDS[i]
-		if effect_def[key] ~= nil then
-			instance[key] = effect_def[key]
-		end
-	end
-	if opts.extra then
-		for key, value in pairs(opts.extra) do
-			instance[key] = value
-		end
-	end
-	local apply_fn = opts.apply
-	if apply_fn then
-		local kwargs_from_def = opts.kwargs_from_def
-		instance.apply = function(state, owner, kwargs)
-			local defaults = kwargs_from_def and kwargs_from_def(effect_def, instance) or {}
-			apply_fn(state, owner, M.merge_kwargs(kwargs, defaults))
-		end
-	end
-	if opts.on_tick then
-		instance.on_tick = opts.on_tick
 	end
 	return instance
 end

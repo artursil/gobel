@@ -3,6 +3,7 @@ require("spec.test_helper")
 local board = require("board")
 local config = require("config")
 local run = require("objects.effects_conditions.run")
+local effects = require("objects.effects_conditions.effects")
 local P = require("spec.parameters_helper")
 
 local function base_state()
@@ -52,7 +53,7 @@ describe("effects_conditions run.apply_effect", function()
 		local state = base_state()
 		state.board[3][4] = board.make_stone(config.STONE_BLACK, "wall")
 		state.last_opponent_move = { row = 3, col = 4, stone_id = "wall", actor = "black" }
-		local resolved = require("objects.effects_conditions.effects").resolve({
+		local resolved = effects.resolve({
 			action = "on_play",
 			phase = "points",
 			effect_name = "wall_stone",
@@ -72,7 +73,7 @@ describe("effects_conditions run.apply_effect", function()
 		state.board[4][4] = board.make_stone(config.STONE_BLACK, "stone_basic")
 		state.board[4][5] = board.make_stone(config.STONE_BLACK, "wall")
 		state.last_opponent_move = { row = 4, col = 5, stone_id = "wall", actor = "black" }
-		local resolved = require("objects.effects_conditions.effects").resolve({
+		local resolved = effects.resolve({
 			action = "on_play",
 			phase = "points",
 			effect_name = "wall_stone",
@@ -86,7 +87,7 @@ describe("effects_conditions run.apply_effect", function()
 
 	it("errors when required kwargs keys are missing", function()
 		local state = base_state()
-		local resolved = require("objects.effects_conditions.effects").resolve({
+		local resolved = effects.resolve({
 			action = "on_play",
 			phase = "points",
 			effect_name = "wall_stone",

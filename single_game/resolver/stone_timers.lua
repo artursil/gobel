@@ -1,18 +1,10 @@
---- Clears cell-owned survival timers when stones leave the board.
---- Self-destruct removal timers use ``board_cell_timers`` instead.
+--- Clears cell-owned timer fields when stones leave the board.
 --- @module single_game.resolver.stone_timers
 
 local board = require("board")
-local config = require("config")
+local duration_left = require("objects.effects_conditions.helpers.shared.duration_left")
 
 local M = {}
-
---- @param row integer
---- @param col integer
---- @return string
-local function cell_key(row, col)
-	return row .. ":" .. col
-end
 
 --- @param state table
 --- @return nil
@@ -22,9 +14,8 @@ end
 
 --- @param cell table
 --- @return nil
-local function clear_cell_survival_fields(cell)
-	cell.survival_rounds_remaining = nil
-	cell.delay_payout = nil
+local function clear_cell_timer_fields(cell)
+	duration_left.clear(cell)
 end
 
 --- @param state table
@@ -34,10 +25,11 @@ end
 function M.clear(state, row, col)
 	local cell = state.board[row] and state.board[row][col]
 	if cell and not board.is_empty(cell) then
-		clear_cell_survival_fields(cell)
+		clear_cell_timer_fields(cell)
 	end
 	M.ensure_state(state)
-	state.board_cell_timers[cell_key(row, col)] = nil
+	local key = row .. ":" .. col
+	state.board_cell_timers[key] = nil
 end
 
 --- @param state table
@@ -45,6 +37,7 @@ end
 --- @param new_board table
 --- @return nil
 function M.clear_removed_stones(state, old_board, new_board)
+	local config = require("config")
 	local n = config.BOARD_SIZE
 	for r = 1, n do
 		for c = 1, n do

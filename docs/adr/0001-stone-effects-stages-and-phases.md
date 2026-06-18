@@ -1,6 +1,6 @@
 # ADR 0001: Stone effects via resolver stages and phased apply
 
-**Status:** accepted  
+**Status:** accepted (placement pipeline **amended** — see [ADR 0003](0003-pending-stone-removals-and-removal-beat.md))  
 **Date:** 2026-06-14  
 **Supersedes:** Hook-based placement model (Phase 1 `placement_runner`, `on_compile` / `on_placement`, `lifecycle` on defs) described in earlier drafts of this branch.
 
@@ -14,7 +14,7 @@ Stone behavior was split across:
 
 That made it hard to answer “what happens when I play a stone?” without reading several pipelines. A grill session clarified the intended model:
 
-- **Board hygiene** (capture, sacrifice removal, expiry) is generic resolver work, not per-stone hooks.
+- **Board hygiene** (draining effect-enqueued removals, regular Go capture at commit) is generic resolver work, not per-stone hooks in stages.
 - **Legality** (anti-capture immunity, blockade) updates a cached legal-move set, not placement-time effect hooks.
 - **Scoring and cell setup** use a single `apply` on effects, scheduled by an ordered **phase** list.
 - Territory multiplier / control stones should use existing **`territory_control_rounds`** state rather than ad-hoc placement snapshots.
@@ -25,14 +25,17 @@ Adopt a **stage + phase** pipeline.
 
 ### Placement resolve order (fixed)
 
+> **Amended by ADR 0003 (2026-06-18).** Authoritative order:
+
 After a stone is committed to the board:
 
-1. **Commit placement** — write `state.board`
-2. **Remove stones** (`resolver/stages/remove_stones.lua`) — inspect board; resolve captures and removals (including kamikaze self-removal, timed expiry); award capture points where rules say so
-3. **Territory phase** — run `apply` for effects with `phase = "territory"`
-4. **Points phase** — run `apply` for effects with `phase = "points"`
-5. **Mult phase** — run `apply` for effects with `phase = "mult"`
-6. **Recalculate legal moves** (`resolver/stages/legality_of_moves.lua`) — refresh cached legality from board + immunity + blockade + ko
+1. **Commit placement** — write `state.board` (regular Go captures at commit)
+2. **Territory phase** → **Points phase** → **Mult phase** — run `apply` for `on_play` effects; effects may enqueue `pending_stone_removals`
+3. **Animations**
+4. **Remove stones** — drain `pending_stone_removals`, `dispatch_removed`, prisoners
+5. **Recalculate legal moves** — refresh cached legality from board + immunity + blockade + ko
+
+See [ADR 0003](0003-pending-stone-removals-and-removal-beat.md) for capture-stone split, card damage, and EOT tick ordering.
 
 Other match beats (end of turn, tick, on removed, board reconcile) invoke the same **phase ordering** where applicable, gated by `when` on the effect definition (see `docs/effects-architecture.md`).
 
@@ -40,21 +43,23 @@ Other match beats (end of turn, tick, on removed, board reconcile) invoke the sa
 
 - Each stone effect declares `effect_name`, `when`, and `phase`.
 - Resolved effects expose **`apply` only** — no `on_compile`, `on_placement`, or other placement hooks.
-- Factories delegate to helper modules under `objects/effects_conditions/helpers/effects/` (see [ADR 0002](0002-effects-conditions-module.md)).
+- Factories delegate to per-name files under `objects/effects_conditions/effects/` (see [ADR 0002](0002-effects-conditions-module.md)).
 
 ### Stages vs effects
 
 | Concern | Owner |
 |---------|--------|
-| Capture, sacrifice removal, timed stone removal | `remove_stones` stage (rules driven from defs/tags, not `if stone_id ==`) |
+| Regular Go capture at commit | `rules` at board commit (immediate; no animation queue this pass) |
+| Effect-driven removals (kamikaze, self-destruct expire, supplemental capture stone, lethal cards, …) | Effect `apply` enqueues → animations → `remove_stones` drains queue |
 | Whether a intersection is playable | `legality_of_moves` stage + `rules` |
 | Points, mult, territory scoring, timers on commit, blockade registration | Effect `apply` in the matching phase |
-| Immunity decay, blockade tick | Tick beat + phased `apply` or dedicated tick stage (implementation detail) |
+| Timer decrement | Generic tick stage (dumb infrastructure) |
+| Timer expire hooks / payouts | `action = tick` effect rows via `effect_manager` + runner |
 | Defence solidity recompute | `board_reconcile` beat after topology changes |
 
 ### Placement scoring when the stone is already removed
 
-Some stones (e.g. kamikaze) leave the board in step 2 but must score in step 4. **Points/mult `apply` for the current placement uses the placement record** (`round_stone_effects` / placement context), not “find this kind on the board.”
+Some stones (e.g. kamikaze) enqueue removal after scoring in the same beat. **Points/mult `apply` for the current placement uses the placement record** (`round_stone_effects` / placement context), not “find this kind on the board.”
 
 ### Dropped concepts
 
@@ -66,10 +71,10 @@ Some stones (e.g. kamikaze) leave the board in step 2 but must score in step 4. 
 
 ### Positive
 
-- One mental model: commit → remove → territory → points → mult → legality
-- Capture and kamikaze removal live in one stage file, not scattered hooks
+- One mental model: commit → score phases → animate → drain removals → legality
+- Effect-driven removals live in per-stone effect files; stage only drains queue
 - Anti-capture is legality, matching how players experience “I can’t capture that group”
-- Effects stay thin: one `apply`, one helper module per `effect_name`
+- Effects stay thin: one `apply` per effect row, one file per `effect_name`
 
 ### Negative / migration cost
 
@@ -92,5 +97,5 @@ Some stones (e.g. kamikaze) leave the board in step 2 but must score in step 4. 
 |-------------|--------------|
 | Placement hooks (`on_compile`, `on_placement`, …) | Duplicates a hidden schedule; same work as phases but harder to navigate |
 | Keep `lifecycle` + `macro`/`sub` | Three overlapping “when” systems; user-facing confusion |
-| Capture/kamikaze as special effects | Hides board rules in effect hooks instead of `remove_stones` stage |
+| Capture/kamikaze as special effects | Hides removal intent; use enqueue + ADR 0003 pipeline instead |
 | `territory_to_multiplier_snapshot` hook | Redundant with `territory_control_rounds` and phased mult `apply` |

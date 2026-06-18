@@ -17,10 +17,12 @@ local territory_control_rounds = require("single_game.resolver.helpers.territory
 local card_play_memory = require("single_game.resolver.helpers.card_play_memory")
 local scoring_phases = require("single_game.resolver.scoring_phases")
 local tick_objects = require("single_game.resolver.stages.tick_objects")
-local dispatch_removed = require("single_game.resolver.stages.dispatch_removed")
+local remove_stones = require("single_game.resolver.stages.remove_stones")
+local on_play_pipeline = require("single_game.resolver.stages.on_play_pipeline")
 local effects_helpers = require("objects.effects_conditions.helpers.shared.effects_helpers")
-local stone_timers = require("single_game.resolver.stone_timers")
 local effect_enums = require("objects.effects_conditions.scheduling")
+local objects_effects = require("objects.effects_conditions.effects")
+local run = require("objects.effects_conditions.run")
 
 local M = {}
 
@@ -268,18 +270,39 @@ end
 
 --- @param state table
 --- @return nil
-local function run_end_of_turn_housekeeping(state)
-	if not state._skip_end_of_turn_effect_tick then
-		local pre_board = board.clone(state.board)
-		tick_objects.run(state, {
-			decrement_board_cell_timers = state._decrement_board_cell_timers_on_eot,
-			remove_expired_timed_stones = true,
-		})
-		dispatch_removed.run(state, pre_board, state.board)
-		stone_timers.clear_removed_stones(state, pre_board, state.board)
-		local tick_blockade = not state._blockade_registered_this_action and (state.turn_number or 1) % 2 == 0
-		tick_objects.run_side_effects(state, { tick_blockade = tick_blockade })
+local function run_eot_tick_pipeline(state)
+	if state._skip_end_of_turn_effect_tick then
+		return
 	end
+	local duration_left = require("objects.effects_conditions.helpers.shared.duration_left")
+	tick_objects.decrement(state, {
+		skip_cell = duration_left.resolve_tick_skip(state),
+		decrement_board_cell_timers = state._decrement_board_cell_timers_on_eot,
+	})
+	state._effect_tick_skip_cell = nil
+
+	state._resolve_action = effect_enums.ACTION.tick
+	run_scoring_beats(state, effect_enums.ACTION.tick)
+
+	on_play_pipeline.run_placement_animations(state)
+	remove_stones.run({ state = state, actor = state.to_play })
+
+	local tick_blockade = not state._blockade_registered_this_action
+	if tick_blockade then
+		local resolved = objects_effects.resolve({
+			effect_name = "blockade_tick",
+			action = effect_enums.ACTION.tick,
+			phase = effect_enums.PHASE.points,
+		})
+		if resolved then
+			run.apply_effect(resolved, state, nil)
+		end
+	end
+end
+
+--- @param state table
+--- @return nil
+local function run_end_of_turn_housekeeping(state)
 	state._blockade_registered_this_action = nil
 	card_play_memory.flush_just_played_to_history(state)
 	require("single_game.resolver.helpers.blocked_cells").bootstrap_from_board_if_needed(state)
@@ -298,26 +321,35 @@ local function resolve_action_from_opts(opts)
 	if opts.action then
 		return effect_enums.normalize_action(opts.action) or effect_enums.ACTION.on_play
 	end
+	if opts.macro then
+		return effect_enums.resolve_macro_to_action(opts.macro)
+	end
 	return effect_enums.ACTION.on_play
 end
 
 --- @param state table
---- @param opts table|nil ``{ action = string }``
+--- @param opts table|nil ``{ action = string, macro = string }`` (``macro`` legacy)
 --- @return nil
 function M.resolve(state, opts)
 	opts = opts or {}
 	local action = resolve_action_from_opts(opts)
+	local resolve_macro = effect_enums.action_to_resolve_macro(action)
 
 	ensure_state_fields(state)
 	sync_opponent_state(state)
 	prepare_score_baselines(state, action)
 	queries.clear_resolution(state)
 	state._resolve_action = action
+	state._resolve_macro = resolve_macro
 	if action == effect_enums.ACTION.end_of_turn then
 		state._tax_enclosure_paid = {}
+		run_eot_tick_pipeline(state)
 	end
 
 	run_scoring_beats(state, action)
+	if action == effect_enums.ACTION.on_card then
+		on_play_pipeline.run_card_removal_beat(state, state.to_play)
+	end
 	sync_player_scores(state)
 	run_post_scoring_hooks(state, action)
 	if action == effect_enums.ACTION.end_of_turn then
@@ -326,6 +358,7 @@ function M.resolve(state, opts)
 
 	queries.clear_resolution(state)
 	state._resolve_action = nil
+	state._resolve_macro = nil
 end
 
 return M

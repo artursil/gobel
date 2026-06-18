@@ -1,6 +1,6 @@
 # Effects–conditions module — glossary & invariants
 
-Local context for `objects/effects_conditions/`. Domain-wide terms live in the repo root `CONTEXT.md`. Normative pipeline detail: `docs/effects-architecture.md`, ADR 0001.
+Local context for `objects/effects_conditions/`. Domain-wide terms live in the repo root `CONTEXT.md`. Normative pipeline detail: `docs/effects-architecture.md`, ADR 0001, **ADR 0003**.
 
 **PRD:** GitHub issue #42
 
@@ -18,7 +18,15 @@ Each `effects/<name>.lua` exports `build(effect)` only. The returned table inclu
 
 **Board cells (stones):** `cell.duration_left` — set by an `on_play` effect. Initial value comes from the **effect row on the definition**, which references **`objects/parameters/*`** (e.g. `rounds = P.points_delay_rounds`) — never hardcoded in effect files.
 
+**Schema (strict):** any effect row that sets `duration_left` on play **must** declare `rounds` or `duration` on the definition row. Load-time validation fails if missing — no silent fallback to parameters inside the effect builder.
+
 **Multiple effect rows per object:** Differ by **`action`** (`on_play`, `tick`, `end_of_turn`, `on_removed`, …). Each resolves to **`apply` only**.
+
+**Timed stones (naming):** use **separate `effect_name`s per beat** — e.g. `delay_reward_setup` (`on_play`) + `delay_reward_payout` (`tick`) — one file each under `effects/`. Do not reuse one `effect_name` with an `if action` branch in `build`, and do not use `_tick` suffix hacks on the name.
+
+**Self-destruct:** `self_destruct_setup` + `self_destruct_expire`; expire **enqueues** on `pending_stone_removals`.
+
+**Anti-capture:** `anti_capture_setup` + `anti_capture_expire`; expire no-op, **no enqueue**.
 
 **`action = tick` row:** Separate def row; collected when `cell.duration_left ~= nil`. `apply` handles expiry when `duration_left == 0` after decrement.
 
@@ -51,6 +59,14 @@ The only path from the resolver effect manager to `apply`. Flow: evaluate all co
 
 Direct helper calls from resolver code are forbidden.
 
+## Removal beat
+
+Effects may enqueue on `pending_stone_removals` and/or register animations. Order: **effects → animation → drain queue (removal last)**. On-play, card attack, and EOT tick all follow this beat.
+
+**Damage cards:** apply mutates solidity; at 0 enqueue removal without clearing the cell until post-animation drain.
+
+**Capture stone:** regular Go captures at commit first; supplemental target from condition kwargs `{ row, col }`; effect enqueues only that extra cell.
+
 ## Condition eval contract
 
 `eval(state, owner, condition_def) → pass: boolean, fragment: table | nil` in `conditions/<name>.lua`.
@@ -63,7 +79,7 @@ Direct helper calls from resolver code are forbidden.
 
 Multiple conditions on one effect may each return a fragment. All must pass. Fragments merge into one `kwargs` table.
 
-**Selected board target:** card effects read `state.resolution.selected_target(s)` inside `helpers/shared/selected_stone.lua`. Conditions (`selected_target_exists`, enemy/friendly) gate only — no target coords in kwargs. Contrast wall stone: condition returns computed `{ blocks = n }`.
+**Selected board target:** card effects read `state.resolution.selected_target(s)` inside `helpers/shared/selected_stone.lua`. Conditions (`selected_target_exists`, enemy/friendly) gate only — no target coords in kwargs. Attack/Heal omit def-row conditions; Destroy/Forge keep them. Contrast wall stone: condition returns computed `{ blocks = n }`.
 
 ## Effect schema
 

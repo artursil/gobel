@@ -75,6 +75,9 @@ function M.preserve_cell_metadata(old_board, new_board)
 				if old_cell.stored_value ~= nil then
 					new_cell.stored_value = old_cell.stored_value
 				end
+				if old_cell.duration_left ~= nil then
+					new_cell.duration_left = old_cell.duration_left
+				end
 				if old_cell.survival_rounds_remaining ~= nil then
 					new_cell.survival_rounds_remaining = old_cell.survival_rounds_remaining
 				end

@@ -70,12 +70,12 @@ M.PLACEMENT_RECORD_EFFECT_NAMES = {
 	mult_control_streak = true,
 	money_field_enclosure_payout = true,
 	copper_threshold_plus_mult = true,
-	self_destruct_timed = true,
+	self_destruct_setup = true,
 	final_blow_placement = true,
 	retrigger_prior_stone_effect = true,
-	delay_reward_survival = true,
+	delay_reward_setup = true,
 	blockade_adjacent = true,
-	anti_capture_immunity = true,
+	anti_capture_setup = true,
 	capture_zero_liberty_enemy = true,
 	defence_solidity_network = true,
 	defence_adjacency_solidity = true,
@@ -93,7 +93,18 @@ for _, value in pairs(M.PHASE) do
 	VALID_PHASE_LOOKUP[value] = true
 end
 
---- Normalize action or legacy when alias to canonical action.
+--- Map legacy sub/phase strings to canonical scoring phase.
+function M.sub_to_phase(sub_or_phase)
+	if sub_or_phase == "distance" then
+		return M.PHASE.territory
+	end
+	if VALID_PHASE_LOOKUP[sub_or_phase] then
+		return sub_or_phase
+	end
+	return sub_or_phase
+end
+
+--- Normalize action or legacy macro/when alias to canonical action.
 function M.normalize_action(action)
 	if not action then
 		return nil
@@ -106,6 +117,10 @@ function M.normalize_action(action)
 		return mapped
 	end
 	return action
+end
+
+function M.macro_to_action(macro)
+	return M.normalize_action(macro)
 end
 
 function M.when_to_action(when)
@@ -126,7 +141,22 @@ function M.is_valid_phase(phase)
 	return phase ~= nil and VALID_PHASE_LOOKUP[phase] == true
 end
 
---- Parse action and phase from a definition row.
+function M.action_to_resolve_macro(action)
+	local normalized = M.normalize_action(action)
+	if normalized == M.ACTION.on_play then
+		return "playing_stones"
+	end
+	if normalized == M.ACTION.on_card then
+		return "playing_cards"
+	end
+	return normalized or action
+end
+
+function M.resolve_macro_to_action(resolve_macro)
+	return M.normalize_action(resolve_macro) or resolve_macro
+end
+
+--- Parse action and phase from a definition row with legacy field compat.
 function M.parse_action_phase(effect_def)
 	if not effect_def then
 		return nil, nil
@@ -143,17 +173,49 @@ function M.parse_action_phase(effect_def)
 	if effect_def.lifecycle == "placement" then
 		return M.ACTION.on_play, effect_def.phase or "points"
 	end
+	if effect_def.macro == "on_removed" then
+		return M.ACTION.on_removed, effect_def.phase or "points"
+	end
+	if effect_def.macro == "end_of_turn" then
+		return M.ACTION.end_of_turn, effect_def.phase or "points"
+	end
+	if effect_def.macro == "board_reconcile" then
+		return "board_reconcile", effect_def.phase or "territory"
+	end
+	if effect_def.macro then
+		return M.macro_to_action(effect_def.macro), effect_def.phase or "points"
+	end
 	local legacy = effect_def.phase
 	if legacy == "distance" or legacy == "territory" then
 		return M.ACTION.on_play, M.PHASE.territory
 	end
 	if legacy == "points" then
-		return M.normalize_action(effect_def._legacy_action) or M.ACTION.on_play, M.PHASE.points
+		return M.normalize_action(effect_def._legacy_macro or effect_def._legacy_action) or M.ACTION.on_play,
+			M.PHASE.points
 	end
 	if legacy == "mult" then
-		return M.normalize_action(effect_def._legacy_action) or M.ACTION.on_play, M.PHASE.mult
+		return M.normalize_action(effect_def._legacy_macro or effect_def._legacy_action) or M.ACTION.on_play,
+			M.PHASE.mult
 	end
 	return nil, nil
+end
+
+function M.parse_when_phase(effect_def)
+	local action, phase = M.parse_action_phase(effect_def)
+	if not action then
+		return nil, nil
+	end
+	if action == M.ACTION.on_play then
+		return "playing_stones", phase
+	end
+	if action == M.ACTION.on_card then
+		return "playing_cards", phase
+	end
+	return action, phase
+end
+
+function M.when_to_resolve_macro(when)
+	return M.action_to_resolve_macro(M.when_to_action(when) or when)
 end
 
 function M.is_placement_record(effect_def)
@@ -185,7 +247,7 @@ function M.matches_resolve_pass(effect_def, active_action, active_phase, territo
 	if not action or not phase then
 		return false
 	end
-	local normalized_active = M.normalize_action(active_action)
+	local normalized_active = M.resolve_macro_to_action(active_action)
 	if phase ~= active_phase then
 		return false
 	end

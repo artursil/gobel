@@ -14,7 +14,7 @@ local EXPECTED_IMMEDIATE_PLACEMENT_EFFECT_NAMES = {
 	"money_field_enclosure_payout",
 	"mult_control_streak",
 	"retrigger_prior_stone_effect",
-	"self_destruct_timed",
+	"self_destruct_setup",
 }
 
 describe("placement effect registry", function()

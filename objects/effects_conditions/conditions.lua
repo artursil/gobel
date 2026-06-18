@@ -1,20 +1,21 @@
 --- Thin condition dispatch registry.
 --- @module objects.effects_conditions.conditions
 
-local always = require("objects.effects_conditions.helpers.conditions.always")
-local never = require("objects.effects_conditions.helpers.conditions.never")
-local random = require("objects.effects_conditions.helpers.conditions.random")
-local stone_tag_just_added = require("objects.effects_conditions.helpers.conditions.stone_tag_just_added")
-local temporary_stance_expired = require("objects.effects_conditions.helpers.conditions.temporary_stance_expired")
-local temporary_stance_active = require("objects.effects_conditions.helpers.conditions.temporary_stance_active")
-local stance_owner_is_current_turn = require("objects.effects_conditions.helpers.conditions.stance_owner_is_current_turn")
-local round_number_exactly = require("objects.effects_conditions.helpers.conditions.round_number_exactly")
-local round_number_at_least = require("objects.effects_conditions.helpers.conditions.round_number_at_least")
-local selected_target_exists = require("objects.effects_conditions.helpers.conditions.selected_target_exists")
-local selected_target_is_enemy_stone = require("objects.effects_conditions.helpers.conditions.selected_target_is_enemy_stone")
-local selected_target_is_friendly_stone = require("objects.effects_conditions.helpers.conditions.selected_target_is_friendly_stone")
-local owner_coppers_on_board_at_least = require("objects.effects_conditions.helpers.conditions.owner_coppers_on_board_at_least")
-local wall_part_of_wall = require("objects.effects_conditions.helpers.conditions.wall_part_of_wall")
+local always = require("objects.effects_conditions.conditions.always")
+local never = require("objects.effects_conditions.conditions.never")
+local random = require("objects.effects_conditions.conditions.random")
+local stone_tag_just_added = require("objects.effects_conditions.conditions.stone_tag_just_added")
+local temporary_stance_expired = require("objects.effects_conditions.conditions.temporary_stance_expired")
+local temporary_stance_active = require("objects.effects_conditions.conditions.temporary_stance_active")
+local stance_owner_is_current_turn = require("objects.effects_conditions.conditions.stance_owner_is_current_turn")
+local round_number_exactly = require("objects.effects_conditions.conditions.round_number_exactly")
+local round_number_at_least = require("objects.effects_conditions.conditions.round_number_at_least")
+local selected_target_exists = require("objects.effects_conditions.conditions.selected_target_exists")
+local selected_target_is_enemy_stone = require("objects.effects_conditions.conditions.selected_target_is_enemy_stone")
+local selected_target_is_friendly_stone = require("objects.effects_conditions.conditions.selected_target_is_friendly_stone")
+local owner_coppers_on_board_at_least = require("objects.effects_conditions.conditions.owner_coppers_on_board_at_least")
+local wall_part_of_wall = require("objects.effects_conditions.conditions.wall_part_of_wall")
+local capture_stone_supplemental_target = require("objects.effects_conditions.conditions.capture_stone_supplemental_target")
 
 local CONDITION_HELPERS = {
 	always = always,
@@ -31,6 +32,7 @@ local CONDITION_HELPERS = {
 	selected_target_is_friendly_stone = selected_target_is_friendly_stone,
 	owner_coppers_on_board_at_least = owner_coppers_on_board_at_least,
 	wall_part_of_wall = wall_part_of_wall,
+	capture_stone_supplemental_target = capture_stone_supplemental_target,
 }
 
 local M = {}

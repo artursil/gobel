@@ -16,7 +16,6 @@ local blocked_cells = require("single_game.resolver.helpers.blocked_cells")
 local anti_capture = require("single_game.resolver.stages_helpers.anti_capture")
 local tick_objects = require("single_game.resolver.stages.tick_objects")
 local effects_helpers = require("objects.effects_conditions.helpers.shared.effects_helpers")
-local effect_enums = require("objects.effects_conditions.scheduling")
 local on_play_pipeline = require("single_game.resolver.stages.on_play_pipeline")
 local placement_preview = require("objects.placement_preview")
 local placement_round = require("objects.placement_round")
@@ -350,16 +349,15 @@ function M.validate_card_target_candidate(card_def, selected_targets, candidate,
 end
 
 --- @param state table
---- @param action string|nil canonical resolve action
---- @param end_of_turn_owner string|nil owner token when ``action`` is ``end_of_turn``
+--- @param macro string|nil active scoring macro (``playing_cards``, ``playing_stones``, ``end_of_turn``, …)
+--- @param end_of_turn_owner string|nil owner token when ``macro`` is ``end_of_turn``
 --- @return nil
-local function recalc_all_scores(state, action, end_of_turn_owner)
-	local normalized = effect_enums.normalize_action(action) or effect_enums.ACTION.on_play
-	if normalized == effect_enums.ACTION.end_of_turn and end_of_turn_owner then
+local function recalc_all_scores(state, macro, end_of_turn_owner)
+	if macro == "end_of_turn" and end_of_turn_owner then
 		state._end_of_turn_owner = end_of_turn_owner
 	end
 	local baseline = score_display.snapshot_scores(state)
-	resolve_round.resolve(state, { action = normalized })
+	resolve_round.resolve(state, { macro = macro or "playing_stones" })
 	state._end_of_turn_owner = nil
 	score_display.after_resolve(state, baseline, state.ui_animation_events)
 end
@@ -410,8 +408,8 @@ local function append_capture_bonus_resolved_effects(resolved_effects, captures)
 	end
 	resolved_effects[#resolved_effects + 1] = Effects.stones.resolve({
 		effect_name = "add_points",
-		action = "on_play",
-		phase = "points",
+		macro = "playing_stones",
+		sub = "points",
 		value = bonus,
 		priority = stone_params.default_effect_priority,
 	})
@@ -577,8 +575,6 @@ local function begin_next_turn(state)
 		}
 	end
 	local skip_cell = state._effect_tick_skip_cell
-	tick_objects.decrement(state, { skip_cell = skip_cell })
-	tick_objects.run_side_effects(state, { tick_blockade = false, skip_cell = skip_cell })
 	state._effect_tick_skip_cell = nil
 	state.turn_number = state.turn_number + 1
 	state.round_number = match_state.round_number_from_turn(state.turn_number)
@@ -886,7 +882,7 @@ local function apply_non_effect_event(state, event)
 			type = event.card_id,
 			actor = event.actor,
 		}
-		recalc_all_scores(state, "on_card")
+		recalc_all_scores(state, "playing_cards")
 		state.selected_card_target = nil
 		local cdef = content.get_card(event.card_id)
 		if cdef then
@@ -1033,12 +1029,14 @@ function M.submit_action(state, action)
 		state._decrement_board_cell_timers_on_eot = nil
 	elseif action.type == "PLACE_STONE" and not continuation_deferred_placement then
 		recalc_all_scores(state, "on_play")
+		on_play_pipeline.run_removal_beat(state)
 	end
 	if action.type == "PLACE_STONE" and not continuation_deferred_placement then
 		push_place_stone_score_events(state, action.actor, actor_points_before, actor_mult_before, capture_bonus_points)
 		on_play_pipeline.recalculate_legal_moves(state)
 	elseif action.type == "PLACE_STONE" and continuation_deferred_placement then
 		recalc_all_scores(state, "on_play")
+		on_play_pipeline.run_removal_beat(state)
 		push_place_stone_score_events(state, action.actor, actor_points_before, actor_mult_before, capture_bonus_points)
 		on_play_pipeline.recalculate_legal_moves(state)
 	end
@@ -1093,7 +1091,7 @@ function M.flush_pending_turn_if_ready(state)
 	state._test_defer_turn_advance = nil
 	score_display.end_rollout(state)
 	if state._pending_deferred_placement_score then
-		recalc_all_scores(state, "on_play")
+		recalc_all_scores(state, "playing_stones")
 		recalc_all_scores(state, "end_of_turn")
 		state._pending_deferred_placement_score = nil
 	end

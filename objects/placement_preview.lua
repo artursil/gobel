@@ -2,8 +2,7 @@
 --- @module objects.placement_preview
 
 local effect_registry = require("effect_registry")
-local effect_enums = require("objects.effects_conditions.scheduling")
-local effect_schedule = require("objects.effects_conditions.scheduling")
+local scheduling = require("objects.effects_conditions.scheduling")
 local territory_control_rounds = require("single_game.resolver.helpers.territory_control_rounds")
 local resolved_type_registry = require("objects.resolved_type_registry")
 
@@ -18,7 +17,7 @@ local IMMEDIATE_EFFECT_NAMES = {
 	kamikaze_sacrifice = true,
 	money_field_enclosure_payout = true,
 	copper_threshold_plus_mult = true,
-	self_destruct_timed = true,
+	self_destruct_setup = true,
 	final_blow_placement = true,
 	retrigger_prior_stone_effect = true,
 }
@@ -26,12 +25,12 @@ local IMMEDIATE_EFFECT_NAMES = {
 --- @param effect_def table
 --- @return boolean
 function M.is_immediate_placement_effect(effect_def)
-	if effect_schedule.is_placement_record(effect_def) then
+	if scheduling.is_placement_record(effect_def) then
 		local name = effect_def.effect_name
 		if name == "wall_stone" or name == "diagonal_group_points" or name == "line_group_points" then
 			return false
 		end
-		if name == "delay_reward_survival" or name == "blockade_adjacent" or name == "anti_capture_immunity" then
+		if name == "delay_reward_setup" or name == "blockade_adjacent" or name == "anti_capture_setup" then
 			return false
 		end
 		if name == "capture_zero_liberty_enemy" or name == "escalating_points_bank_init" then
@@ -65,8 +64,8 @@ local function resolve_immediate_effect(effect_def, ctx)
 		end
 		return effect_registry.stones.resolve({
 			effect_name = "add_mult",
-			action = effect_def.action or effect_enums.ACTION.on_play,
-			phase = effect_def.phase or effect_enums.PHASE.mult,
+			action = effect_def.action or scheduling.ACTION.on_play,
+			phase = effect_def.phase or scheduling.PHASE.mult,
 			value = delta,
 			priority = effect_def.priority or 10,
 		})

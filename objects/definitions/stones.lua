@@ -368,7 +368,14 @@ M.anti_capture_stone = {
 		{
 			action = "on_play",
 			phase = "points",
-			effect_name = "anti_capture_immunity",
+			effect_name = "anti_capture_setup",
+			duration = P.anti_capture_duration_rounds,
+			priority = P.default_effect_priority,
+		},
+		{
+			action = "tick",
+			phase = "points",
+			effect_name = "anti_capture_expire",
 			priority = P.default_effect_priority,
 		},
 	},
@@ -396,9 +403,15 @@ M.delay_reward_stone = {
 		{
 			action = "on_play",
 			phase = "points",
-			effect_name = "delay_reward_survival",
+			effect_name = "delay_reward_setup",
 			rounds = P.points_delay_rounds,
 			payout = P.points_delay_payout,
+			priority = P.default_effect_priority,
+		},
+		{
+			action = "tick",
+			phase = "points",
+			effect_name = "delay_reward_payout",
 			priority = P.default_effect_priority,
 		},
 	},
@@ -631,6 +644,9 @@ M.capture_stone = {
 			phase = "points",
 			effect_name = "capture_zero_liberty_enemy",
 			priority = P.default_effect_priority,
+			conditions = {
+				{ condition_name = "capture_stone_supplemental_target" },
+			},
 		},
 	},
 }
@@ -748,6 +764,12 @@ M.blockade_stone = {
 			effect_name = "blockade_adjacent",
 			priority = P.default_effect_priority,
 		},
+		{
+			action = "tick",
+			phase = "points",
+			effect_name = "blockade_tick",
+			priority = P.default_effect_priority,
+		},
 	},
 }
 
@@ -802,9 +824,15 @@ M.self_destruct_timed_stone = {
 		{
 			action = "on_play",
 			phase = "points",
-			effect_name = "self_destruct_timed",
+			effect_name = "self_destruct_setup",
 			immediate_points = P.self_destruct_immediate_points,
 			delay_rounds = P.self_destruct_delay_rounds,
+			priority = P.default_effect_priority,
+		},
+		{
+			action = "tick",
+			phase = "points",
+			effect_name = "self_destruct_expire",
 			priority = P.default_effect_priority,
 		},
 	},

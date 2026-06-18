@@ -150,6 +150,7 @@ function M.new_match(match_kind, territory_mode, seed)
 		last_opponent_modifiers = {},
 		active_effects = {},
 		round_stone_effects = {},
+		pending_stone_removals = {},
 		ui_animation_events = {},
 		stone_draw_events = {},
 		resolution = {

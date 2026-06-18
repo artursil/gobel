@@ -18,11 +18,13 @@ M.KNOWN_CONDITION_NAMES = {
 	selected_target_is_friendly_stone = true,
 	owner_coppers_on_board_at_least = true,
 	wall_part_of_wall = true,
+	capture_stone_supplemental_target = true,
 }
 
 --- Known kwargs keys produced by each condition (when not declared on the row).
 M.CONDITION_KWARGS_KEYS = {
 	wall_part_of_wall = { "blocks" },
+	capture_stone_supplemental_target = { "row", "col" },
 }
 
 local REJECTED_FIELDS = {

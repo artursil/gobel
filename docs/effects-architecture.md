@@ -1,31 +1,31 @@
 # Stone effects architecture
 
 Normative principles for stone behavior, resolver stages, and phased `apply`.  
-**ADR:** [0001-stone-effects-stages-and-phases.md](adr/0001-stone-effects-stages-and-phases.md), [0002-effects-conditions-module.md](adr/0002-effects-conditions-module.md)  
+**ADR:** [0001](adr/0001-stone-effects-stages-and-phases.md), [0002](adr/0002-effects-conditions-module.md), [0003](adr/0003-pending-stone-removals-and-removal-beat.md)  
 **Glossary:** [CONTEXT.md](../CONTEXT.md) at repo root; module detail in [objects/effects_conditions/CONTEXT.md](../objects/effects_conditions/CONTEXT.md)
 
-**Related:** `.cursor/rules/gobel-coding-standards.mdc`, `mds/OBJECTS.md`, `mds/GAME_RULES.md`
+**Related:** `.cursor/rules/gobel-coding-standards.mdc`, `mds/OBJECTS.md`, `mds/GAME_RULES.md`, `mds/PRD_effects_conditions_module.md`
 
 ---
 
 ## 1. Core model
 
-Stone **scoring and cell setup** live in effects. **Board hygiene and legality** live in resolver stages. Effects use **`apply(state, owner, kwargs)`** via the effects–conditions runner.
+Stone **scoring, timers, and removal intent** live in **effects**. **Draining removals and legality refresh** live in resolver stages. Effects use **`apply(state, owner, kwargs)`** via the effects–conditions runner.
 
 Effect definitions use **`action`** + **`phase`** (+ optional **`conditions`**). Canonical actions include `on_play`, `on_card`, `end_of_turn`, `tick`, `on_removed`.
 
 ```
 stone definition
   └─ effects[]: { effect_name, action, phase, … }
-       └─ objects/effects_conditions/effects.lua (dispatch)
-            └─ helpers/effects/<name>.lua
-                 └─ apply(state, owner, kwargs)
+       └─ objects/effects_conditions/effects.lua (registry)
+            └─ effects/<effect_name>.lua
+                 └─ build(effect) → { apply = function(state, owner, kwargs) … }
 ```
 
-**Navigation — scoring:** definition → `effect_name` → dispatch → helper `apply`.  
-**Navigation — capture / removal / legality:** `resolver/stages/*.lua` (generic; stone rules via defs/tags, not `if stone_id ==`).
+**Navigation — scoring:** definition → `effects/<effect_name>.lua` → runner → `conditions/<condition_name>.lua` → `apply`.  
+**Navigation — removal drain / legality:** `resolver/stages/*.lua` (generic; no `if stone_id ==`).
 
-The resolver **runs stages and phases in a fixed order**. It does **not** embed stone-specific gameplay branches. The **only** resolver entry to effect apply is `objects.effects_conditions.run`.
+The resolver **runs stages and phases in a fixed order**. The **only** resolver entry to effect `apply` is `objects.effects_conditions.run`.
 
 ---
 
@@ -33,22 +33,23 @@ The resolver **runs stages and phases in a fixed order**. It does **not** embed 
 
 | Layer | Module | Responsibility | May mutate state? |
 |-------|--------|----------------|-------------------|
-| **Schema** | `EffectSchema`, `ConditionSchema`, `scheduling` | Validate rows; enums; schedule parsing | No |
-| **Dispatch** | `effects.lua`, `conditions.lua` | Map names → helpers; thin wiring only | No |
+| **Schema** | `EffectSchema`, `ConditionSchema`, `scheduling` | Validate defs at load time; enums; schedule parsing | No |
+| **Registry** | `effects.lua`, `conditions.lua` | Route names → per-file modules | No |
 | **Runner** | `run.lua` | Eval conditions → merge kwargs → `apply` | Orchestrates |
-| **Effect helpers** | `helpers/effects/*` | One `effect_name`; `apply(state, owner, kwargs)` | Yes |
-| **Condition helpers** | `helpers/conditions/*` | `eval(state, owner) → pass, fragment` | No (fragments only) |
-| **Shared helpers** | `helpers/shared/*` | Pure or cross-cutting utilities | Usually no |
-| **Resolver stages** | `resolver/stages/*.lua` | Generic board/legality pipeline | Yes (orchestrated) |
+| **Effect files** | `effects/<name>.lua` | `build(effect)` → inline `apply` | Yes (via apply) |
+| **Condition files** | `conditions/<name>.lua` | `eval(state, owner, condition_def) → pass, fragment` | No (fragments only) |
+| **Shared helpers** | `helpers/shared/*` | Reusable math, enqueue removals, placement reads | Usually yes when called from apply |
+| **Resolver stages** | `resolver/stages/*.lua` | Drain removal queue, legality, dumb timer decrement | Yes (orchestrated) |
 
 **Rule of thumb**
 
-- Score, timers on cells, blockade maps, energy → **effect helper** `apply`
-- Capture, sacrifice removal, expiry removal → **`remove_stones` stage**
-- Playability / immunity / blockade for legality → **`legality_of_moves` stage** + `rules`
-- Reusable math with no side effects → **`helpers/shared`**
+- Score, timers on cells, blockade maps, energy, **enqueue removals** → effect `apply` + `helpers/shared`
+- **Drain** `pending_stone_removals`, `dispatch_removed`, prisoners → **`remove_stones` stage**
+- Regular Go capture at placement → **`rules` at commit** (immediate; no animation queue this pass)
+- Playability / immunity / blockade → **`legality_of_moves` stage** + `rules`
+- Dumb countdown decrement → **generic tick stage** (no stone semantics)
 
-Do not put business logic in dispatch files, the resolver, or top-level `objects` shims (removed in Phase 5).
+Do not put business logic in registry files or stone-specific branches in resolver stages.
 
 ---
 
@@ -57,131 +58,142 @@ Do not put business logic in dispatch files, the resolver, or top-level `objects
 1. Conditions on an effect each return `(pass, fragment)`. All must pass.
 2. Fragments merge into one `kwargs` table (duplicate keys across conditions on the same effect are invalid at schema load).
 3. `apply` always receives `(state, owner, kwargs)`.
-4. Placement row/col, removal cell, and tick context are read **inside** helpers from `state` / resolution metadata unless explicitly passed in `kwargs` from conditions.
-5. Required kwargs keys must error when absent (`helpers/shared/require_kwargs.lua`).
+4. **Computed** values come from conditions (wall `{ blocks }`, capture-stone supplemental `{ row, col }`).
+5. **UI / resolution input** (selected board target, placement coords) is read inside shared helpers from `state` — not copied into kwargs for card targeting.
+6. Def fields (`value`, `rounds`, `duration`, …) are closed over in `build` — not kwargs.
+7. Required kwargs keys must error when absent (`helpers/shared/require_kwargs.lua`).
 
 ---
 
-## 4. Placement pipeline (fixed order)
+## 4. Removal beat
 
-When a stone is played and committed:
+Effect-driven removals follow a fixed sub-sequence:
 
-| Step | Name | What happens |
-|------|------|----------------|
-| 1 | **Commit placement** | Write `state.board` |
-| 2 | **Remove stones** | Stage: captures, zero-liberty removal (when rules/def say so), kamikaze self-removal, timed expiry; capture points |
-| 3 | **Territory phase** | Run `apply` for effects with `phase = "territory"` |
-| 4 | **Points phase** | Run `apply` for effects with `phase = "points"` |
-| 5 | **Mult phase** | Run `apply` for effects with `phase = "mult"` |
-| 6 | **Recalculate legal moves** | Stage: refresh cached legality (immunity, blockade, ko, …) |
+1. **Effect phases** — mutate fields, enqueue `pending_stone_removals`, request animations
+2. **Animations**
+3. **Drain queue** — `remove_stones` clears cells, runs `dispatch_removed` (**`on_removed` fires** except sacrifice metadata)
+
+### On-play pipeline
+
+| Step | What happens |
+|------|----------------|
+| 1 | **Commit board** — regular Go captures at commit |
+| 2 | **Territory → Points → Mult** — `on_play` effects |
+| 3 | **Animations** |
+| 4 | **Remove stones** — drain `pending_stone_removals` |
+| 5 | **Recalculate legal moves** |
+
+### End-of-turn tick
+
+| Step | What happens |
+|------|----------------|
+| 1 | Decrement `duration_left` (generic) |
+| 2 | **`action = tick` effect phases** |
+| 3 | **Animations** |
+| 4 | **Drain `pending_stone_removals`** |
+| 5 | **`end_of_turn` and other EOT work** |
 
 ### Placement record
 
-Effects for the **current placement** run from the **placement record** (`round_stone_effects` / placement context), not only from scanning the board. Required when step 2 removes the placed stone before step 4 (kamikaze).
-
-### Other match beats
-
-The same **phase order** (territory → points → mult) applies within each beat. Effects declare **`action`** (legacy docs may say `when`):
-
-| `action` | Invoked |
-|----------|---------|
-| `on_play` | After a stone placement (pipeline below) |
-| `on_card` | After a card is played |
-| `end_of_turn` | End-of-turn resolve for active player |
-| `tick` | Between turns / round boundary (timers, blockade decay, immunity decay) |
-| `on_removed` | When a stone leaves the board (cross-player penalties, bank transfer) |
-| `board_reconcile` | After any board topology change (defence solidity network) |
-
-Scheduling enums and parsing live in `objects/effects_conditions/scheduling.lua` (re-exported from `EffectSchema`).
+On-play effects for the current placement run from **`round_stone_effects` / placement context** even when the stone is queued for removal in the same beat (kamikaze).
 
 ---
 
-## 5. Stages (not effects)
+## 5. Captures
+
+| Kind | Owner | Animation |
+|------|--------|-----------|
+| **Regular Go capture** | `rules` at commit | None this pass |
+| **Capture-stone supplemental** | Condition picks `{ row, col }` not already captured; effect enqueues one cell | Yes (removal beat) |
+
+---
+
+## 6. Stages (not effects)
 
 ### Remove stones (`resolver/stages/remove_stones.lua`)
 
-Inspects the board after commit and removes stones that should not remain:
+Drains **`state.pending_stone_removals`**: clear cells, prisoners, **`dispatch_removed`**. Does **not** decide which stones leave — effects enqueue first.
 
-- Normal Go capture resolution
-- Special capture rules declared on defs (e.g. zero-liberty enemy removal for capture stone) — invoked **generically** from def metadata/tags, not hardcoded `kind` checks
-- Sacrifice / self-removal (kamikaze)
-- Timed self-destruct expiry (when timer reaches zero)
-
-Awards capture / prisoner points according to game rules. **Not** an effect hook per stone.
+Sacrifice queue entries carry metadata so **`on_removed` is skipped** (kamikaze).
 
 ### Legality of moves (`resolver/stages/legality_of_moves.lua`)
 
-Rebuilds cached legal placements from board, ko ban, blockade zones, and anti-capture immunity (`cell.immunity_remaining`).
+Rebuilds cached legal placements from board, ko ban, blockade, anti-capture (`duration_left` / legacy fields during migration).
+
+### Tick decrement (generic)
+
+Subtracts 1 from timer fields without interpreting stone meaning. Expire semantics live in **`action = tick` effect rows**.
 
 ---
 
-## 6. Effects and phases
+## 7. Effects and phases
 
 ### Single hook: `apply(state, owner, kwargs)`
 
-Every effect helper implements `apply` with the kwargs contract above. Resolved effects may also expose `on_tick` for round-boundary decay (blockade, immunity cleanup, delayed payout).
-
-- **`phase`** selects the pass: `territory` | `points` | `mult`
-- **`action`** selects the beat (see table above)
-
-Examples:
+Every resolved effect exposes **`apply` only** — no `on_tick`, no `EffectSchema.build` wrapper.
 
 | Stone / behavior | `action` | `phase` | Notes |
 |------------------|----------|---------|--------|
-| add_points | `on_play` | `points` | Uses placement record |
-| wall_stone | `on_play` | `points` | Group size at placement |
-| mult_control_streak | `on_play` | `mult` | Reads `territory_control_rounds` |
-| delay_reward_survival | `on_play` | `points` | Starts `survival_rounds_remaining`; `on_tick` pays out |
-| blockade_adjacent | `on_play` | `points` | Writes board-zone blockade map; `on_tick` decays |
+| add_points | `on_play` | `points` | Placement record |
+| wall_stone | `on_play` | `points` | Condition `{ blocks }` |
+| kamikaze_sacrifice | `on_play` | `points` | Scores, enqueues self (sacrifice) |
+| delay_reward_setup / payout | `on_play` / `tick` | `points` | Setup sets `duration_left`; payout at 0 |
+| self_destruct_setup / expire | `on_play` / `tick` | `points` | Expire enqueues removal |
+| anti_capture_setup / expire | `on_play` / `tick` | — | Expire no-op for now |
+| capture_zero_liberty_enemy | `on_play` | `points` | Condition `{ row, col }`; enqueue supplemental |
+| damage_selected_stone | `on_card` | `points` | Solidarity −; enqueue at 0 |
 | tax_enclosure_enemies | `end_of_turn` | `points` | Enclosure scan |
-| escalating capture penalty | `on_removed` | `points` | Cross-player |
+| escalating capture penalty | `on_removed` | `points` | Via `dispatch_removed` |
+
+Timed stones use **separate `effect_name`s per beat**; strict `rounds`/`duration` on setup defs.
 
 ---
 
-## 7. State modeling
+## 8. State modeling
 
-Definitions (`objects/definitions/*`) are immutable. Runtime state lives on board cells, players, and match score bags. See ADR 0001 for cell fields (`immunity_remaining`, `stored_value`, blockade maps, etc.).
+Definitions (`objects/definitions/*`) are immutable. Runtime state lives on board cells, players, match score bags, and **`pending_stone_removals`**. Unified stone countdown: **`cell.duration_left`** (migrating from legacy fields).
 
 ---
 
-## 8. Resolver responsibilities
+## 9. Resolver responsibilities
 
-- Run placement pipeline: commit → remove_stones → territory → points → mult → legality
-- Run other beats (`end_of_turn`, `tick`, `on_removed`, `board_reconcile`) with phased apply via `effect_manager` + `run.lua`
-- AI placement scoring mirrors the same action / phase / placement record as the resolver
+- Run placement pipeline: commit → phased apply → animate → drain removals → legality
+- Run other beats (`on_card`, `end_of_turn`, `tick`, `on_removed`, `board_reconcile`) via `effect_manager` + `run.lua`
+- AI placement scoring mirrors the same action / phase / placement record
 
 The resolver must **not** call effect helpers directly or contain stone-specific gameplay branches.
 
 ---
 
-## 9. Tests
+## 10. Tests
 
-- **Unit:** schema, helper `apply`, condition `eval`, stage modules with seeded boards
-- **Integration:** full placement pipeline per stone cluster
-- **Visual:** frozen scenarios; assert-value fixes only when behavior genuinely changed
+- **Unit:** schema, `build`/`apply`, condition `eval`, `pending_stone_removals` enqueue/drain, stages with seeded boards
+- **Integration:** full placement + EOT pipelines per stone cluster; removal beat ordering
+- **Visual:** frozen scenarios; update only when behavior genuinely changed
 
 Run the full busted suite when touching stages, phases, or effects.
 
 ---
 
-## 10. Reviewer checklist
+## 11. Reviewer checklist
 
 - [ ] Stone def has `effect_name`, `action`, `phase`
-- [ ] Dispatch delegates to `helpers/effects/<name>.lua`; `apply(state, owner, kwargs)` only
-- [ ] Conditions return fragments; runner merges kwargs
-- [ ] Capture/removal not implemented as effect hooks
-- [ ] Immunity affects legality stage, not placement hook
-- [ ] No top-level `objects/effects` or `helper_effects` paths in new code
-- [ ] Docstrings on dispatch, helpers, and stages
+- [ ] Logic in `effects/<name>.lua` + `helpers/shared/`; registry routes only
+- [ ] `apply(state, owner, kwargs)` only; no `on_tick`
+- [ ] Removals enqueue — stage does not branch on stone id
+- [ ] Conditions return fragments for computed values; cards read resolution for targets
+- [ ] Timed setup defs declare `rounds`/`duration` from parameters
+- [ ] No top-level `objects/effects` or `helpers/effects/` in new code
 
 ---
 
-## 11. Anti-patterns
+## 12. Anti-patterns
 
 | Anti-pattern | Why it fails |
 |--------------|--------------|
-| Requiring deleted shims (`objects/effects`, `effect_enums`, resolver `Effect`) | Use `objects.effects_conditions.*` |
-| Calling helpers from resolver | Use `run.lua` only |
-| Extra `apply` parameters beyond kwargs | Breaks runner contract |
-| Business logic in dispatch files | Hard to review and test |
-| `helper_effects/` or monolithic registry | Removed; one helper per effect under `helpers/effects/` |
+| `on_tick` on resolved effects | Bypasses `action = tick` scheduling |
+| `EffectSchema.build` / `kwargs_from_def` | Hidden def→kwargs injection |
+| Clearing board in `apply` without enqueue | Skips animation-last removal beat |
+| Stone-specific logic in `remove_stones` | Violates ADR 0003 |
+| Duplicating regular Go capture in capture-stone effect | Regular capture has priority |
+| `helpers/effects/` per-effect trees | Superseded by `effects/<name>.lua` + `helpers/shared/` |
